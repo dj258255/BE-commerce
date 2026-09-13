@@ -1,6 +1,6 @@
 # ADR-008. 대사 불일치 확정에 사유를 남기고, 그 위에 1차 분석기를 얹는다
 
-- 상태: 제안 (Proposed)
+- 상태: 대체됨 (Superseded) — 사유 기록은 구현했고, 분석 방식은 [ADR-012](ADR-012-rule-based-cause-classifier.md)의 규칙 우선 접근으로 대체
 - 날짜: 2026-08-27
 - 관련: [ADR-002](ADR-002-outbox-event-publication-registry.md), `reconciliation` 모듈, `audit` 모듈
 
@@ -32,8 +32,8 @@
 
 수기 확정에 **사유를 필수로** 받고, `audit` 모듈을 **실제로 배선**한다.
 
-- `resolveManually(actor, cause, detail)` 로 시그니처 변경
-- `AuditService.record(...)` 를 여기서 처음으로 실제 호출한다 (`action = RECON_RESOLVE`)
+- `resolveManually(actor, cause, detail)`로 시그니처 변경
+- `AuditService.record(...)`를 여기서 처음으로 실제 호출한다 (`action = RECON_RESOLVE`)
 - 사유는 **구조화된 원인 코드 + 자유 서술** 두 칸으로 받는다. 코드만이면 새 원인을 못 담고, 자유 서술만이면 집계가 안 된다
 
 **Phase 1만으로도 가치가 있다.** 같은 패턴이 반복되는지 세어볼 수 있고, 자주 나오는 원인은 오히려 **규칙으로 자동 확정**할 수 있게 된다. AI가 필요한지 여부도 이 데이터를 보고 정한다.

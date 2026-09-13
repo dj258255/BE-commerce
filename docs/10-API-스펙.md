@@ -39,12 +39,12 @@
 | 422 | `IDEMPOTENCY_KEY_REUSED` | 같은 멱등키 + **다른 요청 본문** (토스페이먼츠와 동일 시맨틱) |
 
 > **PG 오류는 별도 HTTP 코드로 나가지 않는다.** PG가 실패하거나 응답이 없으면
-> 결제를 `UNKNOWN` 으로 <b>보존</b>하고 복구 배치가 조회로 확정한다(ADR·04 문서).
+> 결제를 `UNKNOWN`으로 **보존**하고 복구 배치가 조회로 확정한다(ADR·04 문서).
 > 그래서 클라이언트가 받는 것은 502/504 가 아니라 **승인 응답의 상태값**이다.
 > PG 쪽 코드(`PROVIDER_ERROR`, `UNKNOWN_PAYMENT_ERROR` 등)는 내부 판정에만 쓰고
-> 그대로 노출하지 않는다 — 외부 사업자의 코드 체계에 우리 API 가 묶이면 안 된다.
+> 그대로 노출하지 않는다 — 외부 사업자의 코드 체계에 우리 API가 묶이면 안 된다.
 
-<sub>이 표는 `ApiSpecErrorCodesTest` 가 코드와 대조한다. 실제로 나가지 않는 코드를
+<sub>이 표는 `ApiSpecErrorCodesTest`가 코드와 대조한다. 실제로 나가지 않는 코드를
 적어두면 클라이언트가 오지 않을 분기를 만든다 — 한때 `CONCURRENT_MODIFICATION`·
 `PG_ERROR`·`PG_TIMEOUT` 세 개가 그런 상태였다.</sub>
 

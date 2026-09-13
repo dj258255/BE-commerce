@@ -161,6 +161,6 @@ DELETE FROM settlements WHERE settlement_date = DATE_SUB(UTC_DATE(), INTERVAL 1 
 ---
 
 > **후속 작업의 위치**: 이 실측이 가리킨 분리(정산·알림 추출, Kafka 컨슈머, K8s 배포와
-> 무중단 롤링 수렴)는 [`msa-extraction` 브랜치](../../../../tree/msa-extraction)에서 구현·검증했다.
+> 무중단 롤링 수렴)는 [`msa-extraction` 브랜치](https://github.com/dj258255/payment-system/tree/msa-extraction)에서 구현·검증했다.
 > main은 모듈러 모놀리스를 유지한다 — 실측된 한계는 기록하되, 본 프로젝트의 초점은
 > 결제 도메인의 실패·정합성 처리에 있기 때문이다.

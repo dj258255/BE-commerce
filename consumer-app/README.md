@@ -1,11 +1,13 @@
-# pay-consumer: 프로세스 밖 결제 이벤트 소비자 (정산 알림 데모)
+# pay-consumer
+
+결제 이벤트를 프로세스 밖에서 소비하는 정산 알림 데모입니다.
 
 메인 pay 앱이 `@Externalized`로 Kafka에 내보내는 `payment.confirmed` / `payment.canceled`
 토픽을 구독하는 **별도 프로세스** 앱이다. 도메인 코드를 한 줄도 고치지 않고 다른 프로세스가
 결제 이벤트를 받는 것을 실증한다. [ADR-005](../docs/adr/ADR-005-event-externalization-kafka.md)의
 "프로세스 밖 소비자" 약속을 이행한 것이다.
 
-> 구조 결정: 메인 빌드에 영향을 주지 않도록 **독립 Gradle 프로젝트**로 둔다
+> 메인 빌드에 영향을 주지 않도록 **독립 Gradle 프로젝트**로 둔다
 > (루트 settings.gradle에 include하지 않아 메인 CI/테스트 무영향).
 
 ## 실행

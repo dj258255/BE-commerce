@@ -1,357 +1,196 @@
-# pay: Spring Modulith 결제 시스템
+# pay
+
+결제의 정상 처리보다 **실패 이후의 정합성 회복**에 초점을 둔 Spring Modulith 기반 결제 백엔드입니다.
+PG 타임아웃, 중복 요청, 이벤트 재전달, 부분 실패를 실제 운영에서 발생할 수 있는 상태로 보고,
+이를 기록·복구·대사하는 흐름을 구현했습니다.
 
 [![CI](https://github.com/dj258255/payment-system/actions/workflows/ci.yml/badge.svg)](https://github.com/dj258255/payment-system/actions/workflows/ci.yml)
 
-실 서비스 운영을 상정해 만든 결제 백엔드. 결제의 정상 경로보다 **실패·정합성 처리**에 무게를 뒀다.
-타임아웃/중복/장애 같은 사건이 실제로 일어난다고 전제하고, 각 사건을 상태로 보존하고 확정하는 구조로 설계했다.
+## 핵심 결과
 
-## 데모 콘솔
+| 문제 | 선택 | 검증 |
+| --- | --- | --- |
+| PG 응답이 불확실한 타임아웃 | 결제를 `UNKNOWN`으로 보존하고 조회·망취소로 확정 | Toxiproxy 네트워크 장애 주입 |
+| DB 저장과 이벤트 발행 사이의 유실 | Spring Modulith Event Publication Registry 기반 Outbox | 재발행·멱등 소비·DLQ 테스트 |
+| 재고·잔액의 동시 차감 | 조건부 `UPDATE`와 영향 행 수로 성공 여부 판정 | H2와 MySQL 8.4에서 세 전략 비교 |
+| 외부 호출을 포함한 긴 트랜잭션 | 예약 → PG 승인 → 확정/보상의 3단계 사가 | 중단 지점별 복구 시나리오 검증 |
+| 장부와 PG 기록의 불일치 | 복식부기 원장과 일 단위 대사, 취소 별도 행 | 차변=대변 불변식과 4분류 대사 테스트 |
+| 운영자의 분산된 조사 동선 | 10개 도메인의 이력을 주문 단위 타임라인으로 조립 | 조회 7회·목록 탐색 6회를 API 1회로 통합 |
+| 트래픽 급증 | 사용자별·전역 rate limit과 대기열 게이트 | 초과 요청 97.5% 차단, 성공 요청 p95 738ms → 52ms |
 
-`docker compose up -d && ./gradlew bootRun` 후 두 화면을 제공한다(Spring이 정적 서빙, same-origin이라 별도 프론트 서버·CORS 불필요).
+수치는 로컬 단일 장비에서 측정한 결과이며, 실행 환경과 한계는
+[성능 리포트](docs/performance/README.md)에 함께 기록했습니다.
 
-- **스토어** `http://localhost:8080/`: 로그인 → 상품 → 결제 → 취소/구매확정의 사용자 흐름과 주문 전표·상태. 대기열·월렛·포인트·구독 포함
-- **운영 백오피스** `http://localhost:8080/admin.html`: 사이드바로 업무별 분리. 미확정 복구 / 보상 태스크 / 대사 / 정산·지급 / 분쟁 / 강제취소(2인 승인) / FDS / DLQ
+## 아키텍처
 
-  대사 화면에서는 **주문 한 건의 전 과정**(주문·결제·원장·에스크로·정산·포인트·월렛·분쟁·대사·감사)을
-  한 번에 펼쳐 보고, 그 아래에서 **규칙이 계산한 원인 후보**를 근거와 함께 받는다.
-  후보를 눌러도 확정되지 않는다 — 드롭다운만 채워지고 확정은 사람이 버튼을 눌러야 한다.
+![pay 아키텍처: 유입 계층, 결제 코어, Outbox, 후속 도메인과 운영 계층](docs/images/architecture.svg)
 
-  ![대사 원인 제안](docs/images/recon-suggestions.jpg)
+모듈형 모놀리스로 시작해 도메인 경계를 코드와 테스트로 강제합니다. 모듈 간 결합은 공개 API와
+도메인 이벤트로 제한하며, Spring Modulith의 `ModularityTests`가 잘못된 의존성을 빌드 단계에서 찾습니다.
 
-두 화면 모두 하단 개발자 로그 드로어에서 실제 요청·응답을 그대로 보여준다.
-
-**결제 플로우**: 로그인(JWT) → 주문 생성 → 결제 승인 → 취소/구매확정. 미리 준비한 응답이 아니라 실제 API 호출·상태를 그대로 보여준다.
-
-![결제 플로우 데모](docs/images/demo-checkout.png)
-
-**운영 콘솔(ROLE_ADMIN)**: 미확정 결제 복구, 보상 태스크 재처리, 정산 대사, 강제취소 2인 승인, FDS 사후 심사, DLQ.
-
-![운영 콘솔 데모](docs/images/demo-admin.png)
-
-**강제취소 · 2인 승인(maker-checker)**: 요청자와 승인자가 반드시 달라야 실행된다. 요청자 본인이 승인하면 `MAKER_CHECKER_VIOLATION`으로 막힌다.
-
-![maker-checker 본인 승인 차단](docs/images/demo-maker-checker.png)
-
-**정산(수수료·부가세·지급예정일)**: 구매확정(CONFIRMED)된 결제를 일 단위로 집계해 수수료(2.7%) + 수수료 VAT(10%)를 떼고 지급액(net)과 지급예정일(정산일+2영업일)을 산출한다. 집계된 정산(CREATED)을 어드민이 지급 확정(PAID_OUT)한다. 예: 총액 30,000 → 수수료 810 + VAT 81 → 지급액 29,109.
-
-![정산 데모: 수수료·부가세·지급액·지급예정일 분해](docs/images/demo-settlement.png)
-
-**구독 정기결제(빌링키)**: 빌링키로 구독을 개시하고, 내 구독 조회·즉시청구·해지·청구 이력을 제공한다. 정기청구는 dunning 스케줄러가 주기 실행하며 soft/hard decline을 재시도·유예로 처리한다. 본인 구독만 접근 가능(IDOR 방지).
-
-![구독 정기결제 데모: 개시·상태·청구주기·해지](docs/images/demo-subscription.png)
-
-**회원 가입 · 이메일 로그인**: InMemory 데모 계정과 별개로 실 JPA 회원을 가입·로그인한다. 이메일로 로그인해도 발급 JWT의 subject는 숫자 회원 id라, 전 모듈의 소유권 검증(`Long.parseLong(principal)`) 계약이 그대로 유지된다.
-
-![회원 가입·이메일 로그인 데모: userId=1000 로그인](docs/images/demo-member.png)
-
-**선불 월렛(충전·잔액·이력 · 복합결제 수단)**: 충전(전금법 한도)·잔액·이력을 조회하고, 체크아웃에서 카드·포인트와 함께 결제 수단으로 쓴다(카드+포인트+월렛 = 주문총액). 결제 차감은 예약(USE)이고, 취소·거절 시 환불(REFUND)/해제(RESTORE)로 되돌린다.
-
-![선불 월렛 데모: 충전·잔액·이력, 복합결제 수단](docs/images/demo-wallet.png)
-
-**포인트 적립**: 결제 완료 시 실결제액(카드+월렛)의 1%를 적립(EARN)하고, 취소 시 그만큼 회수(EARN_REVERSAL)한다. 잔액·이력을 조회한다.
-
-![포인트 적립 데모: EARN·잔액·이력](docs/images/demo-points.png)
-
-**분쟁/차지백**: 차지백 웹훅(HMAC 서명) 수신 → 분쟁 개시(chargebackId 멱등, 원 결제 실존·금액 대조) → 증빙 제출 → 승/패 확정. **패소(LOST) 시 원장 역분개**(매출 차변 ↔ PG미수금 대변)로 사후 정합을 맞춘다.
-
-![분쟁/차지백 데모: 상태머신·패소 역분개](docs/images/demo-dispute.png)
-
-**폭주 유입 제어**: 같은 사용자의 연타는 rate limiter가 `429 RATE_LIMITED`로 쳐내고(사용자별 5/s + 전역 상한), 한정판 상품은 대기열 입장권 없이 주문하면 `429 QUEUE_PASS_REQUIRED`로 막힌다(입장 후 성공). 스파이크 실측: 폭주의 97.5%를 429로 거절하면서 성공 요청 p95는 738ms→52ms([docs/performance §7](docs/performance/README.md)).
-
-![폭주 제어 데모: rate limit 429 + 대기열 게이트](docs/images/demo-overload.png)
-
-**관측성(SLO 대시보드 · 알림)**: `docker compose --profile monitoring up -d prometheus grafana` 로 스택을 띄우면, Micrometer가 노출한 메트릭을 Prometheus가 수집하고 Grafana가 결제 SLO를 보여준다. 결제 성공률·처리량(TPS)·p95/p99 레이턴시·HikariCP 풀에 더해, 결제 도메인 고유 지표인 **미확정(UNKNOWN) 결제 최고 경과 시간**과 **대사 미해결(PENDING) 건수**를 커스텀 게이지로 노출한다.
-
-![Grafana 결제 SLO 대시보드](docs/images/demo-grafana-dashboard.png)
-
-대시보드와 같은 지표를 **알림 룰**로도 코드화했다(`monitoring/alert-rules.yml`): 성공률<95%, 보상 재시도 소진, UNKNOWN 10분+ 방치, 데드락 재시도 폭증, 대사 PENDING 적체. 시스템이 건강하면 5개 모두 `inactive`다.
-
-![Prometheus 결제 SLO 알림 룰](docs/images/demo-prometheus-alerts.png)
-
-## 기술 스택
-
-- **Java 21**, **Spring Boot 3.4**, **Spring Modulith 1.3**
-- **MySQL 8.4** + JPA(도메인 모델), **Flyway**(스키마 마이그레이션)
-- **Redis**(캐시·분산락), **Resilience4j**(서킷브레이커·재시도), **Kafka**(결제 이벤트 외부화, 프로세스 밖 소비자용, 브로커 있을 때만)
-- **Micrometer + Prometheus/Grafana**(관측성), **Spring Security**(인증·인가)
-- 테스트: JUnit5 + Mockito. 기본 스위트 **777개** + 실 MySQL 통합 **13개**(`integrationTest`) + Toxiproxy 네트워크 카오스 **1개**(`chaosTest`) = 총 791개. 뒤의 둘은 컨테이너가 필요해 기본 스위트에서 제외하고 별도 태스크로 돌린다. Spring Modulith 경계 검증 포함. 락 전략 비교는 H2와 Testcontainers 실 MySQL에서 각각 재서 순위가 뒤집히는 것을 확인했다
-
-## 아키텍처: 모듈형 모놀리스
-
-`com.beomsu.pay` 바로 아래 각 패키지가 하나의 애플리케이션 모듈이다. 모듈 간 통신은 직접 호출이 아니라
-**도메인 이벤트**로 하고, 그 경계를 테스트(`ModularityTests`)가 강제한다. 규칙 위반 시 빌드가 깨진다.
-
-**모듈 안은 다시 둘로 나뉜다.** Spring Modulith 는 모듈의 base package 를 API 패키지로 보고, 하위 패키지를
-내부로 본다. 그래서 `<모듈>/` 바로 아래에는 **다른 모듈이 쓰는 것만** 두고, 나머지는 `<모듈>/internal/` 로
-내린다. 루트를 열면 그 모듈이 밖에 무엇을 약속하는지가 그대로 읽힌다(ADR-018).
-
-```
-payment/                   ← 밖에 내주는 10개
-├── PaymentConfirmedEvent      다른 모듈 11곳이 구독
-├── PaymentService             10곳
-├── PaymentCanceledEvent       8곳
-├── …
-├── internal/              ← 안에서만 쓰는 11개 (Payment · PaymentRepository · PaymentHistory …)
-├── pg/ va/ webhook/       ← 외부 경계 어댑터
-├── forcecancel/ recovery/ ← 관심사별
-└── web/                   ← 컨트롤러
+```text
+클라이언트
+   │
+   ├─ 인증 · 유입 제어 · 대기열
+   │
+   ▼
+주문 ── 체크아웃 사가 ── 결제 ── PG 어댑터
+                           │
+                           ▼
+                 Transactional Outbox
+                           │
+          ┌────────────────┼────────────────┐
+          ▼                ▼                ▼
+       원장·에스크로    정산·대사       알림·FDS·분쟁
 ```
 
-`internal` 안의 타입이 `public` 인 경우가 있다. 같은 모듈의 API 가 참조하기 때문인데, Modulith 문서도
-"내부 패키지에 있어도 `public` 이면 컴파일러는 막지 못한다"고 짚는다. 그 자리는 `allowedDependencies` 가
-막고, 선언 위에 그 사유를 적어 뒀다. `PayApplication` 과 `SecurityConfig` 만 루트에 남는데,
-`SecurityConfig` 는 `auth`·`ratelimit`·`member` 를 가로질러 조립하는 앱 껍데기라 어느 모듈에도 안 속한다.
+주요 모듈은 다음과 같습니다.
 
-![pay 아키텍처: 유입/인증 → 결제 코어(체크아웃 사가·PG 어댑터) → Outbox 이벤트 → 구독자(원장·에스크로·정산·대사·분쟁·FDS) → 인프라](docs/images/architecture.svg)
+| 구분 | 모듈 | 책임 |
+| --- | --- | --- |
+| 결제 코어 | `order`, `payment` | 주문 상태머신, 체크아웃 사가, 승인·취소·웹훅·미확정 복구 |
+| 자금 정합성 | `ledger`, `escrow`, `settlement`, `reconciliation` | 복식부기, 자금 보류, 정산, 외부 기록 대사 |
+| 결제 수단 | `point`, `wallet`, `subscription` | 포인트·선불 월렛·빌링키 정기결제 |
+| 운영 안전장치 | `fraud`, `dispute`, `notification`, `audit` | 이상거래 심사, 차지백, 멱등 소비·DLQ, 감사 로그 |
+| 플랫폼 | `member`, `queue`, `receipt`, `shared` | 회원·권한, 선착순 대기열, 현금영수증, 공통 값 타입 |
 
-```
-com.beomsu.pay
-├── order          주문 상태머신, 금액 위변조 검증, 체크아웃 사가 오케스트레이션·취소, 멱등키
-├── payment        승인/취소/멱등/상태머신, PG 연동(3-상태), 망취소, 웹훅, 가상계좌
-├── ledger         복식부기 원장 (차변=대변 불변식) + 분쟁 패소 역분개
-├── settlement     일 단위 배치 집계(서비스 루프; 대용량은 Spring Batch로 확장 여지)
-├── escrow         자금 보류(에스크로) — 구매확정 전까지 HELD, 확정 시 RELEASED/취소 시 REFUNDED
-├── reconciliation 대사 (내부 vs PG 파일 4분류)
-├── notification   결제 이벤트 소비 (멱등 컨슈머 + DLQ)
-├── point          포인트 원장 (복합결제 차감·보상·환불 + 실결제액 적립/회수)
-├── subscription   빌링키 정기결제 + dunning
-├── wallet         선불 충전 월렛 (전금법 한도) — 카드·포인트와 함께 복합결제 수단
-├── member         JPA 회원(이메일·Argon2id) + 가입, 복합 UserDetailsService (숫자 userId 계약 보존)
-│                   로그인 시 옛 해시를 현재 알고리즘으로 점진 이관(ADR-009)
-├── dispute        분쟁/차지백 상태머신 — 웹훅 수신 → 증빙 → 승/패, 패소 시 원장 역분개
-├── fraud          이상거래탐지(FDS) 룰 엔진
-├── queue          선착순 대기열 (Redis Sorted Set 입장권)
-├── receipt        현금영수증 발급·연쇄취소
-├── audit          상태 변경 감사 로그
-└── shared         Money, ULID 등 공유 값 타입 (OPEN 모듈)
-```
-
-이벤트 발행은 Spring Modulith의 Event Publication Registry(= Transactional Outbox)로 신뢰성을 보장한다
-([ADR-002](docs/adr/ADR-002-outbox-event-publication-registry.md)).
-결제 이벤트는 Kafka로도 외부화되며, 별도 프로세스 소비자 데모는 [`consumer-app/`](consumer-app/README.md) 참고
-([ADR-005](docs/adr/ADR-005-event-externalization-kafka.md)).
+모듈 루트에는 외부에 공개할 타입만 두고 구현은 `internal` 아래에 둡니다. 이 구조를 택한 이유와
+예외는 [ADR-018](docs/adr/ADR-018-module-internal-packages.md)에 정리했습니다.
 
 ## 핵심 설계
 
-| 영역 | 설계 |
-|---|---|
-| 신뢰 경계 | 금액·가격·userId를 클라이언트가 아니라 서버/인증 컨텍스트에서 정한다 (위변조·IDOR 차단) |
-| 실패 처리 | PG 타임아웃을 `UNKNOWN`으로 보존 → 복구 배치가 조회로 확정 / 망취소 / 서킷브레이커 |
-| 멱등성 | `Idempotency-Key` + DB 유니크 제약 (INSERT 성공 = 처리권 획득) |
-| 이벤트 | Outbox → 멱등 컨슈머 → DLQ (유실·중복·순서역전 대응) |
-| 정합성 | 복식부기 원장(차변=대변)으로 자금 이동을 수학적으로 검증, 대사가 최종 방어선 |
-| 동시성 | 재고·잔액 차감 락 3종 비교 실측 후 조건부 UPDATE 채택 ([ADR-004](docs/adr/ADR-004-stock-deduction-locking.md)) |
-| 운영 조사 | 주문 한 건의 전 과정을 10개 도메인에서 시간순으로 조립 ([ADR-011](docs/adr/ADR-011-order-timeline-assembly.md)) — 조회 7회·목록 뒤지기 6회가 **1회**로 |
-| 원인 분류 | 대사 불일치 원인을 **규칙으로** 제안하고 근거를 함께 낸다 ([ADR-012](docs/adr/ADR-012-rule-based-cause-classifier.md)). AI를 쓰지 않는 이유는 8종 중 6종이 산수로 결정되기 때문 — 그 수를 커버리지 하네스가 세어서 고정한다 |
+### 실패를 지우지 않고 확정한다
 
-## 쌓아 올린 순서
+- 승인 요청의 멱등성은 `Idempotency-Key`와 DB 유니크 제약으로 보장합니다.
+- PG 타임아웃은 실패로 단정하지 않고 `UNKNOWN`으로 남긴 뒤 PG 조회로 확정합니다.
+- 체크아웃은 외부 호출 중 DB 커넥션을 점유하지 않도록 3단계 사가로 분리했습니다.
+- 보상도 실패할 수 있으므로 보상 태스크를 영속화하고 재시도 소진 시 운영자에게 노출합니다.
 
-한 번에 만든 게 아니라 단계를 순서대로 올렸다. 앞 단계가 없으면 뒤 단계를 못 만드는 관계라
-순서 자체가 설계다.
+### 돈의 이동을 불변식으로 검증한다
 
-| 단계 | 내용 | 왜 이 순서인가 |
-|---|---|---|
-| 0 | Spring Modulith 뼈대 · 모듈 경계 검증 · Money | 경계를 먼저 못 박아야 뒤에서 안 샌다 |
-| 1 | payment 상태머신 · order 체크아웃 | 도메인 규칙이 있어야 실패를 정의할 수 있다 |
-| 2 | UNKNOWN 복구 · 멱등키 · 서킷브레이커 | 성공 경로가 돌아야 실패 경로를 짤 수 있다 |
-| 3 | 웹훅 수신 · Outbox 이벤트 · 멱등 컨슈머 | 외부와 붙기 전에 안쪽 정합성이 먼저다 |
-| 4 | 복식부기 원장 · 정산 · 대사 | 거래가 쌓여야 대사할 대상이 생긴다 |
-| 5 | 재고 락 3종 비교 → 조건부 UPDATE | 동작하는 코드가 있어야 성능을 잰다 |
-| 6 | 관측성 · DLQ 백오피스 · 유입 제어 | 운영은 마지막이 아니라, 앞의 것들이 보여야 시작된다 |
+- 원장은 append-only 복식부기로 기록하고 모든 거래에서 차변과 대변의 합이 같아야 합니다.
+- 취소는 기존 대사 행을 덮어쓰지 않고 별도의 거래 행으로 남깁니다.
+- 구매확정 전 자금은 에스크로에 보류하고, 확정·취소 이벤트에 따라 해제하거나 환불합니다.
+- 정산은 수수료와 부가세를 정수 연산으로 분리하고 지급 확정까지 상태로 관리합니다.
 
-이후는 단계가 아니라 **되돌아간 기록**이다. 확장(구독·월렛·회원·분쟁)을 붙이고, 새로 쓴 코드를
-스스로 감사해 자금 손실 버그를 찾고, 검증했다고 적어둔 실험이 틀렸다는 걸 발견해 다시 쟀다.
-그 과정은 [성능 리포트](docs/performance/README.md)와 [ADR](docs/adr)에 남아 있다.
+### 운영 기능도 도메인의 일부로 다룬다
 
-## 운영 스위치
+- 주문·결제·원장·에스크로·정산·포인트·월렛·분쟁·대사·감사를 주문번호 하나로 조회합니다.
+- 강제취소는 요청자와 승인자를 분리하는 maker-checker 규칙을 도메인에서 강제합니다.
+- FDS와 운영 보조 모델은 자동 확정하지 않습니다. 규칙 기준선, 섀도 평가, 사람 검토와 전환 조건을
+  통과한 기능만 제한적으로 노출합니다.
+- Prometheus 알림은 작은 표본의 비율 왜곡과 반복 알림을 고려해 최소 표본과 재알림 간격을 둡니다.
 
-배치와 선택 기능은 **전부 기본 off**다. 테스트·로컬 부팅에 부작용을 만들지 않기 위해서고,
-운영에서는 아래를 켠다. 각 배치는 `@ConditionalOnProperty`로 빈이 등록되고 짝이 되는
-`@EnableScheduling` 설정이 **같은 프로퍼티로** 스케줄링을 켠다 — 둘 중 하나만 켜지면
-빈은 뜨고 `@Scheduled`가 영원히 안 불리는 조용한 무동작이 되므로, 그 짝을
-`SchedulerGatePairingTest`가 구조로 강제한다.
+상세한 선택과 트레이드오프는 [ADR 목록](docs/README.md#아키텍처-결정-기록)에서 확인할 수 있습니다.
 
-| 환경변수 | 하는 일 | 주기(기본) |
-|---|---|---|
-| `APP_RECOVERY_ENABLED` | 미확정(UNKNOWN) 결제를 PG 조회로 확정 | 60s |
-| `APP_CHECKOUT_RECOVERY_ENABLED` | 멈춘 체크아웃 사가 완결/롤백 | 60s |
-| `APP_COMPENSATION_ENABLED` | 망취소 등 보상 작업 재시도 | 5s |
-| `APP_ORDER_EXPIRY_ENABLED` | 기한 지난 미결제 주문 EXPIRED 전이 | 60s |
-| `APP_VA_EXPIRY_ENABLED` | 입금 기한 지난 가상계좌 만료 | 60s |
-| `APP_ESCROW_AUTO_RELEASE_ENABLED` | 보류 기간 지난 에스크로 자동 릴리스 | 60s |
-| `APP_SETTLEMENT_ENABLED` | 일 정산 배치 | 24h |
-| `APP_DUNNING_ENABLED` | 구독 결제 실패 재청구 | 60s |
-| `APP_IDEMPOTENCY_CLEANUP_ENABLED` | 만료 멱등키 정리 | 1h |
-| `APP_OUTBOX_CLEANUP_ENABLED` | 아웃박스 아카이브 정리(보존 7일) | 1h |
-| `APP_PG_ROUTING_ENABLED` | 멀티 PG 가중치 라우팅 + failover | — |
-| `APP_RATELIMIT_ENABLED` | 유입 제어(**기본 on**) | — |
+## 데모
 
-AI 를 붙인 자리는 **도는 것**과 **화면에 나가는 것**을 따로 켠다. 하나로 두면 켤 근거를 모으려고
-모델을 켜는 순간 화면까지 바뀌어, **근거를 모으기도 전에 켜 버리는 셈**이 된다.
+애플리케이션을 실행하면 별도 프런트엔드 서버 없이 두 화면을 제공합니다.
 
-| 환경변수 | 하는 일 | 기본 |
-|---|---|---|
-| `APP_ASSIST_INCIDENT_PROVIDER` | 장애 로그 원인 분석 — 화면에 무엇이 나갈지 | `rule-first` |
-| `APP_ASSIST_DRAFT_PROVIDER` | 고객 상담 초안 — 화면에 무엇이 나갈지 | `ollama` |
-| `APP_ASSIST_RESIDUAL_PROVIDER` | 대사 원인 분류 — **규칙 대비 개선이 0 이라 껐다** | `template` |
-| `APP_ASSIST_FRAUD_REVIEW_PROVIDER` | 이상거래 심사 초안 — 화면에 무엇이 나갈지 | `template` |
-| `APP_ASSIST_FRAUD_REVIEW_MODEL_ENABLED` | 심사 초안 **모델을 돌릴지**(화면은 안 바뀐다) | `false` |
+- 스토어: `http://localhost:8080/` — 주문, 복합결제, 취소, 구매확정, 구독, 월렛, 포인트
+- 운영 백오피스: `http://localhost:8080/admin.html` — 복구, 보상, 대사, 정산, 분쟁, FDS, DLQ
 
-심사 초안이 `template` 인 이유는 만들다 만 것이 아니라 **켤 조건을 못 넘겨서**다. 판정 12건
-이상에서 모델 초안의 편집률 중앙값이 템플릿보다 낮아야 하는데 표본이 아직 0 건이다
-([docs/27](docs/27-FDS-모델-평가와-켤-조건.md) 7절). 표본을 모으려면 모델은 돌아야 하므로
-플래그가 둘이다.
+두 화면의 개발자 로그 드로어에서 실제 API 요청과 응답을 확인할 수 있습니다.
 
-**실측으로 확인한 것**: 위 배치를 실제로 켜서 각각이 일감을 처리하는 것까지 봤다.
-로그만으로는 부족하다 — 대부분 처리 건수가 0이면 로그를 남기지 않으므로, "로그가 없다"가
-"안 돌았다"를 뜻하지 않는다. 그래서 각 배치의 대상 조건에 맞는 데이터를 심고 처리 결과를
-DB에서 확인했다.
+![결제 플로우 데모](docs/images/demo-checkout.png)
 
-| 배치 | 로그 | DB 결과 |
-|---|---|---|
-| 주문 만료 | `count=1` | 주문 `EXPIRED` |
-| 체크아웃 복구 | `recovered=1` | 주문 `PAID`로 완결 |
-| 에스크로 릴리스 | `count=1` | 홀드 `RELEASED` |
-| 가상계좌 만료 | `count=1` | 계좌 `EXPIRED` |
-| 멱등키 정리 | `deleted=1` | 0건 |
-| 아웃박스 정리 | `deleted=6` | 아카이브 비워짐 |
+![운영 백오피스의 대사 원인 제안](docs/images/recon-suggestions.jpg)
 
-아웃박스 정리가 **아카이브 테이블**에서 지운다는 점이 중요하다. `completion-mode: archive`가
-핫 테이블을 "아직 처리 안 된 것"만 남기고, 이 배치가 아카이브를 보존기간 뒤에 비운다 —
-둘은 대체 관계가 아니라 짝이다([성능 리포트 10절](docs/performance/README.md)).
+운영 화면은 원인 후보를 자동 확정하지 않습니다. 후보를 선택하면 입력값만 채워지고 최종 확정은
+운영자가 수행합니다.
+
+주요 시연 항목은 다음과 같습니다.
+
+- 결제 승인·취소·구매확정과 PG 타임아웃 복구
+- 카드·포인트·월렛 복합결제와 실패 시 보상
+- 정산 수수료·부가세·지급 예정액 산출
+- 차지백 웹훅, 증빙 제출, 패소 시 원장 역분개
+- 강제취소 maker-checker와 본인 승인 차단
+- rate limit, 대기열, DLQ 재처리, FDS 사후 심사
+
+## 기술 스택
+
+- Java 21, Spring Boot 3.4, Spring Modulith 1.3
+- MySQL 8.4, JPA, Flyway
+- Redis, Resilience4j, Kafka
+- Spring Security, Micrometer, Prometheus, Grafana
+- JUnit 5, Mockito, Testcontainers, Toxiproxy, k6
 
 ## 실행
 
-```bash
-docker compose up -d              # MySQL 8.4 + Redis 7.4
-./gradlew bootRun                 # Flyway 마이그레이션 후 기동 (localhost:8080)
-```
-
-부하테스트:
-```bash
-# 성능 측정 시 rate limiter를 끈다 — checkout-load는 데모 유저 1명이 반복 호출해
-# per-user 5/s에 걸려 429가 섞이면 측정이 왜곡된다(spike-test는 반대로 rate limit on으로 shed 측정).
-APP_RATELIMIT_ENABLED=false ./gradlew bootRun
-k6 run k6/checkout-load.js        # 주문→승인 흐름 (인증 필요)
-```
-
-### 성능 실측 재현
+### 1. 애플리케이션
 
 ```bash
-./gradlew bench -Pprofile=smoke     # 배관 검증(1분) — 본 측정 전에 먼저
-./gradlew bench                     # capacity: 제어를 끄고 무릎을 찾는다
-./gradlew bench -Pprofile=spike     # 제어를 켜고 넘치는 부하가 어떻게 버려지는지
+docker compose up -d
+./gradlew bootRun
 ```
 
-인프라 초기화 → 앱 기동 → k6 → 리포트까지 한 번에 돈다. 결과는
-`docs/performance/runs/<시각>-<프로파일>/report.md` 에 **측정 환경과 함께** 남는다.
+로컬 데모 계정은 다음과 같습니다.
 
-**이 태스크가 막는 것은 느린 코드가 아니라 잘못된 측정이다.** 이 저장소의 성능 수치는
-한 번 틀렸었다 — 닫힌 루프(`ramping-vus`)로 재서 용량을 과소평가했고, 열린 루프로 다시 재서
-뒤집었다. 그 외에 좀비 JVM 때문에 "대조군"이 실은 2회차였던 적, DB 누적으로 회차 비교가
-무의미했던 적이 있다. 그래서 매 회차 볼륨을 지우고, 띄운 PID 가 정말 포트를 잡았는지
-확인하고, 환경을 리포트에 박는다.
+| 권한 | 아이디 | 비밀번호 |
+| --- | --- | --- |
+| 사용자 | `1`, `2` | `user-local-only` |
+| 운영자 | `admin`, `admin2` | `admin-local-only` |
 
-로컬 Docker 가 불안정하거나 CI 가 서비스를 따로 제공하면:
+이 값은 로컬 전용 기본값입니다. 운영 환경에서는 환경변수나 시크릿 매니저로 반드시 교체해야 하며,
+약한 키나 누락된 키는 기동 단계에서 거부합니다.
+
+### 2. 관측성
 
 ```bash
-BENCH_INFRA=external BENCH_DB_PORT=3307 BENCH_ALLOW_DB_RESET=1 ./gradlew bench -Pprofile=smoke
+docker compose --profile monitoring up -d prometheus grafana
 ```
 
-## 문서
-- [docs/02 결제 도메인 핵심 개념](docs/02-결제도메인-핵심개념.md): PG/VAN 구조, 결제 3단계, 상태머신
-- [docs/03 아키텍처 설계](docs/03-아키텍처-설계.md): 멱등성, Saga/Outbox, 원장, 웹훅, 정산/대사
-- [docs/04 장애 시나리오 설계](docs/04-장애-시나리오-설계.md): 외부 API 실패 처리 전반
-- [docs/05 성능 전략](docs/05-성능개선-전략.md): 동시성 제어, 부하테스트, 관측성
-- [docs/09 ERD](docs/09-ERD-설계.md) ([핵심 다이어그램](docs/images/erd-core.svg)) — 44개 테이블. 돈이 지나가는 경로와 **두 번 처리되면 안 되는 자리마다 걸린 유니크 제약**, [docs/10 API 스펙](docs/10-API-스펙.md)
-- [docs/11 AI 운영 자동화 검토](docs/11-AI-운영자동화-검토.md): **결정** — 대사 원인 8개 중 6개는 산수, 설계 원칙 4가지, 자동 확정 등급, 만들기 전에 정할 것(홀드아웃·인젝션 전제)
-- [docs/12 AI 운영 자동화 사례 연구](docs/12-AI-운영자동화-사례연구.md): **근거** — Klarna·Amex·DoorDash·eBay·Zalando·Meta·Uber·Stripe·PayPal·Nubank·Monzo·카카오뱅크·토스. 출처 신뢰도와 미공개 항목까지 표시
-- AI 를 붙인 자리 — **자리마다 채점 기준을 먼저 만들고 기존 방식과 견줬다**:
-  [docs/14 잔여 원인 후보 제안](docs/14-백오피스-AI-잔여후보-사례조사.md) ·
-  [docs/15 잔여 후보 홀드아웃 실측](docs/15-잔여후보-홀드아웃-실측.md) (**규칙 대비 개선이 0 이라 껐다**. 판정 조건을 코드로 강제하니 그 조건을 통과하는 자리에서는 규칙이 이미 같은 답을 낸다) ·
-  [docs/18 운영자용 타임라인 서술](docs/18-운영자용-타임라인-서술.md) ·
-  [docs/19 장애 로그 원인 분석](docs/19-장애-로그-원인분석.md) (규칙이 답을 못 낸 건만 모델이 후보를 낸다)
-- 도메인·기구:
-  [docs/16 할부](docs/16-할부-도메인.md) ·
-  [docs/20 분쟁 증빙 조립](docs/20-분쟁-증빙-조립.md) ·
-  [docs/21 자동확정 승격 기구](docs/21-자동확정-승격-기구.md)
-- 실측 기록 — 최근 것들:
-  [docs/17 FDS 지연 예산](docs/17-FDS-지연예산-실측.md) (판정 단독 대 승인과 합산, 합의 p99 는 p99 의 합이 아니다) ·
-  [docs/22 제재 스크리닝 이름 매칭](docs/22-제재-스크리닝-이름매칭.md) ·
-  [docs/23 배치 조회 상한](docs/23-배치-조회-상한.md) ·
-  [docs/24 조회 인덱스 실측](docs/24-조회-인덱스-실측.md) (추정 50행 대 실제 30만 행, 22쌍 전수 감사) ·
-  [docs/25 알림 소음 억제와 표본 바닥](docs/25-알림-소음-억제와-표본바닥.md) ·
-  [docs/26 FDS 규칙별 오탐](docs/26-FDS-규칙별-오탐.md) ·
-  [docs/27 FDS 모델 평가와 켤 조건](docs/27-FDS-모델-평가와-켤-조건.md) (규칙이 못 보는 축 여섯, 정밀도 79.3% 는 이 코퍼스의 부정 비율 30.4% 에 끌려간 값이라 가정 기저율 1% 로 환산하면 8.1%, 정답의 입구는 차지백)
-- [docs/adr](docs/adr/): 아키텍처 결정 기록 — 최근 것들:
-  [ADR-010 무엇을 만들지 않을지](docs/adr/ADR-010-what-not-to-build.md) ·
-  [ADR-011 주문 타임라인](docs/adr/ADR-011-order-timeline-assembly.md) ·
-  [ADR-012 규칙 기반 원인 분류](docs/adr/ADR-012-rule-based-cause-classifier.md) ·
-  [ADR-013 취소를 별도 행으로](docs/adr/ADR-013-cancellation-as-separate-recon-row.md) ·
-  [ADR-014 상담 초안 포트](docs/adr/ADR-014-cs-draft-port-and-number-guard.md) ·
-  [ADR-015 구독 청구 앵커](docs/adr/ADR-015-subscription-billing-anchor.md) ·
-  [ADR-016 금액과 통화](docs/adr/ADR-016-money-with-currency.md) ·
-  [ADR-017 애그리거트 경계](docs/adr/ADR-017-aggregate-boundaries.md) ·
-  [ADR-018 모듈 내부 패키지](docs/adr/ADR-018-module-internal-packages.md) ·
-  [ADR-019 카드를 안 만져 PCI 범위를 줄인다](docs/adr/ADR-019-pci-scope-by-not-touching-cards.md) ·
-  [ADR-020 멀티 PG 라우팅은 기본 끔](docs/adr/ADR-020-multi-pg-routing-off-by-default.md) ·
-  [ADR-021 신원을 안 들고 있어 AML 스크리닝을 안 한다](docs/adr/ADR-021-no-aml-screening-by-not-holding-identity.md)
+- Grafana: `http://localhost:3000`
+- Prometheus: `http://localhost:9090`
+- 알림 상태: `http://localhost:9090/alerts`
 
-실측 기록: [13 상담 초안 실측](docs/13-상담초안-실측.md) — 실데이터와 실제 로컬 모델(Qwen3 8B)을 붙여
-  검증기 결함 3건을 찾아 고친 과정. 오반려 50%→0%, 모델 초안 통과율 58%→100%,
-  내부 용어 누출 →0%. 초안 품질을 재는 **블라인드 리뷰**와
-  정답 없이 채점하는 **루브릭**까지
+대시보드와 알림 기준은 [관측성 문서](monitoring/README.md)에 정리했습니다.
 
-## 가정과 한계
+### 3. 테스트
 
-결제의 실패·정합성 처리 설계에 집중한 데모다. 아래는 범위를 좁히기 위해 둔 의도적 단순화이며,
-실서비스라면 어떻게 확장할지를 함께 적는다.
+```bash
+./gradlew test
+./gradlew integrationTest  # Docker의 MySQL 필요
+./gradlew chaosTest        # Docker의 Toxiproxy 필요
+```
 
-- **회원/인증**: JPA 회원 도메인(이메일 + **Argon2id** 저장 + 가입 REST `POST /api/v1/members/signup`)을 제공한다.
-  비밀번호 해시는 OWASP 1순위인 Argon2id(19MiB·t=2·p=1)로 저장하고, 알고리즘 접두사를 붙여 **로그인 시
-  옛 해시를 자동 재인코딩**한다(ADR-009). 남은 레거시 해시 수는 `password_hash_legacy_count` 게이지로
-  본다 — 0이 되면 레거시 인코더를 제거할 수 있다.
-  로그인 시 **복합 `UserDetailsService`**가 이메일로 회원을 조회하되 `UserDetails.username`을 회원의 **숫자 id**로
-  반환해, 전 모듈의 `Long.parseLong(principal.getName())` 소유권 계약을 그대로 유지한다(회원 id는 데모 계정과
-  충돌하지 않게 1000부터). 데모/운영 계정(admin/admin2/1/2)은 InMemory로 병행 유지한다. 이메일 인증·비밀번호
-  재설정·소셜 로그인·회원 비활성화는 범위 밖.
-- **카드 식별**: 고객의 전체 카드번호는 우리 서버를 지나지 않는다(ADR-019). 대신 승인 응답의 **마스킹된
-  번호와 발급사 코드를 단방향 해시**로 바꿔 `payments.card_fingerprint` 에 적고, 사후 탐지가
-  같은 카드의 과거 결제를 그것으로 묶는다. 원문은 어디에도 안 남긴다. **이 키는 카드를 유일하게
-  가리키지 않는다** — 마스킹이 앞뒤 일부만 남기므로 같은 발급사·같은 BIN 의 다른 카드가 같은
-  키를 받을 수 있다. 과하게 묶일 수는 있어도 갈라지지는 않는다. 유일한 키가 필요하면 빌링키를
-  받아야 하고 그것은 자동결제 연동이 따로 필요하다.
-- **통화**: 단일 KRW(long, 원 단위)만 다룬다. 다통화는 미지원이다. 실서비스라면 통화 코드와 최소단위
-  스케일을 값 타입에 담아 확장한다.
-- **시크릿**: JWT·필드 암호화·웹훅 서명 키 등은 로컬 개발용 기본값을 제공하되, 미설정/약한 키면
-  기동을 실패시킨다(fail-fast). 운영에서는 반드시 환경변수/시크릿 매니저(KMS/Vault)로 주입한다.
-- **멀티 PG**: `RoutingPgClient`(다중 PG failover)를 `app.pg.routing.enabled=true`로 켜면 opt-in
-  배선된다(가중치 순 시도, 장애 시 failover, TIMEOUT은 이중결제 방지로 failover 안 함). 기본은 단일
-  PG(Toss)다. **취소·조회는 원 결제를 승인한 PG로만 간다** — 승인 결과에 PG 이름을 실어
-  `Payment.pgProvider`에 적고, 취소·조회가 그 값을 목적지로 쓴다. 다른 PG에 보내면 "그런 거래 없음"이
-  정상 응답으로 돌아오고 그것이 취소 결과가 되어, 고객 돈은 원 PG에 잡힌 채 장부만 취소로 남는다.
-  승인 PG가 경로에 없으면 아무 데도 보내지 않는다(조회는 확정하지 않고 다음 주기로 넘긴다).
-- **가상계좌**: 서비스 계층까지 구현한 데모로, 외부 HTTP 발급 표면(엔드포인트)은 두지 않았다.
-- **선불 월렛**: 충전·잔액·이력 REST(`/api/v1/wallet`)와 함께 **체크아웃 복합결제 수단**(카드+포인트+월렛)으로
-  배선했다. 예약 차감(USE)·사가 보상(RESTORE, 멱등)·취소 환불(REFUND, 비멱등)을 분리해 포인트와 같은
-  결제수단 계약을 갖는다. 실 카드 충전 연동은 PG 위임이라 데모에선 충전액을 직접 받는다.
-- **포인트 적립**: 결제 완료 시 실결제액(카드+월렛, 포인트 사용분 제외)의 1%를 적립(EARN)하고, 취소 시 그만큼
-  회수(EARN_REVERSAL)해 구매·취소 반복 파밍을 막는다. 적립률·등급 차등은 정책 상수로 두고 확장 여지를 남겼다.
-- **분쟁/차지백**: 차지백 웹훅(HMAC) 수신 → 분쟁 개시(chargebackId 멱등, 원 결제 실존·금액 대조) → 증빙 제출 →
-  승/패 확정, **패소 시 원장 역분개**까지 상태머신으로 처리한다. 대응기한 자동 패소·부분 차지백·재분쟁은 범위 밖.
-- **구독(정기결제)**: 빌링키로 구독 개시·조회·해지·즉시청구 REST + dunning(soft/hard decline 재시도·유예)
-  스케줄러까지 제공한다. 빌링키는 envelope 암호화 + 블라인드 인덱스로 저장. 실 카드 등록(빌링키 발급)은
-  PG 위임 표면이라 데모에선 빌링키 문자열을 직접 받는다.
-- **정산**: 일 단위 배치 집계를 서비스 루프로 처리한다(대용량이면 Spring Batch로 확장 여지). 수수료율은
-  bps(기본 270=2.7%)로 정수 연산하고 수수료 VAT 10%를 뗀다. 지급예정일은 정산일+2영업일로 **주말만
-  skip**하며 법정공휴일은 미반영이다. 실서비스라면 공휴일 캘린더를 붙인다. 수수료와 그 부가세는 지급
-  확정 시 원장 비용 계정(`PG_FEE`)으로 분개된다 — 총액을 미수금에서 회수하고 실입금액은 현금, 차액은
-  비용으로 나눈다. 실입금액만 회수하면 수수료만큼 미수금이 영원히 남는다.
-- **관측성 스크레이프**: `/actuator/prometheus`는 수집기가 인증 없이 주기 GET 해야 하므로 개방한다
-  (나머지 actuator는 ADMIN). 운영에서는 `management.server.port`를 내부망 전용으로 분리해
-  스크레이프하는 것이 정석이다. Prometheus/Grafana는 `monitoring` compose 프로필로 분리해 기본 기동에서 뺐다.
-- **체크아웃 트랜잭션 경계**: 체크아웃은 **3단계 사가**다. 예약(tx) → PG 승인(**트랜잭션 밖**) →
-  확정/보상(tx). PG 외부 콜 동안 DB 커넥션을 붙잡지 않아, 느린 PG가 커넥션 풀을 마르게 해 앱 전체를
-  마비시키는 연쇄 장애를 막는다. 원자성을 포기한 대가인 "멈춘 사가"(예약 후 확정 전 크래시)는 복구
-  배치가 PG 조회로 완결/롤백한다. 안티패턴 배경·트레이드오프·이행 기록은
-  [ADR-007](docs/adr/ADR-007-checkout-transaction-boundary.md).
+기본 테스트에는 도메인 불변식, 상태 전이, 멱등성, 모듈 경계 검증이 포함됩니다. 통합·카오스 테스트는
+외부 인프라가 필요하므로 별도 Gradle 태스크로 분리했습니다.
+
+### 4. 성능 실험
+
+```bash
+./gradlew bench -Pprofile=smoke  # 측정 배관 확인
+./gradlew bench                  # 처리 용량과 병목 탐색
+./gradlew bench -Pprofile=spike  # 과부하 시 유입 제어 확인
+```
+
+각 실행은 인프라 초기화, 앱 기동, k6 실행, 리포트 생성을 한 번에 수행하며 결과를
+`docs/performance/runs/<실행 시각>-<프로파일>/report.md`에 남깁니다.
+
+## 문서 읽는 순서
+
+1. [결제 도메인 핵심 개념](docs/02-결제도메인-핵심개념.md)
+2. [아키텍처 설계](docs/03-아키텍처-설계.md)
+3. [장애 시나리오](docs/04-장애-시나리오-설계.md)
+4. [성능 리포트](docs/performance/README.md)
+5. [ERD](docs/09-ERD-설계.md)와 [API 스펙](docs/10-API-스펙.md)
+6. [ADR](docs/README.md#아키텍처-결정-기록)
+
+전체 문서는 목적별로 정리한 [문서 안내](docs/README.md)를 참고하세요.
+
+## 범위와 한계
+
+이 저장소는 결제 실패와 정합성 처리에 집중한 단일 가맹점 데모입니다.
+
+- 카드번호는 서버가 직접 받지 않습니다. PG가 제공한 마스킹 정보의 지문만 사후 탐지에 사용합니다.
+- 금액은 KRW 원 단위 정수만 지원합니다. 통화 값 타입은 있으나 다통화 정산은 범위 밖입니다.
+- 실제 카드 등록, 가상계좌 발급, 지급 실행은 PG·금융기관 계약이 필요한 외부 경계로 남겼습니다.
+- 정산 배치는 서비스 루프로 구현했습니다. 데이터 규모가 커지면 파티셔닝된 Spring Batch 작업으로
+  전환해야 합니다.
+- 지급 예정일은 주말만 제외하며 법정공휴일 캘린더는 포함하지 않습니다.
+- 분쟁 대응기한 자동 패소, 부분 차지백, 재분쟁은 구현하지 않았습니다.
+- AI 보조 기능의 결과는 후보와 초안으로만 사용하며 결제·대사 상태를 직접 변경하지 않습니다.
+
+구현하지 않은 기능과 그 이유는 [ADR-010](docs/adr/ADR-010-what-not-to-build.md)에 기록했습니다.
