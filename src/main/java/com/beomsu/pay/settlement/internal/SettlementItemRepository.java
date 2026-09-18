@@ -34,4 +34,12 @@ public interface SettlementItemRepository extends JpaRepository<SettlementItem, 
      */
     List<SettlementItem> findByStatusAndConfirmedDateLessThanEqual(
             SettlementItemStatus status, LocalDate confirmedDate, Pageable page);
+
+    /**
+     * 정산 한 건에 들어간 항목들.
+     *
+     * <p>정산이 <b>언제 번 돈</b>으로 이뤄졌는지 답하는 데 쓴다. 항목이 확정일을 들고 있어서
+     * 집계일과 다른 날짜가 얼마나 섞였는지는 읽기만으로 나온다(ADR-023).
+     */
+    List<SettlementItem> findBySettlementId(Long settlementId);
 }
