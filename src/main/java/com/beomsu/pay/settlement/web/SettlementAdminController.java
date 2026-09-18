@@ -13,6 +13,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import com.beomsu.pay.settlement.internal.SettlementCompositionView;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,6 +42,14 @@ class SettlementAdminController {
     @GetMapping
     Page<SettlementView> list(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
         return adminService.list(pageable);
+    }
+
+    /**
+     * 정산 한 건이 언제 번 돈으로 이뤄졌는지. 읽기만 하고 금액은 바꾸지 않는다(ADR-023).
+     */
+    @GetMapping("/{id}/composition")
+    SettlementCompositionView composition(@PathVariable Long id) {
+        return adminService.composition(id);
     }
 
     @PostMapping("/{id}/payout")

@@ -1,5 +1,8 @@
 package com.beomsu.pay.settlement.internal;
 
+import com.beomsu.pay.settlement.internal.SettlementCompositionView;
+import com.beomsu.pay.settlement.internal.SettlementItem;
+import com.beomsu.pay.settlement.internal.SettlementItemRepository;
 import com.beomsu.pay.settlement.internal.SettlementView;
 import com.beomsu.pay.settlement.internal.SettlementStatus;
 import com.beomsu.pay.settlement.internal.SettlementService;
@@ -27,6 +30,7 @@ import static org.mockito.Mockito.*;
 class SettlementAdminServiceTest {
 
     private SettlementRepository repository;
+    private SettlementItemRepository itemRepository;
     private SettlementService settlementService;
     private SettlementAdminService service;
 
@@ -37,8 +41,10 @@ class SettlementAdminServiceTest {
     @BeforeEach
     void setUp() {
         repository = mock(SettlementRepository.class);
+        itemRepository = mock(SettlementItemRepository.class);
         settlementService = mock(SettlementService.class);
-        service = new SettlementAdminService(repository, settlementService, mock(org.springframework.context.ApplicationEventPublisher.class));
+        service = new SettlementAdminService(repository, itemRepository, settlementService,
+                mock(org.springframework.context.ApplicationEventPublisher.class));
     }
 
     @Test
@@ -108,5 +114,59 @@ class SettlementAdminServiceTest {
         when(settlementService.settle(DATE)).thenReturn(null);
 
         assertThat(service.runSettlement(DATE)).isNull();
+    }
+
+    @Test
+    @DisplayName("composition: 정산이 언제 번 돈으로 이뤄졌는지 확정일별로 가른다")
+    void compositionSplitsByConfirmedDate() {
+        // 8/1 정산에 7/31 확정분 7만 원과 8/1 확정분 3만 원이 섞여 있다.
+        LocalDate lastDayOfJuly = LocalDate.of(2026, 7, 31);
+        LocalDate firstDayOfAugust = LocalDate.of(2026, 8, 1);
+        Settlement settlement = Settlement.of(firstDayOfAugust, "KRW", 100_000, 2_700, 270, 2,
+                LocalDate.of(2026, 8, 4), PLATFORM);
+
+        SettlementItem july = SettlementItem.of(31L, "order-july", 70_000, lastDayOfJuly, PLATFORM);
+        july.confirm(lastDayOfJuly);
+        SettlementItem august = SettlementItem.of(32L, "order-august", 30_000, firstDayOfAugust, PLATFORM);
+        august.confirm(firstDayOfAugust);
+
+        when(repository.findById(7L)).thenReturn(Optional.of(settlement));
+        when(itemRepository.findBySettlementId(7L)).thenReturn(List.of(august, july));
+
+        SettlementCompositionView view = service.composition(7L);
+
+        assertThat(view.totalAmount()).isEqualTo(100_000L);
+        assertThat(view.sameDateAmount())
+                .as("그날 번 돈")
+                .isEqualTo(30_000L);
+        assertThat(view.carriedAmount())
+                .as("며칠 전에서 넘어온 돈. 판매자가 오늘 왜 두 배냐고 물으면 이 숫자가 답한다")
+                .isEqualTo(70_000L);
+        assertThat(view.crossesMonth())
+                .as("월 단위 리포트가 그 달 거래와 어긋나는 자리")
+                .isTrue();
+
+        // 오래된 날짜가 먼저 온다.
+        assertThat(view.byConfirmedDate()).hasSize(2);
+        assertThat(view.byConfirmedDate().get(0).confirmedDate()).isEqualTo(lastDayOfJuly);
+        assertThat(view.byConfirmedDate().get(0).daysLate()).isEqualTo(1);
+        assertThat(view.byConfirmedDate().get(1).daysLate()).isZero();
+    }
+
+    @Test
+    @DisplayName("composition: 섞인 것이 없으면 넘어온 금액은 0이고 월 경계도 아니다")
+    void compositionWithoutCarryOver() {
+        Settlement settlement = Settlement.of(DATE, "KRW", 50_000, 1_350, 135, 1, PAYOUT, PLATFORM);
+        SettlementItem sameDay = SettlementItem.of(41L, "order-same", 50_000, DATE, PLATFORM);
+        sameDay.confirm(DATE);
+
+        when(repository.findById(8L)).thenReturn(Optional.of(settlement));
+        when(itemRepository.findBySettlementId(8L)).thenReturn(List.of(sameDay));
+
+        SettlementCompositionView view = service.composition(8L);
+
+        assertThat(view.carriedAmount()).isZero();
+        assertThat(view.crossesMonth()).isFalse();
+        assertThat(view.byConfirmedDate()).hasSize(1);
     }
 }

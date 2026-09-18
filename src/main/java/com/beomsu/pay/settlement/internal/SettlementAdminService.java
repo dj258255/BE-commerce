@@ -9,6 +9,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 /**
  * 정산 운영 어드민 — 정산 집계를 조회하고, 가맹점 지급을 확정하며, 정산 배치를 수동 실행한다.
@@ -22,6 +28,7 @@ import java.time.LocalDate;
 public class SettlementAdminService {
 
     private final SettlementRepository repository;
+    private final SettlementItemRepository itemRepository;
     private final SettlementService settlementService;
     private final ApplicationEventPublisher events;
 
@@ -29,6 +36,44 @@ public class SettlementAdminService {
     @Transactional(readOnly = true)
     public Page<SettlementView> list(Pageable pageable) {
         return repository.findAll(pageable).map(SettlementView::from);
+    }
+
+    /**
+     * 정산 한 건이 <b>언제 번 돈</b>으로 이뤄졌는지 낸다.
+     *
+     * <p>읽기만 한다. 지급 금액도 과거 집계도 바뀌지 않는다. 배치가 그 날짜 이하를 쓸어 담기
+     * 때문에 정산일은 쓸어 담은 날이고, 그 안에 며칠 전 거래가 섞인다. 판매자가 "오늘 왜
+     * 두 배인가"를 물으면 답할 자리가 여기다(ADR-023).
+     */
+    @Transactional(readOnly = true)
+    public SettlementCompositionView composition(long settlementId) {
+        Settlement settlement = repository.findById(settlementId)
+                .orElseThrow(() -> SettlementException.notFound(settlementId));
+        LocalDate settlementDate = settlement.getSettlementDate();
+
+        // 확정일별로 묶는다. 취소로 금액이 깎인 항목도 지금 금액 그대로 센다 —
+        // 이 뷰가 답하는 것은 "무엇이 지급됐나"가 아니라 "언제 번 돈인가"다.
+        Map<LocalDate, List<SettlementItem>> byDate = itemRepository.findBySettlementId(settlementId)
+                .stream()
+                .collect(Collectors.groupingBy(SettlementItem::getConfirmedDate, TreeMap::new, Collectors.toList()));
+
+        List<SettlementCompositionView.Line> lines = byDate.entrySet().stream()
+                .map(e -> new SettlementCompositionView.Line(
+                        e.getKey(),
+                        e.getValue().size(),
+                        e.getValue().stream().mapToLong(SettlementItem::getAmount).sum(),
+                        ChronoUnit.DAYS.between(e.getKey(), settlementDate)))
+                .toList();
+
+        long total = lines.stream().mapToLong(SettlementCompositionView.Line::amount).sum();
+        long sameDate = lines.stream()
+                .filter(l -> l.confirmedDate().equals(settlementDate))
+                .mapToLong(SettlementCompositionView.Line::amount).sum();
+        boolean crossesMonth = lines.stream()
+                .anyMatch(l -> !YearMonth.from(l.confirmedDate()).equals(YearMonth.from(settlementDate)));
+
+        return new SettlementCompositionView(settlementDate, total, sameDate,
+                total - sameDate, crossesMonth, lines);
     }
 
     /**
