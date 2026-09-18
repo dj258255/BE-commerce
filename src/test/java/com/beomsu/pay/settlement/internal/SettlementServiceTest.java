@@ -65,7 +65,7 @@ class SettlementServiceTest {
             }
         };
         service = new SettlementService(itemRepository, settlementRepository,
-                adjustmentRepository, meterRegistry, alwaysAllow, 270L, 2, false);
+                adjustmentRepository, meterRegistry, alwaysAllow, 270L, 2, false, 20);
     }
 
     /** CONFIRMED 상태의 항목을 만든다(승인·구매확정이 같은 날 DATE인 경우 — confirmedDate=DATE). */
@@ -191,6 +191,82 @@ class SettlementServiceTest {
         assertThat(late.getStatus()).isEqualTo(SettlementItemStatus.SETTLED);
     }
 
+    /** 확정 상태의 정산 항목 n 개. 배치가 읽어 갈 재고다. */
+    private List<SettlementItem> confirmedItems(int n, long idFrom) {
+        List<SettlementItem> items = new java.util.ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            SettlementItem it = SettlementItem.of(idFrom + i, "order-" + (idFrom + i), 1_000, DATE, PLATFORM);
+            it.confirm(DATE);
+            items.add(it);
+        }
+        return items;
+    }
+
+    @Test
+    @DisplayName("한 틱이 여러 장을 읽는다 — 한 장만 읽으면 하루 처리량이 chunk 하나로 묶인다")
+    void batchReadsMultiplePagesPerRun() {
+        // 확정 600건, chunk 500. 한 장만 읽던 때는 100건이 다음 날로 밀렸고, 확정이 매일
+        // 500건을 넘으면 그 밀린 양이 계속 쌓였다.
+        when(settlementRepository.existsBySettlementDateAndCurrencyAndSellerId(
+                eq(DATE), eq("KRW"), anyLong())).thenReturn(false);
+        when(itemRepository.findByStatusAndConfirmedDateLessThanEqual(
+                eq(SettlementItemStatus.CONFIRMED), eq(DATE), any(Pageable.class)))
+                .thenReturn(confirmedItems(500, 1_000L))   // 1장: 꽉 찼다 → 더 있다
+                .thenReturn(confirmedItems(100, 2_000L));  // 2장: 덜 찼다 → 끝이다
+        when(settlementRepository.save(any(Settlement.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Settlement settlement = service.settle(DATE);
+
+        assertThat(settlement.getItemCount())
+                .as("600건이 한 틱에 다 들어간다")
+                .isEqualTo(600);
+        verify(itemRepository, times(2)).findByStatusAndConfirmedDateLessThanEqual(
+                any(SettlementItemStatus.class), any(LocalDate.class), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("페이지 조회에 id 정렬을 박는다 — 정렬 없이 여러 장을 읽으면 중복이나 누락이 난다")
+    void pagesAreOrderedById() {
+        ArgumentCaptor<Pageable> pageCaptor = ArgumentCaptor.forClass(Pageable.class);
+        when(settlementRepository.existsBySettlementDateAndCurrencyAndSellerId(
+                eq(DATE), eq("KRW"), anyLong())).thenReturn(false);
+        when(itemRepository.findByStatusAndConfirmedDateLessThanEqual(
+                eq(SettlementItemStatus.CONFIRMED), eq(DATE), pageCaptor.capture()))
+                .thenReturn(confirmedItems(3, 1L));
+        when(settlementRepository.save(any(Settlement.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.settle(DATE);
+
+        Pageable used = pageCaptor.getValue();
+        assertThat(used.getPageSize()).isEqualTo(500);
+        assertThat(used.getSort().getOrderFor("id")).isNotNull();
+        assertThat(used.getSort().getOrderFor("id").getDirection())
+                .isEqualTo(org.springframework.data.domain.Sort.Direction.ASC);
+    }
+
+    @Test
+    @DisplayName("무한히 읽지는 않는다 — 상한에 닿으면 멈추고 지표로 남긴다")
+    void batchStopsAtPageCapAndRecordsIt() {
+        // 상한 2장짜리 인스턴스. 매 장이 꽉 차서 끝이 안 보이는 상황이다.
+        // 빌 때까지 도는 구조로 만들면 영영 안 끝나는 건 하나가 배치를 붙잡는다.
+        SettlementService capped = new SettlementService(itemRepository, settlementRepository,
+                adjustmentRepository, meterRegistry, alwaysAllow, 270L, 2, false, 2);
+        when(settlementRepository.existsBySettlementDateAndCurrencyAndSellerId(
+                eq(DATE), eq("KRW"), anyLong())).thenReturn(false);
+        when(itemRepository.findByStatusAndConfirmedDateLessThanEqual(
+                eq(SettlementItemStatus.CONFIRMED), eq(DATE), any(Pageable.class)))
+                .thenReturn(confirmedItems(500, 1_000L));  // 늘 꽉 찬다
+        when(settlementRepository.save(any(Settlement.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        capped.settle(DATE);
+
+        verify(itemRepository, times(2)).findByStatusAndConfirmedDateLessThanEqual(
+                any(SettlementItemStatus.class), any(LocalDate.class), any(Pageable.class));
+        assertThat(meterRegistry.counter("settlement.batch.page_cap_reached").count())
+                .as("상한에 닿은 것은 밀린 재고가 남았다는 신호라 지표로 남긴다")
+                .isEqualTo(1.0);
+    }
+
     @Test
     @DisplayName("쓸어 담은 정산은 월 경계를 넘는다 — 7월 확정분이 8월 정산에 섞이고, 얼마가 섞였는지는 어디에도 안 남는다")
     void sweptSettlementCrossesMonthBoundary() {
@@ -243,7 +319,7 @@ class SettlementServiceTest {
         // 서비스를 분리해 새 저장소로 옮기면, 전환 전 승인된 주문의 항목은 새 쪽에 없다.
         // 재전달해도 생기지 않으므로 이건 레이스가 아니라 사고다(ADR-024).
         SettlementService strict = new SettlementService(itemRepository, settlementRepository,
-                adjustmentRepository, meterRegistry, alwaysAllow, 270L, 2, true);
+                adjustmentRepository, meterRegistry, alwaysAllow, 270L, 2, true, 20);
         when(itemRepository.findByOrderNo("order-cutover")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> strict.confirmSettlement("order-cutover", DATE))

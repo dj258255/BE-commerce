@@ -74,6 +74,13 @@ public class SettlementService {
     private final int payoutDays;
 
     /**
+     * 틱 하나가 읽는 최대 페이지 수. 틱당 처리량 상한은 {@code maxPages × read-chunk-size} 다.
+     *
+     * <p>기본 20 이면 기본 chunk 500 과 곱해 틱당 1만 건이다. 한 장만 읽던 이전 동작의 20 배다.
+     */
+    private final int maxPages;
+
+    /**
      * 구매확정이 왔는데 정산 항목이 없을 때 이를 사고로 볼지.
      *
      * <p>기본은 {@code false} 다. 인프로세스에서는 이벤트 순서 레이스라 재전달로 풀린다.
@@ -88,7 +95,8 @@ public class SettlementService {
                              SellerPayoutGate payoutGate,
                              @Value("${app.settlement.fee-bps:270}") long feeBps,
                              @Value("${app.settlement.payout-business-days:2}") int payoutDays,
-                             @Value("${app.settlement.missing-item-is-incident:false}") boolean missingItemIsIncident) {
+                             @Value("${app.settlement.missing-item-is-incident:false}") boolean missingItemIsIncident,
+                             @Value("${app.batch.settlement-max-pages:20}") int maxPages) {
         this.itemRepository = itemRepository;
         this.settlementRepository = settlementRepository;
         this.adjustmentRepository = adjustmentRepository;
@@ -97,6 +105,7 @@ public class SettlementService {
         this.feeBps = feeBps;
         this.payoutDays = payoutDays;
         this.missingItemIsIncident = missingItemIsIncident;
+        this.maxPages = maxPages > 0 ? maxPages : 1;
     }
 
     /**
@@ -223,8 +232,17 @@ public class SettlementService {
     public Settlement settle(LocalDate date) {
         // 그 날짜 <이하>의 미정산 재고를 전부 본다. 날짜가 정확히 맞는 것만 모으면,
         // 그 날짜 정산이 만들어진 뒤 늦게 확정된 항목이 영영 집계되지 않는다.
-        List<SettlementItem> all = itemRepository
-                .findByStatusAndConfirmedDateLessThanEqual(SettlementItemStatus.CONFIRMED, date, chunk());
+        //
+        // <b>페이지를 여러 장 읽는다. 다만 무한히 읽지는 않는다.</b>
+        // 한 장만 읽던 때는 하루 처리량이 chunk 하나(기본 500건)로 묶여 있었다. 틱이 24시간에
+        // 한 번이고 같은 날짜 재실행은 판매자별로 멱등 skip 되므로, <b>확정이 하루 500건을 넘으면
+        // 남는 양이 매일 쌓이고 지연 일수가 무한히 커진다.</b> 트래픽의 성질이 아니라 코드가 정한
+        // 천장이었다(ADR-023).
+        //
+        // 그렇다고 빌 때까지 돌면 영영 안 끝나는 건 하나가 배치를 붙잡는다(read-chunk-size 주석의
+        // 근거다). 그래서 <b>틱당 최대 페이지 수</b>로 상한을 둔다. 틱당 일이 여전히 예측 가능하고,
+        // 상한에 닿으면 그건 지표로 남는다.
+        List<SettlementItem> all = readUpToMaxPages(date);
         if (all.isEmpty()) {
             return null; // 집계할 대상 없음 → 빈 정산을 만들지 않는다
         }
@@ -369,7 +387,51 @@ public class SettlementService {
      * <b>설정이 0 이나 음수여도 배치를 죽이지 않는다.</b> 잘못된 설정 하나로 돈을 다루는
      * 배치가 멈추는 것보다, 기본값으로 도는 편이 낫다.
      */
-    private org.springframework.data.domain.Pageable chunk() {
-        return org.springframework.data.domain.PageRequest.of(0, readChunkSize > 0 ? readChunkSize : 500);
+    private int pageSize() {
+        return readChunkSize > 0 ? readChunkSize : 500;
+    }
+
+    /**
+     * 정렬을 박은 페이지 요청.
+     *
+     * <p><b>정렬이 없으면 페이지를 여러 장 읽을 수 없다.</b> 순서를 보장하지 않는 조회에
+     * offset 페이징을 얹으면 같은 행이 두 장에 나오거나 아예 빠진다. 돈을 세는 배치에서
+     * 그건 이중 지급이거나 누락이다. id 오름차순으로 고정한다.
+     */
+    private org.springframework.data.domain.Pageable chunk(int page) {
+        return org.springframework.data.domain.PageRequest.of(page, pageSize(),
+                org.springframework.data.domain.Sort.by(
+                        org.springframework.data.domain.Sort.Direction.ASC, "id"));
+    }
+
+    /**
+     * 틱당 최대 {@code maxPages} 장까지 읽어 모은다.
+     *
+     * <p>읽기는 전부 쓰기 전에 끝난다. 같은 트랜잭션 안에서 상태가 바뀌기 전에 다 읽으므로
+     * offset 페이징이 흔들리지 않는다.
+     *
+     * <p>상한에 닿았다는 것은 <b>밀린 재고가 이 틱으로도 안 빠졌다</b>는 뜻이다. 조용히 넘기지
+     * 않고 지표와 경고로 남긴다.
+     */
+    private List<SettlementItem> readUpToMaxPages(LocalDate date) {
+        List<SettlementItem> all = new java.util.ArrayList<>();
+        int page = 0;
+        while (true) {
+            List<SettlementItem> got = itemRepository.findByStatusAndConfirmedDateLessThanEqual(
+                    SettlementItemStatus.CONFIRMED, date, chunk(page));
+            all.addAll(got);
+            if (got.size() < pageSize()) {
+                break; // 마지막 장이다
+            }
+            page++;
+            if (page >= maxPages) {
+                meterRegistry.counter("settlement.batch.page_cap_reached").increment();
+                log.warn("정산 배치가 틱당 페이지 상한에 닿았다 date={} 읽은건수={} 상한={}장×{}건 "
+                                + "— 남은 재고는 다음 틱으로 밀린다",
+                        date, all.size(), maxPages, pageSize());
+                break;
+            }
+        }
+        return all;
     }
 }
