@@ -99,6 +99,11 @@ server:
   tomcat:
     threads:
       max: 100
+    # 이걸 켜야 tomcat_threads_busy_threads 가 Prometheus 에 나간다. 기본값은 off 라
+    # <워커가 얼마나 묶였는지>를 볼 지표 자체가 없었다. PG 가 느려지면 마르는 자리가
+    # DB 커넥션이 아니라 여기라서(ADR-022 실측), 안 보이면 안 되는 지표다.
+    mbeanregistry:
+      enabled: ${SERVER_TOMCAT_MBEANREGISTRY:true}
 
 management:
   endpoints:

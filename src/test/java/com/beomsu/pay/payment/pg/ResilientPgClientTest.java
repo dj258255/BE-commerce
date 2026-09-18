@@ -128,4 +128,55 @@ class ResilientPgClientTest {
         assertThat(healthy.approveCalls.get()).isEqualTo(1);
         assertThat(client.circuitBreaker().getState()).isEqualTo(CircuitBreaker.State.CLOSED);
     }
+
+    @Test
+    @DisplayName("동시 호출 상한을 넘으면 승인을 시도하지 않고 확정 실패로 돌린다 — 미확정이 아니다")
+    void overLimitIsFailedNotUnknown() throws Exception {
+        // 지연 PG. permit 하나를 붙잡고 있는 동안 다음 호출이 상한에 걸린다.
+        var gate = new java.util.concurrent.CountDownLatch(1);
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        PgClient slow = new FlakyPgClient() {
+            @Override
+            public PgApproveResult approve(PgApproveCommand c) {
+                entered.countDown();
+                try {
+                    gate.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return PgApproveResult.success("CARD");
+            }
+        };
+        ResilientPgClient client = new ResilientPgClient(slow, 1);
+
+        Thread holder = new Thread(() -> client.approve(new PgApproveCommand("pk-1", "order-1", 10_000)));
+        holder.start();
+        entered.await();
+
+        PgApproveResult overflow = client.approve(new PgApproveCommand("pk-2", "order-2", 10_000));
+
+        // 요청이 PG 에 닿지 않은 것이 보장되므로 실패로 확정해도 안전하다.
+        // 여기서 미확정을 돌리면 복구 배치가 조회할 대상이 없는 유령 미확정이 생긴다.
+        assertThat(overflow.outcome()).isEqualTo(PgOutcome.FAILED);
+        assertThat(overflow.failReason()).contains("상한");
+
+        gate.countDown();
+        holder.join();
+
+        // permit 이 반납되어 다음 호출은 정상으로 나간다.
+        assertThat(client.approve(new PgApproveCommand("pk-3", "order-3", 10_000)).outcome())
+                .isEqualTo(PgOutcome.SUCCESS);
+    }
+
+    @Test
+    @DisplayName("상한을 안 걸면(기본값) 동시 호출을 막지 않는다")
+    void noLimitByDefault() {
+        FlakyPgClient flaky = new FlakyPgClient();
+        ResilientPgClient client = new ResilientPgClient(flaky);
+        for (int i = 0; i < 50; i++) {
+            assertThat(client.approve(new PgApproveCommand("pk" + i, "order", 10_000)).outcome())
+                    .isEqualTo(PgOutcome.SUCCESS);
+        }
+        assertThat(flaky.approveCalls.get()).isEqualTo(50);
+    }
 }
