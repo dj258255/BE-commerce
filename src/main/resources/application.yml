@@ -99,6 +99,11 @@ server:
   tomcat:
     threads:
       max: 100
+    # 이걸 켜야 tomcat_threads_busy_threads 가 Prometheus 에 나간다. 기본값은 off 라
+    # <워커가 얼마나 묶였는지>를 볼 지표 자체가 없었다. PG 가 느려지면 마르는 자리가
+    # DB 커넥션이 아니라 여기라서(ADR-022 실측), 안 보이면 안 되는 지표다.
+    mbeanregistry:
+      enabled: ${SERVER_TOMCAT_MBEANREGISTRY:true}
 
 management:
   endpoints:
@@ -447,6 +452,20 @@ payment:
     #   115.92.221.121,115.92.221.122,115.92.221.123,
     #   115.92.221.125,115.92.221.126,115.92.221.127
     toss-allowed-ips: ${PAYMENT_WEBHOOK_TOSS_ALLOWED_IPS:}
+
+  # PG HTTP 타임아웃. 코드(@Value)에도 같은 기본값이 있지만, 이 값은 장애 대응에서 조정 대상이라
+  # 밖으로 꺼내 둔다.
+  #
+  # read-timeout 이 커넥션이 아니라 <톰캣 워커 스레드> 점유의 상한이다. 체크아웃이 사가라
+  # DB 커넥션은 PG 응답과 무관해졌지만(ADR-007), 워커는 여전히 여기까지 묶인다.
+  # 줄이면 장애가 빨리 끝나는 대신 끊긴 호출이 전부 UNKNOWN 이 되어 복구 배치 일거리가 는다.
+  # 어느 쪽이 싼지는 아직 안 쟀다(ADR-022).
+  toss:
+    connect-timeout: ${PAYMENT_TOSS_CONNECT_TIMEOUT:2s}
+    read-timeout: ${PAYMENT_TOSS_READ_TIMEOUT:5s}
+  kakaopay:
+    connect-timeout: ${PAYMENT_KAKAOPAY_CONNECT_TIMEOUT:2s}
+    read-timeout: ${PAYMENT_KAKAOPAY_READ_TIMEOUT:5s}
 
 ---
 # kafka 프로파일: 브로커가 있을 때만 활성화한다(예: SPRING_PROFILES_ACTIVE=kafka).

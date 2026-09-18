@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -40,6 +41,8 @@ class SettlementServiceTest {
     private SettlementAdjustmentRepository adjustmentRepository;
     private MeterRegistry meterRegistry;
     private SettlementService service;
+    /** 판매자 지급 게이트는 기본 통과. 전환 스위치를 켠 인스턴스를 따로 만들 때도 쓴다. */
+    private com.beomsu.pay.seller.SellerPayoutGate alwaysAllow;
 
     private static final Instant APPROVED_AT = Instant.parse("2026-07-05T09:00:00Z");
     private static final LocalDate DATE =
@@ -55,14 +58,14 @@ class SettlementServiceTest {
         // feeBps=270(2.7%), payoutDays=2 — application.yml 기본값과 동일하게 주입.
         // 판매자 지급 게이트는 기본 통과로 둔다. 이 테스트가 보는 것은 집계와 금액이지
         // 심사가 아니다. 심사가 막는 경로는 SettlementPayoutHoldTest 가 따로 본다.
-        var alwaysAllow = new com.beomsu.pay.seller.SellerPayoutGate(null) {
+        alwaysAllow = new com.beomsu.pay.seller.SellerPayoutGate(null) {
             @Override
             public Decision check(long sellerId) {
                 return new Decision(true, "테스트: 심사 통과로 둔다");
             }
         };
         service = new SettlementService(itemRepository, settlementRepository,
-                adjustmentRepository, meterRegistry, alwaysAllow, 270L, 2);
+                adjustmentRepository, meterRegistry, alwaysAllow, 270L, 2, false);
     }
 
     /** CONFIRMED 상태의 항목을 만든다(승인·구매확정이 같은 날 DATE인 경우 — confirmedDate=DATE). */
@@ -186,6 +189,68 @@ class SettlementServiceTest {
         assertThat(swept.getSettlementDate()).isEqualTo(nextDay);
         assertThat(swept.getGrossAmount()).isEqualTo(50_000L);
         assertThat(late.getStatus()).isEqualTo(SettlementItemStatus.SETTLED);
+    }
+
+    @Test
+    @DisplayName("쓸어 담은 정산은 월 경계를 넘는다 — 7월 확정분이 8월 정산에 섞이고, 얼마가 섞였는지는 어디에도 안 남는다")
+    void sweptSettlementCrossesMonthBoundary() {
+        // 7/31 에 확정됐지만 그날 집계에서 빠진 항목. 다음 집계는 8/1 이다.
+        LocalDate lastDayOfJuly = LocalDate.of(2026, 7, 31);
+        LocalDate firstDayOfAugust = LocalDate.of(2026, 8, 1);
+
+        SettlementItem july = SettlementItem.of(21L, "order-july", 70_000, lastDayOfJuly, PLATFORM);
+        july.confirm(lastDayOfJuly);
+        SettlementItem august = SettlementItem.of(22L, "order-august", 30_000, firstDayOfAugust, PLATFORM);
+        august.confirm(firstDayOfAugust);
+
+        when(settlementRepository.existsBySettlementDateAndCurrencyAndSellerId(
+                eq(firstDayOfAugust), eq("KRW"), anyLong())).thenReturn(false);
+        when(itemRepository.findByStatusAndConfirmedDateLessThanEqual(
+                eq(SettlementItemStatus.CONFIRMED), eq(firstDayOfAugust), any(Pageable.class)))
+                .thenReturn(List.of(july, august));
+        when(settlementRepository.save(any(Settlement.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Settlement settlement = service.settle(firstDayOfAugust);
+
+        // 7월 거래가 8월 정산에 들어간다. 누락을 막는 설계의 의도된 결과다.
+        assertThat(settlement.getSettlementDate()).isEqualTo(firstDayOfAugust);
+        assertThat(settlement.getGrossAmount()).isEqualTo(100_000L);
+        assertThat(settlement.getItemCount()).isEqualTo(2);
+
+        // 여기가 ADR-023 이 다루는 자리다. 정산 한 건이 <언제 번 돈인지>를 답하지 못한다.
+        // 항목에는 확정일이 남아 있지만 정산에는 집계일 하나뿐이라, 8월 정산의 10만 원 중
+        // 7만 원이 7월분이라는 사실이 정산 레코드만 봐서는 복구되지 않는다.
+        assertThat(july.getConfirmedDate()).isEqualTo(lastDayOfJuly);
+        assertThat(august.getConfirmedDate()).isEqualTo(firstDayOfAugust);
+        assertThat(settlement.getSettlementDate().getMonth())
+                .as("월 단위로 묶은 리포트는 그 달 거래와 일치하지 않는다")
+                .isNotEqualTo(july.getConfirmedDate().getMonth());
+    }
+
+    @Test
+    @DisplayName("항목 없는 구매확정은 이제 세어진다 — 전에는 몇 번 일어났는지조차 안 남았다")
+    void missingItemIsCounted() {
+        when(itemRepository.findByOrderNo("order-x")).thenReturn(Optional.empty());
+
+        service.confirmSettlement("order-x", DATE);
+
+        assertThat(meterRegistry.counter("settlement.confirm.missing_item").count()).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("전환 기간 스위치를 켜면 항목 없는 구매확정이 예외가 된다 — 조용한 지급 누락을 막는다")
+    void missingItemIsIncidentWhenSwitchedOn() {
+        // 서비스를 분리해 새 저장소로 옮기면, 전환 전 승인된 주문의 항목은 새 쪽에 없다.
+        // 재전달해도 생기지 않으므로 이건 레이스가 아니라 사고다(ADR-024).
+        SettlementService strict = new SettlementService(itemRepository, settlementRepository,
+                adjustmentRepository, meterRegistry, alwaysAllow, 270L, 2, true);
+        when(itemRepository.findByOrderNo("order-cutover")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> strict.confirmSettlement("order-cutover", DATE))
+                .isInstanceOf(SettlementException.class)
+                .hasMessageContaining("전환 기간");
+
+        verify(itemRepository, never()).saveAndFlush(any());
     }
 
     @Test
