@@ -1,12 +1,14 @@
 package com.beomsu.pay.payment.pg;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -75,10 +77,44 @@ public class FakePgClient implements PgClient {
         pgSide.clear();
     }
 
+    /**
+     * 승인 응답을 이만큼 늦춘다(ms). 0이면 지금 동작 그대로다.
+     *
+     * <p>ADR-022의 실험용 스위치다. 실 PG({@code TossPgClient})에는 지연을 주입할 수 없고,
+     * 앱↔PG 사이에 프록시를 세우는 것보다 여기서 늦추는 쪽이 재현이 결정적이다.
+     * 느린 PG가 워커 스레드를 얼마나 오래 잡는지, 그때 자원이 어디서 먼저 마르는지를 잰다.
+     */
+    private final AtomicLong approveLatencyMillis = new AtomicLong(0);
+
+    /**
+     * 이 시간을 넘겨 늦어지면 실 클라이언트처럼 끊고 TIMEOUT을 돌려준다.
+     *
+     * <p><b>PG 측 상태는 이미 남긴 뒤</b>에 끊는다. 그래야 "PG에는 승인으로 남아 있는데 우리는
+     * 미확정"이라는 ADR-007의 그 상황이 재현된다. 타임아웃 값을 줄이면 미확정이 얼마나 늘어나는지가
+     * ADR-022 선택지 C의 비용이다.
+     */
+    private final AtomicLong readTimeoutMillis = new AtomicLong(5_000);
+
+    @Value("${payment.fake-pg.approve-latency-ms:0}")
+    public void setApproveLatencyMillis(long millis) {
+        approveLatencyMillis.set(millis);
+    }
+
+    @Value("${payment.fake-pg.read-timeout-ms:5000}")
+    public void setReadTimeoutMillis(long millis) {
+        readTimeoutMillis.set(millis);
+    }
+
     @Override
     public PgApproveResult approve(PgApproveCommand command) {
         // 우리에게 무엇을 돌려주든(성공/타임아웃), PG 측에는 지정된 상태를 남긴다.
         pgSide.put(command.paymentKey(), pgSideStatusOnApprove.get());
+
+        PgApproveResult timedOut = sleepForInjectedLatency();
+        if (timedOut != null) {
+            return timedOut;
+        }
+
         PgApproveResult result = nextApproveResult.get();
         String card = nextCardFingerprint.get();
         // 지문은 승인 성공에만 붙인다. 실패·미확정에 붙이면 승인 안 난 건이 창에 들어간다.
@@ -87,6 +123,27 @@ public class FakePgClient implements PgClient {
         }
         return new PgApproveResult(result.outcome(), result.method(), result.failReason(),
                 result.provider(), card);
+    }
+
+    /**
+     * 주입된 지연만큼 기다린다. 타임아웃을 넘기면 그 시점에 끊고 TIMEOUT을 돌려준다.
+     *
+     * @return 끊겼으면 TIMEOUT 결과, 정상이면 null
+     */
+    private PgApproveResult sleepForInjectedLatency() {
+        long latency = approveLatencyMillis.get();
+        if (latency <= 0) {
+            return null;
+        }
+        long timeout = readTimeoutMillis.get();
+        boolean cut = latency > timeout;
+        try {
+            Thread.sleep(cut ? timeout : latency);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return PgApproveResult.timeout("주입 지연 대기 중 인터럽트");
+        }
+        return cut ? PgApproveResult.timeout("주입 지연이 read-timeout 초과(" + latency + "ms > " + timeout + "ms)") : null;
     }
 
     @Override

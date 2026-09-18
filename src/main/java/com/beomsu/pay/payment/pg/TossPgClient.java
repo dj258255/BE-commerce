@@ -52,14 +52,18 @@ public class TossPgClient implements PgClient {
         String basic = Base64.getEncoder()
                 .encodeToString((secretKey + ":").getBytes(StandardCharsets.UTF_8));
 
-        // 이 타임아웃이 없으면 느린 PG가 <응답할 때까지> 스레드를 잡는다. 체크아웃은 아직 PG 호출을
-        // 트랜잭션 안에서 하므로(ADR-007), 그동안 DB 커넥션도 같이 묶인다.
+        // 이 타임아웃이 없으면 느린 PG가 <응답할 때까지> 스레드를 잡는다.
         //
-        // Hikari 의 connection-timeout 은 이걸 못 막는다. 그건 <풀에서 커넥션을 빌리려고
+        // 체크아웃은 3단계 사가라 PG 호출이 트랜잭션 밖에 있다(ADR-007). 그래서 이 호출이 늦어져도
+        // DB 커넥션은 묶이지 않는다. 다만 <톰캣 워커 스레드>는 여전히 응답까지 묶이고, PG 동시
+        // 호출에는 상한이 없다. 즉 느린 PG 앞에서 마르는 자원이 DB 풀에서 스레드 풀로 옮겨간
+        // 것이지 사라진 것이 아니다. 어디까지 버틸지는 아직 안 쟀다(ADR-022).
+        //
+        // Hikari 의 connection-timeout 은 애초에 이걸 못 막는다. 그건 <풀에서 커넥션을 빌리려고
         // 기다리는> 시간 상한이지, 이미 빌린 커넥션을 얼마나 오래 쥐고 있는지와 무관하다.
-        // 읽기 타임아웃이 없으면 커넥션 점유에 상한 자체가 없다.
         //
         // 끊긴 호출은 실패가 아니라 TIMEOUT(=UNKNOWN)으로 흘러 복구 배치가 조회로 확정한다.
+        // 그래서 이 값을 줄이면 장애는 빨리 끝나는 대신 미확정이 늘어난다(ADR-022의 선택지 C).
         var factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(connectTimeout);
         factory.setReadTimeout(readTimeout);
