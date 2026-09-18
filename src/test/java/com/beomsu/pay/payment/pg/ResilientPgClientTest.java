@@ -169,8 +169,8 @@ class ResilientPgClientTest {
     }
 
     @Test
-    @DisplayName("상한을 안 걸면(기본값) 동시 호출을 막지 않는다")
-    void noLimitByDefault() {
+    @DisplayName("상한을 0 으로 두면 동시 호출을 막지 않는다 — 스프링 기본값은 40 이다")
+    void noLimitWhenZero() {
         FlakyPgClient flaky = new FlakyPgClient();
         ResilientPgClient client = new ResilientPgClient(flaky);
         for (int i = 0; i < 50; i++) {

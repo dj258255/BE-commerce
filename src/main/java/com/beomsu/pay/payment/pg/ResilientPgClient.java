@@ -68,9 +68,9 @@ public class ResilientPgClient implements PgClient {
      */
     @Autowired
     public ResilientPgClient(@Qualifier("pgDelegate") PgClient delegate,
-                             @Value("${payment.pg.max-concurrent-calls:0}") int maxConcurrentCalls) {
+                             @Value("${payment.pg.max-concurrent-calls:40}") int maxConcurrentCalls) {
         this.delegate = delegate;
-        // 0 이하면 상한을 걸지 않는다 — 지금까지의 동작이 기본값이다(ADR-022 가 값을 고를 때까지).
+        // 0 이하면 상한을 걸지 않는다. 기본값 40 의 근거는 application.yml 과 ADR-022 에 있다.
         this.pgCallLimit = maxConcurrentCalls > 0 ? new Semaphore(maxConcurrentCalls) : null;
 
         CircuitBreakerConfig cbConfig = CircuitBreakerConfig.custom()
