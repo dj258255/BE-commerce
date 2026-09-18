@@ -22,8 +22,13 @@ SELECT
 FROM settlement_items
 WHERE status = 'PENDING_CONFIRMATION';
 
--- 2. 옮길 행. 새 서비스의 settlement_items 로 그대로 들어간다.
+-- 2. 옮길 행.
 --    id 는 옮기지 않는다 — 새 저장소가 자기 시퀀스를 쓰고, 멱등은 payment_id 유니크가 잡는다.
+--
+--    <주의> 두 저장소의 스키마가 같다고 가정하지 마라. 2026-09-19 예행에서 확인한 바로는
+--    msa-extraction 의 settlement_items 에 seller_id·last_cancel_seq·settlement_id 가 없다.
+--    아래 목록을 그대로 INSERT 하면 실패한다. 새 저장소의 DESC 를 먼저 보고 컬럼을 맞춘다.
+--    그리고 seller_id 가 없으면 옮겨도 판매자별 정산이 안 된다 — 스키마 정렬이 이관보다 먼저다.
 SELECT
     payment_id,
     order_no,
@@ -36,5 +41,10 @@ FROM settlement_items
 WHERE status = 'PENDING_CONFIRMATION'
 ORDER BY id;
 
--- 3. 전환 뒤 대조. 새 저장소에서 같은 질의를 돌려 1번의 건수·금액과 맞는지 본다.
+-- 3. 대조. 새 저장소에서 같은 질의를 돌려 1번의 건수·금액과 맞는지 본다.
 --    눈으로 맞추지 말고, 안 맞으면 전환을 멈춘다. 이 대조가 되돌릴 수 있는 마지막 지점이다.
+--
+--    <순서> 이관과 대조는 <트래픽을 넘기기 전>에 끝낸다. 예행에서 확인한 것인데,
+--    전환 뒤에 옮기면 그 사이 도착한 구매확정은 컨슈머가 이미 소비해 오프셋이 넘어가 있다.
+--    이관해도 그 이벤트는 다시 오지 않는다. 살리려면 오프셋 되감기나 수동 재발행이 필요하고,
+--    둘 다 운영 중에 하고 싶은 일이 아니다.
