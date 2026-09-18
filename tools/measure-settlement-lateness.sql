@@ -3,7 +3,10 @@
 -- settle() 이 confirmed_date <= date 인 항목을 전부 쓸어 담기 때문에, 정산 한 건에는
 -- 그날 확정된 것과 며칠 전에 확정됐다가 밀린 것이 섞인다. 얼마나 섞이는지 아무도 세지 않았다.
 --
--- 사용: mysql -h 127.0.0.1 -u root -p pay < tools/measure-settlement-lateness.sql
+-- 사용: docker exec -i pay-mysql-1 mysql --default-character-set=utf8mb4 -upay -ppay pay \
+--         < tools/measure-settlement-lateness.sql
+--
+-- --default-character-set=utf8mb4 를 빼면 한글 별칭이 깨져 1064 문법 오류가 난다.
 
 -- 1. 지각 도착 비율과 지연 일수 분포
 --    settlement_date 는 쓸어 담은 날, confirmed_date 는 구매확정일이다. 둘의 차이가 지연이다.
