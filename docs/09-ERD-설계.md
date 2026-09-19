@@ -8,7 +8,7 @@
 ![pay 핵심 ERD: 결제 한 건이 지나가는 길과 두 번 처리되면 안 되는 자리마다 걸린 유니크 제약](images/erd-core.svg)
 
 **돈이 지나가는 경로만 골라 그렸고, 각 자리를 지키는 유니크 제약을 함께 적었다.** 현재 Flyway
-마이그레이션에는 Spring Modulith의 이벤트 발행 테이블 2개를 포함해 **43개 테이블**이 정의돼 있다.
+마이그레이션에는 Spring Modulith의 이벤트 발행 테이블 2개를 포함해 **44개 테이블**이 정의돼 있다.
 코어 관계는 아래 Mermaid와 각 절의 DDL을 기준으로 설명한다.
 
 > 이 문서는 설계 당시의 이름과 구현된 이름이 갈리는 자리가 있다. **`~~취소선~~`은 설계만 하고 안 만든 것**이고,
@@ -407,9 +407,36 @@ CREATE TABLE reconciliation_results (
 - 불일치 4분류(03 문서)가 `result` 컬럼의 enum으로 그대로 반영
 - `MANUALLY_RESOLVED` + `resolved_by`: 수기 대사(어드민)의 감사 추적
 
-## 9. 재고: 동시성 실험용 (products / stock)
+## 9. 상품 카탈로그 (categories / products / stock)
+
+> 원래 `products`는 가격의 서버 측 원천으로만 쓰였고, 화면이 상품을 탐색할 목록·검색·카테고리
+> 표면이 없었다. 쇼핑몰 화면을 위해 탐색용 컬럼과 `categories`를 더했다(V53·V54). **가격·재고의
+> 권위는 그대로다** — 클라이언트는 여전히 가격을 보내지 않고, 서버가 주문 생성 시 `products`에서
+> 가격을 확정한다.
 
 ```sql
+CREATE TABLE categories (
+    code        VARCHAR(40)  PRIMARY KEY,              -- 화면·API가 쓰는 안정 식별자 (예: digital)
+    name        VARCHAR(80)  NOT NULL,                 -- 사람이 읽는 이름
+    description VARCHAR(300) NULL,
+    sort_order  INT          NOT NULL DEFAULT 0,       -- 노출 순서
+    -- 유니크 키는 기본키(code)가 전부다.
+);
+
+CREATE TABLE products (
+    product_id    BIGINT        PRIMARY KEY,            -- 외부 지정. stock과 같은 키 공간
+    name          VARCHAR(200)  NOT NULL,
+    price         BIGINT        NOT NULL,               -- ★ 가격의 서버 측 원천
+    category_code VARCHAR(40)   NULL,                   -- 논리적 FK → categories.code (제약 없이 인덱스만)
+    description   VARCHAR(1000) NULL,
+    image_url     VARCHAR(500)  NULL,                   -- 화면 표시용. 가격·재고와 무관
+    brand         VARCHAR(120)  NULL,
+    featured      TINYINT(1)    NOT NULL DEFAULT 0,     -- 홈 큐레이션
+    created_at    DATETIME(6)   NOT NULL,               -- 신상품 정렬
+    KEY idx_products_category (category_code),
+    KEY idx_products_created (created_at)
+);
+
 CREATE TABLE stock (
     product_id      BIGINT PRIMARY KEY,
     quantity        INT    NOT NULL,
@@ -417,6 +444,9 @@ CREATE TABLE stock (
     CHECK (quantity >= 0)                              -- 음수 재고의 최후 방어선
 );
 ```
+- **탐색용 속성은 가격·재고의 권위에 관여하지 않는다.** `description`·`image_url`·`brand`는 표시용이고,
+  가격은 여전히 주문 시점에 `CheckoutService`가 이 테이블에서 읽어 `order_items` 스냅샷으로 굳힌다
+- **`category_code`에 FK 제약을 걸지 않는다.** §10 규칙대로 논리적 FK + 인덱스만 둔다
 - Phase 5의 락 3종 비교 실험 대상: ① `@Version` 낙관적 ② `SELECT ... FOR UPDATE` 비관적 ③ Redisson. 같은 테이블로 구현체만 바꿔 부하테스트
 - 조건부 차감: `UPDATE stock SET quantity = quantity - :n WHERE product_id = :id AND quantity >= :n`
 

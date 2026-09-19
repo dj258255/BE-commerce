@@ -344,3 +344,48 @@ sequenceDiagram
 | POST | `/api/v1/admin/disputes/{id}/resolve` | 승/패 확정 — `{"outcome":"WON"|"LOST"}`. WON/LOST 외 400. **LOST 시 원장 역분개** |
 
 상태머신: `OPEN → EVIDENCE_SUBMITTED → WON | LOST`(최종 상태 불가역, `@Version` 낙관적 락으로 동시 확정 레이스 차단).
+
+---
+
+## 9. 카탈로그 (공개 읽기)
+
+쇼핑몰 화면이 상품을 탐색하는 **읽기 전용** 표면이다. **인증이 필요 없다** — 비로그인 탐색이
+되어야 한다. 쓰기 표면은 두지 않는다: 상품 등록·수정 API 없이 시드와 마이그레이션으로만 채운다.
+**가격·재고의 권위는 여전히 주문·결제 경로가 쥔다** — 클라이언트는 가격을 보내지 않고, 서버가
+주문 생성 시 `products`에서 가격을 확정한다.
+
+| 메서드 | 경로 | 기능 |
+|---|---|---|
+| GET | `/api/v1/categories` | 카테고리 목록(노출 순서, 상품 수 포함) |
+| GET | `/api/v1/products` | 상품 목록·검색 |
+| GET | `/api/v1/products/{productId}` | 상품 상세 |
+
+**목록 쿼리 파라미터**
+
+| 이름 | 기본 | 설명 |
+|---|---|---|
+| `category` | — | 카테고리 코드로 좁힌다(예: `digital`) |
+| `q` | — | 상품명·브랜드 부분 일치 검색. 있으면 `category`·`featured`보다 우선 |
+| `featured` | — | `true`면 추천 상품만 |
+| `sort` | `newest` | `newest`·`price_asc`·`price_desc`·`name`. 모르는 값은 `newest`로 처리한다(500을 내지 않는다) |
+| `page` | `0` | 0부터 시작 |
+| `size` | `20` | 최대 60으로 상한을 건다 |
+
+```json
+// GET /api/v1/products?category=digital&sort=price_asc&size=2 → 200
+{
+  "items": [
+    { "productId": 7, "name": "휴대용 보조배터리 20000mAh", "price": 39000, "brand": "볼트",
+      "categoryCode": "digital", "categoryName": "디지털·가전",
+      "imageUrl": "https://picsum.photos/seed/7/600/600", "inStock": true }
+  ],
+  "page": 0, "size": 2, "totalElements": 7, "totalPages": 4
+}
+```
+
+- `inStock`은 재고 0을 화면이 알아채 장바구니를 막게 하려고 싣는다. 재고 차감은 승인 시점이라
+  여기서 막지 않으면 주문 생성까지는 통과하고 승인에서야 `OUT_OF_STOCK`으로 실패한다.
+
+| HTTP | code | 상황 |
+|---|---|---|
+| 404 | `PRODUCT_NOT_FOUND` | 상세 조회 대상 상품이 없다 |

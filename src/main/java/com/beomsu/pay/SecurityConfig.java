@@ -80,6 +80,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/webhooks/**").permitAll()      // 수신부가 자체 인증
+                        // 카탈로그 조회는 개방한다 — 상품 탐색은 로그인 없이 되어야 한다(쓰기 표면 없음).
+                        // anyRequest().permitAll()로도 열리지만, 이건 설계 의도라 명시해 회귀를 막는다.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**", "/api/v1/categories").permitAll()
                         .requestMatchers("/api/v1/orders/**", "/api/v1/payments/**").hasRole("USER")
                         .requestMatchers("/api/v1/subscriptions/**").hasRole("USER")   // 구독은 회원 본인 소유
                         .requestMatchers("/api/v1/wallet/**").hasRole("USER")          // 월렛은 회원 본인 소유

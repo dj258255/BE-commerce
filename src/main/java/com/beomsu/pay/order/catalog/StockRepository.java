@@ -7,9 +7,14 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 interface StockRepository extends JpaRepository<Stock, Long> {
+
+    /** 여러 상품의 재고를 한 번에 — 목록 화면의 품절 표시용(N+1 방지). */
+    List<Stock> findByProductIdIn(Collection<Long> productIds);
 
     /** 비관적 락 — SELECT ... FOR UPDATE. 충돌이 잦은 재고 차감에 쓴다(Phase 5 비교 실험). */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
