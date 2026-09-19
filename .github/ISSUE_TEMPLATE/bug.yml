@@ -1,0 +1,25 @@
+name: 결함
+description: 의도한 동작과 다른 결과
+labels: ["bug"]
+body:
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 증상
+      description: 무엇이 관찰됐는가. 로그·응답·재현 절차를 함께 적는다.
+    validations:
+      required: true
+  - type: textarea
+    id: cause
+    attributes:
+      label: 원인
+      description: 확인된 원인. 아직 모르면 모른다고 적고 다음에 무엇을 볼지 남긴다.
+    validations:
+      required: false
+  - type: textarea
+    id: fix
+    attributes:
+      label: 고칠 방향과 회귀 테스트
+      description: 같은 결함이 다시 들어오지 않게 무엇으로 고정할지.
+    validations:
+      required: true
