@@ -120,4 +120,24 @@ class SettlementFairnessTest {
 
         assertThat(service.readRoundRobin(DATE)).isEmpty();
     }
+
+    @Test
+    @DisplayName("판매자가 틱 용량보다 많으면: 예산이 남아도 이번 틱에 못 읽는 판매자가 생긴다")
+    void roundRobinCannotServeMoreSellersThanPagesBudget() {
+        long third = 3L;
+        serviceWith(2);   // 예산 2장, 판매자 3 → 판매자마다 1장(ceil(2/3)=0 → 하한 1)
+        when(itemRepository.findSellerIdsWithPending(SettlementItemStatus.CONFIRMED, DATE))
+                .thenReturn(List.of(BIG, SMALL, third));
+        stubSellerPage(BIG, 0, List.of(item(1, BIG), item(2, BIG)));
+        stubSellerPage(SMALL, 0, List.of(item(3, SMALL)));
+        stubSellerPage(third, 0, List.of(item(4, third)));
+
+        List<SettlementItem> read = service.readRoundRobin(DATE);
+
+        // 예산 2장이 BIG·SMALL에서 소진된다(대형 1장 2건 + 소형 1장 1건 = 3건).
+        // 재분배 패스도 남은 용량이 없어 돌지 않는다 — 셋째 판매자는 다음 틱으로 밀린다.
+        assertThat(read).hasSize(3);
+        assertThat(read).extracting(SettlementItem::getSellerId).containsOnly(BIG, SMALL);
+        assertThat(read).extracting(SettlementItem::getSellerId).doesNotContain(third);
+    }
 }
