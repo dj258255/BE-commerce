@@ -29,6 +29,7 @@ public class LedgerService {
     private static final String SOURCE_SETTLEMENT = "SETTLEMENT";
 
     private final LedgerTransactionRepository repository;
+    private final LedgerEntryRepository entryRepository;
 
     /** 최근 원장 트랜잭션 조회(감사용) — 분개 목록·균형 여부 포함. */
     @Transactional(readOnly = true)
@@ -36,6 +37,27 @@ public class LedgerService {
         return repository.findTop50ByOrderByIdDesc().stream()
                 .map(LedgerView::from)
                 .toList();
+    }
+
+    /**
+     * 계정별 잔액 — {@code ledger/package-info} 가 "잔액은 엔트리의 합으로 파생된다"고 선언한 것을
+     * <b>실제로 쓰는 첫 조회</b>다. 그전까지 SUM 이 <b>선택</b>으로만 적혀 있었고 그 대가를 한 번도
+     * 치른 적이 없었다(ADR-025).
+     *
+     * <p>값은 원장을 유일한 진실로 두고 매번 다시 센다. 그래서 원장과 갈라질 수 없고, 그 대신 비용이
+     * 원장 행 수에 비례한다. 그 비용의 실측이 ADR-025 가 스냅샷 도입 조건을 정하는 근거다.
+     */
+    @Transactional(readOnly = true)
+    public List<LedgerBalance> balances() {
+        return entryRepository.sumByAccount().stream()
+                .map(row -> new LedgerBalance(row.getAccount(), row.getBalance()))
+                .toList();
+    }
+
+    /** 한 계정의 잔액. 인덱스가 있으면 그 계정의 분개만 훑는다. */
+    @Transactional(readOnly = true)
+    public LedgerBalance balance(AccountType account) {
+        return new LedgerBalance(account, entryRepository.sumByAccount(account));
     }
 
     @Transactional

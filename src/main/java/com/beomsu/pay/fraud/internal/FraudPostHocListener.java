@@ -78,8 +78,30 @@ public class FraudPostHocListener {
         // REVIEW/BLOCK만 심사 큐에 적재한다(ALLOW/CHALLENGE는 제외).
         // 집합은 규칙이 정하고 순서만 모델이 정한다. 모델을 꺼도 이 조건은 그대로다.
         if (result.decision() == FdsDecision.REVIEW || result.decision() == FdsDecision.BLOCK) {
+            flagOnce(e, cardKey, result, risk);
+        }
+    }
+
+    /**
+     * 심사 큐 적재 — <b>멱등.</b>
+     *
+     * <p>아웃박스는 at-least-once 라 재발행으로 같은 이벤트가 두 번 온다(재기동 재발행·프로듀서
+     * 재시도). 그때 사후 재평가가 REVIEW/BLOCK 을 다시 내려도 <b>한 주문에 심사는 하나</b>여야 한다.
+     * 이력은 {@link #record} 에서 순서 유니크로 막고 있었는데, 사람이 보는 큐는 막는 장치가 없었다.
+     *
+     * <p>검사만으로는 동시 진입을 못 막는다(상황 2.2). 그래서 먼저 보고, 그 사이에 끼어들면
+     * DB 유니크 제약({@code uk_fraud_review_order})이 마지막에 막는다.
+     */
+    private void flagOnce(PaymentConfirmedEvent e, String cardKey, FraudResult result, Double risk) {
+        try {
+            if (reviewRepository.existsByOrderNo(e.orderNo())) {
+                return;
+            }
             reviewRepository.save(FraudReview.flagged(
                     e.orderNo(), e.paymentId(), cardKey, e.amount(), result, risk));
+        } catch (org.springframework.dao.DataIntegrityViolationException dup) {
+            // 유니크 제약이 막은 것이다. 재배달이라 정상이다.
+            log.debug("[fds] 이미 심사 큐에 있는 주문이라 적재를 건너뜁니다 order={}", e.orderNo());
         }
     }
 

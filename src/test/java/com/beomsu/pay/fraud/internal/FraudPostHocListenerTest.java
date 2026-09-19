@@ -235,4 +235,30 @@ class FraudPostHocListenerTest {
 
         org.mockito.Mockito.verify(reviewRepository, org.mockito.Mockito.never()).save(any());
     }
+
+    @Test
+    @DisplayName("같은 이벤트가 두 번 와도 심사 큐는 한 줄이다 — 재발행 멱등")
+    void redeliveryDoesNotDuplicateReview() {
+        when(paymentService.historyKeyOf(10L)).thenReturn(Optional.of("card-xyz"));
+        when(fraudService.evaluate(any())).thenReturn(
+                new FraudResult(70, FdsDecision.REVIEW, List.of("HIGH_AMOUNT")));
+        when(reviewRepository.existsByOrderNo("ord-1")).thenReturn(true);
+
+        listener.onConfirmed(event());
+
+        org.mockito.Mockito.verify(reviewRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    @DisplayName("동시 진입을 유니크 제약이 막아도 예외를 삼킨다 — 재배달은 정상이다")
+    void duplicateReviewIsSwallowed() {
+        when(paymentService.historyKeyOf(10L)).thenReturn(Optional.of("card-xyz"));
+        when(fraudService.evaluate(any())).thenReturn(
+                new FraudResult(70, FdsDecision.REVIEW, List.of("HIGH_AMOUNT")));
+        when(reviewRepository.existsByOrderNo("ord-1")).thenReturn(false);
+        when(reviewRepository.save(any(FraudReview.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("dup"));
+
+        listener.onConfirmed(event());   // 예외가 밖으로 새지 않아야 한다
+    }
 }

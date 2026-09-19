@@ -26,6 +26,7 @@ import static org.mockito.Mockito.*;
 class LedgerServiceTest {
 
     private LedgerTransactionRepository repository;
+    private LedgerEntryRepository entryRepository;
     private LedgerService service;
 
     private final PaymentConfirmedEvent event =
@@ -34,7 +35,46 @@ class LedgerServiceTest {
     @BeforeEach
     void setUp() {
         repository = mock(LedgerTransactionRepository.class);
-        service = new LedgerService(repository);
+        entryRepository = mock(LedgerEntryRepository.class);
+        service = new LedgerService(repository, entryRepository);
+    }
+
+    @Test
+    @DisplayName("계정별 잔액: projection 을 그대로 매핑한다 — 부호는 분개 방향 그대로")
+    void mapsBalancesFromProjection() {
+        LedgerEntryRepository.AccountBalanceRow receivable = balanceRow(AccountType.PG_RECEIVABLE, 100_000);
+        LedgerEntryRepository.AccountBalanceRow sales = balanceRow(AccountType.SALES, -100_000);
+        when(entryRepository.sumByAccount()).thenReturn(List.of(receivable, sales));
+
+        List<LedgerBalance> balances = service.balances();
+
+        assertThat(balances)
+                .containsExactlyInAnyOrder(
+                        new LedgerBalance(AccountType.PG_RECEIVABLE, 100_000),
+                        new LedgerBalance(AccountType.SALES, -100_000));
+    }
+
+    @Test
+    @DisplayName("한 계정 잔액: 리포지토리 합계를 그대로 반환한다")
+    void returnsSingleAccountBalance() {
+        when(entryRepository.sumByAccount(AccountType.CASH)).thenReturn(97_030L);
+
+        assertThat(service.balance(AccountType.CASH))
+                .isEqualTo(new LedgerBalance(AccountType.CASH, 97_030));
+    }
+
+    private static LedgerEntryRepository.AccountBalanceRow balanceRow(AccountType account, long balance) {
+        return new LedgerEntryRepository.AccountBalanceRow() {
+            @Override
+            public AccountType getAccount() {
+                return account;
+            }
+
+            @Override
+            public long getBalance() {
+                return balance;
+            }
+        };
     }
 
     @Test

@@ -86,6 +86,15 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-019](adr/ADR-019-pci-scope-by-not-touching-cards.md) | 카드번호를 직접 처리하지 않아 PCI 범위 축소 |
 | [ADR-020](adr/ADR-020-multi-pg-routing-off-by-default.md) | 멀티 PG 라우팅은 계약 전까지 기본 비활성 |
 | [ADR-021](adr/ADR-021-no-aml-screening-by-not-holding-identity.md) | 고객 AML과 판매자 제재 스크리닝의 범위 분리 |
+| [ADR-022](adr/ADR-022-pg-brownout-resource-limits.md) | 느린 PG 앞의 자원 고갈 — 동시 호출 상한 |
+| [ADR-023](adr/ADR-023-settlement-earned-date-vs-swept-date.md) | 정산 집계일과 거래 귀속일 분리 여부 |
+| [ADR-024](adr/ADR-024-settlement-extraction-data-cutover.md) | 정산 분리 시 과거 데이터 이관 |
+| [ADR-025](adr/ADR-025-ledger-balance-read-strategy.md) | 원장 잔액 읽기 전략(SUM 대 스냅샷) |
+| [ADR-026](adr/ADR-026-event-schema-evolution.md) | 이벤트 스키마 진화와 배포 순서 |
+| [ADR-027](adr/ADR-027-settlement-fairness-policy.md) | 정산 판매자 공정성 정책 |
+| [ADR-028](adr/ADR-028-fds-threshold-with-delayed-labels.md) | FDS 임계값과 지연 라벨 |
+| [ADR-029](adr/ADR-029-deployment-unit-vs-service-boundary.md) | 실행 단위만 분리하는 것과 저장소까지 분리하는 것 |
+| [ADR-030](adr/ADR-030-dlt-replay-and-post-recovery-reconciliation.md) | 격리·발견·복구·검증의 분리와 DLT 재처리 |
 
 ## 보조 문서
 

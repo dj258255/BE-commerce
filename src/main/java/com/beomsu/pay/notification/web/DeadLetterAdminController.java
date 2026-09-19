@@ -1,7 +1,7 @@
 package com.beomsu.pay.notification.web;
 
 import com.beomsu.pay.SecurityConfig;
-import com.beomsu.pay.notification.consumption.DeadLetterView;
+import com.beomsu.pay.notification.consumption.DeadLetterSummary;
 import com.beomsu.pay.notification.consumption.DeadLetterView;
 import com.beomsu.pay.notification.NotificationAdminService;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +34,17 @@ class DeadLetterAdminController {
     @GetMapping
     Page<DeadLetterView> list(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
         return adminService.listDeadLetters(pageable);
+    }
+
+    /**
+     * 복구 상태 요약(격리 건수·최장 대기 시각) — <b>발견</b>의 표면.
+     *
+     * <p>재처리(복구)를 돌린 뒤 이 값을 다시 보면 "복구 후 검증"이 된다 — 남은 건수가 줄었고
+     * 최장 대기가 사라졌는지로 정상 여부를 확인한다(ADR-030).
+     */
+    @GetMapping("/summary")
+    DeadLetterSummary summary() {
+        return adminService.summary();
     }
 
     @PostMapping("/{id}/reprocess")

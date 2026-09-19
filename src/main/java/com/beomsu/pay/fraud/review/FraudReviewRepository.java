@@ -18,6 +18,15 @@ public interface FraudReviewRepository extends JpaRepository<FraudReview, Long> 
     /** 상태별 심사 항목 전건 — 기동 시 블랙리스트 재적재(FraudBlacklistReloader)가 REJECTED 전건을 되읽는다. */
     List<FraudReview> findByStatus(FraudReviewStatus status);
 
+    /**
+     * 같은 주문이 이미 심사 큐에 있는가 — 아웃박스 재발행 멱등 가드.
+     *
+     * <p>아웃박스는 at-least-once 다. 재발행으로 같은 이벤트가 두 번 배달되면 사후 탐지가 REVIEW/BLOCK
+     * 판정을 다시 내리고, 그때 큐에 같은 주문이 두 줄로 쌓인다. 이력({@code card_transactions})은
+     * {@code order_no} 유니크로 막고 있었는데 정작 사람이 보는 큐는 막는 장치가 없었다.
+     */
+    boolean existsByOrderNo(String orderNo);
+
     /** 어드민 관측용 — 상태별 심사 항목 페이지(기본 PENDING = 미결 건). 전건 로딩 방지 위해 페이지 단위. */
     Page<FraudReview> findByStatus(FraudReviewStatus status, Pageable pageable);
 

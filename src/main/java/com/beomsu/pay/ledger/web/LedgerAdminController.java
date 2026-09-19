@@ -1,8 +1,11 @@
 package com.beomsu.pay.ledger.web;
 
+import com.beomsu.pay.ledger.internal.AccountType;
+import com.beomsu.pay.ledger.internal.LedgerBalance;
 import com.beomsu.pay.ledger.internal.LedgerService;
 import com.beomsu.pay.ledger.internal.LedgerView;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -28,5 +31,21 @@ public class LedgerAdminController {
     @GetMapping
     public List<LedgerView> recent() {
         return ledgerService.recentTransactions();
+    }
+
+    /**
+     * 계정별 잔액 — 분개 합으로 파생. 원장이 유일한 진실이라 매번 다시 센다.
+     *
+     * <p>부호는 분개 방향 그대로다. {@code SALES} 는 대변으로 쌓이므로 음수가 정상이다.
+     */
+    @GetMapping("/balances")
+    public List<LedgerBalance> balances() {
+        return ledgerService.balances();
+    }
+
+    /** 한 계정의 잔액. */
+    @GetMapping("/balances/{account}")
+    public LedgerBalance balance(@PathVariable AccountType account) {
+        return ledgerService.balance(account);
     }
 }

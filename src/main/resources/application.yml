@@ -401,6 +401,12 @@ app:
     interval-ms: 86400000
     fee-bps: ${APP_SETTLEMENT_FEE_BPS:270}            # 수수료율(basis point) 270 = 2.7%
     payout-business-days: ${APP_SETTLEMENT_PAYOUT_DAYS:2}   # 지급예정일 = 정산일 + N영업일
+    # 판매자 공정성 정책: id(기본, 전역 id 오름차순) | round-robin(판매자별 상한 + 잔여 재분배).
+    #
+    # 기본이 id 인 이유: 정책을 바꾸면 <b>지급일 약속이 바뀐다</b> — 기술이 아니라 사업 결정이다.
+    # 대형 판매자가 하루에 받는 몫이 줄고 소형 판매자가 안 밀리는 맞바꿈이라, 실측(ADR-027)을
+    # 보고 운영이 명시적으로 켠다. 꺼져 있으면 기존 동작 그대로다.
+    fairness-policy: ${APP_SETTLEMENT_FAIRNESS_POLICY:id}
   # API 유입 제어(rate limit) — "감당 못 할 요청은 바깥 층에서 싸게 거절한다(429)".
   # 대상: POST /api/v1/orders, POST /api/v1/payments/confirm (RateLimitFilter, 시큐리티 체인 내
   # Bearer 인증 뒤). 고정 윈도우(1초) INCR — 경계 순간 최대 2배 통과는 단순성의 대가로 수용.
@@ -572,3 +578,53 @@ fds:
       # 이 비율만큼은 점수를 아예 안 낸다. <b>켜기 전에 있어야 한다.</b> 켠 다음에 만들면
       # 이미 비교할 이전이 없다. 주문번호 해시로 갈라 같은 주문은 늘 같은 쪽에 든다.
       percent: ${FDS_MODEL_HOLDOUT_PERCENT:5}
+
+---
+# worker 프로파일: <b>같은 jar를 배치 실행 주체로 배포한다</b>(SPRING_PROFILES_ACTIVE=worker).
+#
+# API 배포는 이 프로파일 없이 뜨므로 모든 스케줄러가 기본 off다. 즉 프로파일 하나로 배포 단위를
+# 둘로 나눈다 — 결제 API는 스케줄러를 들고 있지 않아 자유롭게 수평 확장·롤링하고, 배치는
+# 단일 실행 주체로 남는다. 저장소·브로커를 나누지 않으므로 트랜잭션과 조인은 그대로다.
+#
+# 왜 이 형태를 먼저 재는가(ADR-029): 모놀리스 실측(docs/performance/msa-baseline-experiments.md)이
+# 재현한 두 결합 — (실험 2) 확장하면 정산 스케줄러가 중복 실행된다, (실험 3) 무관 모듈 배포에도
+# 전체 재시작으로 결제가 중단된다 — 은 <b>배포 단위만 나눠도 풀린다.</b> 서비스·저장소까지 나눈 것은
+# 그 위에 얹는 <별도의 선택>이고, 이 프로파일이 그 기준선을 만든다.
+#
+# 제재 명단(UN)·재스크리닝은 여기서 켜지 않는다 — 외부 네트워크를 타는 별개 관심사이고,
+# 배치 실행 주체를 나누는 이 실험의 변수가 아니다.
+spring:
+  config:
+    activate:
+      on-profile: worker
+
+app:
+  settlement:
+    enabled: true
+  recovery:
+    enabled: true
+  checkout:
+    recovery:
+      enabled: true
+  va:
+    expiry:
+      enabled: true
+  dunning:
+    enabled: true
+  order:
+    expiry:
+      enabled: true
+  compensation:
+    enabled: true
+  escrow:
+    auto-release:
+      enabled: true
+  outbox:
+    cleanup:
+      enabled: true
+  idempotency:
+    cleanup:
+      enabled: true
+  webhook:
+    pending-retry:
+      enabled: true

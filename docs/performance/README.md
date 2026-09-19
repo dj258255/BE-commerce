@@ -673,3 +673,92 @@ p95 가 6.7 배 좋아지는 대신 그 구간 결제가 전부 미확정이 되
 **결론**: 상한 메커니즘을 채택하되 기본값은 상한 없음으로 둔다. 상한값은 실 PG 응답시간 분포의 함수인데 이 프로젝트에는 그 분포가 없다. 켤 때는 40 에서 시작한다([ADR-022](../adr/ADR-022-pg-brownout-resource-limits.md)).
 
 **부수 발견**: 이 실험을 하려고 보니 `tomcat_threads_busy_threads` 가 Prometheus 에 안 나가고 있었다. Spring Boot 는 Tomcat MBean 레지스트리를 기본으로 끈다. 커넥션은 보이고 워커는 안 보이는 상태였고, 여기서 마르는 자원이 바로 그것이다. `server.tomcat.mbeanregistry.enabled` 를 켰다.
+
+## 15. 배포 단위만 나눠도 두 결합은 풀린다 (실측 완료)
+
+[모놀리스 한계 실측](msa-baseline-experiments.md)이 재현한 두 결합 — 수평 확장 시 정산 스케줄러 중복(실험 2), 무관 모듈 배포가 결제를 중단(실험 3) — 은 **배포 단위를 나누기만 해도 풀린다.** 저장소·브로커까지 나눈 것은 그 위에 얹은 별도 선택인데, 그 근거가 따로 없었다(외부 피드백). 여기서 기준선을 만든다([ADR-029](../adr/ADR-029-deployment-unit-vs-service-boundary.md)).
+
+**형태**: 같은 jar, 프로파일 하나. `application.yml` 의 `worker` 프로파일이 배치 실행 주체다. API 배포는 프로파일 없이 떠서 모든 스케줄러가 기본 off다. 저장소는 그대로라 트랜잭션·조인이 남는다.
+
+측정은 `k6/seed-settlement-scheduler-split.sql`(어제 KST 정산 항목 2만 건) + `k6/redeploy-blast-radius.js`.
+
+### 15.1 스케줄러 중복: 인스턴스 2개 → 0
+
+**before (모놀리스, 정산 켠 인스턴스 2개 동시 기동)**: 두 인스턴스가 같은 틱에 진입해 같은 1만 건을 중복 집계하고, 늦은 쪽이 `Duplicate entry '2026-09-18-KRW-1'` 로 배치 실패.
+
+**after (worker 1 + API 2, API는 스케줄러 off)**: worker 만 정산 1회(`items=10000`), API 2개는 스케줄러 로그 0건, DB 정산 1행(중복 없음). **API를 늘려도 스케줄러는 복제되지 않는다.**
+
+### 15.2 배포 중단: 270건 → 0건
+
+같은 형태에서 체크아웃 30VU를 3분 깔고 93초 지점에 **워커만 재배포**했다.
+
+| 항목 | 모놀리스 baseline | 배포 단위 분리 |
+|---|---|---|
+| 실패 요청 | 270건 / 9,870건 (2.7%) | **0건 / 10,174건 (0.00%)** |
+| 다운타임 | 9초 | 결제 API 무중단 |
+
+k6: `http_req_failed 0.00% (0/10174)`, `checks_failed 0/30`, `[FAIL]` 로그 0건. 재기동한 워커는 같은 날짜를 다시 집계하려다 `정산 재실행 감지 → 건너뜀` 으로 멱등 처리됐다.
+
+**결론**: 배포 단위만 나눠 두 결합이 0 이 된다. 저장소까지 나눠 추가로 얻는 것은 트랜잭션 없는 완전 독립이고, 대가로 메시지 중복·순서·poison·스키마 진화·이관이라는 실패 모드가 **새로** 생긴다 — 별도 결정이다.
+
+### 재현
+
+```bash
+docker compose up -d
+JAVA=/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home/bin/java
+$JAVA -jar build/libs/pay-0.0.1-SNAPSHOT.jar --server.port=8080 --app.ratelimit.enabled=false   # API
+$JAVA -jar build/libs/pay-0.0.1-SNAPSHOT.jar --server.port=8082 --app.ratelimit.enabled=false   # API 리플리카
+$JAVA -jar build/libs/pay-0.0.1-SNAPSHOT.jar --server.port=8081 --spring.profiles.active=worker  # 워커
+docker compose exec -T mysql mysql -upay -ppay pay < k6/seed-settlement-scheduler-split.sql
+BASE_URL=http://localhost:8080 VUS=30 DURATION=3m k6 run k6/redeploy-blast-radius.js
+# 93초 지점에 워커만 재기동: kill <워커 PID> && (워커 재실행)
+```
+
+정리: `DELETE FROM settlement_items WHERE payment_id >= 900000000;` + `DELETE FROM settlements WHERE settlement_date='<시드한 어제>'`
+
+## 16. 원장 잔액 읽기: SUM 은 O(N) 이고, 어디서 스냅샷이 필요해지나 (실측 완료)
+
+`ledger/package-info` 가 **"잔액은 엔트리의 합으로 파생된다"** 고 처음부터 선언했는데, **그 선언을 쓰는 코드가 없었다.** 잔액 조회가 없으니 "SUM 이 느려진다"는 예상일 뿐이었고, 대가를 한 번도 치른 적이 없었다. 조회를 만들면 그 대가를 매번 치른다. 그 비용과 커버링 인덱스가 버는 몫, 그리고 스냅샷이 필요해지는 행 수를 쟀다([ADR-025](../adr/ADR-025-ledger-balance-read-strategy.md)).
+
+**부수로 잠복 버그를 하나 잡았다.** `AccountType` 은 `CASH`·`PG_FEE` 를 쓰는데 DB `account` enum 은 `PG_RECEIVABLE`·`SALES` 뿐이었다. 정산 지급 확정(입금 분개)이 원장에 기록되는 순간 MySQL 이 값을 거부한다 — 아직 `PAID_OUT` 정산이 없어 드러나지 않았고, H2 단위 테스트는 enum 을 강제하지 않아 통과했다. V50 이 enum 을 코드에 맞췄다.
+
+측정은 `tools/measure-ledger-balance.sh`(서버 안에서 30회, p95) + `LedgerBalanceReadCostMySqlTest`(CI). MySQL 8.4, buffer pool 512MB, 로컬. **실 트래픽이 아니라 행 수만 늘린 측정이다.**
+
+| 원장 행수 | 조회 | 인덱스 | p95 |
+|---|---|---|---|
+| 240,692 | 한 계정 / 계정별 전체 | 있음 | 32.6ms / 82.0ms |
+| 1,616,948 | 한 계정 / 계정별 전체 | 있음 | 235.2ms / 564.4ms |
+| 12,626,996 | 한 계정 / 계정별 전체 | 있음 | 1722.8ms / 4812.6ms |
+| 12,626,996 | 한 계정 / 계정별 전체 | **없음** | 4469.8ms / 8056.8ms |
+
+- **SUM 은 O(N) 을 벗어나지 못한다.** `(account, direction, amount)` 커버링 인덱스가 1000만 행에서 한 계정 조회를 **2.6배**, 계정별 전체를 **1.7배** 줄이지만 상수 시간은 아니다.
+- **인덱스만으로 버티는 구간은 100만 행 아래다.** SLO(잔액 조회 p95 200ms)로 보면 계정별 전체 조회는 **약 60만 행**, 한 계정 조회는 **약 130만 행**에서 선을 넘는다 → 그때 스냅샷이 필요해진다.
+- **쓰기 비용은 +12.7%.** 20만 행 INSERT: 인덱스 없음 1,906.8ms → 커버링 인덱스 추가 2,149.5ms. 인덱스는 공짜가 아니다(`IndexWriteCostMySqlTest` 와 같은 방식).
+
+**결론**: SUM + 커버링 인덱스를 채택하되 **스냅샷은 지금 만들지 않는다.** 이 저장소는 100만 행에 한참 못 미치고, 지금 스냅샷을 넣으면 갈라짐을 감시할 대조 배치만 늘고 얻는 것이 없다. 필요해지는 지점(60만~130만 행)을 숫자로 남긴다.
+
+**재현**: `RUNS=30 tools/measure-ledger-balance.sh` (벤치 행은 마커 `transaction_id` 로 심고 지운다 — 실제 분개는 건드리지 않는다).
+
+## 17. 커밋은 됐는데 발행이 안 된 구간을 재기동이 메우는가 (실측 완료)
+
+이벤트 발행은 Spring Modulith 의 Event Publication Registry(= 트랜잭셔널 아웃박스)를 탄다. DB 커밋과 발행 기록이 **같은 트랜잭션**이고, 재기동 시 미완료 이벤트를 다시 발행하는 설정(`republish-outstanding-events-on-restart: true`)도 켜져 있다. **설계는 있고, 그 경로를 장애로 검증한 적이 없었다.** "아웃박스를 썼으니 됐다"와 "죽여 봤더니 됐다"는 다르다.
+
+측정은 `tools/outbox-republish-experiment.sh`. Kafka를 내린 채 결제를 승인해 **커밋은 되고 발행은 안 된** 상태를 결정적으로 만들고(Kafka가 살아 있으면 프로듀서 버퍼가 즉시 메워 그 상태를 못 잡는다), 앱을 **SIGKILL**(프로듀서 버퍼 소실)한 뒤 Kafka를 올리고 재기동한다.
+
+| 단계 | 관측 |
+|---|---|
+| Kafka 내린 채 승인 | 결제는 `PAID`(커밋 성공), `event_publication` 미완료 **2건** |
+| 앱 SIGKILL | (버퍼 소실) |
+| Kafka 복구 후 재기동 | 토픽에 **재기동 후 8초 만에** 나타남 |
+| 아카이브 | `completion_date − publication_date = 21초` (Kafka 복구 대기 + 재기동 포함) |
+| 재기동 후 미완료 | **0건** |
+
+**미완료 2건의 정체가 중요하다.** 하나는 `DelegatingEventExternalizer`(Kafka 발행, 브로커가 없어 실패)이고, 다른 하나는 `FraudPostHocListener.onConfirmed`(**SIGKILL 로 중단된 인-프로세스 리스너**)다. 즉 재기동 재발행은 Kafka 발행뿐 아니라 **처리 중에 죽은 인-프로세스 리스너까지** 복구한다. 아웃박스가 인-프로세스 소비에도 at-least-once 를 보장한다는 뜻이다.
+
+**부수 발견 — 방어선이 두 겹이다.** 앱을 죽이기 전에 Kafka가 먼저 복구되면 **재기동 없이 프로듀서 버퍼 재시도**가 메운다(첫 시도에서 재기동 없이 14초 만에 발행됐다). 즉 이 구간은 (1) 프로듀서 버퍼 재시도, (2) 재기동 재발행으로 메워지고, 프로세스가 죽어 (1)이 사라져도 (2)가 남는다.
+
+**멱등을 확인하다 구멍을 찾았다.** 재발행은 같은 이벤트를 두 번 배달할 수 있으므로 소비자는 멱등해야 한다. 이력(`card_transactions`)은 `order_no` 유니크로 막고 있었지만, **정작 사람이 보는 심사 큐(`fraud_reviews`)는 막는 장치가 없었다.** `FraudPostHocListener` 가 재배달 때 REVIEW/BLOCK 을 다시 판정하면 같은 주문이 두 줄로 쌓인다. `V51` 로 `order_no` 유니크를 걸고 `existsByOrderNo` 가드 + 중복 흡수를 넣었다(`FraudPostHocListenerTest.redeliveryDoesNotDuplicateReview`).
+
+**결론**: 커밋 후 발행 실패 구간은 프로세스 강제 종료에도 재기동 재발행으로 **8초 안에** 메워진다. 그 8초(로컬 기준, 대부분 앱 기동)가 이 경로에서 정산 지연의 하한이다. 다만 그 대가는 **at-least-once** 이고, 소비자 멱등이 깨진 자리가 하나 있어 같이 막았다.
+
+**재현**: `tools/outbox-republish-experiment.sh` (Kafka 내림 → 승인 → SIGKILL → Kafka 올림 → 재기동 → 토픽 확인).

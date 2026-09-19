@@ -405,6 +405,15 @@ public class SettlementService {
     }
 
     /**
+     * 판매자 공정성 정책 — {@code id}(기본, 전역 id 오름차순) 또는 {@code round-robin}(판매자별 한 장씩).
+     *
+     * <p>기본값이 {@code id} 인 이유: 정책을 바꾸면 <b>지급일 약속이 바뀐다</b>(사업 결정이다).
+     * 실측으로 대가를 확인한 뒤 운영이 명시적으로 켠다(ADR-027). 꺼져 있으면 기존 동작 그대로다.
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.settlement.fairness-policy:id}")
+    private String fairnessPolicy = "id";
+
+    /**
      * 틱당 최대 {@code maxPages} 장까지 읽어 모은다.
      *
      * <p>읽기는 전부 쓰기 전에 끝난다. 같은 트랜잭션 안에서 상태가 바뀌기 전에 다 읽으므로
@@ -414,6 +423,19 @@ public class SettlementService {
      * 않고 지표와 경고로 남긴다.
      */
     private List<SettlementItem> readUpToMaxPages(LocalDate date) {
+        return "round-robin".equalsIgnoreCase(fairnessPolicy)
+                ? readRoundRobin(date)
+                : readByIdOrder(date);
+    }
+
+    /**
+     * 전역 id 오름차순으로 읽는다(기본).
+     *
+     * <p><b>불공정하다.</b> 판매자 한 곳이 앞 페이지를 다 채우면(오래된 id 를 많이 가진 대형 판매자)
+     * 뒤 판매자의 항목은 이 틱에 안 읽히고 다음 틱으로 밀린다. 물량이 작을 때는 드러나지 않는다
+     * (ADR-027).
+     */
+    List<SettlementItem> readByIdOrder(LocalDate date) {
         List<SettlementItem> all = new java.util.ArrayList<>();
         int page = 0;
         while (true) {
@@ -433,5 +455,85 @@ public class SettlementService {
             }
         }
         return all;
+    }
+
+    /**
+     * 판매자 공정성 정책(라운드로빈) — <b>한 곳이 틱을 독식하지 못하게 한다.</b>
+     *
+     * <p>두 단계다. ① 첫 패스에서 판매자마다 {@code ceil(예산/판매자수)} 장까지 읽어 <b>상한</b>을 둔다.
+     * ② 그러고도 용량이 남으면(재고가 적은 판매자가 있어서) 재고가 있는 판매자에게 한 장씩
+     * <b>재분배</b>한다. 즉 소형 판매자가 다음 틱으로 밀리지 않고, 남는 용량은 버려지지 않는다.
+     *
+     * <p>모든 읽기가 쓰기 전에 끝나므로(트랜잭션 안에서 행 상태가 안 바뀜) 판매자별 offset 페이징이
+     * 흔들리지 않는다.
+     *
+     * <p><b>대가</b>: 대형 판매자는 자기 차례가 줄어 지급이 늦어질 수 있다. 이건 기술이 아니라
+     * <b>누구를 굶길지</b>의 문제이고, 그래서 기본값이 아니다(ADR-027).
+     */
+    List<SettlementItem> readRoundRobin(LocalDate date) {
+        List<Long> sellers = itemRepository.findSellerIdsWithPending(
+                SettlementItemStatus.CONFIRMED, date);
+        if (sellers.isEmpty()) {
+            return List.of();
+        }
+        int pagesBudget = maxPages;
+        int perSellerPages = Math.max(1, (int) Math.ceil((double) pagesBudget / sellers.size()));
+
+        java.util.Map<Long, Integer> nextPage = new java.util.HashMap<>();
+        for (Long seller : sellers) {
+            nextPage.put(seller, 0);
+        }
+        List<SettlementItem> all = new java.util.ArrayList<>();
+        int pagesUsed = 0;
+
+        // ① 판매자별 상한 패스
+        for (Long seller : sellers) {
+            for (int i = 0; i < perSellerPages && pagesUsed < pagesBudget; i++) {
+                List<SettlementItem> got = readSellerPage(seller, date, nextPage.get(seller));
+                if (got.isEmpty()) {
+                    nextPage.put(seller, -1); // 재고 바닥
+                    break;
+                }
+                nextPage.put(seller, nextPage.get(seller) + 1);
+                all.addAll(got);
+                pagesUsed++;
+            }
+        }
+
+        // ② 잔여 용량 재분배 — 아직 재고가 있는 판매자에게 한 장씩
+        boolean progressed = true;
+        while (pagesUsed < pagesBudget && progressed) {
+            progressed = false;
+            for (Long seller : sellers) {
+                if (pagesUsed >= pagesBudget) {
+                    break;
+                }
+                Integer page = nextPage.get(seller);
+                if (page == null || page < 0) {
+                    continue; // 재고 바닥난 판매자는 건너뛴다
+                }
+                List<SettlementItem> got = readSellerPage(seller, date, page);
+                if (got.isEmpty()) {
+                    nextPage.put(seller, -1);
+                    continue;
+                }
+                nextPage.put(seller, page + 1);
+                all.addAll(got);
+                pagesUsed++;
+                progressed = true;
+            }
+        }
+
+        if (pagesUsed >= pagesBudget) {
+            meterRegistry.counter("settlement.batch.page_cap_reached").increment();
+            log.warn("정산 배치(라운드로빈)가 틱당 상한에 닿았다 date={} 읽은건수={} 판매자수={} 상한={}장×{}건",
+                    date, all.size(), sellers.size(), maxPages, pageSize());
+        }
+        return all;
+    }
+
+    private List<SettlementItem> readSellerPage(long sellerId, LocalDate date, int page) {
+        return itemRepository.findBySellerIdAndStatusAndConfirmedDateLessThanEqualOrderByIdAsc(
+                sellerId, SettlementItemStatus.CONFIRMED, date, chunk(page));
     }
 }

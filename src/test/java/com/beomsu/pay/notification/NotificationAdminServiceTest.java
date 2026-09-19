@@ -64,4 +64,33 @@ class NotificationAdminServiceTest {
         verify(deadLetters, never()).delete(any());
         verify(processedEvents, never()).save(any());
     }
+
+    @Test
+    @DisplayName("이미 처리된 이벤트의 DLQ 항목은 재발송하지 않고 정리만 한다 — 알림 이중 발송 방지")
+    void reprocessAlreadyProcessedDoesNotResend() {
+        DeadLetter dl = deadLetter();
+        when(deadLetters.findById(1L)).thenReturn(Optional.of(dl));
+        when(processedEvents.existsByEventKeyAndConsumer("payment-confirmed-100", "notification"))
+                .thenReturn(true);
+
+        boolean ok = service.reprocess(1L);
+
+        assertThat(ok).isTrue();
+        verify(sender, never()).sendPaymentReceipt(anyString(), anyLong(), anyLong());
+        verify(processedEvents, never()).save(any());
+        verify(deadLetters).delete(dl);
+    }
+
+    @Test
+    @DisplayName("복구 후 검증: 격리 건수와 최장 대기 시각을 낸다")
+    void summaryReportsPendingAndOldest() {
+        java.time.Instant oldest = java.time.Instant.parse("2026-09-18T00:00:00Z");
+        when(deadLetters.count()).thenReturn(3L);
+        when(deadLetters.findOldestCreatedAt()).thenReturn(Optional.of(oldest));
+
+        var summary = service.summary();
+
+        assertThat(summary.pendingCount()).isEqualTo(3L);
+        assertThat(summary.oldestCreatedAt()).isEqualTo(oldest);
+    }
 }
