@@ -1,0 +1,26 @@
+name: 기능
+description: 새 기능이나 동작 변경
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 배경
+      description: 지금 무엇이 안 되는가. 근거가 되는 코드·문서·측정이 있으면 함께 적는다.
+      placeholder: 현재는 …해서 …할 수 없다.
+    validations:
+      required: true
+  - type: textarea
+    id: task
+    attributes:
+      label: 할 일
+      description: 구현 범위. 하지 않을 것도 함께 적으면 범위가 흔들리지 않는다.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: 검증 기준
+      description: 무엇을 어떻게 확인하면 끝인가. 응답 코드가 아니라 상태 확정까지.
+    validations:
+      required: true
