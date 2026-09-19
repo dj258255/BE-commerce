@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAY STORE · 상품</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/store.css">
+</head>
+<body>
+<header id="app-header"></header>
+
+<main class="page">
+  <div class="container" id="root">
+    <nav class="crumb">
+      <a href="index.html">홈</a><span class="sep">/</span><span>상품</span>
+    </nav>
+    <div class="detail">
+      <div class="gallery" id="gallery"></div>
+      <div id="info"></div>
+    </div>
+    <section class="section" id="related-section" hidden>
+      <div class="section-head"><div><h2>함께 본 상품</h2><p>같은 카테고리의 다른 상품</p></div></div>
+      <div class="grid" id="related"></div>
+    </section>
+  </div>
+</main>
+
+<footer id="app-footer"></footer>
+
+<script src="assets/store.js"></script>
+<script>
+  var id = Number(Store.qs('id'));
+  var qty = 1;
+
+  Store.renderHeader();
+  Store.renderFooter();
+
+  function galleryHtml(p) {
+    var initial = (p.name || '?').trim().charAt(0);
+    return p.imageUrl
+      ? '<img src="' + Store.esc(p.imageUrl) + '" alt="' + Store.esc(p.name) + '" onerror="this.style.display=\'none\'">'
+      : '<span class="fallback">' + Store.esc(initial) + '</span>';
+  }
+
+  function infoHtml(p) {
+    var soldOut = !p.inStock;
+    return '' +
+      '<span class="brand">' + Store.esc(p.brand || '') + '</span>' +
+      '<h1>' + Store.esc(p.name) + '</h1>' +
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<span class="price">' + Store.won(p.price) + '</span>' +
+        (soldOut ? '<span class="badge b-red">품절</span>' : '<span class="badge b-green">구매 가능</span>') +
+        (p.categoryCode ? '<a class="badge b-dim" href="category.html?code=' + encodeURIComponent(p.categoryCode) + '">' +
+          Store.esc(p.categoryName || p.categoryCode) + '</a>' : '') +
+      '</div>' +
+      (soldOut ? '<div class="notice err">재고가 없어 주문할 수 없습니다.</div>' : '') +
+      '<div style="display:flex;align-items:center;gap:12px;margin-top:22px">' +
+        '<span class="muted" style="font-size:13px">수량</span>' +
+        '<span class="qty">' +
+          '<button id="minus" aria-label="수량 줄이기">−</button>' +
+          '<input id="qty" value="1" inputmode="numeric" aria-label="수량">' +
+          '<button id="plus" aria-label="수량 늘리기">+</button>' +
+        '</span>' +
+      '</div>' +
+      '<div class="total-line"><span>합계</span><span class="price" id="total">' + Store.won(p.price) + '</span></div>' +
+      '<div class="buy-row">' +
+        '<button class="btn" id="add-cart"' + (soldOut ? ' disabled' : '') + '>장바구니</button>' +
+        '<button class="btn btn-primary" id="buy-now"' + (soldOut ? ' disabled' : '') + '>바로 구매</button>' +
+      '</div>' +
+      '<div class="spec"><h3>상품 설명</h3><p>' + Store.esc(p.description || '설명이 없습니다.') + '</p></div>';
+  }
+
+  function bind(product) {
+    var q = document.getElementById('qty');
+    function sync() {
+      qty = Math.max(1, Number(q.value) || 1);
+      q.value = qty;
+      document.getElementById('total').textContent = Store.won(product.price * qty);
+    }
+    document.getElementById('minus').onclick = function () { q.value = qty - 1; sync(); };
+    document.getElementById('plus').onclick = function () { q.value = qty + 1; sync(); };
+    q.oninput = sync;
+
+    document.getElementById('add-cart').onclick = function () {
+      Store.cart.add(product, qty);
+      Store.toast(product.name + ' ' + qty + '개를 장바구니에 담았습니다', 'ok');
+    };
+    document.getElementById('buy-now').onclick = function () {
+      Store.cart.add(product, qty);
+      location.href = 'checkout.html';
+    };
+  }
+
+  (async function () {
+    if (!id) {
+      document.getElementById('root').innerHTML =
+        '<div class="empty"><h3>상품을 찾을 수 없습니다</h3><p>주소에 상품 번호가 없습니다.</p>' +
+        '<a class="btn btn-primary" href="category.html">전체 상품 보기</a></div>';
+      return;
+    }
+
+    var r = await Store.api('GET', '/products/' + id, { noAuth: true });
+    if (!r.ok) {
+      document.getElementById('root').innerHTML =
+        '<div class="empty"><h3>상품을 찾을 수 없습니다</h3><p>삭제되었거나 잘못된 주소입니다.</p>' +
+        '<a class="btn btn-primary" href="category.html">전체 상품 보기</a></div>';
+      return;
+    }
+
+    var p = r.data;
+    document.title = 'PAY STORE · ' + p.name;
+    document.getElementById('gallery').style.background = Store.gradientFor(p.productId);
+    document.getElementById('gallery').innerHTML = galleryHtml(p);
+    document.getElementById('info').innerHTML = infoHtml(p);
+    bind(p);
+
+    if (p.categoryCode) {
+      var rel = await Store.api('GET', '/products?category=' + encodeURIComponent(p.categoryCode) + '&size=9', { noAuth: true });
+      if (rel.ok) {
+        var others = rel.data.items.filter(function (x) { return x.productId !== p.productId; }).slice(0, 4);
+        if (others.length) {
+          document.getElementById('related').innerHTML = others.map(Store.productCard).join('');
+          document.getElementById('related-section').hidden = false;
+        }
+      }
+    }
+  })();
+</script>
+</body>
+</html>
