@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAY STORE · 검색</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/store.css">
+</head>
+<body>
+<header id="app-header"></header>
+
+<main class="page">
+  <div class="container">
+    <nav class="crumb">
+      <a href="index.html">홈</a><span class="sep">/</span><span>검색</span>
+    </nav>
+    <div class="page-head" id="head"></div>
+
+    <div class="toolbar">
+      <div class="count" id="count"></div>
+      <label class="muted" style="font-size:13px">정렬
+        <select class="input" id="sort" style="width:auto;display:inline-block;margin-left:8px">
+          <option value="newest">신상품순</option>
+          <option value="price_asc">낮은 가격순</option>
+          <option value="price_desc">높은 가격순</option>
+          <option value="name">이름순</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <div class="pager" id="pager"></div>
+  </div>
+</main>
+
+<footer id="app-footer"></footer>
+
+<script src="assets/store.js"></script>
+<script>
+  var SIZE = 12;
+  var q = Store.qs('q') || '';
+  var sort = Store.qs('sort') || 'newest';
+  var page = Math.max(0, Number(Store.qs('page') || 0));
+
+  Store.renderHeader();
+  Store.renderFooter();
+  document.getElementById('sort').value = sort;
+
+  function go(params) {
+    var u = new URL(location.href);
+    Object.keys(params).forEach(function (k) {
+      if (params[k] == null || params[k] === '') u.searchParams.delete(k);
+      else u.searchParams.set(k, params[k]);
+    });
+    location.href = u.pathname + '?' + u.searchParams.toString();
+  }
+
+  document.getElementById('sort').addEventListener('change', function () {
+    go({ sort: this.value, page: '' });
+  });
+
+  function pagerHtml(p, total) {
+    if (total <= 1) return '';
+    var out = '<button ' + (p <= 0 ? 'disabled' : '') + ' data-p="' + (p - 1) + '">←</button>';
+    for (var i = 0; i < total; i++) {
+      if (total > 7 && i > 1 && i < total - 2 && Math.abs(i - p) > 1) {
+        if (i === 2 || i === total - 3) out += '<span style="align-self:center;color:var(--sub)">…</span>';
+        continue;
+      }
+      out += '<button class="' + (i === p ? 'on' : '') + '" data-p="' + i + '">' + (i + 1) + '</button>';
+    }
+    out += '<button ' + (p >= total - 1 ? 'disabled' : '') + ' data-p="' + (p + 1) + '">→</button>';
+    return out;
+  }
+
+  document.getElementById('pager').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (b && b.dataset.p != null && !b.disabled) go({ page: b.dataset.p === '0' ? '' : b.dataset.p });
+  });
+
+  (async function () {
+    if (!q) {
+      document.getElementById('head').innerHTML = '<h1>검색</h1><p>상품명이나 브랜드를 입력해 찾아보세요.</p>';
+      document.getElementById('count').textContent = '';
+      document.getElementById('grid').innerHTML =
+        '<div class="empty" style="grid-column:1/-1"><h3>검색어를 입력해 주세요</h3>' +
+        '<p>상단 검색창에서 상품명이나 브랜드를 검색할 수 있습니다.</p>' +
+        '<a class="btn btn-primary" href="category.html">전체 상품 보기</a></div>';
+      return;
+    }
+
+    document.getElementById('head').innerHTML = '<h1>‘' + Store.esc(q) + '’ 검색 결과</h1>';
+    document.getElementById('grid').innerHTML = Store.skeletonGrid(SIZE);
+
+    var r = await Store.api('GET', '/products?q=' + encodeURIComponent(q) +
+      '&sort=' + encodeURIComponent(sort) + '&page=' + page + '&size=' + SIZE, { noAuth: true });
+
+    if (!r.ok) {
+      document.getElementById('count').textContent = '';
+      document.getElementById('grid').innerHTML = '<div class="empty"><h3>검색에 실패했습니다</h3></div>';
+      return;
+    }
+
+    var d = r.data;
+    document.getElementById('count').innerHTML = '검색 결과 <b>' + d.totalElements.toLocaleString() + '</b>개';
+    document.getElementById('grid').innerHTML = d.items.length
+      ? d.items.map(Store.productCard).join('')
+      : '<div class="empty" style="grid-column:1/-1"><h3>‘' + Store.esc(q) + '’에 대한 결과가 없습니다</h3>' +
+        '<p>다른 검색어로 시도하거나 카테고리를 둘러보세요.</p>' +
+        '<a class="btn btn-primary" href="category.html">전체 상품 보기</a></div>';
+    document.getElementById('pager').innerHTML = pagerHtml(page, d.totalPages);
+  })();
+</script>
+</body>
+</html>
