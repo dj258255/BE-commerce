@@ -24,6 +24,9 @@
   --header-h:64px;
 }
 *{box-sizing:border-box}
+/* [hidden]은 UA 스타일(display:none)의 우선순위가 낮아 .field 같은 클래스 규칙에 덮인다.
+   화면 전환에 hidden을 쓰므로 전역으로 못 박는다. */
+[hidden]{display:none!important}
 html{scroll-behavior:smooth}
 body{
   margin:0;background:var(--bg);color:var(--ink);

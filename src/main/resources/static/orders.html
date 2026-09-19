@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAY STORE · 주문내역</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/store.css">
+</head>
+<body>
+<header id="app-header"></header>
+
+<main class="page">
+  <div class="container">
+    <nav class="crumb"><a href="index.html">홈</a><span class="sep">/</span><span>주문내역</span></nav>
+    <div class="page-head">
+      <h1>내 주문내역</h1>
+      <p>주문 상태와 결제 상태를 함께 보여줍니다. 구매확정은 에스크로를 릴리스합니다.</p>
+    </div>
+    <div id="body"></div>
+  </div>
+</main>
+
+<footer id="app-footer"></footer>
+
+<script src="assets/store.js"></script>
+<script>
+  Store.renderHeader();
+  Store.renderFooter();
+
+  if (!Store.auth.require()) throw new Error('로그인이 필요합니다');
+
+  var orders = [];        // 목록(GET /orders)
+  var details = {};       // orderNo → 상세(GET /orders/{orderNo}), 펼친 것만
+
+  function orderCard(o) {
+    var d = details[o.orderNo];
+    return '' +
+      '<div class="order-card">' +
+        '<div class="order-top">' +
+          '<div><div class="order-no">' + Store.esc(o.orderNo) + '</div>' +
+            '<div class="muted" style="font-size:13px;margin-top:4px">' + Store.fmtDate(o.createdAt) + '</div></div>' +
+          '<div style="display:flex;align-items:center;gap:10px">' +
+            Store.statusBadge(o.status) + '<span class="price">' + Store.won(o.totalAmount) + '</span>' +
+          '</div>' +
+        '</div>' +
+        (d ? detailHtml(d) : '') +
+        '<div class="order-actions">' +
+          '<button class="btn btn-sm" data-act="toggle" data-no="' + Store.esc(o.orderNo) + '">' +
+            (d ? '접기' : '상세') + '</button>' +
+          (o.status === 'PAID'
+            ? '<button class="btn btn-sm" data-act="confirm" data-no="' + Store.esc(o.orderNo) + '">구매확정</button>' +
+              '<button class="btn btn-sm btn-danger" data-act="cancel" data-no="' + Store.esc(o.orderNo) + '" ' +
+                'data-amt="' + o.totalAmount + '">취소</button>'
+            : '') +
+        '</div>' +
+      '</div>';
+  }
+
+  function detailHtml(d) {
+    return '<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
+        '<span class="badge b-dim">주문 ' + Store.esc(d.status) + '</span>' +
+        '<span class="badge b-dim">결제 ' + Store.esc(d.paymentStatus || '없음') + '</span>' +
+        '<span class="badge b-dim">만료 ' + Store.fmtDate(d.expiresAt) + '</span>' +
+      '</div>' +
+      (d.items || []).map(function (i) {
+        return '<div class="sum-row"><span>' + Store.esc(i.productName) + ' × ' + i.quantity + '</span><b>' +
+          Store.won(i.unitPrice * i.quantity) + '</b></div>';
+      }).join('') +
+      '<div class="sum-row" style="border-top:1px dashed var(--line2);margin-top:6px;padding-top:10px">' +
+        '<span>합계</span><b>' + Store.won(d.totalAmount) + '</b></div>' +
+    '</div>';
+  }
+
+  function render() {
+    document.getElementById('body').innerHTML = orders.length
+      ? orders.map(orderCard).join('')
+      : '<div class="empty"><h3>주문 내역이 없습니다</h3><p>첫 주문을 만들어 보세요.</p>' +
+        '<a class="btn btn-primary" href="category.html">상품 둘러보기</a></div>';
+  }
+
+  async function load() {
+    var r = await Store.api('GET', '/orders');
+    if (!r.ok) {
+      document.getElementById('body').innerHTML =
+        '<div class="empty"><h3>주문을 불러오지 못했습니다</h3><p>잠시 후 다시 시도해 주세요.</p>' +
+        '<a class="btn btn-primary" href="index.html">홈으로</a></div>';
+      return;
+    }
+    orders = Array.isArray(r.data) ? r.data : [];
+    details = {};
+    render();
+  }
+
+  async function toggle(orderNo) {
+    if (details[orderNo]) { delete details[orderNo]; render(); return; }
+    var r = await Store.api('GET', '/orders/' + orderNo);
+    if (r.ok) details[orderNo] = r.data;
+    else Store.toast('주문을 불러오지 못했습니다', 'err');
+    render();
+  }
+
+  async function cancel(orderNo, amount) {
+    var input = prompt('취소할 금액을 입력하세요 (전액: ' + amount + ')', amount);
+    if (input == null) return;
+    var cancelAmount = Number(input);
+    if (!(cancelAmount > 0)) { Store.toast('취소 금액이 올바르지 않습니다', 'err'); return; }
+    var r = await Store.api('POST', '/orders/' + orderNo + '/cancel',
+      { body: { cancelAmount: cancelAmount, reason: '고객 요청' } });
+    if (r.ok) Store.toast('취소가 접수되었습니다', 'ok');
+    else Store.toast((r.data && r.data.message) || '취소에 실패했습니다', 'err');
+    load();
+  }
+
+  async function confirmPurchase(orderNo) {
+    var r = await Store.api('POST', '/orders/' + orderNo + '/confirm-purchase', { body: {} });
+    if (r.ok) Store.toast('구매확정되었습니다 (에스크로 릴리스)', 'ok');
+    else Store.toast((r.data && r.data.message) || '구매확정에 실패했습니다', 'err');
+    load();
+  }
+
+  document.getElementById('body').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-act]');
+    if (!b) return;
+    if (b.dataset.act === 'toggle') toggle(b.dataset.no);
+    else if (b.dataset.act === 'cancel') cancel(b.dataset.no, b.dataset.amt);
+    else if (b.dataset.act === 'confirm') confirmPurchase(b.dataset.no);
+  });
+
+  load();
+</script>
+</body>
+</html>

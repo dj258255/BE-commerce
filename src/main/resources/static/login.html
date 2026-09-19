@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAY STORE · 로그인</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/store.css">
+<style>
+  .auth-wrap{max-width:420px;margin:24px auto 0}
+  .tabs{display:flex;gap:6px;margin-bottom:18px}
+  .tabs button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:var(--radius-sm);
+    padding:10px;font-weight:650;color:var(--sub)}
+  .tabs button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+  .demo{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+</style>
+</head>
+<body>
+<header id="app-header"></header>
+
+<main class="page">
+  <div class="container">
+    <div class="auth-wrap">
+      <div class="page-head"><h1 id="title">로그인</h1><p>주문·결제에는 로그인이 필요합니다.</p></div>
+
+      <div class="panel">
+        <div class="tabs">
+          <button id="tab-login" class="on">로그인</button>
+          <button id="tab-signup">회원가입</button>
+        </div>
+
+        <form id="form">
+          <label class="field" id="email-field" hidden><span>이메일</span>
+            <input class="input" id="email" type="email" autocomplete="username" placeholder="you@example.com"></label>
+          <label class="field"><span id="id-label">아이디</span>
+            <input class="input" id="username" autocomplete="username" placeholder="1 또는 이메일"></label>
+          <label class="field"><span>비밀번호</span>
+            <input class="input" id="password" type="password" autocomplete="current-password" placeholder="••••••••"></label>
+          <button class="btn btn-primary btn-block btn-lg" id="submit" type="submit">로그인</button>
+        </form>
+        <div id="notice"></div>
+
+        <div id="demo-box">
+          <p class="muted" style="font-size:13px;margin:18px 0 0">데모 계정</p>
+          <div class="demo">
+            <button class="btn btn-sm" data-u="1" data-p="user-local-only">사용자 1</button>
+            <button class="btn btn-sm" data-u="2" data-p="user-local-only">사용자 2</button>
+            <button class="btn btn-sm" data-u="admin" data-p="admin-local-only">운영자</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="account-panel" hidden>
+        <h3>로그인됨</h3>
+        <p class="hint" id="account-info"></p>
+        <div style="display:flex;gap:8px">
+          <a class="btn btn-primary" href="orders.html">주문내역</a>
+          <button class="btn" id="logout">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer id="app-footer"></footer>
+
+<script src="assets/store.js"></script>
+<script>
+  Store.renderHeader();
+  Store.renderFooter();
+
+  var mode = 'login';
+  var $ = function (id) { return document.getElementById(id); };
+
+  /** 오픈 리다이렉트 방지 — 같은 사이트의 페이지만 허용한다. */
+  function safeNext() {
+    var next = Store.qs('next');
+    if (!next || /[:\/]{2}|^\/\//.test(next) || next.indexOf('http') === 0) return 'orders.html';
+    return next.replace(/^\/+/, '');
+  }
+
+  function notice(html) { $('notice').innerHTML = html; }
+
+  function setMode(m) {
+    mode = m;
+    $('tab-login').classList.toggle('on', m === 'login');
+    $('tab-signup').classList.toggle('on', m === 'signup');
+    $('title').textContent = m === 'login' ? '로그인' : '회원가입';
+    $('submit').textContent = m === 'login' ? '로그인' : '가입하고 시작하기';
+    $('email-field').hidden = m === 'login';
+    $('demo-box').hidden = m !== 'login';
+    $('id-label').textContent = m === 'login' ? '아이디' : '아이디(숫자 userId는 서버가 정합니다)';
+    $('username').placeholder = m === 'login' ? '1 또는 이메일' : '(가입 후 이메일로 로그인)';
+    $('username').disabled = m === 'signup';
+    $('password').autocomplete = m === 'login' ? 'current-password' : 'new-password';
+    notice('');
+  }
+
+  $('tab-login').onclick = function () { setMode('login'); };
+  $('tab-signup').onclick = function () { setMode('signup'); };
+
+  document.querySelectorAll('.demo button').forEach(function (b) {
+    b.onclick = async function () {
+      $('username').value = b.dataset.u;
+      $('password').value = b.dataset.p;
+      await doLogin(b.dataset.u, b.dataset.p);
+    };
+  });
+
+  async function doLogin(username, password) {
+    notice('<div class="notice">확인 중…</div>');
+    var r = await Store.auth.login(username, password);
+    if (r.ok && r.data && r.data.token) {
+      notice('<div class="notice ok">로그인되었습니다. 이동합니다…</div>');
+      setTimeout(function () { location.href = safeNext(); }, 600);
+    } else {
+      notice('<div class="notice err">아이디 또는 비밀번호가 올바르지 않습니다.</div>');
+    }
+  }
+
+  $('form').onsubmit = async function (e) {
+    e.preventDefault();
+    var username = $('username').value.trim();
+    var password = $('password').value;
+
+    if (mode === 'signup') {
+      var email = $('email').value.trim();
+      if (!email || !password) { notice('<div class="notice err">이메일과 비밀번호를 입력하세요.</div>'); return; }
+      var s = await Store.auth.signup(email, password);
+      if (!s.ok) {
+        notice('<div class="notice err">가입에 실패했습니다. (' + s.status + ')</div>');
+        return;
+      }
+      notice('<div class="notice ok">가입되었습니다. 로그인합니다…</div>');
+      await doLogin(email, password);
+      return;
+    }
+
+    if (!username || !password) { notice('<div class="notice err">아이디와 비밀번호를 입력하세요.</div>'); return; }
+    await doLogin(username, password);
+  };
+
+  // 이미 로그인돼 있으면 상태를 보여준다.
+  if (Store.auth.isLoggedIn()) {
+    $('form').hidden = true;
+    document.querySelector('.tabs').hidden = true;
+    $('demo-box').hidden = true;
+    $('account-panel').hidden = false;
+    $('account-info').textContent = 'userId=' + Store.auth.userId() + ' · 권한 ' + (Store.auth.role() || 'USER');
+  }
+
+  $('logout').onclick = async function () {
+    await Store.auth.logout();
+    location.href = 'index.html';
+  };
+
+  setMode('login');
+</script>
+</body>
+</html>
