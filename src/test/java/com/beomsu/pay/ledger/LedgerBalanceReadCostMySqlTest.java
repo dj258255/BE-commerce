@@ -18,8 +18,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>잔액은 원장을 유일한 진실로 두고 매번 다시 센다 — 그래서 원장과 갈라질 수 없고, 대신 비용이
  * 행 수에 비례한다. 이 테스트가 그 비례의 기울기와, 인덱스가 어디까지를 버티게 하는지를 숫자로 남긴다.
  *
- * <p>{@code 1000만 행}은 CI 시간이 크므로 여기서는 {@code 10만 · 100만}을 잰다. 1000만 행은 같은
- * 하네스를 서버 안에서 돌리는 {@code tools/measure-ledger-balance.sh} 로 잰다(성능 리포트 16절).
+ * <p>{@code 1000만 행}은 CI 시간이 크므로 여기서는 {@code 10만}을 기본으로 잰다. {@code 100만} 행은
+ * {@code -Dledger.bench.sizes=100000,1000000} 로 켜고, 1000만 행은 같은 하네스를 서버 안에서 돌리는
+ * {@code tools/measure-ledger-balance.sh} 로 잰다(성능 리포트 16절).
  *
  * <p>같은 {@code ledger_entries} 를 인덱스 유무만 바꿔 두 번 잰다. 인덱스를 걸면 조회가 빨라지는
  * 대신 쓰기가 느려지므로, 그 대가는 {@link com.beomsu.pay.order.IndexWriteCostMySqlTest} 와 같은
@@ -28,7 +29,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Tag("integration")
 class LedgerBalanceReadCostMySqlTest {
 
-    private static final long[] SIZES = {100_000, 1_000_000};
+    /**
+     * 잴 행 수. <b>기본은 10만 행만</b> — 100만 행은 삽입 자체가 CI 시간을 크게 늘린다.
+     * 전체(100만 포함)를 재려면 {@code -Dledger.bench.sizes=100000,1000000} 로 켠다.
+     */
+    private static final long[] SIZES = sizes();
+
+    private static long[] sizes() {
+        String spec = System.getProperty("ledger.bench.sizes", "100000");
+        long[] parsed = java.util.Arrays.stream(spec.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty())
+                .mapToLong(Long::parseLong).toArray();
+        if (parsed.length == 0) {
+            throw new IllegalArgumentException("ledger.bench.sizes 가 비었다: " + spec);
+        }
+        return parsed;
+    }
+
     private static final int BATCH = 1_000;
     private static final int RUNS = 20;   // 1회만 재면 몇 ms 차이는 노이즈와 구별되지 않는다
 
