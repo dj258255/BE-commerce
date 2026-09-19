@@ -141,7 +141,8 @@ input,select,textarea{font:inherit}
   border-radius:var(--radius);overflow:hidden;transition:.16s}
 .card:hover{border-color:var(--line2);box-shadow:var(--shadow);transform:translateY(-2px)}
 .thumb{position:relative;aspect-ratio:1/1;background:linear-gradient(135deg,#F1F4F9,#E5EAF3);overflow:hidden}
-.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  mix-blend-mode:luminosity;opacity:.9}
 .thumb .fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   font-weight:800;font-size:26px;color:#fff;letter-spacing:-.02em}
 .card-body{padding:13px 14px 16px;display:flex;flex-direction:column;gap:5px;flex:1}
@@ -209,9 +210,12 @@ input,select,textarea{font:inherit}
 /* ---------- 상세 ---------- */
 .detail{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:44px}
 @media(max-width:900px){.detail{grid-template-columns:1fr;gap:26px}}
-.gallery{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;aspect-ratio:1/1;
+.gallery{position:relative;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;aspect-ratio:1/1;
   background:linear-gradient(135deg,#F1F4F9,#E5EAF3)}
-.gallery img{width:100%;height:100%;object-fit:cover}
+.gallery img{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:cover;
+  mix-blend-mode:luminosity;opacity:.9}
+.gallery .fallback{position:absolute;inset:0;z-index:0;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:72px;color:#fff;letter-spacing:-.03em}
 .detail .brand{font-size:13px;color:var(--sub);font-weight:650}
 .detail h1{font-size:26px;margin:8px 0 12px}
 .detail .price{font-size:26px}

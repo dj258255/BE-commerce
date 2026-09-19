@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAY STORE · 장바구니</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/store.css">
+</head>
+<body>
+<header id="app-header"></header>
+
+<main class="page">
+  <div class="container">
+    <nav class="crumb"><a href="index.html">홈</a><span class="sep">/</span><span>장바구니</span></nav>
+    <div class="page-head"><h1>장바구니</h1><p>담은 상품을 확인하고 주문으로 넘어가세요</p></div>
+    <div id="body"></div>
+  </div>
+</main>
+
+<footer id="app-footer"></footer>
+
+<script src="assets/store.js"></script>
+<script>
+  Store.renderHeader();
+  Store.renderFooter();
+
+  function rowHtml(it) {
+    var initial = (it.name || '?').trim().charAt(0);
+    return '' +
+      '<div class="cart-row" data-id="' + it.productId + '">' +
+        '<a class="thumb" href="product.html?id=' + it.productId + '" style="background:' + Store.gradientFor(it.productId) + '">' +
+          (it.imageUrl
+            ? '<img src="' + Store.esc(it.imageUrl) + '" alt="" onerror="this.style.display=\'none\'">'
+            : '<span class="fallback">' + Store.esc(initial) + '</span>') +
+        '</a>' +
+        '<div>' +
+          '<div class="muted" style="font-size:12px;font-weight:600">' + Store.esc(it.brand || '') + '</div>' +
+          '<a href="product.html?id=' + it.productId + '" style="font-weight:650">' + Store.esc(it.name) + '</a>' +
+          '<div class="price" style="font-size:14px;margin-top:6px">' + Store.won(it.price) + '</div>' +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">' +
+          '<span class="qty">' +
+            '<button data-act="dec">−</button>' +
+            '<input value="' + it.quantity + '" data-act="qty" inputmode="numeric">' +
+            '<button data-act="inc">+</button>' +
+          '</span>' +
+          '<span class="price" style="font-size:15px">' + Store.won(it.price * it.quantity) + '</span>' +
+          '<button class="btn-ghost btn btn-sm" data-act="remove">삭제</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function render() {
+    var items = Store.cart.all();
+    var body = document.getElementById('body');
+
+    if (!items.length) {
+      body.innerHTML =
+        '<div class="empty"><h3>장바구니가 비어 있습니다</h3><p>마음에 드는 상품을 담아보세요.</p>' +
+        '<a class="btn btn-primary" href="category.html">상품 둘러보기</a></div>';
+      return;
+    }
+
+    var subtotal = Store.cart.subtotal();
+    body.innerHTML =
+      '<div class="cart-layout">' +
+        '<div class="cart-list">' + items.map(rowHtml).join('') + '</div>' +
+        '<aside class="summary">' +
+          '<h3>주문 요약</h3>' +
+          '<div class="sum-row"><span>상품 ' + Store.cart.count() + '개</span><b>' + Store.won(subtotal) + '</b></div>' +
+          '<div class="sum-row"><span>배송비</span><b>무료</b></div>' +
+          '<div class="sum-total"><span>결제 예정</span><span class="price">' + Store.won(subtotal) + '</span></div>' +
+          '<button class="btn btn-primary btn-block btn-lg" id="to-checkout" style="margin-top:18px">주문하기</button>' +
+          '<button class="btn btn-ghost btn-block" id="clear" style="margin-top:8px">장바구니 비우기</button>' +
+        '</aside>' +
+      '</div>';
+
+    body.querySelectorAll('.cart-row').forEach(function (row) {
+      var pid = Number(row.dataset.id);
+      row.querySelectorAll('[data-act]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          var act = el.dataset.act;
+          var item = Store.cart.all().find(function (i) { return i.productId === pid; });
+          if (act === 'inc') Store.cart.setQty(pid, item.quantity + 1);
+          else if (act === 'dec') Store.cart.setQty(pid, item.quantity - 1);
+          else if (act === 'remove') Store.cart.remove(pid);
+          else if (act === 'qty') return;
+          render();
+        });
+      });
+      var input = row.querySelector('[data-act="qty"]');
+      input.addEventListener('change', function () {
+        Store.cart.setQty(pid, Number(input.value));
+        render();
+      });
+    });
+
+    document.getElementById('clear').onclick = function () {
+      if (confirm('장바구니를 비우시겠습니까?')) { Store.cart.clear(); render(); }
+    };
+    document.getElementById('to-checkout').onclick = function () {
+      if (!Store.auth.isLoggedIn()) {
+        Store.toast('주문하려면 로그인이 필요합니다', 'err');
+      }
+      location.href = 'checkout.html';
+    };
+  }
+
+  render();
+</script>
+</body>
+</html>

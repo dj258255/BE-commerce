@@ -201,20 +201,18 @@
   }
 
   // ---------- 렌더 조각 ----------
-  /** 상품 카드 HTML. 이미지가 없거나 실패하면 그라디언트 폴백이 드러난다. */
+  /** 상품 카드 HTML. 사진은 상품별 그라디언트에 블렌딩돼 장식 타일이 되고, 실패하면 그라디언트만 남는다. */
   function productCard(p) {
     var initial = (p.name || '?').trim().charAt(0);
     var tags = '';
     if (!p.inStock) tags += '<span class="tag tag-dim">품절</span>';
     else if (p.featured) tags += '<span class="tag">추천</span>';
+    var visual = p.imageUrl
+      ? '<img src="' + esc(p.imageUrl) + '" alt="' + esc(p.name) + '" loading="lazy" onerror="this.style.display=\'none\'">'
+      : '<span class="fallback">' + esc(initial) + '</span>';
     return '' +
       '<a class="card' + (p.inStock ? '' : ' sold') + '" href="product.html?id=' + p.productId + '">' +
-        '<div class="thumb">' +
-          '<span class="fallback" style="background:' + gradientFor(p.productId) + '">' + esc(initial) + '</span>' +
-          (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="' + esc(p.name) + '" loading="lazy" ' +
-            'onerror="this.style.display=\'none\'">' : '') +
-          tags +
-        '</div>' +
+        '<div class="thumb" style="background:' + gradientFor(p.productId) + '">' + visual + tags + '</div>' +
         '<div class="card-body">' +
           '<span class="brand">' + esc(p.brand || p.categoryName || '') + '</span>' +
           '<span class="name">' + esc(p.name) + '</span>' +
