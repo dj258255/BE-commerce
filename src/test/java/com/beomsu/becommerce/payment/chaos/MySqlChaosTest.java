@@ -97,7 +97,7 @@ class MySqlChaosTest {
         int proxyPort = TOXIPROXY.getMappedPort(8666);
         // socketTimeout(3s): 응답 지연 toxic이 이 값을 넘으면 JDBC가 소켓 읽기를 끊어 예외로 만든다(hang 방지).
         String url = "jdbc:mysql://" + proxyHost + ":" + proxyPort
-                + "/pay?serverTimezone=UTC&characterEncoding=UTF-8&socketTimeout=3000&connectTimeout=2000";
+                + "/becommerce?serverTimezone=UTC&characterEncoding=UTF-8&socketTimeout=3000&connectTimeout=2000";
         registry.add("spring.datasource.url", () -> url);
         registry.add("spring.datasource.username", MYSQL::getUsername);
         registry.add("spring.datasource.password", MYSQL::getPassword);
