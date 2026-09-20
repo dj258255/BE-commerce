@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BE-commerce 개인화 · 캐시 압축 임계값</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/pz.css">
+</head>
+<body>
+<header id="app-top"></header>
+
+<main class="page">
+  <div class="container">
+    <div class="head">
+      <h1>캐시 값 크기와 압축 임계값</h1>
+      <p>캐시는 DB 조회를 없애도 <b>네트워크 비용은 없애지 않는다.</b> 값이 커지면 GET이 tail에서 튄다. 그럼 언제부터 압축이 이득인가.</p>
+    </div>
+
+    <section class="panel" style="margin-bottom:16px">
+      <h2>Redis GET p95 — 값 크기 구간별</h2>
+      <div class="hint" id="hint"></div>
+      <div id="chart"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <div class="grid g3" id="kpis" style="margin-bottom:16px"></div>
+
+    <section class="panel" style="margin-bottom:16px">
+      <h2>원자료</h2>
+      <div class="hint">압축률은 올라가지만 CPU도 함께 쓴다. 임계값 아래에서는 이 교환이 손해다.</div>
+      <div id="table"></div>
+    </section>
+
+    <section class="panel">
+      <h2>결론과 트레이드오프</h2>
+      <div id="conclusion"></div>
+    </section>
+
+    <p class="foot-note" id="harness"></p>
+  </div>
+</main>
+
+<footer id="app-foot"></footer>
+
+<script src="assets/pz.js"></script>
+<script>
+  PZ.header('console');
+
+  (async function () {
+    var d = await PZ.fixture('exp-cache');
+    if (!d) return;
+
+    document.getElementById('hint').textContent =
+      'x = 값 크기(' + d.unit.x + '), y = GET p95(' + d.unit.y + '). 작은 값에서는 압축이 오히려 느리다.';
+
+    PZ.line(document.getElementById('chart'), d.series, {
+      xLabel: 'value size (KB)',
+      xTicks: [1, 50, 350, 700],
+      y0: true,
+      width: 760, height: 260
+    });
+    PZ.legend(document.getElementById('legend'), d.series);
+
+    var c = d.conclusion;
+    document.getElementById('kpis').innerHTML =
+      PZ.kpi('권장 임계값', c.thresholdKB + 'KB', '이상부터 압축', 'good') +
+      PZ.kpi('700KB에서 GET', PZ.num(d.rows[5].lz4Ms, 2) + 'ms',
+        '무압축 ' + PZ.num(d.rows[5].noneMs, 2) + 'ms 대비', 'good') +
+      PZ.kpi('1KB에서 GET', PZ.num(d.rows[0].lz4Ms, 2) + 'ms',
+        '무압축 ' + PZ.num(d.rows[0].noneMs, 2) + 'ms 보다 느림', 'bad');
+
+    PZ.table(document.getElementById('table'),
+      [
+        { key: 'sizeKB', label: '크기(KB)', num: true },
+        { key: 'noneMs', label: '무압축 p95(ms)', num: true, fmt: function (v) { return PZ.num(v, 2); } },
+        { key: 'lz4Ms', label: 'LZ4 p95(ms)', num: true, fmt: function (v) { return PZ.num(v, 2); } },
+        { key: 'snappyMs', label: 'Snappy p95(ms)', num: true, fmt: function (v) { return PZ.num(v, 2); } },
+        { key: 'bytesReducedPct', label: '전송량 감소', num: true, fmt: function (v) { return PZ.pct(v); } },
+        { key: 'cpuMs', label: '압축 CPU(ms)', num: true, fmt: function (v) { return PZ.num(v, 2); } }
+      ],
+      d.rows);
+
+    document.getElementById('conclusion').innerHTML =
+      '<p style="margin:0 0 10px">' + PZ.esc(c.statement) + '</p>' +
+      '<p style="margin:0 0 10px;color:var(--sub)"><b>트레이드오프</b> — ' + PZ.esc(c.tradeoff) + '</p>' +
+      '<div class="badge b-warn">미해결 — ' + PZ.esc(c.openQuestion) + '</div>';
+
+    document.getElementById('harness').textContent = '하네스: ' + d._harness + ' · 방법: ' + d._method;
+  })();
+</script>
+</body>
+</html>

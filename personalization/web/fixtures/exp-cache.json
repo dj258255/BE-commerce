@@ -1,0 +1,26 @@
+{
+  "_mock": true,
+  "_source": "M6 실험. value 크기 구간별 Redis GET p95와 압축 효과. 실측 전까지는 모양만 고정한 목값이다.",
+  "_harness": "tools/cache-compression-experiment.sh (예정) — 값 1만 개를 구간별로 넣고 GET 1만 회",
+  "_method": "정적 값(반복 시뮬레이션 JSON) 1만 개를 크기 구간별로 넣고, 무압축/LZ4/Snappy로 GET 1만 회.",
+  "unit": { "x": "KB", "y": "ms" },
+  "series": [
+    { "name": "무압축", "cls": "s-none", "points": [[1, 0.31], [10, 0.34], [50, 0.52], [100, 0.71], [350, 1.62], [700, 3.05]] },
+    { "name": "LZ4", "cls": "s-lz4", "points": [[1, 0.38], [10, 0.36], [50, 0.41], [100, 0.46], [350, 0.72], [700, 1.11]] },
+    { "name": "Snappy", "cls": "s-snappy", "points": [[1, 0.40], [10, 0.38], [50, 0.45], [100, 0.52], [350, 0.88], [700, 1.42]] }
+  ],
+  "rows": [
+    { "sizeKB": 1, "noneMs": 0.31, "lz4Ms": 0.38, "snappyMs": 0.40, "bytesReducedPct": 12.0, "cpuMs": 0.02 },
+    { "sizeKB": 10, "noneMs": 0.34, "lz4Ms": 0.36, "snappyMs": 0.38, "bytesReducedPct": 38.5, "cpuMs": 0.05 },
+    { "sizeKB": 50, "noneMs": 0.52, "lz4Ms": 0.41, "snappyMs": 0.45, "bytesReducedPct": 61.2, "cpuMs": 0.19 },
+    { "sizeKB": 100, "noneMs": 0.71, "lz4Ms": 0.46, "snappyMs": 0.52, "bytesReducedPct": 68.4, "cpuMs": 0.34 },
+    { "sizeKB": 350, "noneMs": 1.62, "lz4Ms": 0.72, "snappyMs": 0.88, "bytesReducedPct": 80.6, "cpuMs": 0.98 },
+    { "sizeKB": 700, "noneMs": 3.05, "lz4Ms": 1.11, "snappyMs": 1.42, "bytesReducedPct": 82.1, "cpuMs": 1.87 }
+  ],
+  "conclusion": {
+    "thresholdKB": 50,
+    "statement": "50KB 미만에서는 CPU·지연을 더 내고 얻는 게 없다. 50KB를 넘으면 LZ4가 GET p95와 전송량 모두에서 이긴다.",
+    "tradeoff": "압축은 Redis 메모리와 네트워크를 아끼는 대신 애플리케이션 CPU를 쓴다. 값이 작으면 그 교환이 손해다.",
+    "openQuestion": "p99와 동시 부하(peak congestion)에서 임계값이 더 내려가는지 확인 필요"
+  }
+}

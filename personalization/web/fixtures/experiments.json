@@ -1,0 +1,37 @@
+{
+  "_mock": true,
+  "_source": "실험 목록은 이슈/마일스톤에서 온다. 실험 결과가 쌓이면 summary가 실제 수치로 채워진다.",
+  "experiments": [
+    {
+      "id": "freshness", "title": "신선도 vs 지연", "milestone": "M2", "issue": 124,
+      "question": "최신 이벤트를 모델에 넣으려면 얼마나 기다려야 하고, 그 대가는 무엇인가",
+      "status": "todo", "href": null, "summary": null
+    },
+    {
+      "id": "consistency", "title": "online/offline 컨텍스트 일치율", "milestone": "M2", "issue": 125,
+      "question": "같은 로그로 만든 학습 피처와 서빙 피처가 어디서 갈라지는가",
+      "status": "todo", "href": null, "summary": null
+    },
+    {
+      "id": "overload", "title": "과부하와 degradation", "milestone": "M3", "issue": 126,
+      "question": "모델이 포화됐을 때 SLO를 지키려면 모델 사용을 얼마나 포기해야 하는가",
+      "status": "todo", "href": null, "summary": null
+    },
+    {
+      "id": "constraints", "title": "제약과 재검증 비용", "milestone": "M4", "issue": 127,
+      "question": "모델 출력을 사실로 쓰지 않으려면 응답 직전에 얼마를 더 지불해야 하는가",
+      "status": "todo", "href": null, "summary": null
+    },
+    {
+      "id": "budget", "title": "생성 범위와 계산 예산", "milestone": "M5", "issue": 128,
+      "question": "생성 범위를 늘리면 전체 latency budget에서 모델 몫이 얼마가 되는가",
+      "status": "todo", "href": null, "summary": null
+    },
+    {
+      "id": "cache", "title": "캐시 압축 임계값", "milestone": "M6", "issue": 129,
+      "question": "값이 몇 KB를 넘을 때부터 압축이 이득인가",
+      "status": "done", "href": "exp-cache.html",
+      "summary": "1KB 구간에서는 압축이 손해, 50KB부터 GET 이득이 뚜렷"
+    }
+  ]
+}
