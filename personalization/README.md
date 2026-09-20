@@ -24,6 +24,18 @@ AI 모델이 실제 request path 안에 들어왔을 때 **백엔드가 무엇�
 - **프론트**: `web/`에 껍데기. **목 계약(fixture)** 으로 화면을 먼저 만들고, 실험이 끝나면 실데이터로 교체
 - **백엔드**: 아직 없음 (M0 설계부터)
 
+## 문서
+
+| 문서 | 무엇 |
+|---|---|
+| [ROADMAP.md](ROADMAP.md) | 지금 어디까지 왔는가 (계획/구현/검증/릴리스 구분) |
+| [docs/00-data.md](docs/00-data.md) | 데이터 계약과 품질 — 조인 키, 함정, 합성 데이터 구분 |
+| [docs/01-architecture.md](docs/01-architecture.md) | offline/nearline/online 평면, 컴포넌트, 경계, 분리 조건 |
+| [docs/02-experiments.md](docs/02-experiments.md) | 실험 7종의 가설·지표·방법·판정 |
+| [docs/03-verification.md](docs/03-verification.md) | 검증 기록 형식과 규칙 |
+| [docs/04-storage.md](docs/04-storage.md) | **저장과 적재** — 상품 승격 매핑, 유저 매핑, 파이프라인 |
+| [web/README.md](web/README.md) | 프론트 실행 방법과 목 계약 |
+
 ## 경계
 
 `BE-commerce` 모노레포 안의 자기완결 영역이다. 지금은 통째로 떼어낼 수 있는 형태로만 유지하고,
