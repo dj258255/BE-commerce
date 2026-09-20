@@ -32,6 +32,13 @@ jobs:
       - name: Run tests
         run: ./gradlew clean test --console=plain
 
+      # "테스트가 초록"이 아니라 "검증하기로 한 테스트가 실제로 돌았는가"를 본다.
+      # 환경변수·키·아티팩트가 없으면 테스트는 조용히 skip되고 빌드는 성공한다 —
+      # 그러면 검증하지 않은 기능이 초록불 아래로 나간다. 의도적 예외는 ci/allowed-skips.txt 에
+      # 이유와 함께 적는다.
+      - name: Check skipped tests (건너뛴 테스트는 통과가 아니다)
+        run: python3 tools/check_skipped_tests.py build/test-results/test ci/allowed-skips.txt
+
       # consumer-app은 별도 Gradle 프로젝트(독립 빌드)라 위 test에 포함되지 않는다.
       # Kafka 소비자가 깨진 채 머지되지 않도록 CI에서 함께 빌드·검증한다.
       - name: Build consumer-app (독립 프로젝트)
@@ -113,6 +120,11 @@ jobs:
 
       - name: Run integration tests (Testcontainers)
         run: ./gradlew integrationTest --console=plain
+
+      # 통합 테스트도 같은 기준으로 본다. 실제 PG 키가 없어 건너뛰는 계약 테스트는
+      # ci/allowed-skips.txt 에 이유와 함께 등록돼 있다.
+      - name: Check skipped tests (건너뛴 테스트는 통과가 아니다)
+        run: python3 tools/check_skipped_tests.py build/test-results/integrationTest ci/allowed-skips.txt
 
       - name: Upload integration report
         if: always()
