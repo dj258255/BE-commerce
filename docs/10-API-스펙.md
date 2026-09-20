@@ -372,16 +372,20 @@ sequenceDiagram
 | `size` | `20` | 최대 60으로 상한을 건다 |
 
 ```json
-// GET /api/v1/products?category=digital&sort=price_asc&size=2 → 200
+// GET /api/v1/products?category=ladieswear&sort=price_asc&size=2 → 200
 {
   "items": [
-    { "productId": 7, "name": "휴대용 보조배터리 20000mAh", "price": 39000, "brand": "볼트",
-      "categoryCode": "digital", "categoryName": "디지털·가전",
-      "imageUrl": "https://picsum.photos/seed/7/600/600", "inStock": true }
+    { "productId": 126589012, "name": "2p Claw", "price": 1000, "brand": "H&M",
+      "categoryCode": "ladieswear", "categoryName": "여성복",
+      "imageUrl": "/uploads/0126589012.jpg", "inStock": true }
   ],
-  "page": 0, "size": 2, "totalElements": 7, "totalPages": 4
+  "page": 0, "size": 2, "totalElements": 39737, "totalPages": 19869
 }
 ```
+
+- `imageUrl`은 **경로**(`/uploads/{article_id}.jpg`)다. URL 전체가 아니라 경로를 두는 이유는 저장소를
+  옮길 때(S3·CDN) 설정만 바꾸면 되게 하기 위해서다. 이미지가 없는 상품은 `null`이고 화면은 폴백을 그린다
+  — 카탈로그 전체가 아니라 **일부(19.4%)만** 이미지가 있다(`personalization/docs/04-storage.md` §6).
 
 - `inStock`은 재고 0을 화면이 알아채 장바구니를 막게 하려고 싣는다. 재고 차감은 승인 시점이라
   여기서 막지 않으면 주문 생성까지는 통과하고 승인에서야 `OUT_OF_STOCK`으로 실패한다.
