@@ -1,0 +1,23 @@
+  user 1914: 30건 (긴 사용자=True)
+  user 1915: 30건 (긴 사용자=True)
+  user 1916: 30건 (긴 사용자=True)
+  user 1917: 30건 (긴 사용자=True)
+  user 1918: 30건 (긴 사용자=True)
+  user 1919: 30건 (긴 사용자=True)
+  user 1920: 30건 (긴 사용자=True)
+  user 1921: 30건 (긴 사용자=True)
+  user 1922: 12건 (긴 사용자=False)
+  user 1923: 12건 (긴 사용자=False)
+  user 1924: 12건 (긴 사용자=False)
+  user 1925: 12건 (긴 사용자=False)
+  user 1926: 12건 (긴 사용자=False)
+  user 1927: 12건 (긴 사용자=False)
+  user 1928: 12건 (긴 사용자=False)
+  user 1929: 12건 (긴 사용자=False)
+  user 1930: 12건 (긴 사용자=False)
+  user 1931: 12건 (긴 사용자=False)
+  user 1932: 12건 (긴 사용자=False)
+  user 1933: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 384건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260921-e2-online-offline-일치율/raw/window/manifest.json

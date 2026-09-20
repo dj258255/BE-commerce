@@ -1,0 +1,403 @@
+{
+  "condition": "ttl",
+  "measuredAt": "2026-09-20T21:34:58.281710+00:00",
+  "manifest": "personalization/docs/runs/20260921-e2-online-offline-일치율/raw/ttl/manifest.json",
+  "users": 20,
+  "contextMatchPct": 0.0,
+  "windowCountMatchPct": 0.0,
+  "causes": [
+    {
+      "cause": "absent",
+      "users": 20,
+      "sharePct": 100.0
+    },
+    {
+      "cause": "behind",
+      "users": 0,
+      "sharePct": 0.0
+    },
+    {
+      "cause": "dropped",
+      "users": 0,
+      "sharePct": 0.0
+    },
+    {
+      "cause": "truncated",
+      "users": 0,
+      "sharePct": 0.0
+    }
+  ],
+  "matchedUsers": 0,
+  "samples": [
+    {
+      "userId": 1934,
+      "email": "e2-20260920-213441-0@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1935,
+      "email": "e2-20260920-213441-1@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1936,
+      "email": "e2-20260920-213441-2@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    }
+  ],
+  "rows": [
+    {
+      "userId": 1934,
+      "email": "e2-20260920-213441-0@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1935,
+      "email": "e2-20260920-213441-1@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1936,
+      "email": "e2-20260920-213441-2@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1937,
+      "email": "e2-20260920-213441-3@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1938,
+      "email": "e2-20260920-213441-4@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1939,
+      "email": "e2-20260920-213441-5@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1940,
+      "email": "e2-20260920-213441-6@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1941,
+      "email": "e2-20260920-213441-7@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1942,
+      "email": "e2-20260920-213441-8@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1943,
+      "email": "e2-20260920-213441-9@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1944,
+      "email": "e2-20260920-213441-10@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1945,
+      "email": "e2-20260920-213441-11@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1946,
+      "email": "e2-20260920-213441-12@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1947,
+      "email": "e2-20260920-213441-13@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1948,
+      "email": "e2-20260920-213441-14@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1949,
+      "email": "e2-20260920-213441-15@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1950,
+      "email": "e2-20260920-213441-16@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1951,
+      "email": "e2-20260920-213441-17@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1952,
+      "email": "e2-20260920-213441-18@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    },
+    {
+      "userId": 1953,
+      "email": "e2-20260920-213441-19@load.test",
+      "causes": [
+        "absent"
+      ],
+      "matched": false,
+      "onlineSeq": null,
+      "logMaxSeq": 12,
+      "onlineCount": 0,
+      "logCount": 12,
+      "onlineItems": null,
+      "offlineItems": null,
+      "listMatch": false,
+      "countMatch": false
+    }
+  ]
+}

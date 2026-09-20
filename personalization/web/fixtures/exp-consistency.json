@@ -1,23 +1,67 @@
 {
-  "_mock": true,
-  "_source": "M2 실험(이슈 #125). 같은 이벤트 로그로 만든 offline 피처와 online 서빙 피처가 어디서 갈라지는지.",
-  "_harness": "동일 로그 replay + offline 배치 재계산 대조 (예정)",
-  "replay": { "contexts": 12000, "matched": 11316, "matchPct": 94.3 },
+  "_source": "M2 실험(이슈 #125) 실측. personalization/docs/runs/20260921-e2-online-offline-일치율/report.md — 같은 로그를 offline 재계산과 online 서빙에 각각 통과시켜 대조했다.",
+  "_harness": "tools/inject-activities.py + tools/compare-contexts.py + tools/run-consistency-experiment.sh (실측 완료)",
+  "_note": "replay 는 **조건 9개의 합계**다(기준 20 + 원인 조건 6×20 + 순서 분리 2×6 = 152건). 일부러 망가뜨린 조건이 섞여 있어 이 숫자만으로 '파이프라인이 68% 맞다'고 읽으면 안 된다 — 기준 조건은 100%다. 원인은 **겹칠 수 있어**(한 사용자가 순서 역전과 잘림을 동시에 가질 수 있다) sharePct 합이 100%를 넘을 수 있다. sharePct 는 **불일치한 컨텍스트 대비**다.",
+  "replay": {
+    "contexts": 152,
+    "matched": 93,
+    "matchPct": 61.2
+  },
   "causes": [
-    { "label": "late event (순서 도착)", "value": 412, "sharePct": 60.2, "color": "var(--accent)" },
-    { "label": "중복 이벤트", "value": 134, "sharePct": 19.6, "color": "var(--warn)" },
-    { "label": "window 경계", "value": 86, "sharePct": 12.6, "color": "var(--info)" },
-    { "label": "TTL 만료", "value": 32, "sharePct": 4.7, "color": "#9AA1AC" },
-    { "label": "순서 역전 처리 차이", "value": 20, "sharePct": 2.9, "color": "var(--bad)" }
+    {
+      "label": "순서 역전 · 동시 적용 (항목 유실)",
+      "value": 39,
+      "sharePct": 66.1,
+      "color": "var(--accent)"
+    },
+    {
+      "label": "TTL 만료 또는 미적용 (컨텍스트 소실)",
+      "value": 20,
+      "sharePct": 33.9,
+      "color": "#9AA1AC"
+    },
+    {
+      "label": "window 경계 (집계가 잘림)",
+      "value": 20,
+      "sharePct": 33.9,
+      "color": "var(--warn)"
+    },
+    {
+      "label": "late event (소비 지연)",
+      "value": 1,
+      "sharePct": 1.7,
+      "color": "var(--info)"
+    }
   ],
   "examples": [
-    { "context": "CLICK_COUNT(1h) u-1024", "offline": 12, "online": 15, "cause": "late event" },
-    { "context": "VIEW_COUNT(24h) u-2048", "offline": 34, "online": 34, "cause": "일치" },
-    { "context": "PURCHASE_SUM(7d) u-3072", "offline": 89900, "online": 129900, "cause": "window 경계" }
+    {
+      "context": "최근 활동 20건 u-1976 (IN_PROCESS)",
+      "offline": 20,
+      "online": 18,
+      "cause": "동시 적용 — seq 35·28이 사라지고 목록이 밀림"
+    },
+    {
+      "context": "컨텍스트 존재 여부 u-1934 (TTL 2초)",
+      "offline": 12,
+      "online": 0,
+      "cause": "TTL 만료 — 로그는 그대로, 컨텍스트만 소실"
+    },
+    {
+      "context": "최근 활동 20건 u-1914 (로그 30건)",
+      "offline": 30,
+      "online": 20,
+      "cause": "window 경계 — 목록이 max-items에서 잘려 창 집계가 작다"
+    },
+    {
+      "context": "같은 이벤트 재전달 u-1986 (오프셋 되감기)",
+      "offline": 12,
+      "online": 11,
+      "cause": "재배달은 막혔지만 그 전에 이미 유실된 항목은 남는다"
+    }
   ],
   "conclusion": {
-    "statement": "일치율 94.3%. 불일치의 60%가 late event다 — consumer 지연이 곧 피처 오차다.",
-    "tradeoff": "일치율을 올리려면(event-time 처리·워터마크) 지연과 상태 저장 비용이 늘어난다. 신선도 실험과 같은 축이다.",
-    "openQuestion": "불일치가 추천 품질에 실제로 얼마를 깎는가 — 시스템 실험만으로 판단 불가(사용자 지표 필요)"
+    "statement": "온라인 컨텍스트는 로그의 충실한 사본이 아니다. 순서가 정상이고 잘리지 않고 만료되지 않으면 정확히 같지만(기준 100%), 그 셋 중 하나라도 어긋나면 갈라지고 갈라진 쪽은 대개 온라인이다.",
+    "tradeoff": "불일치를 만드는 것은 세 축이다 — 순서(항목 유실), 잘림(집계 축소), 만료(소실). 처방마다 대가가 다르다: 이벤트 시각 병합은 지연·상태 저장이 늘고, 집계 값을 저장하면 저장량·계산이 늘고, TTL을 늘리면 메모리·정합 비용이 는다. 중복은 두 층(DB 유니크 + seq 게이트)이 막아 불일치를 만들지 않았다.",
+    "openQuestion": "목록이 아니라 집계 값을 저장하면 잘림 문제가 사라지는가 — 그리고 그 비용은. 또한 불일치가 추천 품질에 얼마를 깎는지는 사용자 지표가 필요해 시스템 실험만으로 판단할 수 없다."
   }
 }

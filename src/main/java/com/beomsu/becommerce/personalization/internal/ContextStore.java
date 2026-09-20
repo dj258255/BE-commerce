@@ -72,9 +72,20 @@ public class ContextStore {
      * 이벤트를 컨텍스트에 반영한다. <b>순번이 낮거나 같으면 아무것도 하지 않는다</b> — 재배달·순서
      * 역전을 같은 규칙으로 막는다. 바뀐 뒤의 컨텍스트(또는 그대로인 현재 값)를 돌려준다.
      *
-     * <p>read-modify-write지만 분산 락이 없다. 라우팅 키가 {@code userId}라 한 사용자의 이벤트는
-     * 항상 같은 파티션 → 같은 스레드가 처리하기 때문이다. 이 근거가 깨지는 순간(예: 파티션 키를
-     * 바꾸는 순간) 락이 필요해진다.
+     * <p><b>이 메서드는 원자적이지 않다.</b> 읽기 → 비교 → 쓰기이고 락이 없다. 그래서
+     * <b>전송이 사용자별 직렬성을 보장해야</b> 한다:
+     * <ul>
+     *   <li>{@code KAFKA} — 라우팅 키가 {@code userId}라 한 사용자의 이벤트가 같은 파티션 → 같은
+     *       스레드로 들어간다. 보장된다</li>
+     *   <li>{@code IN_PROCESS} — {@code @ApplicationModuleListener}는 {@code @Async}라 <b>풀에 던진다.</b>
+     *       같은 사용자의 두 이벤트가 동시에 들어와 한쪽 쓰기가 다른 쪽을 덮는다. E2가 실제로 항목
+     *       하나가 사라지는 것을 관측했다(유실 16.7%) — 그래서 기본값이 KAFKA다</li>
+     *   <li>{@code IN_REQUEST} — 트랜잭션 안이라 순서는 지켜지지만, 같은 사용자의 <b>동시 요청</b>은
+     *       여전히 겹친다</li>
+     * </ul>
+     * <b>고치는 방법</b>: 이 갱신을 원자적으로(Lua CAS) 만들거나, 전송이 사용자별 직렬성을 보장하게
+     * 한다. 앞의 것을 하면 {@code IN_PROCESS}가 다시 후보가 된다(아직 하지 않았다).
+     * 근거: {@code personalization/docs/runs/20260921-e2-online-offline-일치율/report.md}.
      */
     public OnlineContext apply(UserActivityEvent event) {
         OnlineContext current = raw(event.userId()).orElse(OnlineContext.empty());
