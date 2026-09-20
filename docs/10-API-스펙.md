@@ -356,7 +356,7 @@ sequenceDiagram
 
 | 메서드 | 경로 | 기능 |
 |---|---|---|
-| GET | `/api/v1/categories` | 카테고리 목록(노출 순서, 상품 수 포함) |
+| GET | `/api/v1/categories` | 카테고리 목록(노출 순서, 상품 수 포함). 기본은 **대분류만** |
 | GET | `/api/v1/products` | 상품 목록·검색 |
 | GET | `/api/v1/products/{productId}` | 상품 상세 |
 
@@ -364,12 +364,31 @@ sequenceDiagram
 
 | 이름 | 기본 | 설명 |
 |---|---|---|
-| `category` | — | 카테고리 코드로 좁힌다(예: `digital`) |
+| `tree` | — | `/categories`에서 `true`면 중분류까지 편다(**부모 다음에 그 자식들** 순서) |
+| `category` | — | 카테고리 코드로 좁힌다(예: `ladieswear`). **대분류·중분류를 모두 받는다**(예: `ladieswear.knitwear`) |
 | `q` | — | 상품명·브랜드 부분 일치 검색. 있으면 `category`·`featured`보다 우선 |
 | `featured` | — | `true`면 추천 상품만 |
 | `sort` | `newest` | `newest`·`price_asc`·`price_desc`·`name`. 모르는 값은 `newest`로 처리한다(500을 내지 않는다) |
 | `page` | `0` | 0부터 시작 |
 | `size` | `20` | 최대 60으로 상한을 건다 |
+
+`category`를 대분류·중분류 두 파라미터로 나누지 않았다. 나누면 `?category=ladieswear&subcategory=menswear.knitwear`
+같은 **모순된 조합**이 만들어지고, 그걸 검증할 에러 케이스가 늘어난다. 코드 하나로 해석하면 상태가 하나다.
+
+```json
+// GET /api/v1/categories?tree=true → 200 (앞부분)
+[
+  { "code": "ladieswear", "name": "여성복", "sortOrder": 1, "productCount": 39737, "parentCode": null },
+  { "code": "ladieswear.jersey-fancy", "name": "저지 팬시", "sortOrder": 1, "productCount": 6163,
+    "parentCode": "ladieswear" },
+  { "code": "ladieswear.accessories", "name": "액세서리", "sortOrder": 2, "productCount": 4999,
+    "parentCode": "ladieswear" }
+]
+```
+
+- **`parentCode`가 `null`이면 대분류다.** 화면은 이 필드로 2단계 사이드바를 만든다
+- 대분류의 `productCount`는 **중분류 합**이다(중분류가 대분류를 빠짐없이 나눈다). 중분류는 자기 상품 수다
+- 전체가 77행(대분류 5 + 중분류 72)이라 `?tree=true` 한 번으로 사이드바를 다 그린다
 
 ```json
 // GET /api/v1/products?category=ladieswear&sort=price_asc&size=2 → 200

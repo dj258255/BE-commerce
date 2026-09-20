@@ -53,9 +53,9 @@ class CatalogQueryServiceTest {
     }
 
     @Test
-    @DisplayName("카테고리 목록: 노출 순서를 유지하고 상품 수를 함께 센다")
+    @DisplayName("카테고리 목록: 대분류만, 노출 순서를 유지하고 상품 수를 함께 센다")
     void categoriesIncludeProductCounts() {
-        when(categoryRepository.findAllByOrderBySortOrderAsc()).thenReturn(List.of(
+        when(categoryRepository.findByParentCodeIsNullOrderBySortOrderAsc()).thenReturn(List.of(
                 Category.of("digital", "디지털", "", 1),
                 Category.of("food", "식품", "", 2)));
         when(productRepository.countByCategoryCode("digital")).thenReturn(7L);
@@ -65,6 +65,63 @@ class CatalogQueryServiceTest {
 
         assertThat(result).extracting(CategoryView::code).containsExactly("digital", "food");
         assertThat(result).extracting(CategoryView::productCount).containsExactly(7L, 5L);
+        assertThat(result).allMatch(v -> v.parentCode() == null);
+    }
+
+    @Test
+    @DisplayName("카테고리 트리: 부모 **다음에** 그 자식들이 오고, 자식 수는 자기 것으로 센다")
+    void categoryTreePutsChildrenAfterTheirParent() {
+        when(categoryRepository.findAllByOrderBySortOrderAsc()).thenReturn(List.of(
+                Category.of("ladieswear", "여성복", "", 1),
+                Category.of("ladieswear.knitwear", "니트", "", 1, "ladieswear"),
+                Category.of("ladieswear.dresses", "드레스", "", 2, "ladieswear"),
+                Category.of("menswear", "남성복", "", 2),
+                Category.of("menswear.shirts", "셔츠", "", 1, "menswear")));
+        when(productRepository.countByCategoryCode("ladieswear")).thenReturn(100L);
+        when(productRepository.countByCategoryCode("menswear")).thenReturn(40L);
+        when(productRepository.countBySubcategoryCode("ladieswear.knitwear")).thenReturn(60L);
+        when(productRepository.countBySubcategoryCode("ladieswear.dresses")).thenReturn(40L);
+        when(productRepository.countBySubcategoryCode("menswear.shirts")).thenReturn(40L);
+
+        List<CategoryView> tree = service.categoryTree();
+
+        // 전역 sort_order가 부모·자식에 겹치므로, 평평하게 정렬하면 자식이 남의 부모 밑으로 섞인다.
+        assertThat(tree).extracting(CategoryView::code)
+                .containsExactly("ladieswear", "ladieswear.knitwear", "ladieswear.dresses",
+                        "menswear", "menswear.shirts");
+
+        // 대분류는 category_code로, 중분류는 subcategory_code로 센다.
+        verify(productRepository).countByCategoryCode("ladieswear");
+        verify(productRepository).countBySubcategoryCode("ladieswear.knitwear");
+        verify(productRepository, org.mockito.Mockito.never()).countBySubcategoryCode("ladieswear");
+    }
+
+    @Test
+    @DisplayName("중분류 코드로 좁히면 subcategory_code로 질의한다")
+    void childCategoryFilterUsesSubcategoryColumn() {
+        when(categoryRepository.findById("ladieswear.knitwear"))
+                .thenReturn(Optional.of(Category.of("ladieswear.knitwear", "니트", "", 1, "ladieswear")));
+        when(productRepository.findBySubcategoryCode(eq("ladieswear.knitwear"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.products("ladieswear.knitwear", null, null, "newest", 0, 20);
+
+        verify(productRepository).findBySubcategoryCode(eq("ladieswear.knitwear"), any(Pageable.class));
+        verify(productRepository, org.mockito.Mockito.never()).findByCategoryCode(anyString(), any());
+    }
+
+    @Test
+    @DisplayName("대분류 코드는 그대로 category_code로 질의한다")
+    void parentCategoryFilterStaysOnCategoryColumn() {
+        when(categoryRepository.findById("ladieswear"))
+                .thenReturn(Optional.of(Category.of("ladieswear", "여성복", "", 1)));
+        when(productRepository.findByCategoryCode(eq("ladieswear"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.products("ladieswear", null, null, "newest", 0, 20);
+
+        verify(productRepository).findByCategoryCode(eq("ladieswear"), any(Pageable.class));
+        verify(productRepository, org.mockito.Mockito.never()).findBySubcategoryCode(anyString(), any());
     }
 
     @Test

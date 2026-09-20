@@ -416,24 +416,29 @@ CREATE TABLE reconciliation_results (
 
 ```sql
 CREATE TABLE categories (
-    code        VARCHAR(40)  PRIMARY KEY,              -- 화면·API가 쓰는 안정 식별자 (예: digital)
+    code        VARCHAR(40)  PRIMARY KEY,              -- 화면·API가 쓰는 안정 식별자 (예: ladieswear, ladieswear.knitwear)
     name        VARCHAR(80)  NOT NULL,                 -- 사람이 읽는 이름
     description VARCHAR(300) NULL,
-    sort_order  INT          NOT NULL DEFAULT 0,       -- 노출 순서
+    sort_order  INT          NOT NULL DEFAULT 0,       -- 노출 순서. 중분류는 **같은 부모 안에서**의 순서
+    parent_code VARCHAR(40)  NULL,                     -- 논리적 FK → categories.code. NULL이면 대분류
+    source_name VARCHAR(80)  NULL,                     -- 이름의 출처(H&M 원문). 우리가 정한 이름의 근거
+    KEY idx_categories_parent (parent_code),
     -- 유니크 키는 기본키(code)가 전부다.
 );
 
 CREATE TABLE products (
-    product_id    BIGINT        PRIMARY KEY,            -- 외부 지정. stock과 같은 키 공간
-    name          VARCHAR(200)  NOT NULL,
-    price         BIGINT        NOT NULL,               -- ★ 가격의 서버 측 원천
-    category_code VARCHAR(40)   NULL,                   -- 논리적 FK → categories.code (제약 없이 인덱스만)
-    description   VARCHAR(1000) NULL,
-    image_url     VARCHAR(500)  NULL,                   -- 화면 표시용. 가격·재고와 무관
-    brand         VARCHAR(120)  NULL,
-    featured      TINYINT(1)    NOT NULL DEFAULT 0,     -- 홈 큐레이션
-    created_at    DATETIME(6)   NOT NULL,               -- 신상품 정렬
+    product_id       BIGINT        PRIMARY KEY,         -- 외부 지정. stock과 같은 키 공간
+    name             VARCHAR(200)  NOT NULL,
+    price            BIGINT        NOT NULL,            -- ★ 가격의 서버 측 원천
+    category_code    VARCHAR(40)   NULL,                -- 논리적 FK → categories.code (대분류)
+    subcategory_code VARCHAR(40)   NULL,                -- 논리적 FK → categories.code (중분류)
+    description      VARCHAR(1000) NULL,
+    image_url        VARCHAR(500)  NULL,                -- 화면 표시용. 가격·재고와 무관
+    brand            VARCHAR(120)  NULL,
+    featured         TINYINT(1)    NOT NULL DEFAULT 0,  -- 홈 큐레이션
+    created_at       DATETIME(6)   NOT NULL,            -- 신상품 정렬
     KEY idx_products_category (category_code),
+    KEY idx_products_subcategory (subcategory_code),
     KEY idx_products_created (created_at)
 );
 
@@ -446,7 +451,18 @@ CREATE TABLE stock (
 ```
 - **탐색용 속성은 가격·재고의 권위에 관여하지 않는다.** `description`·`image_url`·`brand`는 표시용이고,
   가격은 여전히 주문 시점에 `CheckoutService`가 이 테이블에서 읽어 `order_items` 스냅샷으로 굳힌다
-- **`category_code`에 FK 제약을 걸지 않는다.** §10 규칙대로 논리적 FK + 인덱스만 둔다
+- **카테고리는 2단계다(V56)** — 대분류 5 + 중분류 72. 실측 105,542건이 빠짐없이 중분류를 가진다
+- **트리가 아니라 "조합 노드"인 이유**: H&M의 대분류(성별/라인)와 중분류(상품 종류)는 **직교**한다 —
+  중분류 21종 중 **2종만** 한 대분류에 속한다(니트는 여성복·남성복·아동복·Divided에 다 있다).
+  그래서 노드는 (대분류 × 중분류) 조합이고, 5×21=105 중 **실제 존재하는 72개**만 만든다.
+  중분류를 대분류의 자식으로 접으면 "여성복 > 니트"와 "Divided > 니트"가 서로 다른 노드가 된다
+- **`category_code`의 의미를 바꾸지 않고 컬럼을 더했다.** 의미를 바꾸면 기존 필터·문서·소비자가 한꺼번에
+  깨진다. `subcategory_code`가 NULL이면 대분류만 지정된 상품이다(레거시 데모 상품 1~3)
+- **대분류의 상품 수 == 중분류 합.** 중분류가 대분류를 빠짐없이 나누므로 자식을 더하지 않고
+  `category_code`로 한 번에 센다. 승격 스크립트가 적재 전에 이 등식을 assert한다
+- **`source_name`에 이름의 출처를 남긴다.** 한국어 이름을 우리가 정했으므로 H&M 원문
+  (`index_group_name`·`garment_group_name`)을 남겨 추적 가능하게 한다. 번역이 불확실한 항목은 원문을 그대로 쓴다
+- **`category_code`·`subcategory_code`에 FK 제약을 걸지 않는다.** §10 규칙대로 논리적 FK + 인덱스만 둔다
 - Phase 5의 락 3종 비교 실험 대상: ① `@Version` 낙관적 ② `SELECT ... FOR UPDATE` 비관적 ③ Redisson. 같은 테이블로 구현체만 바꿔 부하테스트
 - 조건부 차감: `UPDATE stock SET quantity = quantity - :n WHERE product_id = :id AND quantity >= :n`
 

@@ -8,6 +8,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -40,16 +42,60 @@ public class CatalogQueryService {
         this.stockRepository = stockRepository;
     }
 
-    /** 카테고리 목록 — 노출 순서대로, 상품 수를 함께 센다. */
+    /**
+     * 대분류 목록 — 노출 순서대로, 상품 수를 함께 센다.
+     *
+     * <p>대분류의 상품 수는 {@code category_code}로 한 번에 세도 **중분류 합과 같다** — 중분류가
+     * 대분류를 빠짐없이 나누기 때문이다(모든 상품에 중분류가 있다). 그래서 자식을 더하지 않는다.
+     */
     public List<CategoryView> categories() {
-        return categoryRepository.findAllByOrderBySortOrderAsc().stream()
-                .map(c -> CategoryView.of(c, productRepository.countByCategoryCode(c.getCode())))
+        return categoryRepository.findByParentCodeIsNullOrderBySortOrderAsc().stream()
+                .map(this::view)
                 .toList();
+    }
+
+    /**
+     * 카테고리 트리 — 대분류와 그 중분류를 **부모 다음에 자식들** 순서로 편다.
+     *
+     * <p>화면이 한 번의 요청으로 사이드바를 그리게 하려는 것이다. 전체가 77행(대분류 5 + 중분류 72)이라
+     * 평평하게 내려도 작다. 정렬은 대분류가 전체 순서, 중분류가 같은 부모 안에서의 순서다.
+     */
+    public List<CategoryView> categoryTree() {
+        List<Category> all = categoryRepository.findAllByOrderBySortOrderAsc();
+        Map<String, List<Category>> childrenOf = all.stream()
+                .filter(c -> c.getParentCode() != null)
+                .collect(Collectors.groupingBy(Category::getParentCode, LinkedHashMap::new, Collectors.toList()));
+        List<CategoryView> flat = new ArrayList<>();
+        for (Category parent : all) {
+            if (parent.getParentCode() != null) {
+                continue;
+            }
+            flat.add(view(parent));
+            childrenOf.getOrDefault(parent.getCode(), List.of()).forEach(child -> flat.add(view(child)));
+        }
+        return flat;
+    }
+
+    /** 대분류면 자기 상품 수(중분류 합), 중분류면 자기 상품 수. */
+    private CategoryView view(Category category) {
+        long count = category.getParentCode() == null
+                ? productRepository.countByCategoryCode(category.getCode())
+                : productRepository.countBySubcategoryCode(category.getCode());
+        return CategoryView.of(category, count);
+    }
+
+    /** 이 코드가 중분류인가. 대분류거나 모르는 코드면 false → 대분류 필터로 떨어진다. */
+    private boolean isSubcategory(String code) {
+        return categoryRepository.findById(code).map(c -> c.getParentCode() != null).orElse(false);
     }
 
     /**
      * 상품 목록 — 검색어·카테고리·추천 중 하나로 좁히고 정렬·페이지네이션을 적용한다.
      * 우선순위는 검색어 &gt; 카테고리 &gt; 추천 &gt; 전체다.
+     *
+     * <p>{@code category}는 **대분류와 중분류를 모두 받는다**. 파라미터를 둘로 나누면
+     * {@code ?category=ladieswear&subcategory=menswear.knitwear} 같은 모순된 조합이 만들어지고
+     * 그걸 검증할 에러 케이스가 늘어난다. 코드 하나로 해석하는 편이 상태가 하나다.
      */
     public ProductPageView products(String category, String q, Boolean featured, String sort,
                                     int page, int size) {
@@ -59,7 +105,9 @@ public class CatalogQueryService {
             String keyword = q.trim();
             result = productRepository.findByNameContainingOrBrandContaining(keyword, keyword, pageable);
         } else if (category != null && !category.isBlank()) {
-            result = productRepository.findByCategoryCode(category, pageable);
+            result = isSubcategory(category)
+                    ? productRepository.findBySubcategoryCode(category, pageable)
+                    : productRepository.findByCategoryCode(category, pageable);
         } else if (Boolean.TRUE.equals(featured)) {
             result = productRepository.findByFeaturedTrue(pageable);
         } else {

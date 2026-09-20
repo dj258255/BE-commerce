@@ -193,11 +193,23 @@
 
   // ---------- 카탈로그 캐시 ----------
   var categoriesCache = null;
+  var treeCache = null;
   async function categories(force) {
     if (categoriesCache && !force) return categoriesCache;
     var r = await api('GET', '/categories', { noAuth: true });
     categoriesCache = r.ok && Array.isArray(r.data) ? r.data : [];
     return categoriesCache;
+  }
+
+  /**
+   * 대분류 + 중분류를 한 번에. **부모 다음에 그 자식들**이 오는 순서를 서버가 정한다.
+   * 77행(대분류 5 + 중분류 72)이라 한 번에 받아도 작아서 사이드바를 요청 하나로 그린다.
+   */
+  async function categoryTree(force) {
+    if (treeCache && !force) return treeCache;
+    var r = await api('GET', '/categories?tree=true', { noAuth: true });
+    treeCache = r.ok && Array.isArray(r.data) ? r.data : [];
+    return treeCache;
   }
 
   // ---------- 렌더 조각 ----------
@@ -337,6 +349,7 @@
   global.Store = {
     API: API, won: won, esc: esc, uuid: uuid, qs: qs, fmtDate: fmtDate,
     gradientFor: gradientFor, api: api, auth: auth, cart: cart, categories: categories,
+    categoryTree: categoryTree,
     productCard: productCard, skeletonGrid: skeletonGrid, statusBadge: statusBadge,
     renderHeader: renderHeader, renderFooter: renderFooter, renderAccount: renderAccount,
     updateCartBadge: updateCartBadge, toast: toast, search: search, logLine: logLine
