@@ -2,9 +2,9 @@ services:
   mysql:
     image: mysql:8.4
     environment:
-      MYSQL_DATABASE: pay
-      MYSQL_USER: pay
-      MYSQL_PASSWORD: pay
+      MYSQL_DATABASE: becommerce
+      MYSQL_USER: becommerce
+      MYSQL_PASSWORD: becommerce
       MYSQL_ROOT_PASSWORD: root
     ports:
       - "3306:3306"

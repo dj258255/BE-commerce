@@ -30,7 +30,7 @@
 
 ## 기준
 
-`import com.beomsu.pay.<모듈>.<클래스>;`가 **그 모듈 폴더 밖에서** 한 번이라도 나오는가.
+`import com.beomsu.becommerce.<모듈>.<클래스>;`가 **그 모듈 폴더 밖에서** 한 번이라도 나오는가.
 안 나오면 `internal`이다. 126개가 해당됐다.
 
 ```
@@ -68,6 +68,6 @@ order.recovery.CheckoutRecoveryService → payment.recovery.StuckPaymentInfo
 컴파일러 대신 `allowedDependencies`가 막는다. 넓힌 자리마다 선언 위에 그 사유를 적었다.
 테스트는 대응 패키지로 옮겨 `package-private`을 최대한 지켰다.
 
-**루트에 남는 둘.** `PayApplication`과 `SecurityConfig`. 후자는 `auth` · `ratelimit` · `member`를
+**루트에 남는 둘.** `BeCommerceApplication`과 `SecurityConfig`. 후자는 `auth` · `ratelimit` · `member`를
 가로질러 조립하는 앱 껍데기라 어느 모듈에도 안 속한다. `auth`로 옮기면 인증 모듈이 유입 제어를
 의존하게 된다.

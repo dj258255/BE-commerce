@@ -12,7 +12,7 @@
 --     충돌 방지 + 재실행 시 시드만 선별 삭제.
 --
 -- 실행:
---   docker compose exec -T mysql mysql -upay -ppay pay < k6/seed-settlement-contention.sql
+--   docker compose exec -T mysql mysql -ubecommerce -pbecommerce becommerce < k6/seed-settlement-contention.sql
 -- (컨테이너/계정명이 다르면 compose.yaml 기준으로 맞춘다)
 
 SET SESSION cte_max_recursion_depth = 1000000;

@@ -1,4 +1,4 @@
-    15:51:23.004 [Test worker] WARN com.beomsu.pay.order.catalog.StockDeductionService -- 재고 차감 UPDATE 영향 행 0건 — 1회차 재시도 (조회 당시 version=0)
-    15:51:23.004 [Test worker] WARN com.beomsu.pay.order.catalog.StockDeductionService -- 재고 차감 UPDATE 영향 행 0건 — 2회차 재시도 (조회 당시 version=3)
-    15:51:23.004 [Test worker] WARN com.beomsu.pay.order.catalog.StockDeductionService -- 재고 차감 UPDATE 영향 행 0건 — 3회차 재시도 (조회 당시 version=9)
-    15:51:23.004 [Test worker] ERROR com.beomsu.pay.order.catalog.StockDeductionService -- 재고 차감 실패 — 재시도 3회를 소진했다: STOCK_CONCURRENCY
+    15:51:23.004 [Test worker] WARN com.beomsu.becommerce.order.catalog.StockDeductionService -- 재고 차감 UPDATE 영향 행 0건 — 1회차 재시도 (조회 당시 version=0)
+    15:51:23.004 [Test worker] WARN com.beomsu.becommerce.order.catalog.StockDeductionService -- 재고 차감 UPDATE 영향 행 0건 — 2회차 재시도 (조회 당시 version=3)
+    15:51:23.004 [Test worker] WARN com.beomsu.becommerce.order.catalog.StockDeductionService -- 재고 차감 UPDATE 영향 행 0건 — 3회차 재시도 (조회 당시 version=9)
+    15:51:23.004 [Test worker] ERROR com.beomsu.becommerce.order.catalog.StockDeductionService -- 재고 차감 실패 — 재시도 3회를 소진했다: STOCK_CONCURRENCY

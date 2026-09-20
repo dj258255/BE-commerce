@@ -1,1 +1,1 @@
-    15:51:32.656 [Test worker] ERROR com.beomsu.pay.settlement.internal.SettlementBatch -- 정산 차감 실패 — SQLState 40001, Lock wait timeout exceeded; try restarting transaction
+    15:51:32.656 [Test worker] ERROR com.beomsu.becommerce.settlement.internal.SettlementBatch -- 정산 차감 실패 — SQLState 40001, Lock wait timeout exceeded; try restarting transaction

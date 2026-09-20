@@ -1,1 +1,1 @@
-    15:50:47.722 [Test worker] WARN com.beomsu.pay.order.catalog.StockDeductionService -- 재고 차감 실패 — SQLState 40001, Deadlock found when trying to get lock; try restarting transaction
+    15:50:47.722 [Test worker] WARN com.beomsu.becommerce.order.catalog.StockDeductionService -- 재고 차감 실패 — SQLState 40001, Deadlock found when trying to get lock; try restarting transaction

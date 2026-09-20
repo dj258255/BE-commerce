@@ -1,16 +1,16 @@
 spring:
   application:
-    name: pay-consumer
+    name: be-commerce-consumer
   main:
     web-application-type: none          # 웹서버 없는 경량 워커
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
     consumer:
-      group-id: pay-settlement-notifier
+      group-id: be-commerce-settlement-notifier
       auto-offset-reset: earliest       # 소비자가 늦게 떠도 기존 이벤트부터 따라잡는다
       # 값은 String으로 받고 Jackson으로 직접 파싱한다.
       # producer(메인 앱)는 JsonSerializer를 쓰는데, JsonDeserializer로 받으면
-      # 타입 헤더(__TypeId__)의 클래스명(com.beomsu.pay.payment.PaymentConfirmedEvent)에
+      # 타입 헤더(__TypeId__)의 클래스명(com.beomsu.becommerce.payment.PaymentConfirmedEvent)에
       # 결합된다 — 소비자에 없는 클래스라 역직렬화가 깨지거나 매핑 설정이 필요하다.
       # String + Jackson readTree가 producer 내부 타입에 결합되지 않는 가장 견고한 방식.
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer

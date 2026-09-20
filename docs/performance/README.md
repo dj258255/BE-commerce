@@ -50,7 +50,7 @@ MySQL 8.4·InnoDB)가 낸다. 인메모리는 왕복이 사실상 공짜라 재�
 
 재현:
 ```bash
-JAVA_HOME=<jdk21> ./gradlew test --tests "com.beomsu.pay.order.StockLockComparisonMySqlTest"
+JAVA_HOME=<jdk21> ./gradlew test --tests "com.beomsu.becommerce.order.StockLockComparisonMySqlTest"
 ```
 
 ## 2. 엔드투엔드 부하테스트 (k6)
@@ -706,10 +706,10 @@ k6: `http_req_failed 0.00% (0/10174)`, `checks_failed 0/30`, `[FAIL]` 로그 0�
 ```bash
 docker compose up -d
 JAVA=/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home/bin/java
-$JAVA -jar build/libs/pay-0.0.1-SNAPSHOT.jar --server.port=8080 --app.ratelimit.enabled=false   # API
-$JAVA -jar build/libs/pay-0.0.1-SNAPSHOT.jar --server.port=8082 --app.ratelimit.enabled=false   # API 리플리카
-$JAVA -jar build/libs/pay-0.0.1-SNAPSHOT.jar --server.port=8081 --spring.profiles.active=worker  # 워커
-docker compose exec -T mysql mysql -upay -ppay pay < k6/seed-settlement-scheduler-split.sql
+$JAVA -jar build/libs/be-commerce-0.0.1-SNAPSHOT.jar --server.port=8080 --app.ratelimit.enabled=false   # API
+$JAVA -jar build/libs/be-commerce-0.0.1-SNAPSHOT.jar --server.port=8082 --app.ratelimit.enabled=false   # API 리플리카
+$JAVA -jar build/libs/be-commerce-0.0.1-SNAPSHOT.jar --server.port=8081 --spring.profiles.active=worker  # 워커
+docker compose exec -T mysql mysql -ubecommerce -pbecommerce becommerce < k6/seed-settlement-scheduler-split.sql
 BASE_URL=http://localhost:8080 VUS=30 DURATION=3m k6 run k6/redeploy-blast-radius.js
 # 93초 지점에 워커만 재기동: kill <워커 PID> && (워커 재실행)
 ```

@@ -1,10 +1,10 @@
-# pay
+# BE-commerce
 
 결제의 정상 처리보다 **실패 이후의 정합성 회복**에 초점을 둔 Spring Modulith 기반 결제 백엔드입니다.
 PG 타임아웃, 중복 요청, 이벤트 재전달, 부분 실패를 실제 운영에서 발생할 수 있는 상태로 보고,
 이를 기록·복구·대사하는 흐름을 구현했습니다.
 
-[![CI](https://github.com/dj258255/payment-system/actions/workflows/ci.yml/badge.svg)](https://github.com/dj258255/payment-system/actions/workflows/ci.yml)
+[![CI](https://github.com/dj258255/BE-commerce/actions/workflows/ci.yml/badge.svg)](https://github.com/dj258255/BE-commerce/actions/workflows/ci.yml)
 
 ## 핵심 결과
 
@@ -23,7 +23,7 @@ PG 타임아웃, 중복 요청, 이벤트 재전달, 부분 실패를 실제 운
 
 ## 아키텍처
 
-![pay 아키텍처: 유입 계층, 결제 코어, Outbox, 후속 도메인과 운영 계층](docs/images/architecture.svg)
+![BE-commerce 아키텍처: 유입 계층, 결제 코어, Outbox, 후속 도메인과 운영 계층](docs/images/architecture.svg)
 
 모듈형 모놀리스로 시작해 도메인 경계를 코드와 테스트로 강제합니다. 모듈 간 결합은 공개 API와
 도메인 이벤트로 제한하며, Spring Modulith의 `ModularityTests`가 잘못된 의존성을 빌드 단계에서 찾습니다.

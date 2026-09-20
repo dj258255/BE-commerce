@@ -40,7 +40,7 @@ route:
 receivers:
   - name: 'slack-ops'
     slack_configs:
-      - channel: '#pay-alerts'
+      - channel: '#be-commerce-alerts'
         title: '{{ .CommonLabels.alertname }}'
         # 무엇이 울렸는지보다 <무엇을 해야 하는지>를 먼저 보여준다.
         text: >-
@@ -51,7 +51,7 @@ receivers:
 
   - name: 'slack-critical'
     slack_configs:
-      - channel: '#pay-alerts-critical'
+      - channel: '#be-commerce-alerts-critical'
         title: '[critical] {{ .CommonLabels.alertname }}'
         text: >-
           {{ range .Alerts }}{{ .Annotations.summary }}

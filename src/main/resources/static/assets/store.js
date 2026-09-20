@@ -7,7 +7,7 @@
   'use strict';
 
   var API = '/api/v1';
-  var KEY = { token: 'pay.token', refresh: 'pay.refreshToken', cart: 'pay.cart' };
+  var KEY = { token: 'becommerce.token', refresh: 'becommerce.refreshToken', cart: 'becommerce.cart' };
 
   // ---------- 유틸 ----------
   function won(n) { return '₩' + Number(n || 0).toLocaleString('ko-KR'); }
@@ -244,7 +244,7 @@
     el.className = 'site-header';
     el.innerHTML = '' +
       '<div class="container header-inner">' +
-        '<a class="logo" href="index.html">PAY<b>.</b></a>' +
+        '<a class="logo" href="index.html">BE<b>-commerce</b></a>' +
         '<span class="brand-tag">STORE</span>' +
         '<nav class="site-nav" id="nav-cats"></nav>' +
         '<form class="header-search" onsubmit="return Store.search(this)">' +
@@ -283,14 +283,14 @@
     el.innerHTML = '' +
       '<div class="container">' +
         '<div class="footer-inner">' +
-          '<div><div class="logo" style="margin-bottom:10px">PAY<b>.</b></div>' +
+          '<div><div class="logo" style="margin-bottom:10px">BE<b>-commerce</b></div>' +
             '<p class="footer-note">실제 주문·결제 API에 연결된 스토어프론트입니다. ' +
             '주문 생성부터 승인·복구까지 서버 상태를 그대로 보여줍니다.</p></div>' +
           '<div><h4>쇼핑</h4><div class="footer-links" id="footer-cats"></div></div>' +
           '<div><h4>개발자</h4><div class="footer-links">' +
             '<a href="console.html">결제 콘솔</a>' +
             '<a href="admin.html">운영 백오피스</a>' +
-            '<a href="https://github.com/dj258255/payment-system">저장소</a>' +
+            '<a href="https://github.com/dj258255/BE-commerce">저장소</a>' +
           '</div></div>' +
         '</div>' +
         '<div class="footer-bottom">' +

@@ -14,7 +14,7 @@ alerting:
         - targets: ['host.docker.internal:9093']
 
 scrape_configs:
-  - job_name: 'pay'
+  - job_name: 'be-commerce'
     metrics_path: '/actuator/prometheus'
     static_configs:
       - targets: ['host.docker.internal:8080']

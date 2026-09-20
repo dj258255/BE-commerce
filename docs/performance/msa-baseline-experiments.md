@@ -119,7 +119,7 @@ VU별 독립 회원(가입 API로 30명 생성)으로 교정해 해결했다. �
 - 배포 중단을 없애려면 인스턴스 2개 + 롤링이 필요하다. 그러면 실험 2의 스케줄러 중복이 터진다.
 - 스케줄러 중복을 피해 단일 인스턴스로 두면, 무관한 모듈의 배포마다 결제가 전면 중단된다.
 
-모놀리스인 한 두 요구를 동시에 만족할 수 없다. 정산·알림을 분리하면 pay-core는 스케줄러 없이
+모놀리스인 한 두 요구를 동시에 만족할 수 없다. 정산·알림을 분리하면 BE-commerce-core는 스케줄러 없이
 자유롭게 수평 확장·롤링하고, 정산은 단일 실행 주체를 유지한 채 독립 배포된다.
 
 ## 종합
@@ -138,7 +138,7 @@ VU별 독립 회원(가입 API로 30명 생성)으로 교정해 해결했다. �
 # 실험 1
 docker compose up -d && docker compose --profile monitoring up -d prometheus grafana
 APP_RATELIMIT_ENABLED=false ./gradlew bootRun          # Flyway 선실행 후
-docker compose exec -T mysql mysql -upay -ppay pay < k6/seed-settlement-contention.sql
+docker compose exec -T mysql mysql -ubecommerce -pbecommerce becommerce < k6/seed-settlement-contention.sql
 k6 run k6/settlement-contention.js
 
 # 실험 2 (어제 날짜 2만 건 시드 후, 스케줄러 켠 인스턴스 2개 동시 기동)
@@ -161,6 +161,6 @@ DELETE FROM settlements WHERE settlement_date = DATE_SUB(UTC_DATE(), INTERVAL 1 
 ---
 
 > **후속 작업의 위치**: 이 실측이 가리킨 분리(정산·알림 추출, Kafka 컨슈머, K8s 배포와
-> 무중단 롤링 수렴)는 [`msa-extraction` 브랜치](https://github.com/dj258255/payment-system/tree/msa-extraction)에서 구현·검증했다.
+> 무중단 롤링 수렴)는 [`msa-extraction` 브랜치](https://github.com/dj258255/BE-commerce/tree/msa-extraction)에서 구현·검증했다.
 > main은 모듈러 모놀리스를 유지한다 — 실측된 한계는 기록하되, 본 프로젝트의 초점은
 > 결제 도메인의 실패·정합성 처리에 있기 때문이다.

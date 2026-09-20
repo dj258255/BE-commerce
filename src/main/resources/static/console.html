@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PAY 스토어 · 결제 데모</title>
+<title>BE-commerce · 결제 콘솔</title>
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
   :root{
@@ -127,7 +127,7 @@
 </head>
 <body>
 <header>
-  <div class="logo">PAY<b>.</b></div>
+  <div class="logo">BE<b>-commerce</b></div>
   <span class="env">LOCAL · DEMO</span>
   <nav>
     <a href="/">스토어 홈</a>
@@ -253,7 +253,7 @@
 
     <div>
       <div class="receipt">
-        <div class="rc-head">PAY · ORDER SLIP<br>주 문 전 표</div>
+        <div class="rc-head">BE-commerce · ORDER SLIP<br>주 문 전 표</div>
         <div id="curOrder" class="rc-line"><span>주문</span><b>아직 없음</b></div>
         <div class="rc-total"><span>결제 금액</span><span class="num" id="rcAmt">₩0</span></div>
         <div class="statuses">
@@ -277,7 +277,7 @@
 
 <script>
 const PRODUCTS=[{id:1,name:'테스트 상품 A',price:10000},{id:2,name:'테스트 상품 B',price:5000},{id:3,name:'한정판 상품',price:30000}];
-let token=sessionStorage.getItem('pay.token'), role=sessionStorage.getItem('pay.role'), sel=1, order=null, lastPaymentAmount=0, logN=0;
+let token=sessionStorage.getItem('becommerce.token'), role=sessionStorage.getItem('becommerce.role'), sel=1, order=null, lastPaymentAmount=0, logN=0;
 
 const $=id=>document.getElementById(id);
 function uuid(){return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c=='x'?r:(r&0x3|0x8)).toString(16)})}
@@ -310,8 +310,8 @@ function setWho(){
   $('btnOrder').disabled=false;
   $('btnQEnter').disabled=false;$('btnQStatus').disabled=false;$('btnQLeave').disabled=false;
 }
-function saveAuth(t,r){token=t;role=r;sessionStorage.setItem('pay.token',t);sessionStorage.setItem('pay.role',r);setWho()}
-function logout(){token=null;role=null;sessionStorage.removeItem('pay.token');sessionStorage.removeItem('pay.role');
+function saveAuth(t,r){token=t;role=r;sessionStorage.setItem('becommerce.token',t);sessionStorage.setItem('becommerce.role',r);setWho()}
+function logout(){token=null;role=null;sessionStorage.removeItem('becommerce.token');sessionStorage.removeItem('becommerce.role');
   $('who').textContent='로그인 안 됨';$('btnOrder').disabled=true;
   $('btnQEnter').disabled=true;$('btnQStatus').disabled=true;$('btnQLeave').disabled=true;}
 async function login(u,p){
