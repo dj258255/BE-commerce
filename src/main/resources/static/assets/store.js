@@ -212,6 +212,18 @@
     return treeCache;
   }
 
+  /**
+   * 필터 패널용 패싯 — 색상·상품 종류의 값과 개수를 받는다. params 는 /products 와 같은 필터 객체다.
+   * 개수는 **자기 축을 뺀** 나머지 필터로 세어 오므로, 한 값을 고른 상태에서도 다른 값의 개수가 보인다.
+   */
+  async function facets(params) {
+    var p = params || {};
+    var query = Object.keys(p).filter(function (k) { return p[k] != null && p[k] !== ''; })
+      .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(p[k]); }).join('&');
+    var r = await api('GET', '/products/facets' + (query ? '?' + query : ''), { noAuth: true });
+    return r.ok && r.data ? r.data : { colours: [], productTypes: [] };
+  }
+
   // ---------- 렌더 조각 ----------
   /** 상품 카드 HTML. 사진은 상품별 그라디언트에 블렌딩돼 장식 타일이 되고, 실패하면 그라디언트만 남는다. */
   function productCard(p) {
@@ -349,7 +361,7 @@
   global.Store = {
     API: API, won: won, esc: esc, uuid: uuid, qs: qs, fmtDate: fmtDate,
     gradientFor: gradientFor, api: api, auth: auth, cart: cart, categories: categories,
-    categoryTree: categoryTree,
+    categoryTree: categoryTree, facets: facets,
     productCard: productCard, skeletonGrid: skeletonGrid, statusBadge: statusBadge,
     renderHeader: renderHeader, renderFooter: renderFooter, renderAccount: renderAccount,
     updateCartBadge: updateCartBadge, toast: toast, search: search, logLine: logLine

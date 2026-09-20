@@ -78,6 +78,37 @@ SUBCATEGORY_NAMES = {
     "Woven/Jersey/Knitted mix Baby": "Woven/Jersey/Knitted mix Baby",
 }
 
+# 색상 이름. **번역이 확실한 것만 한국어로** 하고, 확실하지 않으면 원문을 그대로 쓴다 — 중분류와
+# 같은 규칙이다. 옮기면 의미가 흐려지는 H&M 고유 색상명(Mole, Yellowish Green, Bluish Green)과
+# 소스에 문자열로 들어온 `undefined`는 원문을 남긴다. `Unknown`은 화면용 '기타'로 모은다.
+COLOUR_NAMES = {
+    "Black": "블랙",
+    "Blue": "블루",
+    "White": "화이트",
+    "Pink": "핑크",
+    "Grey": "그레이",
+    "Red": "레드",
+    "Beige": "베이지",
+    "Green": "그린",
+    "Khaki green": "카키 그린",
+    "Yellow": "옐로우",
+    "Orange": "오렌지",
+    "Brown": "브라운",
+    "Metal": "메탈",
+    "Turquoise": "터키석",
+    "Mole": "Mole",                                  # H&M 고유 색상명 — 옮기면 의미가 흐려져 원문 유지
+    "Lilac Purple": "라일락 퍼플",
+    "Unknown": "기타",
+    "undefined": "undefined",                        # 소스에 문자열로 들어온 값 — 원문 유지
+    "Yellowish Green": "Yellowish Green",            # H&M 고유 색상명 — 원문 유지
+    "Bluish Green": "Bluish Green",                  # H&M 고유 색상명 — 원문 유지
+}
+
+# 상품 종류(`product_type_name`)는 **H&M 영어 원문을 그대로** 쓴다. 131종류라 한국어로 옮기면
+# 대부분 추측이 되고(니트·저지·탑의 경계가 우리 데이터엔 없다), 상품 이름 자체가 영어(H&M 원문)라
+# 종류만 한국어로 두면 오히려 화면에서 따로 논다. 색상(`perceived_colour_master_name`)만 20종류라
+# 검증 가능한 범위에서 번역한다.
+
 CODE_MAX = 40  # categories.code varchar(40)
 
 
@@ -136,6 +167,15 @@ def build_catalog(data: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     if too_long.any():
         raise SystemExit(f"중분류 코드가 {CODE_MAX}자를 넘는다: {sorted(set(prod.loc[too_long, 'subcategory_code']))[:3]}")
 
+    # 색상·상품 종류 — 패싯 필터(V57). 색상 이름도 못 정하면 조용히 NULL을 넣지 않고 멈춘다.
+    prod["colour_code"] = prod["perceived_colour_master_name"].map(slug)
+    prod["colour_name"] = prod["perceived_colour_master_name"].map(COLOUR_NAMES)
+    unknown_colour = set(prod["perceived_colour_master_name"]) - set(COLOUR_NAMES)
+    if unknown_colour:
+        raise SystemExit(f"색상 이름 매핑이 없다: {sorted(unknown_colour)}")
+    # 종류는 원문 유지(위 주석 참고).
+    prod["product_type"] = prod["product_type_name"]
+
     prod["brand"] = BRAND
     prod["image_url"] = None
     prod["featured"] = prod["article_id"].isin(featured_ids).astype(int)
@@ -183,6 +223,7 @@ def build_catalog(data: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     cats = pd.concat([parents, children], ignore_index=True)
 
     keep = ["product_id", "prod_name", "price", "category_code", "subcategory_code",
+            "colour_code", "colour_name", "product_type",
             "description", "image_url", "brand", "featured", "created_at"]
     return prod[keep], cats
 
@@ -208,13 +249,14 @@ def emit_sql(prod: pd.DataFrame, cats: pd.DataFrame, path: Path) -> None:
         )
     lines.append("")
 
-    cols = ("(product_id, name, price, category_code, subcategory_code, description, image_url,"
-            " brand, featured, created_at)")
+    cols = ("(product_id, name, price, category_code, subcategory_code, colour_code, colour_name,"
+            " product_type, description, image_url, brand, featured, created_at)")
     rows = []
     for _, r in prod.iterrows():
         rows.append(
             f"({int(r['product_id'])}, {sql_str(r['prod_name'])}, {int(r['price'])}, "
             f"{sql_str(r['category_code'])}, {sql_str(r['subcategory_code'])}, "
+            f"{sql_str(r['colour_code'])}, {sql_str(r['colour_name'])}, {sql_str(r['product_type'])}, "
             f"{sql_str(r['description'])}, {sql_str(r['image_url'])}, {sql_str(r['brand'])}, {int(r['featured'])}, "
             f"{sql_str(pd.Timestamp(r['created_at']).strftime('%Y-%m-%d %H:%M:%S'))})"
         )
@@ -224,6 +266,7 @@ def emit_sql(prod: pd.DataFrame, cats: pd.DataFrame, path: Path) -> None:
             f"INSERT INTO products {cols} VALUES\n  " + ",\n  ".join(chunk) +
             "\nON DUPLICATE KEY UPDATE name=VALUES(name), price=VALUES(price), "
             "category_code=VALUES(category_code), subcategory_code=VALUES(subcategory_code), "
+            "colour_code=VALUES(colour_code), colour_name=VALUES(colour_name), product_type=VALUES(product_type), "
             "description=VALUES(description), "
             "brand=VALUES(brand), featured=VALUES(featured);"
         )
@@ -283,6 +326,14 @@ def main() -> int:
     print("부모 카운트 == 자식 합 확인")
     print("\n가격 분포(원):", prod['price'].describe()[['min', '25%', '50%', '75%', 'max']].astype(int).to_dict())
     print(f"featured {int(prod['featured'].sum())}개 · 거래 없는 상품 가격은 카테고리 중앙값으로 채움")
+
+    # 패싯(V57) — 색상·종류가 몇 값으로, 얼마나 퍼져 있는지. 필터가 실제로 쓸모 있는지 여기서 보인다.
+    col_counts = prod.groupby("colour_name", observed=True).size().sort_values(ascending=False)
+    print(f"\n색상 {col_counts.size}종 — 상위 5개:",
+          ", ".join(f"{name}({int(n):,})" for name, n in col_counts.head(5).items()))
+    type_counts = prod.groupby("product_type", observed=True).size().sort_values(ascending=False)
+    print(f"상품 종류 {type_counts.size}종 — 상위 5개:",
+          ", ".join(f"{name}({int(n):,})" for name, n in type_counts.head(5).items()))
 
     if args.emit_sql or args.load:
         out = data / "hm" / "catalog.sql"

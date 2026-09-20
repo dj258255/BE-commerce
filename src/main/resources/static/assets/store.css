@@ -217,6 +217,24 @@ input,select,textarea{font:inherit}
 .side a.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:750}
 .side a .cnt{font-family:var(--mono);font-size:11px;color:var(--sub);font-weight:400}
 
+/* 사이드바 필터 패널 — 색상 체크박스·종류 선택·가격 범위. 선택은 전부 URL로 나간다. */
+.facet{padding:12px 0;border-top:1px solid var(--line)}
+.facet:first-child{border-top:0;padding-top:4px}
+.facet-title{font-size:12px;font-weight:750;color:var(--ink);margin-bottom:8px}
+.facet-list{max-height:230px;overflow:auto;display:flex;flex-direction:column;gap:2px}
+.facet-row{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:7px;cursor:pointer;
+  font-size:13px;color:var(--sub)}
+.facet-row:hover{background:var(--paper);color:var(--ink)}
+.facet-row input{accent-color:var(--accent);width:14px;height:14px;margin:0}
+.facet-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.facet-cnt{font-family:var(--mono);font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums}
+.facet select.input{padding:8px 10px}
+.price-range{display:flex;align-items:center;gap:6px}
+.price-range .input{width:100%;padding:8px 10px;font-family:var(--mono);font-size:13px}
+.price-range .tilde{color:var(--sub);flex:none}
+.facet-reset{display:block;margin-top:12px;font-size:12.5px;font-weight:600;color:var(--sub);text-align:center}
+.facet-reset:hover{color:var(--accent-ink)}
+
 /* ---------- 상세 ---------- */
 .detail{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:44px}
 @media(max-width:900px){.detail{grid-template-columns:1fr;gap:26px}}

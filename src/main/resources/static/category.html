@@ -19,6 +19,28 @@
       <aside class="side">
         <h4>CATEGORIES</h4>
         <div id="side-list"></div>
+
+        <h4 style="margin-top:22px">FILTERS</h4>
+        <div id="filters">
+          <div class="facet">
+            <div class="facet-title">색상</div>
+            <div class="facet-list" id="f-colour">불러오는 중…</div>
+          </div>
+          <div class="facet">
+            <div class="facet-title">상품 종류</div>
+            <select class="input" id="f-type"></select>
+          </div>
+          <div class="facet">
+            <div class="facet-title">가격 (원)</div>
+            <div class="price-range">
+              <input class="input" id="f-min" type="number" min="0" step="1000" placeholder="최소">
+              <span class="tilde">~</span>
+              <input class="input" id="f-max" type="number" min="0" step="1000" placeholder="최대">
+            </div>
+            <button class="btn btn-sm btn-block" id="f-apply" style="margin-top:8px">적용</button>
+          </div>
+          <a class="facet-reset" id="f-reset" href="#">필터 초기화</a>
+        </div>
       </aside>
 
       <section>
@@ -48,6 +70,11 @@
   var code = Store.qs('code') || '';
   var sort = Store.qs('sort') || 'newest';
   var page = Math.max(0, Number(Store.qs('page') || 0));
+  // 필터는 전부 URL에 있다 — 공유·뒤로가기가 그대로 동작하고, 새로고침에서도 살아남는다.
+  var colour = Store.qs('colour') || '';
+  var productType = Store.qs('productType') || '';
+  var minPrice = Store.qs('minPrice') || '';
+  var maxPrice = Store.qs('maxPrice') || '';
 
   Store.renderHeader(code);
   Store.renderFooter();
@@ -84,6 +111,57 @@
     var b = e.target.closest('button');
     if (b && b.dataset.p != null && !b.disabled) go({ page: b.dataset.p === '0' ? '' : b.dataset.p });
   });
+
+  // --- 필터 패널: 모든 선택을 URL로 보내 go()가 상태를 하나로 유지하게 한다 ---
+  document.getElementById('f-colour').addEventListener('change', function (e) {
+    var el = e.target;
+    if (!el || el.type !== 'checkbox') return;
+    go({ colour: el.checked ? el.dataset.colour : '', page: '' });
+  });
+  document.getElementById('f-type').addEventListener('change', function () {
+    go({ productType: this.value, page: '' });
+  });
+  document.getElementById('f-min').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') applyPrice();
+  });
+  document.getElementById('f-max').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') applyPrice();
+  });
+  document.getElementById('f-apply').addEventListener('click', applyPrice);
+  function applyPrice() {
+    go({ minPrice: document.getElementById('f-min').value.trim(),
+         maxPrice: document.getElementById('f-max').value.trim(), page: '' });
+  }
+  document.getElementById('f-reset').addEventListener('click', function (e) {
+    e.preventDefault();
+    go({ colour: '', productType: '', minPrice: '', maxPrice: '', page: '' });
+  });
+
+  // 현재 화면의 필터를 패싯 API에 그대로 넘긴다. 각 패싯은 자기 축을 스스로 빼고 세므로
+  // 여기서는 필터를 골라 뺄 필요가 없다(색상 개수는 색상 선택과 무관하게 나온다).
+  function currentFilters() {
+    return { category: code, colour: colour, productType: productType,
+             minPrice: minPrice, maxPrice: maxPrice };
+  }
+
+  function renderFacets(f) {
+    var colours = (f && f.colours) || [];
+    var types = (f && f.productTypes) || [];
+
+    document.getElementById('f-colour').innerHTML = colours.length
+      ? colours.map(function (c) {
+          return '<label class="facet-row"><input type="checkbox" data-colour="' + Store.esc(c.code) + '"' +
+            (c.code === colour ? ' checked' : '') + '><span class="facet-name">' + Store.esc(c.name) +
+            '</span><span class="facet-cnt">' + Number(c.count).toLocaleString() + '</span></label>';
+        }).join('')
+      : '<div class="muted" style="font-size:13px">해당 색상 없음</div>';
+
+    document.getElementById('f-type').innerHTML =
+      '<option value="">전체 종류</option>' + types.map(function (t) {
+        return '<option value="' + Store.esc(t.code) + '"' + (t.code === productType ? ' selected' : '') +
+          '>' + Store.esc(t.name) + ' (' + Number(t.count).toLocaleString() + ')</option>';
+      }).join('');
+  }
 
   (async function () {
     var tree = await Store.categoryTree();
@@ -145,8 +223,18 @@
 
     document.getElementById('grid').innerHTML = Store.skeletonGrid(SIZE);
 
-    var r = await Store.api('GET', '/products?category=' + encodeURIComponent(code) +
-      '&sort=' + encodeURIComponent(sort) + '&page=' + page + '&size=' + SIZE, { noAuth: true });
+    // 필터 패널 — 가격 입력의 초기값을 URL에서 채우고, 색상·종류 패싯을 받아 그린다.
+    document.getElementById('f-min').value = minPrice;
+    document.getElementById('f-max').value = maxPrice;
+    Store.facets(currentFilters()).then(renderFacets);
+
+    var query = '/products?category=' + encodeURIComponent(code) +
+      '&sort=' + encodeURIComponent(sort) + '&page=' + page + '&size=' + SIZE +
+      (colour ? '&colour=' + encodeURIComponent(colour) : '') +
+      (productType ? '&productType=' + encodeURIComponent(productType) : '') +
+      (minPrice ? '&minPrice=' + encodeURIComponent(minPrice) : '') +
+      (maxPrice ? '&maxPrice=' + encodeURIComponent(maxPrice) : '');
+    var r = await Store.api('GET', query, { noAuth: true });
 
     if (!r.ok) {
       document.getElementById('count').textContent = '';

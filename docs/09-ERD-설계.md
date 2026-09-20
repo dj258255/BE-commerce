@@ -410,7 +410,8 @@ CREATE TABLE reconciliation_results (
 ## 9. 상품 카탈로그 (categories / products / stock)
 
 > 원래 `products`는 가격의 서버 측 원천으로만 쓰였고, 화면이 상품을 탐색할 목록·검색·카테고리
-> 표면이 없었다. 쇼핑몰 화면을 위해 탐색용 컬럼과 `categories`를 더했다(V53·V54). **가격·재고의
+> 표면이 없었다. 쇼핑몰 화면을 위해 탐색용 컬럼과 `categories`를 더했다(V53·V54). V57은 거기에
+> 색상·상품 종류를 더해 색상·종류·가격 범위로 좁힐 수 있게 했다(패싯). **가격·재고의
 > 권위는 그대로다** — 클라이언트는 여전히 가격을 보내지 않고, 서버가 주문 생성 시 `products`에서
 > 가격을 확정한다.
 
@@ -432,6 +433,9 @@ CREATE TABLE products (
     price            BIGINT        NOT NULL,            -- ★ 가격의 서버 측 원천
     category_code    VARCHAR(40)   NULL,                -- 논리적 FK → categories.code (대분류)
     subcategory_code VARCHAR(40)   NULL,                -- 논리적 FK → categories.code (중분류)
+    colour_code      VARCHAR(40)   NULL,                -- 색상 코드(H&M 색상명의 슬러그, 예: black). V57
+    colour_name      VARCHAR(40)   NULL,                -- 색상 표시명(예: 블랙). V57
+    product_type     VARCHAR(80)   NULL,                -- 상품 종류(H&M 원문 영어, 예: Dress). V57
     description      VARCHAR(1000) NULL,
     image_url        VARCHAR(500)  NULL,                -- 화면 표시용. 가격·재고와 무관
     brand            VARCHAR(120)  NULL,
@@ -439,6 +443,8 @@ CREATE TABLE products (
     created_at       DATETIME(6)   NOT NULL,            -- 신상품 정렬
     KEY idx_products_category (category_code),
     KEY idx_products_subcategory (subcategory_code),
+    KEY idx_products_colour (colour_code),              -- 색상 패싯 필터 (V57)
+    KEY idx_products_type (product_type),               -- 종류 패싯 필터 (V57)
     KEY idx_products_created (created_at)
 );
 
@@ -463,6 +469,17 @@ CREATE TABLE stock (
 - **`source_name`에 이름의 출처를 남긴다.** 한국어 이름을 우리가 정했으므로 H&M 원문
   (`index_group_name`·`garment_group_name`)을 남겨 추적 가능하게 한다. 번역이 불확실한 항목은 원문을 그대로 쓴다
 - **`category_code`·`subcategory_code`에 FK 제약을 걸지 않는다.** §10 규칙대로 논리적 FK + 인덱스만 둔다
+- **패싯(색상·종류)은 조인 테이블이 아니라 `products`의 컬럼이다(V57).** 패싯의 값은 상품당 축마다
+  **하나**(색상 1개, 종류 1개)다 — 값이 하나뿐이라 `product_facets` 조인 테이블은 값을 못 하고,
+  105,542행에 대해 행을 축수만큼 늘리며 목록·패싯 카운트 질의마다 조인을 낀다. **여러 색을 가진 상품**이
+  생기는 순간이 조인 테이블로 쪼갤 시점이다 — 그때는 한 상품이 한 축에 여러 값을 가져 컬럼으로 표현할 수 없다
+- **지금은 Elasticsearch를 쓰지 않는다(V57).** 105,542행은 `WHERE` + `INDEX`로 충분하다(색상·종류로
+  인덱스를 타고 좁힌 뒤 가격을 거른다). ES는 운영 대상(클러스터·색인 동기화·매핑)을 하나 더 늘리고
+  "명령 하나로 뜨는" 로컬 데모를 깬다. 측정해서 느려지는 지점이 나오면 그때 재검토한다
+- **`product_type`은 H&M 영어 원문을 그대로 쓴다.** 131종류라 번역은 대부분 추측이 되고(니트·저지·탑의
+  경계가 우리 데이터엔 없다), 상품 이름 자체가 영어라 종류만 한국어로 두면 화면에서 따로 논다.
+  색상은 20종류뿐이고 검증 가능해 한국어 이름(`colour_name`)을 붙이되, 옮기면 의미가 흐려지는
+  H&M 고유 색상명(Mole·Yellowish Green·Bluish Green)은 원문을 남긴다
 - Phase 5의 락 3종 비교 실험 대상: ① `@Version` 낙관적 ② `SELECT ... FOR UPDATE` 비관적 ③ Redisson. 같은 테이블로 구현체만 바꿔 부하테스트
 - 조건부 차감: `UPDATE stock SET quantity = quantity - :n WHERE product_id = :id AND quantity >= :n`
 
