@@ -22,7 +22,7 @@
   </section>
   <section class="panel" style="margin-bottom:16px">
     <h2>어디서 신선도가 소모되는가</h2>
-    <div class="hint">정책과 무관하게, 병목은 consumer 구간이다.</div>
+    <div class="hint">파이프라인 구간별 실측 중앙값(ms). 저장소 읽기는 싸고, 값을 치르는 곳은 <b>이벤트가 도착하기까지</b>다.</div>
     <div id="breakdown"></div>
   </section>
   <section class="panel" style="margin-bottom:16px"><h2>정책별 결과</h2><div id="table"></div></section>
@@ -42,7 +42,7 @@
       PZ.kpi('최신까지 대기', PZ.pct(p[4].freshnessPct), 'p95 ' + PZ.ms(p[4].p95Ms) + ' · timeout ' + PZ.pct(p[4].timeoutPct), 'bad');
 
     PZ.line(document.getElementById('chart'), d.tradeoff, {
-      xLabel: '최신 반영률(%)', xMin: 30, xMax: 100, y0: true, width: 760, height: 250
+      xLabel: '최신 반영률(%)', xMin: 0, xMax: 100, y0: true, width: 760, height: 250
     });
     PZ.legend(document.getElementById('legend'), d.tradeoff);
 

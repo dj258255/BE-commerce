@@ -90,6 +90,9 @@ public class SecurityConfig {
                         // 찜은 회원 본인 소유이고 서버에 저장한다(장바구니는 localStorage라 여기 없다).
                         // 개인화 신호로 쓰려면 서버에 남아야 한다 — 정책이 갈리는 근거는 V58 주석 참고.
                         .requestMatchers("/api/v1/wishlist/**").hasRole("USER")
+                        // 개인화 표면(활동 수집·컨텍스트 읽기)은 본인 것만 다룬다 — userId를 경로·본문으로
+                        // 받지 않고 principal에서 얻으므로 남의 컨텍스트를 가리킬 경로가 없다.
+                        .requestMatchers("/api/v1/personalization/**").hasRole("USER")
                         // 선착순 대기열: 로그인 사용자만 줄 서기(멤버=인증 principal userId). 결제 경로와는
                         // 결합하지 않는 독립 프리미티브(입장/상태/이탈)이지만 참가자 식별을 위해 인증은 요구한다.
                         .requestMatchers("/api/v1/queue/**").hasRole("USER")
