@@ -1,0 +1,8 @@
+== E1-c 다중 인스턴스 — A(18080)로 발행 · B(18081)로 조회
+전달 방식 발행(A)  조회(B)  판정
+IN_PROCESS   201        True       OK — A의 이벤트가 B에 반영 (source=CONTEXT)
+IN_REQUEST   201        True       OK — A의 이벤트가 B에 반영 (source=CONTEXT)
+KAFKA        201        True       OK — A의 이벤트가 B에 반영 (source=CONTEXT)
+
+== 해석: 셋 다 통과하면 '다중 인스턴스'는 Kafka를 강제하는 근거가 되지 못한다 —
+   컨텍스트가 공유 저장소에 있고 적용이 seq 기준 멱등이라 어느 인스턴스가 적용하든 같다.

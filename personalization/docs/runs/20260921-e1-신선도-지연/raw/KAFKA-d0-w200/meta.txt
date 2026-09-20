@@ -1,0 +1,10 @@
+transport=KAFKA
+consumer_delay_ms=0
+wait_ms=200
+consumer_group=pf-e1-20260921-045618-KAFKA-d0-w200
+duration=90s
+warmup_ms=20000
+rate=8
+max_vus=15
+accounts=15
+context_keys_after=15

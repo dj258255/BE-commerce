@@ -41,6 +41,8 @@ class SchemaIndexAuditMySqlTest {
             {"wallet_transactions", "user_id"},
             // 찜은 유니크 키 (user_id, product_id)의 선두 컬럼이 user_id라 별도 인덱스를 두지 않는다(V58).
             {"wishlist_items", "user_id"},
+            // 개인화 활동 로그도 유니크 키 (user_id, seq)의 선두 컬럼이 user_id다(V59).
+            {"user_activities", "user_id"},
     };
 
     @Test

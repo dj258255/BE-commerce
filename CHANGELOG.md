@@ -7,6 +7,29 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — M2: 개인화 온라인 컨텍스트와 E1 실측
+
+### 추가
+
+- **개인화 온라인 컨텍스트**(`personalization` 모듈, `V59`) — 활동 수집 → 컨텍스트 갱신 → 온라인 읽기.
+  `POST /api/v1/personalization/activity`(합성 생성기용) · `GET /api/v1/personalization/context`
+  (`expectSeq`·`waitMs`로 **대기 정책**을 정한다)
+- **전달 방식 3종**(`app.personalization.transport`) — `IN_PROCESS`(기본) · `KAFKA` · `IN_REQUEST`.
+  적용 로직은 하나를 공유하고 **누가 언제 적용하는지**만 다르다
+- **첫 인앱 Kafka 컨슈머** — `kafka` 프로파일에서만 뜬다
+- **E1 실험 리포트** — `personalization/docs/runs/20260921-e1-신선도-지연/`(8절 형식 + 원자료).
+  하네스: `k6/freshness-vs-latency.js` · `tools/run-freshness-vs-latency.sh` ·
+  `tools/check-multi-instance.sh` · `tools/freshness_report.py`
+
+### 변경
+
+- **기본 전달 방식이 `KAFKA` → `IN_PROCESS`로 바뀌었다.** E1이 사전 등록한 규칙("브로커가 더하는
+  p95가 50ms 미만이고 다중 인스턴스에서도 차이가 없으면")이 발동했다 — 실측 +13ms, 인스턴스 2대에서
+  세 방식 모두 성립. **브로커가 불필요하다는 뜻은 아니다**(프로세스 밖 소비자·리플레이는 재지 않았다).
+  근거와 못 잰 것은 [ADR-034](docs/adr/ADR-034-personalization-context-deployment-unit.md)
+- 개인화 화면의 **목 요약을 실측으로 교체**하고, 측정하지 않은 실험 여섯을 `측정 전`으로 되돌렸다
+  (`personalization/web/fixtures/exp-freshness.json`·`experiments.json`) — 완료처럼 보이게 두지 않는다
+
 ## Unreleased — 위시리스트(찜)
 
 ### 추가

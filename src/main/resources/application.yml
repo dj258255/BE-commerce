@@ -447,6 +447,34 @@ app:
     gate:
       event-id: ${APP_QUEUE_GATE_EVENT:drop}       # 입장권을 검사할 이벤트 ID
       product-ids: ${APP_QUEUE_GATE_PRODUCTS:}     # 쉼표 구분 productId 목록(예: "1,2")
+
+  # 개인화 — 온라인 컨텍스트(M2). 전달 방식이 셋인 이유는 "왜 Kafka인가"를 재기 위한 것이다:
+  # 같은 적용 로직(ContextApplier)을 누가 언제 부르는지만 바꿔 비교한다(M2·E1 리포트).
+  #
+  # 기본값은 E1 측정 결과다. 사전 등록 규칙("브로커가 더하는 p95가 50ms 미만이고 다중 인스턴스에서도
+  # 차이가 없으면 IN_PROCESS 를 기본으로")이 발동했다 — 실측: 같은 100ms 대기에서 e2e p95 27ms vs
+  # 40ms(+13ms), 세 방식 모두 인스턴스 2대에서 성립. 판단과 못 잰 것은 ADR-034.
+  personalization:
+    # KAFKA | IN_PROCESS | IN_REQUEST
+    #   IN_PROCESS — 커밋 후 @ApplicationModuleListener. 브로커 없이 근사선이 성립한다(기본)
+    #   KAFKA     — Outbox → 브로커 → 인앱 컨슈머. **kafka 프로파일이 있어야 동작한다**
+    #               (브로커가 없으면 발행도 소비도 없어 컨텍스트가 갱신되지 않는다).
+    #               프로세스 밖 소비자가 생기면 이 값으로 바꾼다 — 발행은 이미 켜져 있다
+    #   IN_REQUEST — 같은 트랜잭션에서 갱신. 가장 신선하지만 저장소 장애가 활동 기록을 롤백시킨다
+    transport: ${APP_PERSONALIZATION_TRANSPORT:IN_PROCESS}
+    context:
+      # 컨텍스트 TTL. 컨텍스트는 영원히 유효하지 않다 — 만료되면 "아직 모른다"로 돌아간다.
+      ttl: ${APP_PERSONALIZATION_CONTEXT_TTL:7d}
+      # 한 사용자 컨텍스트에 담는 최근 활동 수. 무한 성장을 막는다.
+      max-items: ${APP_PERSONALIZATION_CONTEXT_MAX_ITEMS:20}
+      # 대기 정책의 폴링 간격과 상한. 무한 대기는 API로 열지 않는다 —
+      # 상한을 넘으면 reflected=false로 정직하게 돌려준다(기다린 시간을 함께 준다).
+      poll-interval-ms: ${APP_PERSONALIZATION_CONTEXT_POLL_INTERVAL_MS:10}
+      max-wait-ms: ${APP_PERSONALIZATION_CONTEXT_MAX_WAIT_MS:1000}
+    consumer:
+      group-id: ${APP_PERSONALIZATION_CONSUMER_GROUP:be-commerce-personalization-context}
+      # E1에서 consumer 지연을 주입하는 축. 기본 0이라 평소에는 비용이 없다.
+      delay-ms: ${APP_PERSONALIZATION_CONSUMER_DELAY_MS:0}
   # 에스크로(자금 보류) — 결제금을 구매확정 전까지 HELD로 잡아둔다.
   escrow:
     # 자동 구매확정까지의 보류 기간(일). 이 기간 무응답이면 자동 릴리스 대상이 된다.
@@ -516,6 +544,13 @@ spring:
       acks: all                    # 유실 방지 — 모든 in-sync 복제본이 받아야 성공
       properties:
         enable.idempotence: true   # 멱등 producer — 재시도로 인한 중복 발행 억제
+    # 개인화 컨텍스트 컨슈머(M2). 이 앱의 첫 인앱 컨슈머다 — 그 판단은 ADR-034.
+    # 값은 String으로 받아 이 앱의 ObjectMapper로 UserActivityEvent에 직접 바인딩한다.
+    # JsonDeserializer를 쓰면 타입 헤더(__TypeId__)의 클래스명에 결합된다(consumer-app과 같은 이유).
+    consumer:
+      auto-offset-reset: earliest   # 소비자가 늦게 떠도 기존 이벤트부터 따라잡는다
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
   modulith:
     events:
       externalization:

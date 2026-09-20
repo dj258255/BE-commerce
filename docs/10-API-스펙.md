@@ -516,3 +516,72 @@ sequenceDiagram
 |---|---|---|
 | 404 | `PRODUCT_NOT_FOUND` | 찜하려는 상품이 없다 (카탈로그 §9와 **같은 코드**를 쓴다) |
 | 409 | `DUPLICATE_REQUEST` | 동시 추가가 유니크 제약에 부딪혔다 — 결과는 이미 1건 |
+
+---
+
+## 11. 개인화 (회원 전용 · 합성 생성기용)
+
+온라인 컨텍스트의 **근사선 갱신과 온라인 읽기**다. M2(신선도 vs 지연) 실험의 표면이고,
+**추천 결과를 내는 API가 아니다** — 추천·홈 구성은 M7에서 붙는다. 여기서 재는 것은
+"이벤트가 컨텍스트에 언제 도달하는가"다.
+
+| 메서드 | 경로 | 기능 |
+|---|---|---|
+| POST | `/api/v1/personalization/activity` | 활동 한 건 기록(합성) |
+| GET | `/api/v1/personalization/context` | 내 온라인 컨텍스트 + 신선도 |
+
+**인증이 필요하다**(`ROLE_USER`). userId는 경로·본문이 아니라 인증 principal에서 얻으므로
+남의 컨텍스트를 읽거나 남의 활동으로 위조할 경로가 없다.
+
+> **합성 데이터다.** 이 표면은 실제 화면이 아니라 **부하 생성기**가 부른다. 적재된 활동은
+> `user_activities.source = 'SYNTHETIC'`으로 표시된다(`personalization/docs/00-data.md` §5:
+> 공개 데이터에 없는 impression·session은 만들되 명확히 표시한다).
+
+### POST /api/v1/personalization/activity
+
+```json
+{ "itemId": 42, "type": "CLICK", "seq": 7 }
+```
+
+- `seq`는 **클라이언트가 부여하는 사용자별 단조 증가 순번**이다. 서버가 만들지 않는 이유:
+  읽을 때 "내가 낸 이벤트가 반영됐는가"를 물으려면 그 번호를 호출자가 알아야 한다
+- `type`은 `CLICK`·`VIEW`만, `seq`는 1 이상 — 아니면 400
+- 같은 `(userId, seq)`를 다시 보내면 **409** — 로그는 중복을 허용하지 않는다(순서 판정의 기준이다)
+- 응답 `201`: `{ activityId, userId, itemId, type, seq, source, occurredAt }`
+
+### GET /api/v1/personalization/context
+
+쿼리: `expectSeq`(선택) · `waitMs`(선택)
+
+- `expectSeq`를 주면 그 순번까지 **`waitMs` 안에서 기다린다**(폴링). `waitMs`는 서버 상한
+  (`app.personalization.context.max-wait-ms`, 기본 1000)으로 잘린다 — 무한 대기를 API로 열지 않는다
+- `expectSeq`가 없으면 즉시 한 번 읽는다
+
+```json
+// 200
+{ "userId": 1, "seq": 7, "reflected": true, "stalenessMs": 12, "waitedMs": 31,
+  "itemCount": 1, "source": "CONTEXT",
+  "items": [ { "itemId": 42, "activityType": "CLICK", "occurredAt": "2026-09-20T19:13:11.961Z" } ] }
+```
+
+- **`reflected`가 "최신 반영률"의 원천이다.** 서버가 `seq >= expectSeq`로 판정한다 — 클라이언트가
+  시각을 비교하면 서버 간 시계 차이에 기대게 된다
+- **`source`는 폴백을 숨기지 않는다.** `CONTEXT`는 저장소에서 읽었다는 뜻이고, `EMPTY`는 저장소
+  장애이거나 아직 활동이 없다는 뜻이다(이때 `items`는 비고 `stalenessMs`는 `null`). 화면의
+  "폴백이면 폴백이라고 보여준다" 규칙의 서버 쪽 짝이다
+- 컨텍스트가 얼마나 낡았는지는 `stalenessMs`(마지막 적용 이후 흐른 시간)로 드러난다
+- 컨텍스트는 Redis `ctx:{userId}`에 있고 **TTL(기본 7일)로 만료된다** — 만료되면 `EMPTY`로 돌아간다
+
+**전달 방식**(`app.personalization.transport`)이 셋이다: `IN_PROCESS`(커밋 후 리스너, **기본값**) ·
+`KAFKA`(Outbox → 브로커 → 인앱 컨슈머) · `IN_REQUEST`(같은 트랜잭션). 적용 로직은 하나를 공유하고
+**누가 언제 적용하는지만** 다르다 — 그 셋을 비교한 것이 M2·E1 실험이고, 판단은
+[ADR-034](adr/ADR-034-personalization-context-deployment-unit.md)에 있다.
+
+> **`KAFKA`를 고르면 `kafka` 프로파일이 필요하다.** 브로커가 없으면 발행도 소비도 없어
+> **컨텍스트가 갱신되지 않는다**(읽기는 `EMPTY`로 폴백한다). 기본값이 `IN_PROCESS`인 이유의
+> 절반이 이것이다 — 브로커 없이도 `docker compose up -d mysql redis` 하나로 동작한다.
+
+| HTTP | code | 상황 |
+|---|---|---|
+| 400 | `INVALID_REQUEST` | `seq < 1` 또는 허용되지 않은 `type` |
+| 409 | `DUPLICATE_REQUEST` | 같은 `(userId, seq)` 재전송 — 유니크 제약 |

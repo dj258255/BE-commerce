@@ -533,6 +533,7 @@ append-only 이력 테이블에 남겨 감사·복구의 진실 원천으로 삼
 | `narrative_audits` | 타임라인 서술을 만든 기록 | 유니크 키 없음. 같은 주문에 여러 번 생성된다 | V33 |
 | `narrative_preferences` | 서술 둘을 나란히 놓고 고른 기록 | 유니크 키 없음 | V33 |
 | `wishlist_items` | 사용자 찜(개인화 신호) | `uk_wishlist_user_product (user_id, product_id)` — 이 하나가 조회 인덱스도 겸한다 | V58 |
+| `user_activities` | 개인화 활동 로그(**합성**) | `uk_user_activity_seq (user_id, seq)` — 순서 판정과 멱등을 겸한다 | V59 |
 
 ### 12.1 판매자와 제재 스크리닝 (sellers / seller_screenings)
 
@@ -871,6 +872,37 @@ CREATE TABLE wishlist_items (
   이력이 사라지고, 없는 것을 있는 척하면 화면이 거짓말을 한다
 - **새 에러 코드를 만들지 않았다.** 없는 상품은 카탈로그와 같은 `PRODUCT_NOT_FOUND` 를 쓴다 —
   같은 상황인데 경로마다 코드가 갈리면 클라이언트가 분기할 근거가 둘로 갈린다
+
+### 12.9 개인화 활동 로그 (user_activities)
+
+개인화 온라인 컨텍스트(M2)의 이벤트 원천이다. **실사용자 행동이 아니라 부하 생성기가 흘린 합성
+데이터**이고, `source='SYNTHETIC'`으로 구분한다(`personalization/docs/00-data.md` §5 —
+공개 데이터에 없는 impression·session은 만들되 명확히 표시한다).
+
+```sql
+CREATE TABLE user_activities (
+    id            BIGINT      AUTO_INCREMENT PRIMARY KEY,
+    user_id       BIGINT      NOT NULL,                -- 인증 principal에서 얻는다
+    item_id       BIGINT      NOT NULL,                -- 논리적 FK → products. 검증하지 않는다(아래)
+    activity_type VARCHAR(20) NOT NULL,                -- CLICK / VIEW
+    seq           BIGINT      NOT NULL,                -- 사용자별 단조 증가(생성기가 부여)
+    source        VARCHAR(20) NOT NULL,                -- SYNTHETIC
+    occurred_at   DATETIME(6) NOT NULL,
+    created_at    DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    UNIQUE KEY uk_user_activity_seq (user_id, seq),
+    KEY idx_user_activity_user_time (user_id, occurred_at)
+);
+```
+- **`uk (user_id, seq)`가 두 일을 겸한다**: ① 컨텍스트 적용의 순서 판정 기준(작거나 같으면 버린다)
+  ② at-least-once 재배달 멱등(같은 이벤트를 다시 받아도 DB는 1건). 컨텍스트 저장소의 병합도 같은
+  `seq`로 판정하므로, <b>순서 역전과 재배달이 규칙 하나로 막힌다</b>
+- **`item_id`를 검증하지 않는다.** 합성 이벤트가 실제 상품을 가리키지 않아도 컨텍스트 실험에는
+  무관하고, 여기서 `products`를 읽으면 개인화 경계 규칙(`personalization/docs/01-architecture.md` §5
+  "커머스 도메인 테이블 직접 조회 금지")에 걸린다. **검증하지 않는 것이 결정이다**
+- **컨텍스트는 이 테이블에 없다.** 컨텍스트는 Redis `ctx:{userId}`에 있고 TTL(기본 7일)로 만료된다
+  — DB는 로그, Redis는 "지금 아는 것"이다. E2(online/offline 일치율)가 이 둘을 대조한다
+- 활동 로그는 **지우지 않는다.** E2가 같은 로그를 재생해야 하고, 지우면 재현이 안 된다
+- FK 제약 없음(§10 규칙). 시각은 `DATETIME(6)`
 
 ## 확장 여지로 남긴 것
 
