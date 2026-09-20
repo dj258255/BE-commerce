@@ -155,6 +155,40 @@
     }).join('');
   }
 
+  /** 가로 막대 — 원인 분포·비용 분해처럼 '항목 몇 개 비교'에 쓴다. */
+  function bars(el, items, opts) {
+    opts = opts || {};
+    var max = opts.max != null ? opts.max : Math.max.apply(null, items.map(function (i) { return i.value; }));
+    el.innerHTML = items.map(function (i) {
+      var w = max ? (i.value / max * 100) : 0;
+      return '<div style="display:flex;align-items:center;gap:10px;margin:7px 0">' +
+        '<span style="width:190px;font-size:12.5px;color:var(--sub)">' + esc(i.label) + '</span>' +
+        '<span style="flex:1;background:#F1F3F6;border-radius:5px;height:16px;position:relative">' +
+          '<span style="position:absolute;top:0;bottom:0;left:0;width:' + w.toFixed(1) + '%;border-radius:5px;background:' +
+            (i.color || 'var(--accent)') + '"></span></span>' +
+        '<span class="mono" style="width:92px;text-align:right;font-size:12.5px">' +
+          (i.display || num(i.value, i.digits == null ? 1 : i.digits)) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  /** 요청 1건 타임라인 — 각 구간이 전체에서 어디를 차지하는지. */
+  function timeline(el, spans, total) {
+    var t = total || spans.reduce(function (m, s) { return Math.max(m, s.start + s.ms); }, 0) || 1;
+    el.innerHTML = spans.map(function (s) {
+      var left = s.start / t * 100, w = s.ms / t * 100;
+      return '<div style="display:flex;align-items:center;gap:10px;margin:6px 0">' +
+        '<span style="width:132px;font-size:12.5px;color:var(--sub)">' + esc(s.name) + '</span>' +
+        '<span style="flex:1;position:relative;height:16px;background:#F7F8FA;border-radius:5px">' +
+          '<span style="position:absolute;top:0;bottom:0;left:' + left.toFixed(2) + '%;width:' +
+            Math.max(w, 0.4).toFixed(2) + '%;background:' + (s.color || 'var(--accent)') + ';border-radius:4px"></span>' +
+        '</span>' +
+        '<span class="mono" style="width:130px;text-align:right;font-size:12px">' + ms(s.ms) +
+          (s.note ? ' · ' + esc(s.note) : '') + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
   function table(el, cols, rows) {
     el.innerHTML = '<table class="t"><thead><tr>' +
       cols.map(function (c) { return '<th' + (c.num ? ' class="num"' : '') + '>' + esc(c.label) + '</th>'; }).join('') +
@@ -196,6 +230,7 @@
   global.PZ = {
     MOCK: MOCK, esc: esc, qs: qs, num: num, ms: ms, pct: pct, gradient: gradient,
     fixture: fixture, api: api, log: log,
-    header: header, footer: footer, line: line, legend: legend, table: table, kpi: kpi, statusBadge: statusBadge
+    header: header, footer: footer, line: line, legend: legend, table: table, kpi: kpi, statusBadge: statusBadge,
+    bars: bars, timeline: timeline
   };
 })(window);

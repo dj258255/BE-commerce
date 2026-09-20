@@ -1,0 +1,24 @@
+{
+  "_mock": true,
+  "_source": "M4 실험(이슈 #127). 확률적 모델 출력을 business state로 쓸 때, 언제 재검증하고 얼마를 지불하는가.",
+  "_harness": "synthetic 재고·판매상태를 만들고 생성 중 상태를 바꿔가며 측정 (예정)",
+  "modes": [
+    { "mode": "검증 없음", "addedMs": 0, "violationPct": 3.8, "staleWindowMs": 108, "factsChanged": 41 },
+    { "mode": "생성 시작 시점 검증", "addedMs": 6, "violationPct": 1.9, "staleWindowMs": 108, "factsChanged": 41 },
+    { "mode": "생성 완료 후 재검증", "addedMs": 19, "violationPct": 0.6, "staleWindowMs": 26, "factsChanged": 9 },
+    { "mode": "응답 직전 재검증", "addedMs": 34, "violationPct": 0.1, "staleWindowMs": 4, "factsChanged": 1 }
+  ],
+  "tradeoff": [
+    { "name": "위반율 vs 추가 지연", "cls": "s-a", "points": [[0, 3.8], [6, 1.9], [19, 0.6], [34, 0.1]] }
+  ],
+  "boundary": {
+    "recommendation": "추천 단계는 '생성 완료 후 재검증'까지, 구매 단계는 강한 보장",
+    "statement": "추천은 stale을 허용해도 사용자가 손해를 보지 않는다(다음 요청에서 바뀐다). 그러나 결제 직전 재고 확인은 이미 별도 경로(주문·결제)가 강하게 보장한다.",
+    "openQuestion": "재검증을 완료 후로 두면 응답 직전 1건이 어긋난다. 이 1건을 폴백으로 흡수할지, 무시할지"
+  },
+  "conclusion": {
+    "statement": "재검증을 강하게 할수록 위반율은 3.8%→0.1%로 떨어지지만 추가 지연이 0→34ms 붙는다.",
+    "tradeoff": "0.1%를 사려면 요청마다 34ms를 낸다. 추천에서 그 34ms가 값어치가 있는지는 사용자 지표 없이 판단할 수 없다.",
+    "openQuestion": "재검증 조회를 캐시하면 stale이 다시 생긴다 — 캐시 TTL과 위반율의 관계는 미측정"
+  }
+}

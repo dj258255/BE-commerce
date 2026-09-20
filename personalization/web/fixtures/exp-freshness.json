@@ -1,0 +1,28 @@
+{
+  "_mock": true,
+  "_source": "M2 실험(이슈 #124). 이벤트→컨텍스트 경로에서 freshness가 어디서 얼마나 소모되는지, 정책별 대가.",
+  "_harness": "k6/freshness-vs-latency.js (예정) — 클릭 이벤트를 흘리며 consumer 지연을 주입",
+  "unit": { "x": "최신 반영률(%)", "y": "p95 지연(ms)" },
+  "tradeoff": [
+    { "name": "즉시 응답(대기 0)", "cls": "s-b", "points": [[41.2, 108]] },
+    { "name": "N ms 상한", "cls": "s-a", "points": [[63.8, 141], [78.4, 172], [90.1, 238], [96.7, 412]] }
+  ],
+  "policies": [
+    { "waitMs": 0, "label": "즉시 응답", "freshnessPct": 41.2, "p95Ms": 108, "timeoutPct": 0.0 },
+    { "waitMs": 50, "label": "50ms 상한", "freshnessPct": 63.8, "p95Ms": 141, "timeoutPct": 0.0 },
+    { "waitMs": 100, "label": "100ms 상한", "freshnessPct": 78.4, "p95Ms": 172, "timeoutPct": 0.1 },
+    { "waitMs": 200, "label": "200ms 상한", "freshnessPct": 90.1, "p95Ms": 238, "timeoutPct": 0.9 },
+    { "waitMs": 500, "label": "최신까지 대기", "freshnessPct": 96.7, "p95Ms": 412, "timeoutPct": 4.7 }
+  ],
+  "breakdown": [
+    { "label": "event → kafka", "value": 3.2 },
+    { "label": "kafka → consumer", "value": 380.0 },
+    { "label": "consumer → context store", "value": 24.0 },
+    { "label": "store → inference 입력", "value": 12.8 }
+  ],
+  "conclusion": {
+    "statement": "신선도의 병목은 저장소가 아니라 consumer 구간이다. 대기 상한을 100ms로 두면 최신 반영률이 41%→78%로 오르고 p95는 108→172ms가 된다.",
+    "tradeoff": "최신성을 사려면 tail latency를 쓴다. 500ms까지 기다리면 반영률 97%지만 p95 412ms·timeout 4.7%로 SLO를 넘긴다.",
+    "openQuestion": "consumer 처리량을 늘리면(파티션·병렬) 같은 신선도를 더 싸게 살 수 있는가 — 다음 실험"
+  }
+}

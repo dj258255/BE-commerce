@@ -1,0 +1,21 @@
+{
+  "_mock": true,
+  "_source": "M5 실험(이슈 #128). 생성 범위(AR vs ranking)에 따라 모델이 latency budget에서 차지하는 몫.",
+  "_harness": "같은 카탈로그·같은 컨텍스트로 세 모드를 돌려 구간별 시간 분해 (예정)",
+  "budgetMs": 300,
+  "modes": [
+    { "mode": "전부 ranking", "rankMs": 14, "arMs": 0, "contextMs": 11, "constraintMs": 6, "postMs": 4, "e2eMs": 35, "throughputRps": 420 },
+    { "mode": "앞부분 AR + Top-K", "rankMs": 6, "arMs": 62, "contextMs": 11, "constraintMs": 6, "postMs": 4, "e2eMs": 89, "throughputRps": 96 },
+    { "mode": "전부 AR", "rankMs": 0, "arMs": 210, "contextMs": 11, "constraintMs": 6, "postMs": 4, "e2eMs": 231, "throughputRps": 27 }
+  ],
+  "share": [
+    { "label": "전부 AR — 모델 몫", "value": 90.9, "display": "90.9%", "color": "var(--bad)" },
+    { "label": "앞부분 AR + Top-K — 모델 몫", "value": 69.7, "display": "69.7%", "color": "var(--warn)" },
+    { "label": "전부 ranking — 모델 몫", "value": 40.0, "display": "40.0%", "color": "var(--ok)" }
+  ],
+  "conclusion": {
+    "statement": "전부 AR은 e2e 231ms로 300ms 예산의 77%를 혼자 먹고, 처리량은 ranking의 1/15로 떨어진다.",
+    "tradeoff": "생성 범위를 늘리면 페이지 일관성은 올라가지만, 같은 하드웨어로 처리할 수 있는 요청이 급감한다. 남은 예산으로 캐시·폴백을 넣을 여지도 사라진다.",
+    "openQuestion": "앞부분만 AR(89ms)로도 페이지 일관성이 충분한가 — 이건 시스템 지표가 아니라 품질 지표가 필요"
+  }
+}

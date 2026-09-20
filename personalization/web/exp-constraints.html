@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>개인화 · 제약과 재검증 비용</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/pz.css">
+</head>
+<body>
+<header id="app-top"></header>
+<main class="page"><div class="container">
+  <div class="head">
+    <h1>제약과 재검증 비용</h1>
+    <p>생성 중 재고가 0이 되면, 제약을 통과한 출력도 <b>응답 시점엔 거짓</b>일 수 있다. 언제 다시 확인하고 얼마를 내는가.</p>
+  </div>
+  <div class="grid g4" id="kpis" style="margin-bottom:16px"></div>
+  <section class="panel" style="margin-bottom:16px">
+    <h2>위반율을 낮추는 값</h2>
+    <div class="hint">x축 = 추가 지연(ms), y축 = 제약 위반율(%). 왼쪽 아래가 공짜, 오른쪽 아래가 안전.</div>
+    <div id="chart"></div><div class="legend" id="legend"></div>
+  </section>
+  <section class="panel" style="margin-bottom:16px">
+    <h2>검증 시점별 결과</h2>
+    <div class="hint">stale 창 = 검증한 시점과 응답 시점의 간격. 그 사이 사실이 바뀌면 통과한 제약이 무효가 된다.</div>
+    <div id="table"></div>
+  </section>
+  <section class="panel" style="margin-bottom:16px">
+    <h2>경계 — 추천은 어디까지, 구매는 어디부터</h2>
+    <div id="boundary"></div>
+  </section>
+  <section class="panel"><h2>결론</h2><div id="conclusion"></div></section>
+  <p class="foot-note" id="harness"></p>
+</div></main>
+<footer id="app-foot"></footer>
+<script src="assets/pz.js"></script>
+<script>
+  PZ.header('console');
+  (async function () {
+    var d = await PZ.fixture('exp-constraints'); if (!d) return;
+    var m = d.modes;
+    document.getElementById('kpis').innerHTML =
+      PZ.kpi('검증 없음 위반율', PZ.pct(m[0].violationPct), '추가 지연 0ms', 'bad') +
+      PZ.kpi('완료 후 재검증', PZ.pct(m[2].violationPct), '+' + m[2].addedMs + 'ms · stale ' + m[2].staleWindowMs + 'ms', 'warn') +
+      PZ.kpi('응답 직전 재검증', PZ.pct(m[3].violationPct), '+' + m[3].addedMs + 'ms', 'good') +
+      PZ.kpi('위반 1건 줄이는 값', '+' + PZ.num(m[3].addedMs - m[0].addedMs) + 'ms', '요청마다 지불');
+
+    PZ.line(document.getElementById('chart'), d.tradeoff, { xLabel: '추가 지연(ms)', y0: true, width: 760, height: 240 });
+    PZ.legend(document.getElementById('legend'), d.tradeoff);
+
+    PZ.table(document.getElementById('table'),
+      [{ key: 'mode', label: '검증 시점' },
+       { key: 'addedMs', label: '추가 지연(ms)', num: true },
+       { key: 'violationPct', label: '위반율', num: true, fmt: function (v) { return PZ.pct(v); } },
+       { key: 'staleWindowMs', label: 'stale 창(ms)', num: true },
+       { key: 'factsChanged', label: '창 안에서 바뀐 사실', num: true }],
+      d.modes);
+
+    var b = d.boundary;
+    document.getElementById('boundary').innerHTML =
+      '<p style="margin:0 0 10px">' + PZ.esc(b.statement) + '</p>' +
+      '<div class="badge b-info">권고 — ' + PZ.esc(b.recommendation) + '</div>';
+
+    var c = d.conclusion;
+    document.getElementById('conclusion').innerHTML =
+      '<p style="margin:0 0 10px">' + PZ.esc(c.statement) + '</p>' +
+      '<p style="margin:0 0 10px;color:var(--sub)"><b>트레이드오프</b> — ' + PZ.esc(c.tradeoff) + '</p>' +
+      '<div class="badge b-warn">경계 — ' + PZ.esc(c.openQuestion) + '</div>';
+    document.getElementById('harness').textContent = '하네스: ' + d._harness;
+  })();
+</script>
+</body>
+</html>

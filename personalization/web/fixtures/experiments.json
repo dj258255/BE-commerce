@@ -1,37 +1,49 @@
 {
   "_mock": true,
   "_source": "실험 목록은 이슈/마일스톤에서 온다. 실험 결과가 쌓이면 summary가 실제 수치로 채워진다.",
+  "_note": "지금은 화면 골격을 먼저 세운 단계다. 각 화면의 값은 fixture(목)이고, 실측이 끝나면 같은 모양의 실데이터로 교체한다.",
   "experiments": [
     {
       "id": "freshness", "title": "신선도 vs 지연", "milestone": "M2", "issue": 124,
       "question": "최신 이벤트를 모델에 넣으려면 얼마나 기다려야 하고, 그 대가는 무엇인가",
-      "status": "todo", "href": null, "summary": null
+      "status": "done", "href": "exp-freshness.html",
+      "summary": "병목은 저장소가 아니라 consumer 구간. 100ms 상한에서 반영률 41→78%"
     },
     {
       "id": "consistency", "title": "online/offline 컨텍스트 일치율", "milestone": "M2", "issue": 125,
       "question": "같은 로그로 만든 학습 피처와 서빙 피처가 어디서 갈라지는가",
-      "status": "todo", "href": null, "summary": null
+      "status": "done", "href": "exp-consistency.html",
+      "summary": "일치율 94.3% · 불일치의 60%가 late event"
     },
     {
       "id": "overload", "title": "과부하와 degradation", "milestone": "M3", "issue": 126,
       "question": "모델이 포화됐을 때 SLO를 지키려면 모델 사용을 얼마나 포기해야 하는가",
-      "status": "todo", "href": null, "summary": null
+      "status": "done", "href": "exp-overload.html",
+      "summary": "queue를 열면 p95 880ms · admission은 SLO 지키고 coverage 65%"
     },
     {
       "id": "constraints", "title": "제약과 재검증 비용", "milestone": "M4", "issue": 127,
       "question": "모델 출력을 사실로 쓰지 않으려면 응답 직전에 얼마를 더 지불해야 하는가",
-      "status": "todo", "href": null, "summary": null
+      "status": "done", "href": "exp-constraints.html",
+      "summary": "위반율 3.8→0.1%의 값은 요청마다 +34ms"
     },
     {
       "id": "budget", "title": "생성 범위와 계산 예산", "milestone": "M5", "issue": 128,
       "question": "생성 범위를 늘리면 전체 latency budget에서 모델 몫이 얼마가 되는가",
-      "status": "todo", "href": null, "summary": null
+      "status": "done", "href": "exp-budget.html",
+      "summary": "전부 AR은 e2e 231ms·예산 77% 소진, 처리량 1/15"
     },
     {
       "id": "cache", "title": "캐시 압축 임계값", "milestone": "M6", "issue": 129,
       "question": "값이 몇 KB를 넘을 때부터 압축이 이득인가",
       "status": "done", "href": "exp-cache.html",
       "summary": "1KB 구간에서는 압축이 손해, 50KB부터 GET 이득이 뚜렷"
+    },
+    {
+      "id": "trace", "title": "요청 1건 추적", "milestone": "M8", "issue": 140,
+      "question": "요청 하나가 어느 구간에서 얼마를 썼고 무엇이 stale이었는가",
+      "status": "done", "href": "exp-trace.html",
+      "summary": "구간 타임라인 + stale 원인 + 재현용 입력 스냅샷"
     }
   ]
 }

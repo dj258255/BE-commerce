@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>개인화 · online/offline 일치율</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/pz.css">
+</head>
+<body>
+<header id="app-top"></header>
+<main class="page"><div class="container">
+  <div class="head">
+    <h1>online/offline 컨텍스트 일치율</h1>
+    <p>같은 이벤트 로그로 만든 학습 피처와 서빙 피처가 다르면, 모델이 같아도 <b>입력이 다르다.</b> 어디서 얼마나 갈라지는가.</p>
+  </div>
+  <div class="grid g4" id="kpis" style="margin-bottom:16px"></div>
+  <section class="panel" style="margin-bottom:16px">
+    <h2>불일치 원인 분포</h2>
+    <div class="hint">총계만 보면 “6% 불일치”로 끝난다. 원인을 나눠야 고칠 곳이 보인다.</div>
+    <div id="causes"></div>
+  </section>
+  <section class="panel" style="margin-bottom:16px">
+    <h2>대표 사례</h2>
+    <div class="hint">같은 컨텍스트를 offline 배치와 online 서빙이 다르게 계산한 자리.</div>
+    <div id="examples"></div>
+  </section>
+  <section class="panel"><h2>결론과 트레이드오프</h2><div id="conclusion"></div></section>
+  <p class="foot-note" id="harness"></p>
+</div></main>
+<footer id="app-foot"></footer>
+<script src="assets/pz.js"></script>
+<script>
+  PZ.header('console');
+  (async function () {
+    var d = await PZ.fixture('exp-consistency'); if (!d) return;
+    var miss = d.replay.contexts - d.replay.matched;
+    document.getElementById('kpis').innerHTML =
+      PZ.kpi('일치율', PZ.pct(d.replay.matchPct), '컨텍스트 ' + PZ.num(d.replay.contexts) + '건 replay') +
+      PZ.kpi('불일치', PZ.num(miss) + '건', '원인 5종으로 분해') +
+      PZ.kpi('최대 원인', 'late event', PZ.pct(d.causes[0].sharePct) + ' — consumer 지연') +
+      PZ.kpi('측정 방법', '동일 로그', 'offline 재계산 대조', 'warn');
+
+    PZ.bars(document.getElementById('causes'),
+      d.causes.map(function (c) { return { label: c.label, value: c.value, display: PZ.num(c.value) + '건 · ' + PZ.pct(c.sharePct), color: c.color }; }));
+
+    PZ.table(document.getElementById('examples'),
+      [{ key: 'context', label: '컨텍스트' },
+       { key: 'offline', label: 'offline', num: true },
+       { key: 'online', label: 'online', num: true },
+       { key: 'cause', label: '원인' }],
+      d.examples);
+
+    var c = d.conclusion;
+    document.getElementById('conclusion').innerHTML =
+      '<p style="margin:0 0 10px">' + PZ.esc(c.statement) + '</p>' +
+      '<p style="margin:0 0 10px;color:var(--sub)"><b>트레이드오프</b> — ' + PZ.esc(c.tradeoff) + '</p>' +
+      '<div class="badge b-warn">경계 — ' + PZ.esc(c.openQuestion) + '</div>';
+    document.getElementById('harness').textContent = '하네스: ' + d._harness;
+  })();
+</script>
+</body>
+</html>

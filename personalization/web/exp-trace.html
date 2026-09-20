@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>개인화 · 요청 1건 추적</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/pz.css">
+</head>
+<body>
+<header id="app-top"></header>
+<main class="page"><div class="container">
+  <div class="head">
+    <h1>요청 1건 추적</h1>
+    <p>평균은 어디가 느린지 알려주지 않는다. 요청 하나를 골라 <b>어느 구간에서 얼마를 썼고 무엇이 stale이었는지</b> 본다.</p>
+  </div>
+  <div class="grid g4" id="kpis" style="margin-bottom:16px"></div>
+  <section class="panel" style="margin-bottom:16px">
+    <h2>타임라인</h2>
+    <div class="hint" id="tl-hint"></div>
+    <div id="timeline"></div>
+  </section>
+  <section class="panel" style="margin-bottom:16px">
+    <h2>stale — 무엇이 얼마나 낡았나</h2>
+    <div id="stale"></div>
+  </section>
+  <section class="panel" style="margin-bottom:16px">
+    <h2>제약 검증</h2>
+    <div class="hint">검증을 통과했더라도 그 시점 이후 사실이 바뀌면 응답은 거짓이 된다.</div>
+    <div id="constraints"></div>
+  </section>
+  <section class="panel">
+    <h2>입력 스냅샷 (재현용)</h2>
+    <div class="hint">이 응답을 다시 만들어보려면 무엇을 넣었는지가 남아 있어야 한다.</div>
+    <div id="snapshot"></div>
+  </section>
+</div></main>
+<footer id="app-foot"></footer>
+<script src="assets/pz.js"></script>
+<script>
+  PZ.header('console');
+  (async function () {
+    var d = await PZ.fixture('exp-trace'); if (!d) return;
+    document.getElementById('kpis').innerHTML =
+      PZ.kpi('요청', PZ.esc(d.requestId), PZ.esc(d.userId) + ' · ' + PZ.esc(d.at.slice(11, 19))) +
+      PZ.kpi('총 시간', PZ.ms(d.totalMs), 'inference가 ' + PZ.pct(d.spans[3].ms / d.totalMs * 100, 0)) +
+      PZ.kpi('stale', PZ.ms(d.stale.lastEventAgeMs), PZ.esc(d.stale.reason), 'warn') +
+      PZ.kpi('출력', PZ.num(d.output.items) + '개', '제약으로 ' + d.output.droppedByConstraint + '개 제외');
+
+    document.getElementById('tl-hint').textContent = '막대 위치 = 시작 시각, 폭 = 소요 시간. 전체 ' + PZ.ms(d.totalMs) + '.';
+    PZ.timeline(document.getElementById('timeline'), d.spans, d.totalMs);
+
+    PZ.table(document.getElementById('stale'),
+      [{ key: 'k', label: '항목' }, { key: 'v', label: '값' }],
+      [
+        { k: '마지막 이벤트 나이', v: PZ.ms(d.stale.lastEventAgeMs) },
+        { k: '원인', v: d.stale.reason },
+        { k: '영향 피처', v: d.stale.affectedFeature },
+        { k: 'offline 값', v: PZ.num(d.stale.offlineValue) },
+        { k: 'online 값', v: PZ.num(d.stale.onlineValue) }
+      ]);
+
+    PZ.table(document.getElementById('constraints'),
+      [{ key: 'itemId', label: '상품' }, { key: 'check', label: '검사' },
+       { key: 'state', label: '결과' }, { key: 'checkedAt', label: '검증 시점' }],
+      d.constraints);
+
+    PZ.table(document.getElementById('snapshot'),
+      [{ key: 'k', label: '키' }, { key: 'v', label: '값' }],
+      [
+        { k: 'lastViewedItem', v: d.inputSnapshot.lastViewedItem },
+        { k: 'recentCategories', v: d.inputSnapshot.recentCategories.join(', ') },
+        { k: 'clickCount1h', v: PZ.num(d.inputSnapshot.clickCount1h) },
+        { k: 'contextVersion', v: d.inputSnapshot.contextVersion }
+      ]);
+  })();
+</script>
+</body>
+</html>

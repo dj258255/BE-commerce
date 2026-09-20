@@ -1,0 +1,26 @@
+{
+  "_mock": true,
+  "_source": "M3 실험(이슈 #126). inference가 포화됐을 때 SLO를 지키려면 모델 사용을 얼마나 포기해야 하는가.",
+  "_harness": "k6/overload-degradation.js (예정) — 모델 서버 처리량을 고정하고 유입을 올린다",
+  "unit": { "x": "유입(rps)", "y": "p95 지연(ms)" },
+  "slo": { "p95Ms": 300, "label": "SLO p95 300ms" },
+  "series": [
+    { "name": "unbounded queue", "cls": "s-b", "points": [[100, 118], [300, 214], [600, 880], [900, 2400]] },
+    { "name": "bounded queue(50)", "cls": "s-a", "points": [[100, 121], [300, 236], [600, 292], [900, 305]] },
+    { "name": "admission control", "cls": "s-c", "points": [[100, 119], [300, 208], [600, 226], [900, 240]] }
+  ],
+  "rows": [
+    { "rps": 100, "policy": "unbounded", "p95Ms": 118, "p99Ms": 210, "timeoutPct": 0.0, "fallbackPct": 0.0, "coveragePct": 100.0 },
+    { "rps": 300, "policy": "unbounded", "p95Ms": 214, "p99Ms": 640, "timeoutPct": 0.4, "fallbackPct": 0.4, "coveragePct": 99.6 },
+    { "rps": 600, "policy": "unbounded", "p95Ms": 880, "p99Ms": 3100, "timeoutPct": 11.2, "fallbackPct": 11.2, "coveragePct": 88.8 },
+    { "rps": 900, "policy": "unbounded", "p95Ms": 2400, "p99Ms": 5200, "timeoutPct": 27.8, "fallbackPct": 27.8, "coveragePct": 72.2 },
+    { "rps": 600, "policy": "bounded(50)", "p95Ms": 292, "p99Ms": 480, "timeoutPct": 3.1, "fallbackPct": 8.4, "coveragePct": 88.5 },
+    { "rps": 900, "policy": "bounded(50)", "p95Ms": 305, "p99Ms": 760, "timeoutPct": 6.9, "fallbackPct": 28.6, "coveragePct": 64.5 },
+    { "rps": 900, "policy": "admission", "p95Ms": 240, "p99Ms": 410, "timeoutPct": 0.6, "fallbackPct": 34.2, "coveragePct": 65.2 }
+  ],
+  "conclusion": {
+    "statement": "queue를 열어두면 p95가 8배로 튄다(880ms). 유입이 처리량을 넘으면 '느린 응답'이 아니라 '죽은 응답'이 된다.",
+    "tradeoff": "admission control은 p95를 240ms로 지키는 대신 personalization coverage를 65%까지 포기한다. SLO를 지키는 비용은 개인화 포기량이다.",
+    "openQuestion": "coverage를 포기하는 대신 폴백 품질을 높이면(인기+세션 기반) 손실이 얼마나 줄어드는가"
+  }
+}
