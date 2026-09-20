@@ -53,3 +53,99 @@ export type ExperimentsFile = { _mock?: boolean; experiments: ExperimentSummary[
 export type Conclusion = { statement: string; tradeoff: string; openQuestion: string };
 
 export type Points = { name: string; cls?: string; points: [number, number][] };
+export type Unit = { x: string; y: string };
+export type BarItem = { label: string; value: number; display?: string; color?: string };
+export type Span = { name: string; start: number; ms: number; color?: string; note?: string };
+
+/* ---------- 실험별 계약 ---------- */
+
+export type CacheFixture = {
+  unit: Unit;
+  series: Points[];
+  rows: { sizeKB: number; noneMs: number; lz4Ms: number; snappyMs: number; bytesReducedPct: number; cpuMs: number }[];
+  conclusion: Conclusion & { thresholdKB: number };
+  _harness?: string;
+  _method?: string;
+};
+
+export type FreshnessFixture = {
+  unit: Unit;
+  tradeoff: Points[];
+  policies: { waitMs: number; label: string; freshnessPct: number; p95Ms: number; timeoutPct: number }[];
+  breakdown: { label: string; value: number }[];
+  conclusion: Conclusion;
+  _harness?: string;
+};
+
+export type ConsistencyFixture = {
+  replay: { contexts: number; matched: number; matchPct: number };
+  causes: { label: string; value: number; sharePct: number; color: string }[];
+  examples: { context: string; offline: number; online: number; cause: string }[];
+  conclusion: Conclusion;
+  _harness?: string;
+};
+
+export type OverloadFixture = {
+  unit: Unit;
+  slo: { p95Ms: number; label: string };
+  series: Points[];
+  rows: {
+    rps: number;
+    policy: string;
+    p95Ms: number;
+    p99Ms: number;
+    timeoutPct: number;
+    fallbackPct: number;
+    coveragePct: number;
+  }[];
+  conclusion: Conclusion;
+  _harness?: string;
+};
+
+export type ConstraintsFixture = {
+  modes: { mode: string; addedMs: number; violationPct: number; staleWindowMs: number; factsChanged: number }[];
+  tradeoff: Points[];
+  boundary: { recommendation: string; statement: string; openQuestion: string };
+  conclusion: Conclusion;
+  _harness?: string;
+};
+
+export type BudgetFixture = {
+  budgetMs: number;
+  modes: {
+    mode: string;
+    rankMs: number;
+    arMs: number;
+    contextMs: number;
+    constraintMs: number;
+    postMs: number;
+    e2eMs: number;
+    throughputRps: number;
+  }[];
+  share: BarItem[];
+  conclusion: Conclusion;
+  _harness?: string;
+};
+
+export type TraceFixture = {
+  requestId: string;
+  userId: string;
+  at: string;
+  totalMs: number;
+  spans: Span[];
+  stale: {
+    lastEventAgeMs: number;
+    reason: string;
+    affectedFeature: string;
+    offlineValue: number;
+    onlineValue: number;
+  };
+  constraints: { itemId: string; check: string; state: string; checkedAt: string }[];
+  output: { rows: number; items: number; droppedByConstraint: number; source: string };
+  inputSnapshot: {
+    lastViewedItem: string;
+    recentCategories: string[];
+    clickCount1h: number;
+    contextVersion: string;
+  };
+};

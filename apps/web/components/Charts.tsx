@@ -1,4 +1,6 @@
-export type BarItem = { label: string; value: number; display?: string; color?: string };
+import type { BarItem, Span } from '@/lib/contracts';
+
+export type { BarItem, Span };
 
 /** 값 하나가 아니라 '누가 큰가'를 보는 분포·비교용. 표보다 한눈에 들어온다. */
 export function Bars({ items, max }: { items: BarItem[]; max?: number }) {
@@ -20,8 +22,6 @@ export function Bars({ items, max }: { items: BarItem[]; max?: number }) {
     </div>
   );
 }
-
-export type Span = { name: string; start: number; ms: number; color?: string; note?: string };
 
 /** 요청 하나의 구간별 소모. 어디가 느린지 평균은 알려주지 않는다. */
 export function Timeline({ spans, total }: { spans: Span[]; total?: number }) {
