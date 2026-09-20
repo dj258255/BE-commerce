@@ -1,0 +1,48 @@
+{
+  "_mock": true,
+  "_source": "GET /api/v1/personalization/homepage?userId= 계약. 실험 M7에서 실데이터로 교체한다.",
+  "userId": "u-1024",
+  "generatedAt": "2026-09-20T10:30:00Z",
+  "source": "MODEL",
+  "fallbackReason": null,
+  "contextStalenessMs": 420,
+  "latency": { "contextMs": 11, "inferenceMs": 88, "constraintMs": 6, "totalMs": 108 },
+  "rows": [
+    {
+      "id": "recent",
+      "title": "최근 본 상품",
+      "strategy": "RECENT_VIEW",
+      "items": [
+        { "itemId": "0123456001", "name": "Strap top", "price": 9990, "score": 1.0, "reason": "3일 전 조회" },
+        { "itemId": "0123456002", "name": "Jersey top", "price": 12990, "score": 1.0, "reason": "1일 전 조회" },
+        { "itemId": "0567890001", "name": "Slim Jeans", "price": 39900, "score": 1.0, "reason": "어제 조회" },
+        { "itemId": "0678901001", "name": "Cotton shirt", "price": 29900, "score": 1.0, "reason": "2일 전 조회" },
+        { "itemId": "0789012001", "name": "Knit sweater", "price": 45900, "score": 1.0, "reason": "5일 전 조회" }
+      ]
+    },
+    {
+      "id": "for-you",
+      "title": "너를 위한 추천",
+      "strategy": "MODEL_TOP_K",
+      "items": [
+        { "itemId": "0912345001", "name": "Oversized hoodie", "price": 39900, "score": 0.91, "reason": "같은 색상 계열 재구매" },
+        { "itemId": "0223344001", "name": "Linen shorts", "price": 24900, "score": 0.88, "reason": "여름 시즌 유사 고객" },
+        { "itemId": "0334455001", "name": "Canvas tote", "price": 19900, "score": 0.84, "reason": "함께 구매된 상품" },
+        { "itemId": "0445566001", "name": "Ribbed tank", "price": 12900, "score": 0.79, "reason": "기본템 보완" },
+        { "itemId": "0556677001", "name": "Wide pants", "price": 45900, "score": 0.76, "reason": "체형 유사 고객" }
+      ]
+    },
+    {
+      "id": "similar",
+      "title": "비슷한 스타일",
+      "strategy": "CONTENT_SIMILARITY",
+      "items": [
+        { "itemId": "0667788001", "name": "Denim jacket", "price": 59900, "score": 0.72, "reason": "이미지 유사도 0.72" },
+        { "itemId": "0778899001", "name": "Pleated skirt", "price": 39900, "score": 0.70, "reason": "이미지 유사도 0.70" },
+        { "itemId": "0889900001", "name": "Basic tee", "price": 9990, "score": 0.68, "reason": "카테고리 근접" },
+        { "itemId": "0990011001", "name": "Wool coat", "price": 89900, "score": 0.64, "reason": "질감 유사" },
+        { "itemId": "0111122001", "name": "Sneakers", "price": 49900, "score": 0.60, "reason": "코디 완성" }
+      ]
+    }
+  ]
+}

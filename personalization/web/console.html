@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BE-commerce 개인화 · 실험 콘솔</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/pz.css">
+</head>
+<body>
+<header id="app-top"></header>
+
+<main class="page">
+  <div class="container">
+    <div class="head">
+      <h1>실험 콘솔</h1>
+      <p>이 프로젝트의 본체는 모델이 아니라 <b>측정</b>이다. 각 실험은 “무엇을 더 보장하면 무엇을 얼마나 지불하는가”를 숫자로 남긴다.</p>
+    </div>
+    <div id="list" class="grid g3"></div>
+    <p class="foot-note">측정 전인 실험은 <b>“측정 전”</b>으로 남긴다. 결과가 나오지 않은 것을 완료처럼 보이게 하지 않는다.</p>
+  </div>
+</main>
+
+<footer id="app-foot"></footer>
+
+<script src="assets/pz.js"></script>
+<script>
+  PZ.header('console');
+
+  (async function () {
+    var d = await PZ.fixture('experiments');
+    if (!d) return;
+    document.getElementById('list').innerHTML = d.experiments.map(function (e) {
+      var done = e.status === 'done';
+      return '<article class="exp ' + (done ? 'done' : 'todo') + '">' +
+        '<div class="row" style="justify-content:space-between">' +
+          '<h3>' + PZ.esc(e.title) + '</h3>' + PZ.statusBadge(e.status) + '</div>' +
+        '<p class="q">' + PZ.esc(e.question) + '</p>' +
+        '<div class="mono" style="font-size:12px;color:var(--sub)">' +
+          PZ.esc(e.milestone) + ' · 이슈 #' + e.issue + '</div>' +
+        '<div class="foot">' +
+          (done
+            ? '<a href="' + PZ.esc(e.href) + '">결과 보기 →</a>'
+            : '<span>화면 준비 중 — 실험 이슈에서 진행</span>') +
+        '</div>' +
+        (e.summary ? '<div class="badge b-ok" style="align-self:flex-start">' + PZ.esc(e.summary) + '</div>' : '') +
+      '</article>';
+    }).join('');
+  })();
+</script>
+</body>
+</html>

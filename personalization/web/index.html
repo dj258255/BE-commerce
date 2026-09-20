@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BE-commerce 개인화 · 홈</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/pz.css">
+</head>
+<body>
+<header id="app-top"></header>
+
+<main class="page">
+  <div class="container">
+    <div class="head">
+      <h1>개인화 홈</h1>
+      <p>모델이 홈을 구성한 결과다. 이 화면은 <b>결과만</b> 보여주지 않고, 그 결과가 어디서 왔고 얼마를 썼는지 함께 보여준다.</p>
+    </div>
+
+    <div class="row" style="margin-bottom:16px">
+      <label class="muted" style="font-size:13px">사용자</label>
+      <select class="btn" id="user">
+        <option value="u-1024">u-1024 (활동 많음)</option>
+        <option value="u-2048">u-2048 (신규)</option>
+        <option value="u-3072">u-3072 (휴면)</option>
+      </select>
+      <span class="muted" style="font-size:12.5px">← 실 API가 붙으면 실제 고객 id로 바뀐다</span>
+    </div>
+
+    <div class="grid g4" id="kpis" style="margin-bottom:20px"></div>
+    <div id="rows"></div>
+
+    <p class="foot-note" id="note"></p>
+  </div>
+</main>
+
+<footer id="app-foot"></footer>
+
+<script src="assets/pz.js"></script>
+<script>
+  PZ.header('home');
+
+  function itemHtml(it) {
+    var initial = (it.name || '?').trim().charAt(0);
+    return '<div class="item">' +
+      '<div class="thumb" style="background:' + PZ.gradient(it.itemId) + '">' +
+        '<span class="fb">' + PZ.esc(initial) + '</span></div>' +
+      '<div class="meta">' +
+        '<div class="nm">' + PZ.esc(it.name) + '</div>' +
+        '<div class="why">' + PZ.esc(it.reason) + '</div>' +
+        '<div class="score">score ' + PZ.num(it.score, 2) + '</div>' +
+      '</div></div>';
+  }
+
+  async function render() {
+    var userId = document.getElementById('user').value;
+    var d = await PZ.fixture('homepage');
+    if (!d) return;
+
+    // 목 계약이라 userId를 바꿔도 값은 같다. 그 사실을 숨기지 않는다.
+    PZ.log('dim', '// fixture는 userId를 반영하지 않는다 — 계약 모양만 고정한 목이다');
+
+    var srcKind = d.source === 'MODEL' ? '' : (d.source === 'FALLBACK_POPULARITY' ? 'warn' : '');
+    document.getElementById('kpis').innerHTML =
+      PZ.kpi('구성 출처', PZ.esc(d.source), d.fallbackReason ? ('폴백: ' + d.fallbackReason) : '모델이 구성함', srcKind) +
+      PZ.kpi('컨텍스트 신선도', PZ.ms(d.contextStalenessMs), '가장 최근 반영된 이벤트 기준') +
+      PZ.kpi('총 지연', PZ.ms(d.latency.totalMs),
+        'context ' + PZ.ms(d.latency.contextMs) + ' · inference ' + PZ.ms(d.latency.inferenceMs) +
+        ' · constraint ' + PZ.ms(d.latency.constraintMs)) +
+      PZ.kpi('행 수', PZ.num(d.rows.length), '각 행은 서로 다른 전략으로 만든다');
+
+    document.getElementById('rows').innerHTML = d.rows.map(function (r) {
+      return '<section class="row-block">' +
+        '<div class="row-head"><h3>' + PZ.esc(r.title) + '</h3>' +
+          '<span class="mono">' + PZ.esc(r.strategy) + '</span></div>' +
+        '<div class="items">' + r.items.map(itemHtml).join('') + '</div>' +
+      '</section>';
+    }).join('');
+
+    document.getElementById('note').innerHTML =
+      'userId=' + PZ.esc(userId) + ' · generatedAt=' + PZ.esc(d.generatedAt) +
+      ' — 위 값은 <b>목 계약</b>이다. M7에서 홈 컴포저 API가 붙으면 같은 모양의 실데이터로 대체된다.';
+  }
+
+  document.getElementById('user').onchange = render;
+  render();
+</script>
+</body>
+</html>

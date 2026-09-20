@@ -1,0 +1,144 @@
+/* 개인화 시스템 프론트 — 관측·실험 콘솔과 개인화 홈이 공유한다.
+   숫자를 읽는 화면이라 모노·표·차트를 1급으로 두고, 장식은 최소로 둔다. */
+
+:root{
+  --bg:#FBFBFC; --panel:#FFFFFF; --ink:#15181D; --sub:#6B7280; --line:#E4E7EC; --line2:#CFD4DC;
+  --accent:#3B5BDB; --accent-ink:#2B44A8; --accent-soft:#EEF2FF;
+  --ok:#0B7A4B; --warn:#B45309; --bad:#BC3434; --info:#0F766E;
+  --mono:"SFMono-Regular",ui-monospace,Menlo,Consolas,monospace;
+  --radius:12px; --radius-sm:9px;
+  --shadow:0 1px 2px rgba(21,24,29,.05),0 10px 24px -18px rgba(21,24,29,.28);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font:14.5px/1.55 "Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo",system-ui,sans-serif;
+}
+a{color:inherit;text-decoration:none}
+h1,h2,h3{margin:0;letter-spacing:-.02em}
+button{font:inherit;cursor:pointer}
+input,select{font:inherit}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.container{max-width:1280px;margin:0 auto;padding:0 22px}
+.muted{color:var(--sub)}
+
+/* ---------- 상단 ---------- */
+.topbar{position:sticky;top:0;z-index:40;background:rgba(251,251,252,.92);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line)}
+.topbar-in{display:flex;align-items:center;gap:16px;height:58px}
+.brand{font-weight:850;font-size:17px;letter-spacing:-.03em}
+.brand b{color:var(--accent)}
+.tag{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--sub);
+  border:1px solid var(--line2);border-radius:5px;padding:2px 6px}
+.nav{display:flex;gap:2px}
+.nav a{font-size:14px;font-weight:600;color:var(--sub);padding:7px 11px;border-radius:8px}
+.nav a:hover{color:var(--ink);background:#F2F4F8}
+.nav a.on{color:var(--accent-ink);background:var(--accent-soft)}
+.spacer{flex:1}
+
+/* 목 데이터 표시 — 값이 진짜인지 화면이 스스로 밝힌다 */
+.mock{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;
+  font-weight:700;color:var(--warn);border:1px solid #EAD3AE;background:#FCF6EB;border-radius:6px;padding:3px 8px}
+.mock::before{content:"▲";font-size:9px}
+.mock.off{color:var(--ok);border-color:#BFE3D2;background:#F0FAF5}
+.mock.off::before{content:"●"}
+
+/* ---------- 레이아웃 ---------- */
+.page{padding:22px 0 90px}
+.head{margin-bottom:18px}
+.head h1{font-size:23px}
+.head p{margin:6px 0 0;color:var(--sub)}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:1000px){.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+/* ---------- 카드·KPI ---------- */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.panel h2{font-size:15px;margin-bottom:4px}
+.panel .hint{font-size:12.5px;color:var(--sub);margin-bottom:14px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.kpi .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--sub)}
+.kpi .v{font-family:var(--mono);font-size:22px;font-weight:750;margin-top:6px;letter-spacing:-.02em}
+.kpi .d{font-size:12px;color:var(--sub);margin-top:4px}
+.kpi.good .v{color:var(--ok)} .kpi.warn .v{color:var(--warn)} .kpi.bad .v{color:var(--bad)}
+
+/* ---------- 배지 ---------- */
+.badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:700;
+  padding:3px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--sub);background:#fff}
+.b-ok{color:var(--ok);border-color:#BFE3D2;background:#F0FAF5}
+.b-warn{color:var(--warn);border-color:#EAD3AE;background:#FCF6EB}
+.b-bad{color:var(--bad);border-color:#EAC1C1;background:#FCF1F1}
+.b-info{color:var(--info);border-color:#B8DFDB;background:#EFF9F8}
+
+/* ---------- 표 ---------- */
+table.t{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
+table.t th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--sub);
+  font-weight:600;padding:7px 9px;border-bottom:1px solid var(--line)}
+table.t td{padding:7px 9px;border-bottom:1px solid #F1F3F6;font-variant-numeric:tabular-nums}
+table.t tr:last-child td{border-bottom:0}
+table.t td.num,table.t th.num{text-align:right}
+
+/* ---------- 실험 카드 ---------- */
+.exp{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;
+  display:flex;flex-direction:column;gap:10px}
+.exp h3{font-size:14.5px}
+.exp .q{font-size:13px;color:var(--sub)}
+.exp .foot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.exp.done .foot a{font-weight:650;color:var(--accent-ink)}
+.exp.todo .foot span{font-size:12.5px;color:var(--sub)}
+
+/* ---------- 차트 ---------- */
+.chart{width:100%;height:auto;display:block}
+.chart .axis{stroke:var(--line2);stroke-width:1}
+.chart .gridline{stroke:#F1F3F6;stroke-width:1}
+.chart .tick{font:10px var(--mono);fill:var(--sub)}
+.chart .label{font:11px var(--mono);fill:var(--sub)}
+.series{fill:none;stroke-width:2}
+.s-none{stroke:#9AA1AC}.s-lz4{stroke:var(--accent)}.s-snappy{stroke:var(--info)}
+.s-a{stroke:var(--accent)}.s-b{stroke:var(--warn)}.s-c{stroke:var(--info)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--sub);margin-top:8px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+
+/* ---------- 조작 ---------- */
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line2);background:#fff;color:var(--ink);
+  border-radius:var(--radius-sm);padding:8px 13px;font-weight:650;font-size:13.5px;transition:.13s}
+.btn:hover{border-color:var(--ink);transform:translateY(-1px)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn-primary{background:var(--accent);border-color:var(--accent-ink);color:#fff}
+.btn-primary:hover{background:var(--accent-ink)}
+select.btn{min-width:180px}
+
+/* ---------- 개인화 홈 ---------- */
+.row-block{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);padding:16px;margin-bottom:14px}
+.row-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px}
+.row-head h3{font-size:15px}
+.row-head span{font-size:12.5px;color:var(--sub)}
+.items{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+@media(max-width:1000px){.items{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:640px){.items{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.item{border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;background:#fff}
+.item .thumb{aspect-ratio:3/4;background:linear-gradient(135deg,#EEF1F6,#DDE3EC);position:relative}
+.item .thumb .fb{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-weight:800;color:#fff;font-size:20px}
+.item .meta{padding:9px 10px}
+.item .nm{font-size:12.5px;font-weight:650;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.item .why{font-family:var(--mono);font-size:10.5px;color:var(--sub);margin-top:5px}
+.item .score{font-family:var(--mono);font-size:11px;color:var(--accent-ink);margin-top:4px}
+
+/* ---------- 개발자 로그 드로어 ---------- */
+#logbar{position:fixed;left:0;right:0;bottom:0;z-index:60;background:#15181D;color:#D6DAE2;
+  border-top:1px solid #2A2F38;transform:translateY(calc(100% - 36px));transition:transform .2s ease}
+#logbar.open{transform:none}
+#logbar .bar{display:flex;align-items:center;gap:10px;height:36px;padding:0 20px;cursor:pointer;user-select:none}
+#logbar .bar .t{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:#9AA3B2}
+#logbar .log{font-family:var(--mono);font-size:12px;line-height:1.6;height:180px;overflow:auto;
+  padding:6px 20px 14px;white-space:pre-wrap;margin:0}
+#logbar .req{color:#7FA8E8}#logbar .ok{color:#7CC7A1}#logbar .err{color:#E8918D}#logbar .dim{color:#6D675C}
+
+.foot-note{margin-top:28px;font-size:12.5px;color:var(--sub);border-top:1px solid var(--line);padding-top:14px}
