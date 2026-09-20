@@ -20,8 +20,8 @@
 
 ## 진행 상황
 
-- **M0**: `docs/00-data.md`, `01-architecture.md`, `02-experiments.md`, `03-verification.md` 작성.
-  CI skip 게이트(#121)는 별도 PR.
+- **M0**: `docs/00-data.md`, `01-architecture.md`, `02-experiments.md`, `03-verification.md`,
+  `04-storage.md` 작성. CI skip 게이트(#121)는 별도 PR로 완료.
 - **M8**: 화면 7종 + 홈 + 콘솔. 값은 **fixture(목)** 이고, 화면이 스스로 목임을 밝힌다.
   실측이 끝나면 같은 모양의 실데이터로 교체한다.
 - **M9**: 서사 재정렬 완료(#145). 구조 재배치(#142), CI·스크립트 경로(#144), 블로그(#143) 남음.
