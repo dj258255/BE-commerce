@@ -87,6 +87,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/subscriptions/**").hasRole("USER")   // 구독은 회원 본인 소유
                         .requestMatchers("/api/v1/wallet/**").hasRole("USER")          // 월렛은 회원 본인 소유
                         .requestMatchers("/api/v1/points/**").hasRole("USER")          // 포인트는 회원 본인 소유
+                        // 찜은 회원 본인 소유이고 서버에 저장한다(장바구니는 localStorage라 여기 없다).
+                        // 개인화 신호로 쓰려면 서버에 남아야 한다 — 정책이 갈리는 근거는 V58 주석 참고.
+                        .requestMatchers("/api/v1/wishlist/**").hasRole("USER")
                         // 선착순 대기열: 로그인 사용자만 줄 서기(멤버=인증 principal userId). 결제 경로와는
                         // 결합하지 않는 독립 프리미티브(입장/상태/이탈)이지만 참가자 식별을 위해 인증은 요구한다.
                         .requestMatchers("/api/v1/queue/**").hasRole("USER")

@@ -134,6 +134,8 @@
         await api('POST', '/auth/logout', { body: { refreshToken: this.refreshToken() } });
       }
       this.clear();
+      // 앞 사람의 찜이 다음 사용자 화면에 남으면 안 된다.
+      wishlist.clear();
     },
     /** 결제·주문처럼 로그인이 필요한 화면의 진입 가드. 로그인 후 돌아올 곳을 남긴다. */
     require: function () {
@@ -191,6 +193,112 @@
     el.hidden = n === 0;
   }
 
+  // ---------- 위시리스트(찜) ----------
+  /* 장바구니와 달리 서버에 저장한다. 찜은 개인화 신호라 브라우저에만 두면 쓸 수 없기 때문이다.
+     그래서 로그인이 필요하고, 비로그인은 로그인 화면으로 유도한다(장바구니와 정책이 갈리는 지점).
+     하트 상태는 그리드마다 그려지므로 상품 id 집합을 한 번 받아 캐시하고, 화면의 하트를 다시 칠한다. */
+  var wishlistItems = [];
+  var wishlistIds = new Set();
+  var wishlistLoaded = false;
+
+  var wishlist = {
+    /** 내 찜 목록(서버). 하트 상태 캐시도 함께 갱신한다. force면 다시 받는다. */
+    all: async function (force) {
+      if (!this.loggedIn()) {
+        wishlistItems = [];
+        wishlistIds = new Set();
+        wishlistLoaded = true;
+        return [];
+      }
+      if (wishlistLoaded && !force) return wishlistItems;
+      var r = await api('GET', '/wishlist');
+      // 실패를 빈 목록으로 위장하지 않는다 — 하트는 꺼진 채로 두고 목록 화면이 오류를 보여준다.
+      if (!r.ok) return wishlistItems;
+      wishlistItems = Array.isArray(r.data) ? r.data : [];
+      wishlistIds = new Set(wishlistItems.map(function (i) { return Number(i.productId); }));
+      wishlistLoaded = true;
+      return wishlistItems;
+    },
+    loggedIn: function () { return auth.isLoggedIn(); },
+    has: function (productId) { return wishlistIds.has(Number(productId)); },
+    ready: function () { return wishlistLoaded; },
+    count: function () { return wishlistIds.size; },
+    /** 추가 — 이미 있으면 서버가 그대로 성공을 돌려준다(멱등). */
+    add: async function (productId) {
+      if (!this.loggedIn()) { wishlistLoginPrompt(); return false; }
+      var r = await api('POST', '/wishlist', { body: { productId: Number(productId) } });
+      if (!r.ok) { toast(wishlistMessage(r, '찜하지 못했습니다'), 'err'); }
+      await this.all(true);
+      this.sync();
+      return r.ok;
+    },
+    /** 삭제 — 찜하지 않은 상품이어도 서버가 204를 돌려준다(멱등). */
+    remove: async function (productId) {
+      if (!this.loggedIn()) { wishlistLoginPrompt(); return false; }
+      var r = await api('DELETE', '/wishlist/' + Number(productId));
+      if (!r.ok) { toast(wishlistMessage(r, '찜을 해제하지 못했습니다'), 'err'); }
+      await this.all(true);
+      this.sync();
+      return r.ok;
+    },
+    toggle: async function (productId) {
+      return this.has(productId) ? this.remove(productId) : this.add(productId);
+    },
+    /** 화면의 모든 하트를 캐시에 맞춰 다시 칠한다. 상세 버튼은 라벨까지 바꾼다. */
+    sync: function () {
+      var nodes = document.querySelectorAll('[data-wish]');
+      for (var i = 0; i < nodes.length; i++) {
+        var on = wishlistIds.has(Number(nodes[i].getAttribute('data-wish')));
+        nodes[i].classList.toggle('on', on);
+        nodes[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+        var label = nodes[i].querySelector('.wish-label');
+        if (label) label.textContent = on ? '찜함' : '찜';
+      }
+    },
+    /** 로그아웃 시 남은 캐시를 지운다 — 다음 사용자에게 앞 사람의 찜이 보이면 안 된다. */
+    clear: function () {
+      wishlistItems = [];
+      wishlistIds = new Set();
+      wishlistLoaded = false;
+      this.sync();
+    }
+  };
+
+  function wishlistMessage(r, fallback) {
+    return (r && r.data && r.data.message) || fallback;
+  }
+
+  /** 비로그인 찜 — 로컬로 흉내내지 않고 로그인으로 유도한다(장바구니와 다른 지점). */
+  function wishlistLoginPrompt() {
+    toast('찜하려면 로그인이 필요합니다', 'err');
+    var next = location.pathname.split('/').pop() + location.search;
+    location.href = 'login.html?next=' + encodeURIComponent(next);
+  }
+
+  /**
+   * 하트 클릭은 document 한 곳에서 위임한다. 상품 카드는 그리드마다 다시 그려지는데,
+   * 카드마다 리스너를 달면 다시 그릴 때마다 새로 붙여야 하고 중복 바인딩이 생기기 쉽다.
+   */
+  function onWishClick(e) {
+    var btn = e.target && e.target.closest ? e.target.closest('[data-wish]') : null;
+    if (!btn) return;
+    // 카드 전체가 <a>라서 막지 않으면 찜 클릭이 상세 이동으로 새어 나간다.
+    e.preventDefault();
+    e.stopPropagation();
+    wishlist.toggle(btn.getAttribute('data-wish'));
+  }
+
+  /** 그리드가 비동기로 그려진 뒤에도 하트 상태를 맞춘다 — 렌더 시점을 각 화면이 알 필요가 없다. */
+  function observeWishButtons() {
+    if (!global.MutationObserver) return;
+    var scheduled = false;
+    new MutationObserver(function () {
+      if (scheduled) return;
+      scheduled = true;
+      setTimeout(function () { scheduled = false; wishlist.sync(); }, 0);
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
   // ---------- 카탈로그 캐시 ----------
   var categoriesCache = null;
   var treeCache = null;
@@ -234,9 +342,13 @@
     var visual = p.imageUrl
       ? '<img src="' + esc(p.imageUrl) + '" alt="' + esc(p.name) + '" loading="lazy" onerror="this.style.display=\'none\'">'
       : '<span class="fallback">' + esc(initial) + '</span>';
+    // 하트는 목록·검색·홈이 모두 이 함수를 쓰므로 여기 한 곳에만 붙이면 전 표면에 적용된다.
+    // 카드 전체가 <a>라 클릭이 상세로 새지 않게 위임 핸들러(onWishClick)가 막는다.
+    var wish = '<button type="button" class="wish-btn" data-wish="' + p.productId +
+      '" aria-label="찜" aria-pressed="false" title="찜">♥</button>';
     return '' +
       '<a class="card' + (p.inStock ? '' : ' sold') + '" href="product.html?id=' + p.productId + '">' +
-        '<div class="thumb" style="background:' + gradientFor(p.productId) + '">' + visual + tags + '</div>' +
+        '<div class="thumb" style="background:' + gradientFor(p.productId) + '">' + visual + tags + wish + '</div>' +
         '<div class="card-body">' +
           '<span class="brand">' + esc(p.brand || p.categoryName || '') + '</span>' +
           '<span class="name">' + esc(p.name) + '</span>' +
@@ -356,12 +468,16 @@
   document.addEventListener('DOMContentLoaded', function () {
     ensureDrawer();
     updateCartBadge();
+    observeWishButtons();
+    document.addEventListener('click', onWishClick);
+    // 로그인 상태면 찜을 미리 받아 하트를 칠한다. 비로그인이면 부르지 않는다 — 401을 만들 이유가 없다.
+    if (auth.isLoggedIn()) wishlist.all().then(function () { wishlist.sync(); });
   });
 
   global.Store = {
     API: API, won: won, esc: esc, uuid: uuid, qs: qs, fmtDate: fmtDate,
-    gradientFor: gradientFor, api: api, auth: auth, cart: cart, categories: categories,
-    categoryTree: categoryTree, facets: facets,
+    gradientFor: gradientFor, api: api, auth: auth, cart: cart, wishlist: wishlist,
+    categories: categories, categoryTree: categoryTree, facets: facets,
     productCard: productCard, skeletonGrid: skeletonGrid, statusBadge: statusBadge,
     renderHeader: renderHeader, renderFooter: renderFooter, renderAccount: renderAccount,
     updateCartBadge: updateCartBadge, toast: toast, search: search, logLine: logLine

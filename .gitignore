@@ -27,6 +27,8 @@ docs/06-구현-로드맵.md
 ROADMAP.local.md
 ROADMAP-MSA.local.md
 지원서-*.local.md
+HANDOFF.local.md
+평가기준.local.md
 .playwright-mcp/
 .toss-test-key
 .toss-test-card

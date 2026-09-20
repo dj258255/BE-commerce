@@ -99,6 +99,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-030](adr/ADR-030-dlt-replay-and-post-recovery-reconciliation.md) | 격리·발견·복구·검증의 분리와 DLT 재처리 |
 | [ADR-031](adr/ADR-031-storefront-catalog-read-api.md) | 쇼핑몰 카탈로그를 읽기 전용으로 연다 |
 | [ADR-032](adr/ADR-032-frontend-nextjs-adoption.md) | 프론트 스택을 Next.js로 전환한다 |
+| [ADR-033](adr/ADR-033-wishlist-server-side.md) | 찜을 서버에 저장하고 로그인을 요구한다 |
 
 ## 보조 문서
 
