@@ -169,6 +169,14 @@ input,select,textarea{font:inherit}
 .tag.tag-red{background:var(--red)}
 .tag.tag-green{background:var(--green)}
 
+/* 하트(찜) — 카드 우상단(태그는 좌상단이라 겹치지 않는다). 상태는 .on 하나로만 표현한다. */
+.wish-btn{position:absolute;top:8px;right:8px;z-index:2;width:32px;height:32px;padding:0;
+  display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;
+  border:1px solid rgba(255,255,255,.65);background:rgba(255,255,255,.9);color:#B9C0CC;
+  font-size:15px;line-height:1;transition:.14s}
+.wish-btn:hover{transform:scale(1.08)}
+.wish-btn.on{color:var(--red);border-color:#EAC1C1}
+
 /* ---------- 배지 ---------- */
 .badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:700;
   padding:3px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--sub);background:#fff}
@@ -249,6 +257,10 @@ input,select,textarea{font:inherit}
 .detail .price{font-size:26px}
 .buy-row{display:flex;gap:10px;margin-top:22px}
 .buy-row .btn{flex:1}
+/* 찜은 보조 동작이라 다른 두 버튼처럼 늘어나지 않게 한다. */
+.buy-row .btn.wish-toggle{flex:0 0 auto;padding-left:14px;padding-right:14px;white-space:nowrap}
+/* 상세의 찜 버튼 — 카드 하트와 같은 .on 규칙을 쓴다. */
+.buy-row .btn.on{color:var(--red);border-color:#EAC1C1}
 .spec{margin-top:26px;border-top:1px solid var(--line);padding-top:20px}
 .spec h3{font-size:15px;margin-bottom:10px}
 .spec p{margin:0;color:var(--sub);white-space:pre-line}

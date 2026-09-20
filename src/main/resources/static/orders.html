@@ -17,6 +17,15 @@
       <h1>내 주문내역</h1>
       <p>주문 상태와 결제 상태를 함께 보여줍니다. 구매확정은 에스크로를 릴리스합니다.</p>
     </div>
+
+    <section class="section" id="wish-section">
+      <div class="section-head">
+        <div><h2>찜한 상품</h2><p>하트를 다시 누르면 찜이 해제됩니다.</p></div>
+        <span class="muted mono" id="wish-count"></span>
+      </div>
+      <div id="wish-body"></div>
+    </section>
+
     <div id="body"></div>
   </div>
 </main>
@@ -128,7 +137,44 @@
     else if (b.dataset.act === 'confirm') confirmPurchase(b.dataset.no);
   });
 
+  // --- 찜한 상품 (위시리스트는 서버 저장이라 로그인 사용자만 있다) ---
+
+  async function loadWishlist() {
+    var items = await Store.wishlist.all(true);
+    var box = document.getElementById('wish-body');
+    document.getElementById('wish-count').textContent = items.length ? items.length + '개' : '';
+
+    if (!items.length) {
+      box.innerHTML = '<div class="empty"><h3>찜한 상품이 없습니다</h3>' +
+        '<p>상품 카드의 하트를 눌러 담아 보세요.</p>' +
+        '<a class="btn btn-primary" href="category.html">상품 둘러보기</a></div>';
+      return;
+    }
+
+    // 상품이 사라진 찜은 카드로 그릴 수 없다. 조용히 감추지 않고 몇 건인지 밝힌다.
+    var live = items.filter(function (i) { return i.available; });
+    var gone = items.filter(function (i) { return !i.available; });
+    box.innerHTML =
+      '<div class="grid">' + live.map(Store.productCard).join('') + '</div>' +
+      (gone.length
+        ? '<div class="notice err" style="margin-top:14px">판매가 종료돼 화면에 그릴 수 없는 찜이 ' +
+          gone.length + '건 있습니다 (' + gone.map(function (i) { return '상품 ' + i.productId; }).join(', ') +
+          '). 찜 기록은 개인화 신호라 지우지 않고 남겨 둡니다.</div>'
+        : '');
+  }
+
+  document.getElementById('wish-body').addEventListener('click', async function (e) {
+    var btn = e.target.closest ? e.target.closest('[data-wish]') : null;
+    if (!btn) return;
+    // 카드 전체가 <a>다. 그리고 store.js의 문서 위임 핸들러가 같은 클릭을 또 토글하지 않게 막는다.
+    e.preventDefault();
+    e.stopPropagation();
+    await Store.wishlist.toggle(btn.getAttribute('data-wish'));
+    loadWishlist();
+  });
+
   load();
+  loadWishlist();
 </script>
 </body>
 </html>

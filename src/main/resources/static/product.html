@@ -65,6 +65,8 @@
       '</div>' +
       '<div class="total-line"><span>합계</span><span class="price" id="total">' + Store.won(p.price) + '</span></div>' +
       '<div class="buy-row">' +
+        '<button type="button" class="btn wish-toggle" id="wish" data-wish="' + p.productId + '" ' +
+          'aria-pressed="false">♥ <span class="wish-label">찜</span></button>' +
         '<button class="btn" id="add-cart"' + (soldOut ? ' disabled' : '') + '>장바구니</button>' +
         '<button class="btn btn-primary" id="buy-now"' + (soldOut ? ' disabled' : '') + '>바로 구매</button>' +
       '</div>' +

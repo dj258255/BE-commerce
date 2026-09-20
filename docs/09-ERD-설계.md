@@ -532,6 +532,7 @@ append-only 이력 테이블에 남겨 감사·복구의 진실 원천으로 삼
 | `suggestion_outcomes` | 모델 제안과 사람 확정의 대조 | `uk_suggestion_outcome_recon (recon_result_id)` | V35 |
 | `narrative_audits` | 타임라인 서술을 만든 기록 | 유니크 키 없음. 같은 주문에 여러 번 생성된다 | V33 |
 | `narrative_preferences` | 서술 둘을 나란히 놓고 고른 기록 | 유니크 키 없음 | V33 |
+| `wishlist_items` | 사용자 찜(개인화 신호) | `uk_wishlist_user_product (user_id, product_id)` — 이 하나가 조회 인덱스도 겸한다 | V58 |
 
 ### 12.1 판매자와 제재 스크리닝 (sellers / seller_screenings)
 
@@ -839,6 +840,37 @@ ALTER TABLE settlements
 **여기서 배운 것**: 유니크 키에 nullable 컬럼을 넣으면 그 키는 NULL 행에 대해 아무것도 막지 않는다.
 그리고 NULL 을 "값이 없다"가 아니라 **"특정한 값이다"**로 쓰면, 그 뜻을 아는 분기가 코드 곳곳에 생긴다.
 같은 함정이 `cash_receipts`에 남아 있다 (§12.4).
+
+### 12.8 위시리스트 (wishlist_items)
+
+쇼핑몰의 찜. **장바구니와 달리 서버에 저장한다** — 장바구니는 `localStorage`에 두고 결제 진입
+시점에만 로그인을 요구해도 손실이 없지만("지금 사려는 것"은 그 순간의 브라우저 상태면 충분하다),
+찜은 **개인화 신호**라 브라우저에만 두면 `personalization/`이 소비할 수 없다. 그래서 찜만
+서버에 남기고 로그인을 필수로 둔다. **정책이 갈리는 지점이고, 그 대가를 감수한 이유가 이것이다.**
+
+```sql
+CREATE TABLE wishlist_items (
+    id         BIGINT      AUTO_INCREMENT PRIMARY KEY,
+    user_id    BIGINT      NOT NULL,                   -- 인증 principal에서 얻는다(클라이언트 값 금지)
+    product_id BIGINT      NOT NULL,                   -- 논리적 FK → products.product_id
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),  -- 찜한 시각(멱등 응답이 그대로 돌려준다)
+    UNIQUE KEY uk_wishlist_user_product (user_id, product_id)
+);
+```
+- **유니크 키 하나가 멱등 보장과 조회 인덱스를 겸한다.** 선두 컬럼이 `user_id`라 "내 찜 목록"
+  조회가 이 인덱스를 탄다 — 별도 `idx_wishlist_user`를 두지 않는다. 같은 상품을 두 번 찜하면
+  두 번째 INSERT가 유니크로 막혀 행이 1건으로 유지된다
+- 다만 **멱등의 1차 방어는 사전 조회**이고 유니크는 최후 방어선이다. 사전 조회를 두 요청이 동시에
+  통과하면 늦은 쪽이 유니크에 부딪히는데, 그때 500이 아니라 **409**(`DUPLICATE_REQUEST`)로
+  알린다 — 실제로는 의도한 결과(1건)가 이뤄졌기 때문이다. 순차 요청(연타 포함)은 사전 조회가
+  흡수하므로 그 창은 마이크로초 단위다 (§12.7 의 교훈과 같은 자리 — 제약만으로는 못 막는다)
+- **`product_id`에 FK 제약을 걸지 않는다.** §10 규칙대로 논리적 FK + 인덱스(유니크의 두 번째
+  컬럼)만 둔다
+- **상품이 사라진 찜은 지우지 않는다.** 카탈로그가 상품을 은퇴시켜도(V55 가 데모 상품 4~36 을
+  삭제한 전례가 있다) 찜 행은 남기고 조회 시 `available=false` 로 알린다. 지우면 개인화 신호의
+  이력이 사라지고, 없는 것을 있는 척하면 화면이 거짓말을 한다
+- **새 에러 코드를 만들지 않았다.** 없는 상품은 카탈로그와 같은 `PRODUCT_NOT_FOUND` 를 쓴다 —
+  같은 상황인데 경로마다 코드가 갈리면 클라이언트가 분기할 근거가 둘로 갈린다
 
 ## 확장 여지로 남긴 것
 

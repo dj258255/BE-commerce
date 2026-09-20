@@ -9,9 +9,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -186,6 +188,23 @@ public class CatalogQueryService {
 
     private boolean inStock(long productId) {
         return stockRepository.findById(productId).map(s -> s.getQuantity() > 0).orElse(true);
+    }
+
+    /**
+     * 여러 상품의 <b>재고 보유 여부</b>만 한 번에 돌려준다(N+1 방지).
+     *
+     * <p>상품 행이 없으면 재고 부족의 근거가 아니므로 보유로 본다 — {@link #inStock(long)} 과 같은
+     * 규칙이다. 위시리스트처럼 상품 id 묶음에서 카드 값을 만들어야 하는 다른 모듈이 쓴다.
+     */
+    public Set<Long> idsInStock(Collection<Long> productIds) {
+        if (productIds.isEmpty()) {
+            return Set.of();
+        }
+        Map<Long, Integer> quantities = stockRepository.findByProductIdIn(productIds).stream()
+                .collect(Collectors.toMap(Stock::getProductId, Stock::getQuantity, (a, b) -> a));
+        return productIds.stream()
+                .filter(id -> quantities.getOrDefault(id, 1) > 0)
+                .collect(Collectors.toSet());
     }
 
     private static int clampSize(int size) {

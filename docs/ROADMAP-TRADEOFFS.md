@@ -53,8 +53,8 @@
 ### 지금 상태 (2026-09-19 확인)
 
 ```bash
-grep -rn "잔액" src/main/java/com/beomsu/BE-commerce/ledger/package-info.java
-grep -rn "SUM(" src/main/java/com/beomsu/BE-commerce/ledger/            # 없음
+grep -rn "잔액" src/main/java/com/beomsu/becommerce/ledger/package-info.java
+grep -rn "SUM(" src/main/java/com/beomsu/becommerce/ledger/            # 없음
 grep -n "create table ledger_entries" -A 8 src/main/resources/db/migration/V1__init.sql
 ```
 
@@ -192,7 +192,7 @@ grep -n "read-chunk-size\|settlement-max-pages" src/main/resources/application.y
 
 ```bash
 ls docs/26-*.md docs/27-*.md 2>/dev/null
-grep -rn "threshold\|임계" src/main/java/com/beomsu/BE-commerce/fraud/ | head
+grep -rn "threshold\|임계" src/main/java/com/beomsu/becommerce/fraud/ | head
 ```
 
 - 규칙별 오탐과 켤 조건이 [docs/26](26-FDS-규칙별-오탐.md)·[docs/27](27-FDS-모델-평가와-켤-조건.md) 에 있다. ML 점수는 **심사 큐 정렬에만** 쓰고 결제를 막지 않는다. **FDS 전용 ADR 은 아직 없다** — 이 항목의 산출물이 그 첫 ADR 이 된다
