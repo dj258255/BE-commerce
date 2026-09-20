@@ -37,3 +37,7 @@ narrative-preferences.csv
 
 # FDS 파이썬 대조 학습기의 가상환경. 산출물(build/fds)은 build 아래라 이미 무시된다.
 tools/fds/.venv/
+
+# 개인화 데이터·파이프라인 산출물 (커밋 금지)
+personalization/data/
+personalization/pipeline/.venv/
