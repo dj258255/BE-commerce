@@ -21,7 +21,7 @@ import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
  * 전제:
  *   1. docker compose up -d && APP_RATELIMIT_ENABLED=false ./gradlew bootRun
  *      (limiter는 배치 경합만 남기고 유입 제어 변수를 제거하기 위해 끈다)
- *   2. 시드: docker compose exec -T mysql mysql -upay -ppay pay < k6/seed-settlement-contention.sql
+ *   2. 시드: docker compose exec -T mysql mysql -ubecommerce -pbecommerce becommerce < k6/seed-settlement-contention.sql
  *   3. 상품/재고 시드: products(1), stock(1) — checkout-load.js와 동일 전제
  *   4. (그래프용) docker compose --profile monitoring up -d prometheus grafana
  *

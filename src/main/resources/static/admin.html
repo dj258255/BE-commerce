@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PAY 운영 백오피스</title>
+<title>BE-commerce 운영 백오피스</title>
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
   :root{
@@ -94,7 +94,7 @@
 </head>
 <body>
 <aside>
-  <div class="logo">PAY<b>.</b> OPS</div>
+  <div class="logo">BE<b>-commerce</b> OPS</div>
   <div class="side-sub">BACK OFFICE · ROLE_ADMIN</div>
   <div class="nav-group">모니터링</div>
   <a href="#home" data-sec="home" class="on"><span class="dot"></span>개요</a>
@@ -114,7 +114,7 @@
 
 <main>
   <div class="topbar">
-    <span class="crumb">PAY OPS / <span id="crumbCur">개요</span></span>
+    <span class="crumb">BE-commerce OPS / <span id="crumbCur">개요</span></span>
     <div class="spacer"></div>
     <span class="health" id="health">health —</span>
     <span class="who" id="who">로그인 안 됨</span>
@@ -336,7 +336,7 @@
 </div>
 
 <script>
-let token=sessionStorage.getItem('pay.token'), role=sessionStorage.getItem('pay.role'), logN=0;
+let token=sessionStorage.getItem('becommerce.token'), role=sessionStorage.getItem('becommerce.role'), logN=0;
 const $=id=>document.getElementById(id);
 function uuid(){return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c=='x'?r:(r&0x3|0x8)).toString(16)})}
 function logLine(cls,txt){const el=$('log');el.innerHTML+='\n<span class="'+cls+'">'+txt.replace(/</g,'&lt;')+'</span>';el.scrollTop=el.scrollHeight;$('logCnt').textContent=++logN}
@@ -354,7 +354,7 @@ async function api(method,path,body){
   // 화면은 <아무 표시가 없어> 서버나 모델 문제로 오해했다.
   if(res.status===401 && token){
     token=null; role=null;
-    sessionStorage.removeItem('pay.token'); sessionStorage.removeItem('pay.role');
+    sessionStorage.removeItem('becommerce.token'); sessionStorage.removeItem('becommerce.role');
     setWho();
     logLine('err','✗ 세션이 만료됐습니다. 다시 로그인하세요.');
   }
@@ -380,13 +380,13 @@ function setWho(){
 function toggleAuth(){ token ? adminLogout() : adminLogin(); }
 function adminLogout(){
   token=null; role=null;
-  sessionStorage.removeItem('pay.token'); sessionStorage.removeItem('pay.role');
+  sessionStorage.removeItem('becommerce.token'); sessionStorage.removeItem('becommerce.role');
   setWho(); logLine('ok','\u2713 로그아웃');
 }
 async function adminLogin(){
   const r=await api('POST','/api/v1/auth/login',{username:'admin',password:'admin-local-only'});
   if(r.ok){token=r.data.token;role='관리자';
-    sessionStorage.setItem('pay.token',token);sessionStorage.setItem('pay.role',role);setWho();}
+    sessionStorage.setItem('becommerce.token',token);sessionStorage.setItem('becommerce.role',role);setWho();}
 }
 async function health(){
   try{const r=await fetch('/actuator/health');const d=await r.json();

@@ -9,7 +9,7 @@
 -- 이미 SETTLED 된 과거는 옮기지 않는다. 그건 "과거 조회를 한 곳에서 할 것인가"라는 다른
 -- 질문이고, 그 요구가 실제로 생긴 뒤에 고른다(ADR-024 의 A·B 안).
 --
--- 사용: docker exec -i pay-mysql-1 mysql --default-character-set=utf8mb4 -upay -ppay pay \
+-- 사용: docker exec -i pay-mysql-1 mysql --default-character-set=utf8mb4 -ubecommerce -pbecommerce becommerce \
 --         < tools/export-pending-settlement-items.sql > pending-items.tsv
 
 -- 1. 옮길 양을 먼저 본다. 대략 7일치가 나와야 하고, 그보다 긴 꼬리가 있으면

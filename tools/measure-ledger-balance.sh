@@ -15,7 +15,7 @@
 set -euo pipefail
 
 RUNS=${RUNS:-30}
-MYSQL=(docker exec -i pay-mysql-1 mysql -upay -ppay pay -N -B)
+MYSQL=(docker exec -i pay-mysql-1 mysql -ubecommerce -pbecommerce becommerce -N -B)
 
 q() { "${MYSQL[@]}" -e "$1"; }
 

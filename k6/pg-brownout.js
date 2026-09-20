@@ -12,7 +12,7 @@ import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
  *
  * 전제:
  *   1. docker compose up -d mysql redis
- *   2. java -jar build/libs/pay-0.0.1-SNAPSHOT.jar \
+ *   2. java -jar build/libs/be-commerce-0.0.1-SNAPSHOT.jar \
  *        --payment.fake-pg.approve-latency-ms=<지연> --app.ratelimit.enabled=false
  *   3. k6 run -e RATE=30 -e DURATION=60s k6/pg-brownout.js
  *

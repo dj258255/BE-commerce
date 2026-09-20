@@ -11,7 +11,7 @@
 -- seller_id = 1 은 플랫폼 직판(V49 에서 만든 행)이다.
 --
 -- 실행:
---   docker compose exec -T mysql mysql -upay -ppay pay < k6/seed-settlement-scheduler-split.sql
+--   docker compose exec -T mysql mysql -ubecommerce -pbecommerce becommerce < k6/seed-settlement-scheduler-split.sql
 
 SET SESSION cte_max_recursion_depth = 1000000;
 

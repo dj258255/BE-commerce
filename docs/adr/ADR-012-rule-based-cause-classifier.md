@@ -177,7 +177,7 @@
 > 예외는 여섯 가지 패턴으로 반복된다 — **타이밍 격차, 금액 불일치, FX 변동,
 > 은행 입금 누락, PSP 기록 누락, 중복**
 
-| 업계 6유형 | pay | |
+| 업계 6유형 | BE-commerce | |
 |---|---|---|
 | 타이밍 격차 | `PG_FILE_DELAY` · `TIMEZONE_BOUNDARY` · `NET_CANCEL_TIMING` | 3종으로 세분 |
 | 금액 불일치 | `FEE_CALCULATION_DIFF` · `PARTIAL_CANCEL_NOT_REFLECTED` | ✅ |

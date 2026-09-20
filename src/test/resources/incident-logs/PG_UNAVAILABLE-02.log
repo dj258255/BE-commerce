@@ -1,4 +1,4 @@
-    15:51:29.574 [Test worker] WARN com.beomsu.pay.payment.pg.ResilientPgClient -- PG 승인 요청 1회 실패 — ClosedChannelException: null
-    15:51:29.574 [Test worker] WARN com.beomsu.pay.payment.pg.ResilientPgClient -- PG 승인 요청 2회 실패 — ClosedChannelException: null
-    15:51:29.574 [Test worker] WARN com.beomsu.pay.payment.pg.ResilientPgClient -- PG 승인 요청 3회 실패 — ClosedChannelException: null
-    15:51:29.574 [Test worker] WARN com.beomsu.pay.payment.pg.ResilientPgClient -- PG 서킷 오픈 — 승인 미확정 처리: order
+    15:51:29.574 [Test worker] WARN com.beomsu.becommerce.payment.pg.ResilientPgClient -- PG 승인 요청 1회 실패 — ClosedChannelException: null
+    15:51:29.574 [Test worker] WARN com.beomsu.becommerce.payment.pg.ResilientPgClient -- PG 승인 요청 2회 실패 — ClosedChannelException: null
+    15:51:29.574 [Test worker] WARN com.beomsu.becommerce.payment.pg.ResilientPgClient -- PG 승인 요청 3회 실패 — ClosedChannelException: null
+    15:51:29.574 [Test worker] WARN com.beomsu.becommerce.payment.pg.ResilientPgClient -- PG 서킷 오픈 — 승인 미확정 처리: order

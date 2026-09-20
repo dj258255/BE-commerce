@@ -1,5 +1,5 @@
-    15:51:22.815 [Test worker] INFO com.beomsu.pay.settlement.internal.SettlementQueryService -- 정산 행 INSERT 커밋 완료 — id=7332
-    15:51:22.815 [Test worker] WARN com.beomsu.pay.settlement.internal.SettlementQueryService -- 정산 행 조회 결과 0건 — 방금 기록한 id=7332 을 읽지 못했다
-    15:51:22.815 [Test worker] ERROR com.beomsu.pay.settlement.internal.SettlementQueryService -- 정산 대사 실패 — 쓰기는 커밋됐는데 조회가 0건이다: id=7332
-    15:51:22.815 [Test worker] WARN com.beomsu.pay.settlement.internal.SettlementQueryService -- 조회 노드 상태 Seconds_Behind_Source=0
-    15:51:22.815 [Test worker] INFO com.beomsu.pay.settlement.internal.SettlementQueryService -- 35초 뒤 같은 조회 재실행 1건
+    15:51:22.815 [Test worker] INFO com.beomsu.becommerce.settlement.internal.SettlementQueryService -- 정산 행 INSERT 커밋 완료 — id=7332
+    15:51:22.815 [Test worker] WARN com.beomsu.becommerce.settlement.internal.SettlementQueryService -- 정산 행 조회 결과 0건 — 방금 기록한 id=7332 을 읽지 못했다
+    15:51:22.815 [Test worker] ERROR com.beomsu.becommerce.settlement.internal.SettlementQueryService -- 정산 대사 실패 — 쓰기는 커밋됐는데 조회가 0건이다: id=7332
+    15:51:22.815 [Test worker] WARN com.beomsu.becommerce.settlement.internal.SettlementQueryService -- 조회 노드 상태 Seconds_Behind_Source=0
+    15:51:22.815 [Test worker] INFO com.beomsu.becommerce.settlement.internal.SettlementQueryService -- 35초 뒤 같은 조회 재실행 1건

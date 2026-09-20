@@ -53,8 +53,8 @@
 ### 지금 상태 (2026-09-19 확인)
 
 ```bash
-grep -rn "잔액" src/main/java/com/beomsu/pay/ledger/package-info.java
-grep -rn "SUM(" src/main/java/com/beomsu/pay/ledger/            # 없음
+grep -rn "잔액" src/main/java/com/beomsu/BE-commerce/ledger/package-info.java
+grep -rn "SUM(" src/main/java/com/beomsu/BE-commerce/ledger/            # 없음
 grep -n "create table ledger_entries" -A 8 src/main/resources/db/migration/V1__init.sql
 ```
 
@@ -110,7 +110,7 @@ grep -rn "@Externalized" src/main/java --include=*.java | head
 git show msa-extraction:contracts/src/main/java/com/beomsu/paycontracts/PayTopics.java
 ```
 
-- 이벤트는 `@Externalized` 로 Kafka 에 나간다([ADR-005](adr/ADR-005-event-externalization-kafka.md)). `msa-extraction` 브랜치에는 `pay-contracts` 아티팩트로 계약이 분리돼 있다(그 브랜치의 ADR-015)
+- 이벤트는 `@Externalized` 로 Kafka 에 나간다([ADR-005](adr/ADR-005-event-externalization-kafka.md)). `msa-extraction` 브랜치에는 `BE-commerce-contracts` 아티팩트로 계약이 분리돼 있다(그 브랜치의 ADR-015)
 - **버전 규약이 없다.** 지금은 소비자가 하나(정산 서비스)라 드러나지 않는다
 - 전환 예행에서 확인된 사실 하나: **소비자의 저장소 스키마가 발행자와 다를 수 있다**(ADR-024). 계약이 같아도 소비자 내부가 다르면 같은 문제가 난다
 
@@ -192,7 +192,7 @@ grep -n "read-chunk-size\|settlement-max-pages" src/main/resources/application.y
 
 ```bash
 ls docs/26-*.md docs/27-*.md 2>/dev/null
-grep -rn "threshold\|임계" src/main/java/com/beomsu/pay/fraud/ | head
+grep -rn "threshold\|임계" src/main/java/com/beomsu/BE-commerce/fraud/ | head
 ```
 
 - 규칙별 오탐과 켤 조건이 [docs/26](26-FDS-규칙별-오탐.md)·[docs/27](27-FDS-모델-평가와-켤-조건.md) 에 있다. ML 점수는 **심사 큐 정렬에만** 쓰고 결제를 막지 않는다. **FDS 전용 ADR 은 아직 없다** — 이 항목의 산출물이 그 첫 ADR 이 된다
@@ -345,11 +345,11 @@ grep -rn "@Externalized" src/main/java | head
 
 ## 9. 무중단 스키마 변경과 되돌릴 수 없는 지점 (이 저장소 소재가 아님)
 
-> **상태: 범위 밖(기록만, 2026-09-19)** — 로드맵 판단대로 pay 에서 하지 않는다. pay 는 단일 인스턴스 로컬 MySQL 이라 복제 지연을 잴 대상이 없다. DBTower 소재로 넘긴다. **pay 에서 다만 관련 있는 것**: 이번 작업에서 DB enum 과 코드 enum 이 어긋나 조용히 터지는 잠복 버그를 **둘** 찾았다(원장 `AccountType` V50, 정산 `PAYOUT_HELD` V52). 스키마 변경이 코드와 어긋날 때 검사로 안 잡힌다는 것이 무중단 스키마 문제의 한 단면이다.
+> **상태: 범위 밖(기록만, 2026-09-19)** — 로드맵 판단대로 BE-commerce 에서 하지 않는다. BE-commerce 는 단일 인스턴스 로컬 MySQL 이라 복제 지연을 잴 대상이 없다. DBTower 소재로 넘긴다. **BE-commerce 에서 다만 관련 있는 것**: 이번 작업에서 DB enum 과 코드 enum 이 어긋나 조용히 터지는 잠복 버그를 **둘** 찾았다(원장 `AccountType` V50, 정산 `PAYOUT_HELD` V52). 스키마 변경이 코드와 어긋날 때 검사로 안 잡힌다는 것이 무중단 스키마 문제의 한 단면이다.
 
 **맞바꾸는 것**: 컷오버 락 시간 ↔ 복제 지연 ↔ 디스크. 셋이 동시에 좋아지지 않는다.
 
-**여기 적어 두되 pay 에서는 하지 않는다.** 이 주제는 DBTower 에 변경 리뷰 게이트와 gh-ost 안내가 이미 있어 그쪽 소재다. pay 는 단일 인스턴스 로컬 MySQL 이라 복제 지연을 잴 대상이 없다. **pay 포트폴리오에 넣으면 겉돈다.**
+**여기 적어 두되 BE-commerce 에서는 하지 않는다.** 이 주제는 DBTower 에 변경 리뷰 게이트와 gh-ost 안내가 이미 있어 그쪽 소재다. BE-commerce 는 단일 인스턴스 로컬 MySQL 이라 복제 지연을 잴 대상이 없다. **BE-commerce 포트폴리오에 넣으면 겉돈다.**
 
 DBTower 쪽에서 할 때의 뼈대만 남긴다.
 
@@ -372,7 +372,7 @@ DBTower 쪽에서 할 때의 뼈대만 남긴다.
 | 6 | 이벤트 스키마(2) | 소비자가 하나일 때 규약을 정하는 것이 싸다 |
 | 7 | 정산 공정성(3) | 재현 도구가 이미 있다 |
 | 8 | FDS 임계(4) | 숫자가 안 나올 위험이 가장 크다 |
-| 9 | 무중단 스키마(9) | pay 소재가 아니다 |
+| 9 | 무중단 스키마(9) | BE-commerce 소재가 아니다 |
 
 ## 하지 말 것
 

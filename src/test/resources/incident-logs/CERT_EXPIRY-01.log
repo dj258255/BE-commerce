@@ -1,2 +1,2 @@
-    15:51:23.529 [Test worker] ERROR com.beomsu.pay.payment.pg.TossPgClient -- PG 승인 요청 실패 — SSLHandshakeException: (certificate_expired) PKIX path validation failed: java.security.cert.CertPathValidatorException: validity check failed
-    15:51:23.529 [Test worker] ERROR com.beomsu.pay.payment.pg.TossPgClient -- 원인 — java.security.cert.CertificateExpiredException: NotAfter: Mon Apr 13 08:59:59 KST 2015
+    15:51:23.529 [Test worker] ERROR com.beomsu.becommerce.payment.pg.TossPgClient -- PG 승인 요청 실패 — SSLHandshakeException: (certificate_expired) PKIX path validation failed: java.security.cert.CertPathValidatorException: validity check failed
+    15:51:23.529 [Test worker] ERROR com.beomsu.becommerce.payment.pg.TossPgClient -- 원인 — java.security.cert.CertificateExpiredException: NotAfter: Mon Apr 13 08:59:59 KST 2015

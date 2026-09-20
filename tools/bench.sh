@@ -160,7 +160,7 @@ run_one() {
   local ready=0
   for _ in $(seq 1 60); do
     if docker compose exec -T mysql \
-         mysql -upay -ppay pay -e "SELECT 1" >/dev/null 2>&1; then
+         mysql -ubecommerce -pbecommerce becommerce -e "SELECT 1" >/dev/null 2>&1; then
       ready=1; break
     fi
     sleep 2

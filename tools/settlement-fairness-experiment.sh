@@ -19,7 +19,7 @@ SMALL_OFFSET=910100000
 BIG_N=2500
 SMALL_N=10
 
-q() { docker exec -i pay-mysql-1 mysql -upay -ppay pay -N -B 2>/dev/null -e "$1"; }
+q() { docker exec -i pay-mysql-1 mysql -ubecommerce -pbecommerce becommerce -N -B 2>/dev/null -e "$1"; }
 
 seed() {
   q "DELETE FROM settlement_items WHERE payment_id >= $OFFSET;
@@ -38,7 +38,7 @@ seed() {
 }
 
 start_app() {  # $1 = policy
-  $JAVA -Xmx1g -Xms256m -jar build/libs/pay-0.0.1-SNAPSHOT.jar --server.port=8080 \
+  $JAVA -Xmx1g -Xms256m -jar build/libs/be-commerce-0.0.1-SNAPSHOT.jar --server.port=8080 \
     --spring.docker.compose.enabled=false --app.ratelimit.enabled=false \
     --app.batch.settlement-max-pages=2 --app.batch.read-chunk-size=500 \
     --app.settlement.fairness-policy="$1" > "/tmp/fair-$1.log" 2>&1 &
@@ -78,7 +78,7 @@ run_policy() {  # $1 = policy label, $2 = app pid
   echo "[$policy] 소형 판매자 전건 정산까지 = ${small_day:-9+}일 지연 | 대형 판매자 전건 완료 = ${big_day:-9+}일 | 첫날 대형 정산 건수 = $first_day_big"
 }
 
-pkill -9 -f 'pay-0.0.1-SNAPSHOT.jar' 2>/dev/null; sleep 1
+pkill -9 -f 'be-commerce-0.0.1-SNAPSHOT.jar' 2>/dev/null; sleep 1
 echo "=== policy=id ==="
 PID=$(start_app id); wait_health || { echo "app 기동 실패"; exit 1; }
 run_policy id "$PID"

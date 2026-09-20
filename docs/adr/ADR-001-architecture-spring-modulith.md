@@ -16,7 +16,7 @@
 
 **Spring Modulith 기반의 모듈형 모놀리스**로 개발한다.
 
-- `com.beomsu.pay` 바로 아래 각 패키지 = 하나의 애플리케이션 모듈 (order, payment, ledger, settlement, reconciliation, shared)
+- `com.beomsu.becommerce` 바로 아래 각 패키지 = 하나의 애플리케이션 모듈 (order, payment, ledger, settlement, reconciliation, shared)
 - 모듈 간 통신은 **직접 호출 금지, 도메인 이벤트로만**한다.
 - `package-info.java`의 `allowedDependencies`로 허용 의존을 선언하고, `ModularityTests.verify()`가 위반 시 **빌드를 깨뜨린다**. 아키텍처 규칙을 테스트로 강제한다.
 - `shared`만 OPEN 모듈로 두어 공유 값 타입(Money 등)을 자유롭게 참조하게 한다.

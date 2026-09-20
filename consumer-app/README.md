@@ -1,8 +1,8 @@
-# pay-consumer
+# BE-commerce-consumer
 
 결제 이벤트를 프로세스 밖에서 소비하는 정산 알림 데모입니다.
 
-메인 pay 앱이 `@Externalized`로 Kafka에 내보내는 `payment.confirmed` / `payment.canceled`
+메인 BE-commerce 앱이 `@Externalized`로 Kafka에 내보내는 `payment.confirmed` / `payment.canceled`
 토픽을 구독하는 **별도 프로세스** 앱이다. 도메인 코드를 한 줄도 고치지 않고 다른 프로세스가
 결제 이벤트를 받는 것을 실증한다. [ADR-005](../docs/adr/ADR-005-event-externalization-kafka.md)의
 "프로세스 밖 소비자" 약속을 이행한 것이다.

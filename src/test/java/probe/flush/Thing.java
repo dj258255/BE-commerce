@@ -16,7 +16,7 @@ import jakarta.persistence.Id;
  * 그래서 <b>CI 에서만 터졌다.</b> 그 자체가 이 시리즈의 주제이기도 하다 —
  * 안 돌려본 경로는 초록불이 아니라 안 재본 것이다.
  *
- * <p>그래서 <b>{@code com.beomsu.pay} 밖의 패키지</b>로 옮겼다. 앱의 컴포넌트 스캔이
+ * <p>그래서 <b>{@code com.beomsu.becommerce} 밖의 패키지</b>로 옮겼다. 앱의 컴포넌트 스캔이
  * 그 패키지를 훑지 않으므로 통합 테스트의 스키마 검증에 걸리지 않고,
  * 이 테스트는 자기 {@code @ContextConfiguration} 으로 직접 등록해서 쓴다.
  */

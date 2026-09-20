@@ -1,6 +1,6 @@
 spring:
   application:
-    name: pay
+    name: be-commerce
 
   # PG 정산 파일 업로드 대사용. 정산 CSV는 수만 행이어도 수 MB 수준 → 여유 있게 잡되 무제한은 아님.
   servlet:
@@ -9,9 +9,9 @@ spring:
       max-request-size: 20MB
 
   datasource:
-    url: jdbc:mysql://localhost:3306/pay?serverTimezone=UTC&characterEncoding=UTF-8
-    username: pay
-    password: pay
+    url: jdbc:mysql://localhost:3306/becommerce?serverTimezone=UTC&characterEncoding=UTF-8
+    username: becommerce
+    password: becommerce
     driver-class-name: com.mysql.cj.jdbc.Driver
     # 폭주 시 매달리지 않고 빠르게 실패 — 지연이 마비로 번지는 걸 차단.
     # connection-timeout 기본 30초는 폭주 시 요청 스레드가 커넥션을 기다리며 줄줄이 매달려
@@ -112,7 +112,7 @@ management:
         include: health, info, metrics, modulith, prometheus
   metrics:
     tags:
-      application: pay
+      application: be-commerce
     distribution:
       # HTTP 요청 지연을 히스토그램 버킷으로 발행 → Prometheus에서 p95/p99를
       # histogram_quantile로 서버측 집계(대시보드의 "요청 p99 레이턴시" 소스).

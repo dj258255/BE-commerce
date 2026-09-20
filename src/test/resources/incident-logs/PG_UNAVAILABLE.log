@@ -1,4 +1,4 @@
-    12:48:53.321 [Test worker] WARN com.beomsu.pay.payment.pg.ResilientPgClient -- PG 서킷 오픈 — 승인 미확정 처리: order
-    12:48:53.321 [Test worker] WARN com.beomsu.pay.payment.pg.ResilientPgClient -- PG 서킷 오픈 — 승인 미확정 처리: order
-    12:48:53.321 [Test worker] WARN com.beomsu.pay.payment.pg.ResilientPgClient -- PG 서킷 오픈 — 승인 미확정 처리: order
-    12:48:53.321 [Test worker] WARN com.beomsu.pay.payment.pg.ResilientPgClient -- PG 서킷 오픈 — 승인 미확정 처리: order
+    12:48:53.321 [Test worker] WARN com.beomsu.becommerce.payment.pg.ResilientPgClient -- PG 서킷 오픈 — 승인 미확정 처리: order
+    12:48:53.321 [Test worker] WARN com.beomsu.becommerce.payment.pg.ResilientPgClient -- PG 서킷 오픈 — 승인 미확정 처리: order
+    12:48:53.321 [Test worker] WARN com.beomsu.becommerce.payment.pg.ResilientPgClient -- PG 서킷 오픈 — 승인 미확정 처리: order
+    12:48:53.321 [Test worker] WARN com.beomsu.becommerce.payment.pg.ResilientPgClient -- PG 서킷 오픈 — 승인 미확정 처리: order

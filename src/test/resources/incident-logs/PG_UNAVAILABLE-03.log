@@ -1,4 +1,4 @@
-    15:51:23.119 [Test worker] WARN com.beomsu.pay.payment.pg.TossPgClient -- PG 승인 응답 503 — 본문 {"code":"SERVICE_UNAVAILABLE","message":"일시적인 오류입니다"}
-    15:51:23.120 [Test worker] WARN com.beomsu.pay.payment.pg.TossPgClient -- PG 승인 응답 503 — 본문 {"code":"SERVICE_UNAVAILABLE","message":"일시적인 오류입니다"}
-    15:51:23.120 [Test worker] WARN com.beomsu.pay.payment.pg.TossPgClient -- PG 승인 응답 503 — 본문 {"code":"SERVICE_UNAVAILABLE","message":"일시적인 오류입니다"}
-    15:51:23.120 [Test worker] ERROR com.beomsu.pay.payment.pg.TossPgClient -- PG 승인 3회 연속 5xx — 승인 결과를 UNKNOWN 으로 보존한다
+    15:51:23.119 [Test worker] WARN com.beomsu.becommerce.payment.pg.TossPgClient -- PG 승인 응답 503 — 본문 {"code":"SERVICE_UNAVAILABLE","message":"일시적인 오류입니다"}
+    15:51:23.120 [Test worker] WARN com.beomsu.becommerce.payment.pg.TossPgClient -- PG 승인 응답 503 — 본문 {"code":"SERVICE_UNAVAILABLE","message":"일시적인 오류입니다"}
+    15:51:23.120 [Test worker] WARN com.beomsu.becommerce.payment.pg.TossPgClient -- PG 승인 응답 503 — 본문 {"code":"SERVICE_UNAVAILABLE","message":"일시적인 오류입니다"}
+    15:51:23.120 [Test worker] ERROR com.beomsu.becommerce.payment.pg.TossPgClient -- PG 승인 3회 연속 5xx — 승인 결과를 UNKNOWN 으로 보존한다

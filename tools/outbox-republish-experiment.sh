@@ -13,7 +13,7 @@
 set -uo pipefail
 
 JAVA=/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home/bin/java
-JAR=build/libs/pay-0.0.1-SNAPSHOT.jar
+JAR=build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 OUT=${OUT:-/tmp/outbox-republish}
 mkdir -p "$OUT"
 cd "$(dirname "$0")/.."
@@ -36,7 +36,7 @@ wait_kafka() {
   done
 }
 
-pkill -9 -f 'pay-0.0.1-SNAPSHOT.jar' 2>/dev/null; sleep 1
+pkill -9 -f 'be-commerce-0.0.1-SNAPSHOT.jar' 2>/dev/null; sleep 1
 docker start pay-kafka-1 >/dev/null 2>&1; wait_kafka
 APP=$(start_app "$OUT/app1.log"); wait_health; log "app up pid=$APP, kafka up"
 
@@ -56,7 +56,7 @@ echo "$ORDNO" > "$OUT/ordno"
 
 kill -9 "$APP" 2>/dev/null; log "app SIGKILLed (pid=$APP, 프로듀서 버퍼 소실)"
 
-INC=$(docker exec -i pay-mysql-1 mysql -upay -ppay pay -N -B 2>/dev/null \
+INC=$(docker exec -i pay-mysql-1 mysql -ubecommerce -pbecommerce becommerce -N -B 2>/dev/null \
       -e "SELECT COUNT(*) FROM event_publication WHERE completion_date IS NULL")
 log "미완료 발행 행수=$INC"
 
@@ -78,7 +78,7 @@ for _ in $(seq 1 90); do
 done
 kill "$CONS" 2>/dev/null
 
-docker exec -i pay-mysql-1 mysql -upay -ppay pay -t 2>/dev/null -e "
+docker exec -i pay-mysql-1 mysql -ubecommerce -pbecommerce becommerce -t 2>/dev/null -e "
   SELECT publication_date, completion_date,
          TIMESTAMPDIFF(SECOND, publication_date, completion_date) AS gap_s
   FROM event_publication_archive ORDER BY completion_date DESC LIMIT 1;
