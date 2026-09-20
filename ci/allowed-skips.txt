@@ -1,0 +1,18 @@
+# 의도적으로 건너뛰는 테스트 목록.
+#
+# 규칙: 이유를 반드시 적는다. 이유 없는 예외는 다음 사람이 못 지운다.
+# 형식: <패턴>  # 이유   (패턴은 fnmatch 와일드카드 사용 가능)
+
+# 파이썬 대조 학습기(tools/fds/train.py)를 돌려야 생기는 산출물이 필요하다.
+# 파이썬 환경 없이도 나머지 FDS 평가는 돌아야 하므로 skip을 유지한다.
+com.beomsu.becommerce.fraud.model.FraudModelEvalTest.손으로 짠 학습기가 scikit-learn 과 같은 곳에 도착한다  # tools/fds/train.py 산출물(build/fds/sklearn-model.json) 필요
+
+# 테스트가 아니라 코퍼스 생성기다. -Dcorpus.generate=true 일 때만 돈다.
+com.beomsu.becommerce.reconciliation.ResidualCorpusGenerator.*  # 생성기(@EnabledIfSystemProperty) — CI 상시 실행 대상 아님
+
+# 실제 PG 키(테스트 키 파일)가 있어야 도는 계약 테스트. CI에는 키가 없어 건너뛴다.
+# 키 없이 실 PG를 때리면 오히려 위험하다(계약 테스트는 수동 실행 대상).
+com.beomsu.becommerce.payment.pg.TossPgLiveContractTest.*
+com.beomsu.becommerce.payment.pg.TossPgLiveLifecycleTest.*
+com.beomsu.becommerce.payment.pg.KakaoPayLiveContractTest.*
+
