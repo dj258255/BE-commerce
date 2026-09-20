@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,7 +27,9 @@ import static org.mockito.Mockito.when;
  * 카탈로그 조회 서비스 단위 테스트.
  *
  * <p>핵심은 <b>정렬·필터가 리포지토리에 올바른 질의로 내려가는가</b>와, 목록/상세가 카테고리 이름과
- * 재고를 정확히 붙이는가다. 검색·카테고리·추천의 우선순위(검색어 &gt; 카테고리 &gt; 추천)도 고정한다.
+ * 재고를 정확히 붙이는가다. 여섯 필터는 이제 하나의 {@code search(...)} 로 내려가므로, 대분류/중분류가
+ * 각각 어느 인자에 앉는지와 색상·종류·가격이 그대로 전달되는지를 고정한다.
+ * 검색어({@code q})의 우선순위도 그대로다 — 검색어가 있으면 {@code search(...)} 는 아예 불리지 않는다.
  */
 class CatalogQueryServiceTest {
 
@@ -46,6 +49,12 @@ class CatalogQueryServiceTest {
     private static Product product(long id, String name, long price, String category, boolean featured) {
         return Product.of(id, name, price, category, "설명", "img", "브랜드", featured,
                 Instant.parse("2026-09-01T00:00:00Z"));
+    }
+
+    /** 목록·필터가 도는 경로의 기본 스텁 — 통합 질의가 빈 페이지를 돌려준다. */
+    private void stubSearch() {
+        when(productRepository.search(any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
     }
 
     private static Pageable capturedPageable(ArgumentCaptor<Pageable> captor) {
@@ -97,42 +106,66 @@ class CatalogQueryServiceTest {
     }
 
     @Test
-    @DisplayName("중분류 코드로 좁히면 subcategory_code로 질의한다")
-    void childCategoryFilterUsesSubcategoryColumn() {
+    @DisplayName("중분류 코드는 subcategoryCode 인자에만 앉고 categoryCode는 비운다")
+    void childCategoryFilterUsesSubcategoryArgument() {
         when(categoryRepository.findById("ladieswear.knitwear"))
                 .thenReturn(Optional.of(Category.of("ladieswear.knitwear", "니트", "", 1, "ladieswear")));
-        when(productRepository.findBySubcategoryCode(eq("ladieswear.knitwear"), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of()));
+        stubSearch();
 
-        service.products("ladieswear.knitwear", null, null, "newest", 0, 20);
+        service.products("ladieswear.knitwear", null, null, null, null, null, null, "newest", 0, 20);
 
-        verify(productRepository).findBySubcategoryCode(eq("ladieswear.knitwear"), any(Pageable.class));
-        verify(productRepository, org.mockito.Mockito.never()).findByCategoryCode(anyString(), any());
+        verify(productRepository).search(isNull(), eq("ladieswear.knitwear"), isNull(), isNull(),
+                isNull(), isNull(), isNull(), any(Pageable.class));
+        verify(productRepository, org.mockito.Mockito.never())
+                .findByNameContainingOrBrandContaining(anyString(), anyString(), any());
     }
 
     @Test
-    @DisplayName("대분류 코드는 그대로 category_code로 질의한다")
-    void parentCategoryFilterStaysOnCategoryColumn() {
+    @DisplayName("대분류 코드는 categoryCode 인자에만 앉고 subcategoryCode는 비운다")
+    void parentCategoryFilterUsesCategoryArgument() {
         when(categoryRepository.findById("ladieswear"))
                 .thenReturn(Optional.of(Category.of("ladieswear", "여성복", "", 1)));
-        when(productRepository.findByCategoryCode(eq("ladieswear"), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of()));
+        stubSearch();
 
-        service.products("ladieswear", null, null, "newest", 0, 20);
+        service.products("ladieswear", null, null, null, null, null, null, "newest", 0, 20);
 
-        verify(productRepository).findByCategoryCode(eq("ladieswear"), any(Pageable.class));
-        verify(productRepository, org.mockito.Mockito.never()).findBySubcategoryCode(anyString(), any());
+        verify(productRepository).search(eq("ladieswear"), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("색상·종류·가격 범위가 각 인자에 그대로 내려간다")
+    void colourTypeAndPriceLandOnTheirArguments() {
+        when(categoryRepository.findById("ladieswear"))
+                .thenReturn(Optional.of(Category.of("ladieswear", "여성복", "", 1)));
+        stubSearch();
+
+        service.products("ladieswear", null, null, "black", "Dress", 20_000L, 30_000L, "newest", 0, 20);
+
+        verify(productRepository).search(eq("ladieswear"), isNull(), eq("black"), eq("Dress"),
+                eq(20_000L), eq(30_000L), isNull(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("추천 필터(featured)는 search의 featured 인자로 내려간다")
+    void featuredFilterGoesThroughSearch() {
+        stubSearch();
+
+        service.products(null, null, true, null, null, null, null, "newest", 0, 20);
+
+        verify(productRepository).search(isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), eq(true), any(Pageable.class));
     }
 
     @Test
     @DisplayName("기본 정렬은 신상품순(createdAt desc)")
     void defaultSortIsNewest() {
-        when(productRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        stubSearch();
 
-        service.products(null, null, null, null, 0, 20);
+        service.products(null, null, null, null, null, null, null, null, 0, 20);
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(productRepository).findAll(captor.capture());
+        verify(productRepository).search(any(), any(), any(), any(), any(), any(), any(), captor.capture());
         Sort sort = capturedPageable(captor).getSort();
         assertThat(sort.getOrderFor("createdAt").getDirection()).isEqualTo(Sort.Direction.DESC);
     }
@@ -140,13 +173,12 @@ class CatalogQueryServiceTest {
     @Test
     @DisplayName("가격 오름차순 정렬이 리포지토리 질의로 전달된다")
     void priceAscSortIsPassedDown() {
-        when(productRepository.findByCategoryCode(eq("digital"), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of()));
+        stubSearch();
 
-        service.products("digital", null, null, "price_asc", 0, 20);
+        service.products(null, null, null, null, null, null, null, "price_asc", 0, 20);
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(productRepository).findByCategoryCode(eq("digital"), captor.capture());
+        verify(productRepository).search(any(), any(), any(), any(), any(), any(), any(), captor.capture());
         assertThat(capturedPageable(captor).getSort().getOrderFor("price").getDirection())
                 .isEqualTo(Sort.Direction.ASC);
     }
@@ -157,54 +189,119 @@ class CatalogQueryServiceTest {
         when(productRepository.findByNameContainingOrBrandContaining(anyString(), anyString(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
-        service.products(null, "  이어폰  ", null, "newest", 0, 20);
+        service.products(null, "  이어폰  ", null, null, null, null, null, "newest", 0, 20);
 
         verify(productRepository).findByNameContainingOrBrandContaining(eq("이어폰"), eq("이어폰"), any());
     }
 
     @Test
-    @DisplayName("검색어가 있으면 카테고리·추천보다 우선한다")
+    @DisplayName("검색어가 있으면 다른 모든 필터보다 우선한다 — search(...)는 불리지 않는다")
     void searchTakesPrecedence() {
         when(productRepository.findByNameContainingOrBrandContaining(anyString(), anyString(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
-        service.products("digital", "이어폰", true, "newest", 0, 20);
+        service.products("ladieswear", "이어폰", true, "black", "Dress", 20_000L, 30_000L, "newest", 0, 20);
 
         verify(productRepository).findByNameContainingOrBrandContaining(anyString(), anyString(), any());
-        verify(productRepository, org.mockito.Mockito.never()).findByCategoryCode(anyString(), any());
-    }
-
-    @Test
-    @DisplayName("추천 필터는 featured=true 상품만 요청한다")
-    void featuredFilter() {
-        when(productRepository.findByFeaturedTrue(any())).thenReturn(new PageImpl<>(List.of()));
-
-        service.products(null, null, true, "newest", 0, 20);
-
-        verify(productRepository).findByFeaturedTrue(any());
+        verify(productRepository, org.mockito.Mockito.never())
+                .search(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
     @DisplayName("페이지 크기는 60으로 상한이 걸린다")
     void pageSizeIsCapped() {
-        when(productRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        stubSearch();
 
-        service.products(null, null, null, "newest", 0, 999);
+        service.products(null, null, null, null, null, null, null, "newest", 0, 999);
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(productRepository).findAll(captor.capture());
+        verify(productRepository).search(any(), any(), any(), any(), any(), any(), any(), captor.capture());
         assertThat(capturedPageable(captor).getPageSize()).isEqualTo(60);
+    }
+
+    @Test
+    @DisplayName("패싯: 색상 질의는 색상 필터 없이, 종류 질의는 종류 필터 없이 나머지 필터만 받는다")
+    void facetsDropOwnAxisButHonourOtherFilters() {
+        when(categoryRepository.findById("ladieswear"))
+                .thenReturn(Optional.of(Category.of("ladieswear", "여성복", "", 1)));
+        when(productRepository.colourFacet(any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of());
+        when(productRepository.typeFacet(any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of());
+
+        service.facets("ladieswear", null, "black", "Dress", 20_000L, 30_000L);
+
+        // 색상 패싯은 색상 필터를 받지 않는다 — 종류·가격은 그대로 받는다.
+        verify(productRepository).colourFacet(eq("ladieswear"), isNull(), eq("Dress"),
+                eq(20_000L), eq(30_000L), isNull());
+        // 종류 패싯은 종류 필터를 받지 않는다 — 색상·가격은 그대로 받는다.
+        verify(productRepository).typeFacet(eq("ladieswear"), isNull(), eq("black"),
+                eq(20_000L), eq(30_000L), isNull());
+    }
+
+    @Test
+    @DisplayName("패싯: 중분류 코드는 subcategory 인자로 내려간다")
+    void facetsResolveChildCategoryToSubcategoryArgument() {
+        when(categoryRepository.findById("ladieswear.knitwear"))
+                .thenReturn(Optional.of(Category.of("ladieswear.knitwear", "니트", "", 1, "ladieswear")));
+        when(productRepository.colourFacet(any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of());
+        when(productRepository.typeFacet(any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of());
+
+        service.facets("ladieswear.knitwear", null, null, null, null, null);
+
+        verify(productRepository).colourFacet(isNull(), eq("ladieswear.knitwear"), isNull(),
+                isNull(), isNull(), isNull());
+    }
+
+    @Test
+    @DisplayName("패싯 뷰는 색상·종류 목록을 그대로 싣는다")
+    void facetViewCarriesBothAxes() {
+        when(categoryRepository.findById("ladieswear"))
+                .thenReturn(Optional.of(Category.of("ladieswear", "여성복", "", 1)));
+        FacetCount black = facet("black", "블랙", 100L);
+        FacetCount dress = facet("Dress", "Dress", 42L);
+        when(productRepository.colourFacet(any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(black));
+        when(productRepository.typeFacet(any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(dress));
+
+        FacetView view = service.facets("ladieswear", null, null, null, null, null);
+
+        assertThat(view.colours()).containsExactly(black);
+        assertThat(view.productTypes()).containsExactly(dress);
+    }
+
+    /** 테스트용 FacetCount 스텁 — 인터페이스 투영이라 값만 담는 익명 구현으로 충분하다. */
+    private static FacetCount facet(String code, String name, long count) {
+        return new FacetCount() {
+            @Override
+            public String getCode() {
+                return code;
+            }
+
+            @Override
+            public String getName() {
+                return name;
+            }
+
+            @Override
+            public long getCount() {
+                return count;
+            }
+        };
     }
 
     @Test
     @DisplayName("목록 항목에 카테고리 이름과 재고 상태를 붙인다 — 재고 0은 품절")
     void summaryCarriesCategoryNameAndStock() {
         when(categoryRepository.findAll()).thenReturn(List.of(Category.of("digital", "디지털", "", 1)));
-        when(productRepository.findAll(any(Pageable.class)))
+        when(productRepository.search(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(product(4, "이어버드", 189000, "digital", true))));
         when(stockRepository.findByProductIdIn(List.of(4L))).thenReturn(List.of(Stock.of(4, 0)));
 
-        ProductPageView page = service.products(null, null, null, "newest", 0, 20);
+        ProductPageView page = service.products(null, null, null, null, null, null, null, "newest", 0, 20);
 
         assertThat(page.items()).hasSize(1);
         assertThat(page.items().get(0).categoryName()).isEqualTo("디지털");

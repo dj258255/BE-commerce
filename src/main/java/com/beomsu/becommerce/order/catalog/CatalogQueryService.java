@@ -90,30 +90,64 @@ public class CatalogQueryService {
     }
 
     /**
-     * 상품 목록 — 검색어·카테고리·추천 중 하나로 좁히고 정렬·페이지네이션을 적용한다.
-     * 우선순위는 검색어 &gt; 카테고리 &gt; 추천 &gt; 전체다.
+     * 상품 목록 — 검색어·카테고리·추천·색상·종류·가격 범위로 좁히고 정렬·페이지네이션을 적용한다.
+     * 검색어가 있으면 <b>다른 모든 필터보다 우선</b>한다(검색 화면이 쓰는 경로다).
+     *
+     * <p>나머지 필터는 하나의 질의로 내려간다(리포지토리 {@link ProductRepository#search}). null인
+     * 필터는 조건에서 빠지므로 조합마다 메서드를 만들지 않는다.
      *
      * <p>{@code category}는 **대분류와 중분류를 모두 받는다**. 파라미터를 둘로 나누면
      * {@code ?category=ladieswear&subcategory=menswear.knitwear} 같은 모순된 조합이 만들어지고
      * 그걸 검증할 에러 케이스가 늘어난다. 코드 하나로 해석하는 편이 상태가 하나다.
+     * 대분류 코드는 {@code categoryCode}로, 중분류 코드는 {@code subcategoryCode}로 내려간다.
      */
-    public ProductPageView products(String category, String q, Boolean featured, String sort,
-                                    int page, int size) {
+    public ProductPageView products(String category, String q, Boolean featured,
+                                    String colour, String productType,
+                                    Long minPrice, Long maxPrice, String sort, int page, int size) {
         Pageable pageable = PageRequest.of(Math.max(page, 0), clampSize(size), sortOf(sort));
         Page<Product> result;
         if (q != null && !q.isBlank()) {
             String keyword = q.trim();
             result = productRepository.findByNameContainingOrBrandContaining(keyword, keyword, pageable);
-        } else if (category != null && !category.isBlank()) {
-            result = isSubcategory(category)
-                    ? productRepository.findBySubcategoryCode(category, pageable)
-                    : productRepository.findByCategoryCode(category, pageable);
-        } else if (Boolean.TRUE.equals(featured)) {
-            result = productRepository.findByFeaturedTrue(pageable);
         } else {
-            result = productRepository.findAll(pageable);
+            String[] axis = categoryAxis(category);
+            result = productRepository.search(axis[0], axis[1], blankToNull(colour),
+                    blankToNull(productType), minPrice, maxPrice, featured, pageable);
         }
         return toPageView(result);
+    }
+
+    /**
+     * 패싯 — 필터 패널이 쓸 색상·상품 종류의 값과 개수.
+     *
+     * <p>각 패싯은 <b>자기 축을 뺀</b> 나머지 필터만 적용한다(색상 패싯은 색상 필터 없이, 종류 패싯은
+     * 종류 필터 없이). 그래야 한 값을 고른 상태에서도 다른 값의 개수가 그대로 보인다. 검색어({@code q})는
+     * 패싯에 적용하지 않는다 — 검색 화면은 별도 페이지다.
+     */
+    public FacetView facets(String category, Boolean featured, String colour, String productType,
+                            Long minPrice, Long maxPrice) {
+        String[] axis = categoryAxis(category);
+        List<FacetCount> colours = productRepository.colourFacet(axis[0], axis[1],
+                blankToNull(productType), minPrice, maxPrice, featured);
+        List<FacetCount> productTypes = productRepository.typeFacet(axis[0], axis[1],
+                blankToNull(colour), minPrice, maxPrice, featured);
+        return new FacetView(colours, productTypes);
+    }
+
+    /**
+     * 카테고리 코드를 {@code [categoryCode, subcategoryCode]} 한 쌍으로 푼다.
+     * 대분류면 앞자리만, 중분류면 뒷자리만 채운다(둘 다 채우면 대분류 필터가 중분류를 덮어쓴다).
+     */
+    private String[] categoryAxis(String category) {
+        if (category == null || category.isBlank()) {
+            return new String[]{null, null};
+        }
+        return isSubcategory(category) ? new String[]{null, category} : new String[]{category, null};
+    }
+
+    /** 빈 문자열 필터는 "없음"으로 본다 — 폼이 빈 값을 보내는 경우를 조건에서 빼기 위해서다. */
+    private static String blankToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s.trim();
     }
 
     /** 상품 상세. 없는 상품은 주문 경로와 같은 코드(PRODUCT_NOT_FOUND)로 404를 낸다. */

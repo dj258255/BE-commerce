@@ -358,6 +358,7 @@ sequenceDiagram
 |---|---|---|
 | GET | `/api/v1/categories` | 카테고리 목록(노출 순서, 상품 수 포함). 기본은 **대분류만** |
 | GET | `/api/v1/products` | 상품 목록·검색 |
+| GET | `/api/v1/products/facets` | 필터 패널용 패싯(색상·상품 종류의 값과 개수) |
 | GET | `/api/v1/products/{productId}` | 상품 상세 |
 
 **목록 쿼리 파라미터**
@@ -366,14 +367,26 @@ sequenceDiagram
 |---|---|---|
 | `tree` | — | `/categories`에서 `true`면 중분류까지 편다(**부모 다음에 그 자식들** 순서) |
 | `category` | — | 카테고리 코드로 좁힌다(예: `ladieswear`). **대분류·중분류를 모두 받는다**(예: `ladieswear.knitwear`) |
-| `q` | — | 상품명·브랜드 부분 일치 검색. 있으면 `category`·`featured`보다 우선 |
-| `featured` | — | `true`면 추천 상품만 |
+| `q` | — | 상품명·브랜드 부분 일치 검색. 있으면 나머지 필터보다 우선 |
+| `featured` | — | `true`면 추천 상품만. 다른 필터와 **AND**로 조합된다(`q`만 예외로 우선) |
+| `colour` | — | 색상 코드로 좁힌다(예: `black`). 값은 패싯 응답의 `colours[].code` |
+| `productType` | — | 상품 종류로 좁힌다(예: `Dress`). H&M **영어 원문**이고, 패싯 응답의 `productTypes[].code` |
+| `minPrice` | — | 최소 가격(원, 포함). 정수 |
+| `maxPrice` | — | 최대 가격(원, 포함). 정수 |
 | `sort` | `newest` | `newest`·`price_asc`·`price_desc`·`name`. 모르는 값은 `newest`로 처리한다(500을 내지 않는다) |
 | `page` | `0` | 0부터 시작 |
 | `size` | `20` | 최대 60으로 상한을 건다 |
 
 `category`를 대분류·중분류 두 파라미터로 나누지 않았다. 나누면 `?category=ladieswear&subcategory=menswear.knitwear`
 같은 **모순된 조합**이 만들어지고, 그걸 검증할 에러 케이스가 늘어난다. 코드 하나로 해석하면 상태가 하나다.
+`colour`·`productType`·`minPrice`·`maxPrice`는 **서로 AND로 곱해진다**(여러 필터를 함께 걸면 모두 만족해야 한다).
+
+**필터 조합은 하나의 질의로 처리한다.** 여섯 선택 필터에 추천까지 더하면 파생 메서드로는 2^7가지가
+필요한데 조합마다 이름을 지어 유지할 수 없다. `null`인 파라미터는 조건에서 스스로 빠지므로 질의 하나로 충분하다.
+
+**`minPrice > maxPrice`는 에러가 아니라 0건이다.** 두 조건을 AND로 걸면 만족하는 행이 없어 빈 목록이
+돌아온다(`totalElements: 0`). 범위를 검증해 400을 내지 않는 이유: 가격 입력 두 칸은 화면에서 자유롭게
+편집되는 값이라, 잠깐 뒤집힌 상태로 요청이 나가도 화면이 죽지 않고 "0개"를 보여주는 편이 낫다.
 
 ```json
 // GET /api/v1/categories?tree=true → 200 (앞부분)
@@ -408,6 +421,37 @@ sequenceDiagram
 
 - `inStock`은 재고 0을 화면이 알아채 장바구니를 막게 하려고 싣는다. 재고 차감은 승인 시점이라
   여기서 막지 않으면 주문 생성까지는 통과하고 승인에서야 `OUT_OF_STOCK`으로 실패한다.
+
+**패싯 (`/products/facets`)**
+
+목록 화면의 필터 패널이 쓰는 색상·상품 종류의 **값과 개수**를 돌려준다. 개수는 패널을 그리는
+그 시점의 필터에 맞춰 세므로, 값을 골라 좁힌 뒤에도 "다른 값을 고르면 몇 개인지"를 그대로 보여준다.
+
+```json
+// GET /api/v1/products/facets?category=ladieswear → 200
+{
+  "colours": [
+    { "code": "black", "name": "블랙", "count": 8912 },
+    { "code": "white", "name": "화이트", "count": 4021 },
+    { "code": "blue",  "name": "블루",  "count": 3204 }
+  ],
+  "productTypes": [
+    { "code": "Dress",  "name": "Dress",  "count": 4231 },
+    { "code": "Top",    "name": "Top",    "count": 2103 },
+    { "code": "Sweater","name": "Sweater","count": 1988 }
+  ]
+}
+```
+
+- **한 패싯의 자기 축은 자기 개수에 적용하지 않는다.** 색상 패싯은 색상 필터를 빼고 나머지(카테고리·
+  종류·가격·추천)만 적용해 세고, 종류 패싯은 종류 필터를 빼고 나머지만 적용한다. 이래야 `colour=black`을
+  고른 상태에서도 다른 색의 개수가 그대로 보인다(패싯의 통상 규칙). 자기 축을 적용하면 선택한 값 하나만
+  남고 나머지는 0이 되어 필터를 바꿀 근거가 사라진다
+- 색상의 `code`는 슬러그(예: `black`), `name`은 한국어 이름(예: `블랙`)이다. 종류는 `code`·`name`이
+  같다 — H&M **영어 원문**(예: `Dress`)을 그대로 쓴다(`docs/09-ERD-설계.md` §9)
+- 정렬은 개수 내림차순이라 앞쪽 몇 개만 그려도 상위 값이 남는다
+- 받는 필터는 `/products`와 같다(`category`·`featured`·`colour`·`productType`·`minPrice`·`maxPrice`).
+  `q`는 받지 않는다 — 검색은 별도 화면(`search.html`)이 맡는다
 
 | HTTP | code | 상황 |
 |---|---|---|

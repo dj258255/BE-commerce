@@ -17,9 +17,10 @@ import java.time.Instant;
  * 금액 위변조 검증({@link Order#verifyAmount})의 기준값 자체가 조작 가능해져 검증이 무의미해진다.
  * 주문 생성 시 서버가 이 카탈로그에서 가격을 조회해 {@link OrderItem} 스냅샷을 만든다.
  *
- * <p>탐색용 속성({@code categoryCode}·{@code subcategoryCode}·{@code description}·{@code imageUrl}·
- * {@code brand})은 쇼핑몰 화면을 위해 더한 것이고, 가격·재고의 권위에는 관여하지 않는다. 쓰기 표면은
- * 없고 시드와 마이그레이션으로만 채운다 — 조회는 {@link CatalogQueryService}가 담당한다.
+ * <p>탐색용 속성({@code categoryCode}·{@code subcategoryCode}·{@code colourCode}·{@code colourName}·
+ * {@code productType}·{@code description}·{@code imageUrl}·{@code brand})은 쇼핑몰 화면을 위해 더한 것이고,
+ * 가격·재고의 권위에는 관여하지 않는다. 쓰기 표면은 없고 시드와 마이그레이션으로만 채운다 — 조회는
+ * {@link CatalogQueryService}가 담당한다.
  */
 @Entity
 @Table(name = "products")
@@ -44,6 +45,18 @@ public class Product {
     /** 중분류 — 대분류 × 상품 종류 조합(V56). NULL이면 대분류만 지정된 상품이다. */
     @Column(length = 40)
     private String subcategoryCode;
+
+    /** 색상 코드 — H&M 색상명의 슬러그(예: {@code black}). 색상 필터가 이 컬럼으로 좁힌다(V57). */
+    @Column(length = 40)
+    private String colourCode;
+
+    /** 색상 표시명(예: {@code 블랙}). 화면·패싯 라벨이 쓴다 — 코드가 아니라 사람이 읽는 이름이다. */
+    @Column(length = 40)
+    private String colourName;
+
+    /** 상품 종류 — H&M {@code product_type_name} **영어 원문 그대로**(예: {@code Dress}). (V57) */
+    @Column(length = 80)
+    private String productType;
 
     @Column(length = 1000)
     private String description;
