@@ -12,6 +12,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  web:
+    name: web (Next.js)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      # CI에는 NODE_ENV=production 이 없지만, devDependencies 누락으로 빌드가 깨지는 일을 막기 위해
+      # npm ci 를 명시적으로 쓴다(락파일 기준 설치라 재현된다).
+      - name: Install
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: apps/web
+        run: npm run typecheck
+
+      # 백엔드 없이 도는 빌드다. 홈은 force-dynamic 이라 빌드 시 API를 호출하지 않는다.
+      - name: Build
+        working-directory: apps/web
+        run: npm run build
+
   test:
     name: build & test
     runs-on: ubuntu-latest
