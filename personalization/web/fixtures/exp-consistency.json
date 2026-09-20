@@ -1,0 +1,23 @@
+{
+  "_mock": true,
+  "_source": "M2 실험(이슈 #125). 같은 이벤트 로그로 만든 offline 피처와 online 서빙 피처가 어디서 갈라지는지.",
+  "_harness": "동일 로그 replay + offline 배치 재계산 대조 (예정)",
+  "replay": { "contexts": 12000, "matched": 11316, "matchPct": 94.3 },
+  "causes": [
+    { "label": "late event (순서 도착)", "value": 412, "sharePct": 60.2, "color": "var(--accent)" },
+    { "label": "중복 이벤트", "value": 134, "sharePct": 19.6, "color": "var(--warn)" },
+    { "label": "window 경계", "value": 86, "sharePct": 12.6, "color": "var(--info)" },
+    { "label": "TTL 만료", "value": 32, "sharePct": 4.7, "color": "#9AA1AC" },
+    { "label": "순서 역전 처리 차이", "value": 20, "sharePct": 2.9, "color": "var(--bad)" }
+  ],
+  "examples": [
+    { "context": "CLICK_COUNT(1h) u-1024", "offline": 12, "online": 15, "cause": "late event" },
+    { "context": "VIEW_COUNT(24h) u-2048", "offline": 34, "online": 34, "cause": "일치" },
+    { "context": "PURCHASE_SUM(7d) u-3072", "offline": 89900, "online": 129900, "cause": "window 경계" }
+  ],
+  "conclusion": {
+    "statement": "일치율 94.3%. 불일치의 60%가 late event다 — consumer 지연이 곧 피처 오차다.",
+    "tradeoff": "일치율을 올리려면(event-time 처리·워터마크) 지연과 상태 저장 비용이 늘어난다. 신선도 실험과 같은 축이다.",
+    "openQuestion": "불일치가 추천 품질에 실제로 얼마를 깎는가 — 시스템 실험만으로 판단 불가(사용자 지표 필요)"
+  }
+}

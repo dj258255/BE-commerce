@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>개인화 · 신선도 vs 지연</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/pz.css">
+</head>
+<body>
+<header id="app-top"></header>
+<main class="page"><div class="container">
+  <div class="head">
+    <h1>신선도 vs 지연</h1>
+    <p>클릭 이벤트는 Kafka에 들어갔지만 consumer가 못 따라가면 모델은 최신 행동을 모른 채 생성한다. <b>최신성을 사려면 얼마를 내야 하는가.</b></p>
+  </div>
+  <div class="grid g3" id="kpis" style="margin-bottom:16px"></div>
+  <section class="panel" style="margin-bottom:16px">
+    <h2>트레이드오프 — 반영률을 올리면 지연이 오른다</h2>
+    <div class="hint">각 점이 하나의 정책이다. x축 = 최신 반영률(%), y축 = p95 지연(ms). 오른쪽으로 갈수록 최신, 위로 갈수록 느림.</div>
+    <div id="chart"></div><div class="legend" id="legend"></div>
+  </section>
+  <section class="panel" style="margin-bottom:16px">
+    <h2>어디서 신선도가 소모되는가</h2>
+    <div class="hint">정책과 무관하게, 병목은 consumer 구간이다.</div>
+    <div id="breakdown"></div>
+  </section>
+  <section class="panel" style="margin-bottom:16px"><h2>정책별 결과</h2><div id="table"></div></section>
+  <section class="panel"><h2>결론과 트레이드오프</h2><div id="conclusion"></div></section>
+  <p class="foot-note" id="harness"></p>
+</div></main>
+<footer id="app-foot"></footer>
+<script src="assets/pz.js"></script>
+<script>
+  PZ.header('console');
+  (async function () {
+    var d = await PZ.fixture('exp-freshness'); if (!d) return;
+    var p = d.policies;
+    document.getElementById('kpis').innerHTML =
+      PZ.kpi('즉시 응답 반영률', PZ.pct(p[0].freshnessPct), 'p95 ' + PZ.ms(p[0].p95Ms)) +
+      PZ.kpi('100ms 상한', PZ.pct(p[2].freshnessPct), 'p95 ' + PZ.ms(p[2].p95Ms) + ' (+' + PZ.num(p[2].p95Ms - p[0].p95Ms) + 'ms)', 'warn') +
+      PZ.kpi('최신까지 대기', PZ.pct(p[4].freshnessPct), 'p95 ' + PZ.ms(p[4].p95Ms) + ' · timeout ' + PZ.pct(p[4].timeoutPct), 'bad');
+
+    PZ.line(document.getElementById('chart'), d.tradeoff, {
+      xLabel: '최신 반영률(%)', xMin: 30, xMax: 100, y0: true, width: 760, height: 250
+    });
+    PZ.legend(document.getElementById('legend'), d.tradeoff);
+
+    PZ.bars(document.getElementById('breakdown'),
+      d.breakdown.map(function (b, i) {
+        return { label: b.label, value: b.value, display: PZ.ms(b.value), color: i === 1 ? 'var(--bad)' : 'var(--info)' };
+      }));
+
+    PZ.table(document.getElementById('table'),
+      [{ key: 'label', label: '정책' },
+       { key: 'freshnessPct', label: '최신 반영률', num: true, fmt: function (v) { return PZ.pct(v); } },
+       { key: 'p95Ms', label: 'p95(ms)', num: true },
+       { key: 'timeoutPct', label: 'timeout', num: true, fmt: function (v) { return PZ.pct(v); } }],
+      d.policies);
+
+    var c = d.conclusion;
+    document.getElementById('conclusion').innerHTML =
+      '<p style="margin:0 0 10px">' + PZ.esc(c.statement) + '</p>' +
+      '<p style="margin:0 0 10px;color:var(--sub)"><b>트레이드오프</b> — ' + PZ.esc(c.tradeoff) + '</p>' +
+      '<div class="badge b-warn">미해결 — ' + PZ.esc(c.openQuestion) + '</div>';
+    document.getElementById('harness').textContent = '하네스: ' + d._harness;
+  })();
+</script>
+</body>
+</html>

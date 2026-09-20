@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>개인화 · 과부하와 degradation</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/pz.css">
+</head>
+<body>
+<header id="app-top"></header>
+<main class="page"><div class="container">
+  <div class="head">
+    <h1>과부하와 degradation</h1>
+    <p>모델 서버가 느려지면 queue가 길어지고, <b>살아 있어도 API는 timeout 난다.</b> SLO를 지키려면 모델 사용을 얼마나 포기해야 하는가.</p>
+  </div>
+  <div class="grid g4" id="kpis" style="margin-bottom:16px"></div>
+  <section class="panel" style="margin-bottom:16px">
+    <h2>유입을 올리면 — p95</h2>
+    <div class="hint" id="slo-hint"></div>
+    <div id="chart"></div><div class="legend" id="legend"></div>
+  </section>
+  <section class="panel" style="margin-bottom:16px">
+    <h2>정책별 결과</h2>
+    <div class="hint">coverage = 모델을 실제로 쓴 요청 비율. 나머지는 폴백으로 응답한다.</div>
+    <div id="table"></div>
+  </section>
+  <section class="panel"><h2>결론과 트레이드오프</h2><div id="conclusion"></div></section>
+  <p class="foot-note" id="harness"></p>
+</div></main>
+<footer id="app-foot"></footer>
+<script src="assets/pz.js"></script>
+<script>
+  PZ.header('console');
+  (async function () {
+    var d = await PZ.fixture('exp-overload'); if (!d) return;
+    var ub900 = d.rows.filter(function (r) { return r.rps === 900 && r.policy === 'unbounded'; })[0];
+    var ad900 = d.rows.filter(function (r) { return r.rps === 900 && r.policy === 'admission'; })[0];
+    document.getElementById('kpis').innerHTML =
+      PZ.kpi('SLO', 'p95 ' + d.slo.p95Ms + 'ms', '이 기준으로 판정') +
+      PZ.kpi('unbounded @900rps', PZ.ms(ub900.p95Ms), 'timeout ' + PZ.pct(ub900.timeoutPct), 'bad') +
+      PZ.kpi('admission @900rps', PZ.ms(ad900.p95Ms), 'SLO 안 · coverage ' + PZ.pct(ad900.coveragePct, 0), 'good') +
+      PZ.kpi('포기한 개인화', PZ.pct(100 - ad900.coveragePct, 1), 'SLO를 지키는 대가', 'warn');
+
+    document.getElementById('slo-hint').textContent = 'y축은 로그적으로 커진다(880ms→2400ms). SLO p95 ' + d.slo.p95Ms + 'ms 기준선을 눈으로 넘는 지점을 보라.';
+    PZ.line(document.getElementById('chart'), d.series, { xLabel: '유입(rps)', xTicks: [100, 600, 900], y0: true, width: 760, height: 260 });
+    PZ.legend(document.getElementById('legend'), d.series);
+
+    PZ.table(document.getElementById('table'),
+      [{ key: 'rps', label: '유입(rps)', num: true },
+       { key: 'policy', label: '정책' },
+       { key: 'p95Ms', label: 'p95(ms)', num: true },
+       { key: 'p99Ms', label: 'p99(ms)', num: true },
+       { key: 'timeoutPct', label: 'timeout', num: true, fmt: function (v) { return PZ.pct(v); } },
+       { key: 'fallbackPct', label: '폴백', num: true, fmt: function (v) { return PZ.pct(v); } },
+       { key: 'coveragePct', label: 'coverage', num: true, fmt: function (v) { return PZ.pct(v); } }],
+      d.rows);
+
+    var c = d.conclusion;
+    document.getElementById('conclusion').innerHTML =
+      '<p style="margin:0 0 10px">' + PZ.esc(c.statement) + '</p>' +
+      '<p style="margin:0 0 10px;color:var(--sub)"><b>트레이드오프</b> — ' + PZ.esc(c.tradeoff) + '</p>' +
+      '<div class="badge b-warn">미해결 — ' + PZ.esc(c.openQuestion) + '</div>';
+    document.getElementById('harness').textContent = '하네스: ' + d._harness;
+  })();
+</script>
+</body>
+</html>
