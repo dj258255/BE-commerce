@@ -41,3 +41,5 @@ tools/fds/.venv/
 # 개인화 데이터·파이프라인 산출물 (커밋 금지)
 personalization/data/
 personalization/pipeline/.venv/
+personalization/pipeline/__pycache__/
+__pycache__/
