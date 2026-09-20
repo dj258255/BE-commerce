@@ -114,6 +114,7 @@
 
 - 결제 콘솔: `http://localhost:8080/console.html` — 주문, 복합결제, 취소, 구매확정, 구독, 월렛, 포인트
 - 운영 백오피스: `http://localhost:8080/admin.html` — 복구, 보상, 대사, 정산, 분쟁, FDS, DLQ
+- 웹 앱(Next.js): `apps/web` — 개인화 홈·실험 콘솔. `npm run dev` 로 3000에서 뜬다([README](apps/web/README.md))
 
 ![운영 백오피스의 대사 원인 제안](docs/images/recon-suggestions.jpg)
 
