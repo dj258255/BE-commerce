@@ -10,9 +10,25 @@ python3 personalization/pipeline/normalize_hm.py      # 정규화 + 품질 리�
 
 python3 personalization/pipeline/fetch_amazon.py      # Amazon_Fashion 리뷰+메타, ~0.52GB
 python3 personalization/pipeline/normalize_amazon.py  # 정규화 + 품질 리포트 (+asin 함정 검증)
+
+python3 personalization/pipeline/features_hm.py       # 시간 스플릿 + point-in-time 피처 + baseline + MAP@12
+python3 personalization/pipeline/check_no_leakage.py  # 누출 회귀 테스트 (실패 시 종료 코드 1)
 ```
 
 데이터는 `personalization/data/`에 쌓이고 **커밋하지 않는다**(.gitignore). 리포트만 `personalization/docs/runs/`에 남는다.
+
+## 측정에서 틀렸던 것 (남겨둔다)
+
+**MAP@12에서 미적중 고객을 평균에서 빼고 있었다.** 처음 구현은 정답이 하나라도 맞은 고객만 모아 평균을 냈다.
+그래서 `popular_recent7d`가 0.136으로 나왔는데, 정답이 있는 **모든 고객**(68,984명)을 기준으로 고치니 **0.0087**이었다.
+15배 부풀려진 숫자다.
+
+두 번 걸렸다.
+1. baseline마다 '평가 고객 수'가 달라서(4,436 / 1,457 / 5,081) 이상함을 알았다 — 같은 홀드아웃인데 다를 수 없다.
+2. 고친 뒤에도 숫자가 **그대로**여서 다시 의심했다. 원인은 `reindex(fill_value=)`가 '새 라벨'만 채우고
+   **기존 NaN은 못 채운다**는 것이었다. `fillna(0.0)`이 따로 필요했다.
+
+지표가 부풀려지면 모델 개선을 잘못 판단한다. 그래서 이 검사를 `check_no_leakage.py`와 함께 남겨둔다.
 
 ## 원칙
 
