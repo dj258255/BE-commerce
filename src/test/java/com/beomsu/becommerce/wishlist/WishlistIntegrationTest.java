@@ -25,6 +25,7 @@ import org.testcontainers.utility.DockerImageName;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -72,6 +73,9 @@ class WishlistIntegrationTest {
     @Autowired
     TestRestTemplate rest;
 
+    /** 같은 사용자로 여러 번 로그인하지 않는다 — IP 기준 초당 한도(5/s)에 걸린다. */
+    private static final Map<String, String> TOKENS = new ConcurrentHashMap<>();
+
     @Autowired
     JdbcTemplate jdbc;
 
@@ -85,7 +89,7 @@ class WishlistIntegrationTest {
     @Test
     @DisplayName("같은 상품을 두 번 찜해도 1건 — 유니크 제약이 멱등을 지킨다")
     void addIsIdempotentAtDbLevel() {
-        String token = login("1", "user-local-only");
+        String token = authToken("1");
 
         assertThat(add(token, PRODUCT).getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(add(token, PRODUCT).getStatusCode().is2xxSuccessful()).isTrue();
@@ -96,7 +100,7 @@ class WishlistIntegrationTest {
     @Test
     @DisplayName("추가 → 삭제 → 추가가 같은 상태로 돌아온다")
     void addRemoveAddReturnsToSameState() {
-        String token = login("1", "user-local-only");
+        String token = authToken("1");
 
         add(token, PRODUCT);
         assertThat(countFor(1L, PRODUCT)).isEqualTo(1);
@@ -113,8 +117,8 @@ class WishlistIntegrationTest {
     @Test
     @DisplayName("남의 위시리스트는 보이지 않는다 — 1번이 찜한 것이 2번 목록에 없다")
     void doesNotLeakAnotherUsersWishlist() {
-        String user1 = login("1", "user-local-only");
-        String user2 = login("2", "user-local-only");
+        String user1 = authToken("1");
+        String user2 = authToken("2");
 
         add(user1, PRODUCT);
 
@@ -135,7 +139,7 @@ class WishlistIntegrationTest {
     @Test
     @DisplayName("없는 상품을 찜하면 404 PRODUCT_NOT_FOUND — 응답 코드와 DB 무변화를 함께 본다")
     void missingProductIsRejected() {
-        String token = login("1", "user-local-only");
+        String token = authToken("1");
 
         ResponseEntity<JsonNode> res = add(token, MISSING_PRODUCT);
 
@@ -148,7 +152,7 @@ class WishlistIntegrationTest {
     @Test
     @DisplayName("찜하지 않은 상품을 지워도 204 — 삭제도 멱등이다")
     void removeIsIdempotent() {
-        String token = login("1", "user-local-only");
+        String token = authToken("1");
 
         assertThat(remove(token, PRODUCT).getStatusCode().value()).isEqualTo(204);
         assertThat(remove(token, PRODUCT).getStatusCode().value()).isEqualTo(204);
@@ -182,10 +186,25 @@ class WishlistIntegrationTest {
                 new HttpEntity<>(null, bearer(token)), JsonNode.class);
     }
 
+    /**
+     * 토큰은 **클래스당 사용자마다 한 번만** 받는다.
+     *
+     * <p>테스트마다 로그인하면 같은 IP로 1초에 6~7건이 나가는데, {@code RateLimitFilter}가 미인증
+     * 진입점(로그인·회원가입)을 <b>IP + 경로 기준 초당 5건</b>으로 막는다
+     * ({@code app.ratelimit.per-user-per-sec}). 그러면 로그인이 429로 거절되어 테스트가
+     * "로그인 실패"로 죽는다 — CI에서 실제로 그렇게 죽었다(#177).
+     */
+    private String authToken(String username) {
+        return TOKENS.computeIfAbsent(username, u -> login(u, "user-local-only"));
+    }
+
     private String login(String username, String password) {
         ResponseEntity<JsonNode> res = rest.postForEntity("/api/v1/auth/login",
                 new HttpEntity<>(Map.of("username", username, "password", password), json()), JsonNode.class);
-        assertThat(res.getStatusCode().is2xxSuccessful()).describedAs("로그인 실패").isTrue();
+        assertThat(res.getStatusCode().is2xxSuccessful())
+                .describedAs("로그인 실패 — status=%s body=%s (IP 기준 초당 한도에 걸렸을 수 있다)",
+                        res.getStatusCode(), res.getBody())
+                .isTrue();
         return res.getBody().get("token").asText();
     }
 
