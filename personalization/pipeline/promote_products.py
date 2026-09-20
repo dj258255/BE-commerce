@@ -12,7 +12,9 @@ Flyway 마이그레이션으로 넣지 않는 이유: 이건 **스키마가 아�
     krw = round(rel / median_rel * MEDIAN_KRW / 100) * 100,  clamp [1,000, 500,000]
 거래가 없는 상품(995개)은 그 카테고리의 중앙값을 쓴다. **결정적이고 되돌릴 수 있다** — 규칙을 바꾸면 재실행.
 
-**카테고리**: H&M `index_group_name`(5종)을 그대로 쓴다.
+**카테고리**: H&M `index_group_name`(5종)을 **대분류**로, `garment_group_name`(21종)을 **중분류**로 쓴다.
+둘은 **직교**한다 — 중분류 21종 중 2종만 한 대분류에 속한다(니트는 여성복·남성복·아동복·Divided에 다 있다).
+그래서 노드는 (대분류 × 중분류) **조합**이고, 5×21=105 중 **실제 존재하는 72개**만 만든다(V56 주석 참고).
 **브랜드**: `H&M` (H&M에는 브랜드 컬럼이 없다).
 **이미지**: 아직 없다(린 슬라이스에서 제외) → NULL. 화면은 그라디언트로 폴백한다.
 **featured**: 마지막 30일 구매 수 상위 8개.
@@ -26,6 +28,7 @@ Flyway 마이그레이션으로 넣지 않는 이유: 이건 **스키마가 아�
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 from pathlib import Path
 
@@ -47,6 +50,39 @@ CATEGORY_NAMES = {
     "Baby/Children": ("kids", "아동복"),
     "Sport": ("sport", "스포츠"),
 }
+
+# 중분류 이름. **번역이 확실한 것만 한국어로** 하고, 확실하지 않으면 원문을 그대로 쓴다 —
+# 그럴듯한 한국어를 지어내면 데이터에 없는 의미를 만드는 것이기 때문이다.
+# 어느 쪽이든 `source_name`에 H&M 원문을 남겨 추적할 수 있게 한다.
+SUBCATEGORY_NAMES = {
+    "Accessories": "액세서리",
+    "Blouses": "블라우스",
+    "Dresses Ladies": "드레스",
+    "Dresses/Skirts girls": "여아 드레스·스커트",
+    "Jersey Basic": "저지 베이직",
+    "Jersey Fancy": "저지 팬시",
+    "Knitwear": "니트",
+    "Outdoor": "아웃도어",
+    "Shirts": "셔츠",
+    "Shoes": "슈즈",
+    "Shorts": "반바지",
+    "Skirts": "스커트",
+    "Socks and Tights": "양말·타이츠",
+    "Special Offers": "특가",
+    "Swimwear": "수영복",
+    "Trousers": "팬츠",
+    "Trousers Denim": "데님 팬츠",
+    "Under-, Nightwear": "언더웨어·나이트웨어",
+    "Unknown": "기타",
+    "Dressed": "Dressed",                                  # H&M 내부 분류 — 번역이 불확실해 원문 유지
+    "Woven/Jersey/Knitted mix Baby": "Woven/Jersey/Knitted mix Baby",
+}
+
+CODE_MAX = 40  # categories.code varchar(40)
+
+
+def slug(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
 
 
 def esc(s: str) -> str:
@@ -90,6 +126,16 @@ def build_catalog(data: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     prod.loc[missing, "price"] = prod.loc[missing, "index_group_name"].map(cat_median)
     prod["price"] = prod["price"].fillna(MEDIAN_KRW).astype(int)
     prod["category_code"] = prod["index_group_name"].map(lambda g: CATEGORY_NAMES[g][0])
+    prod["subcategory_code"] = prod["category_code"] + "." + prod["garment_group_name"].map(slug)
+
+    # 이름을 못 정한 중분류가 있으면 조용히 NULL을 넣지 않고 멈춘다(화면에 코드가 노출되는 걸 막는다).
+    unknown = set(prod["garment_group_name"]) - set(SUBCATEGORY_NAMES)
+    if unknown:
+        raise SystemExit(f"중분류 이름 매핑이 없다: {sorted(unknown)}")
+    too_long = prod["subcategory_code"].str.len() > CODE_MAX
+    if too_long.any():
+        raise SystemExit(f"중분류 코드가 {CODE_MAX}자를 넘는다: {sorted(set(prod.loc[too_long, 'subcategory_code']))[:3]}")
+
     prod["brand"] = BRAND
     prod["image_url"] = None
     prod["featured"] = prod["article_id"].isin(featured_ids).astype(int)
@@ -99,24 +145,53 @@ def build_catalog(data: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     # product_id는 BIGINT라 10자리 문자열을 정수로. 앞의 0은 저장되지 않는다(이미지 경로에서 %010d로 복원).
     prod["product_id"] = prod["article_id"].astype(int)
 
-    cats = (
+    # --- 대분류 (parent_code 없음) ---
+    parents = (
         prod.groupby("category_code", observed=True)
         .size()
         .reset_index(name="n")
         .sort_values("n", ascending=False)
         .reset_index(drop=True)
     )
-    cats["name"] = cats["category_code"].map({v[0]: v[1] for v in CATEGORY_NAMES.values()})
-    cats["sort_order"] = cats.index + 1
+    parents["name"] = parents["category_code"].map({v[0]: v[1] for v in CATEGORY_NAMES.values()})
+    parents["sort_order"] = parents.index + 1
+    parents["parent_code"] = None
+    parents["source_name"] = parents["category_code"].map({v[0]: k for k, v in CATEGORY_NAMES.items()})
+    parents = parents.rename(columns={"category_code": "code"})
 
-    keep = ["product_id", "prod_name", "price", "category_code", "description", "image_url", "brand", "featured", "created_at"]
-    return prod[keep], cats[["category_code", "name", "sort_order", "n"]]
+    # --- 중분류 (조합 노드) — 정렬은 부모 안에서 상품 수 내림차순 ---
+    children = (
+        prod.groupby(["category_code", "subcategory_code"], observed=True)
+        .size()
+        .reset_index(name="n")
+    )
+    children["sort_order"] = (
+        children.groupby("category_code", observed=True)["n"]
+        .rank(ascending=False, method="first")
+        .astype(int)
+    )
+    children = children.sort_values(["sort_order", "subcategory_code"]).reset_index(drop=True)
+    children["parent_code"] = children["category_code"]
+    # 이름의 출처(H&M 원문)를 남긴다 — 한국어 이름을 우리가 정했으므로 근거가 추적돼야 한다.
+    source_of = prod.drop_duplicates("subcategory_code").set_index("subcategory_code")["garment_group_name"]
+    children["source_name"] = children["subcategory_code"].map(source_of)
+    children["name"] = children["source_name"].map(SUBCATEGORY_NAMES)
+    children = children.rename(columns={"subcategory_code": "code"})[
+        ["code", "name", "sort_order", "parent_code", "source_name", "n"]
+    ]
+
+    cats = pd.concat([parents, children], ignore_index=True)
+
+    keep = ["product_id", "prod_name", "price", "category_code", "subcategory_code",
+            "description", "image_url", "brand", "featured", "created_at"]
+    return prod[keep], cats
 
 
 def emit_sql(prod: pd.DataFrame, cats: pd.DataFrame, path: Path) -> None:
     lines = [
         "-- H&M 카탈로그 승격 (생성물 — 손으로 고치지 않는다)",
-        f"-- 상품 {len(prod):,}개 · 카테고리 {len(cats)}개",
+        f"-- 상품 {len(prod):,}개 · 대분류 {int(cats['parent_code'].isna().sum())}개"
+        f" · 중분류 {int(cats['parent_code'].notna().sum())}개",
         "-- Flyway 마이그레이션이 아니다: 스키마가 아니라 데이터다(docs/04-storage.md §2).",
         "-- 멱등: 재실행하면 같은 product_id를 갱신한다.",
         "",
@@ -125,17 +200,21 @@ def emit_sql(prod: pd.DataFrame, cats: pd.DataFrame, path: Path) -> None:
     ]
     for _, c in cats.iterrows():
         lines.append(
-            "INSERT INTO categories (code, name, description, sort_order) VALUES "
-            f"({sql_str(c['category_code'])}, {sql_str(c['name'])}, NULL, {int(c['sort_order'])}) "
-            "ON DUPLICATE KEY UPDATE name=VALUES(name), sort_order=VALUES(sort_order);"
+            "INSERT INTO categories (code, name, description, sort_order, parent_code, source_name) VALUES "
+            f"({sql_str(c['code'])}, {sql_str(c['name'])}, NULL, {int(c['sort_order'])}, "
+            f"{sql_str(c['parent_code'])}, {sql_str(c['source_name'])}) "
+            "ON DUPLICATE KEY UPDATE name=VALUES(name), sort_order=VALUES(sort_order), "
+            "parent_code=VALUES(parent_code), source_name=VALUES(source_name);"
         )
     lines.append("")
 
-    cols = "(product_id, name, price, category_code, description, image_url, brand, featured, created_at)"
+    cols = ("(product_id, name, price, category_code, subcategory_code, description, image_url,"
+            " brand, featured, created_at)")
     rows = []
     for _, r in prod.iterrows():
         rows.append(
-            f"({int(r['product_id'])}, {sql_str(r['prod_name'])}, {int(r['price'])}, {sql_str(r['category_code'])}, "
+            f"({int(r['product_id'])}, {sql_str(r['prod_name'])}, {int(r['price'])}, "
+            f"{sql_str(r['category_code'])}, {sql_str(r['subcategory_code'])}, "
             f"{sql_str(r['description'])}, {sql_str(r['image_url'])}, {sql_str(r['brand'])}, {int(r['featured'])}, "
             f"{sql_str(pd.Timestamp(r['created_at']).strftime('%Y-%m-%d %H:%M:%S'))})"
         )
@@ -144,7 +223,8 @@ def emit_sql(prod: pd.DataFrame, cats: pd.DataFrame, path: Path) -> None:
         lines.append(
             f"INSERT INTO products {cols} VALUES\n  " + ",\n  ".join(chunk) +
             "\nON DUPLICATE KEY UPDATE name=VALUES(name), price=VALUES(price), "
-            "category_code=VALUES(category_code), description=VALUES(description), "
+            "category_code=VALUES(category_code), subcategory_code=VALUES(subcategory_code), "
+            "description=VALUES(description), "
             "brand=VALUES(brand), featured=VALUES(featured);"
         )
 
@@ -188,8 +268,19 @@ def main() -> int:
 
     data = Path(args.data_dir)
     prod, cats = build_catalog(data)
-    print(f"상품 {len(prod):,}개 · 카테고리 {len(cats)}개")
-    print(cats.to_string(index=False))
+    parents = cats[cats["parent_code"].isna()]
+    children = cats[cats["parent_code"].notna()]
+    print(f"상품 {len(prod):,}개 · 대분류 {len(parents)}개 · 중분류 {len(children)}개")
+    print(parents[["code", "name", "sort_order", "n"]].to_string(index=False))
+    print(f"중분류 {len(children)}개 (부모별 상위 3개)")
+    for code, grp in children.groupby("parent_code", sort=False):
+        head = ", ".join(f"{r['name']}({r['n']:,})" for _, r in grp.head(3).iterrows())
+        print(f"  {code:12s} {head}")
+    # 부모 카운트 == 자식 합. 이게 깨지면 트리 집계가 틀린 것이다.
+    rolled = children.groupby("parent_code", observed=True)["n"].sum()
+    for _, p in parents.iterrows():
+        assert int(p["n"]) == int(rolled.get(p["code"], 0)), f"부모 {p['code']} 카운트가 자식 합과 다르다"
+    print("부모 카운트 == 자식 합 확인")
     print("\n가격 분포(원):", prod['price'].describe()[['min', '25%', '50%', '75%', 'max']].astype(int).to_dict())
     print(f"featured {int(prod['featured'].sum())}개 · 거래 없는 상품 가격은 카테고리 중앙값으로 채움")
 

@@ -6,6 +6,8 @@ export type Category = {
   description: string | null;
   sortOrder: number;
   productCount: number;
+  /** null이면 대분류, 값이 있으면 그 코드를 부모로 둔 중분류다(V56). */
+  parentCode: string | null;
 };
 
 export type RowItem = {

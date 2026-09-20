@@ -20,6 +20,7 @@ import java.util.List;
  *
  * <p>목록은 {@code q}(검색어)·{@code category}(카테고리)·{@code featured}(추천) 중 하나로 좁히고,
  * {@code sort}(newest·price_asc·price_desc·name)·{@code page}·{@code size}로 정렬·페이지네이션한다.
+ * {@code category}는 대분류·중분류를 모두 받는다.
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -31,9 +32,13 @@ public class CatalogController {
         this.catalogQueryService = catalogQueryService;
     }
 
+    /**
+     * 카테고리 목록. 기본은 **대분류만**이고, {@code ?tree=true}면 중분류까지 부모 다음 순서로 편다.
+     * 기본 동작을 바꾸지 않는 이유: 기존 화면(헤더 내비게이션·홈 칩)이 이 응답을 그대로 쓴다.
+     */
     @GetMapping("/categories")
-    public List<CategoryView> categories() {
-        return catalogQueryService.categories();
+    public List<CategoryView> categories(@RequestParam(required = false) Boolean tree) {
+        return Boolean.TRUE.equals(tree) ? catalogQueryService.categoryTree() : catalogQueryService.categories();
     }
 
     @GetMapping("/products")

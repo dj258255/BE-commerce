@@ -11,6 +11,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     /** 카테고리별 목록 — 정렬은 Pageable의 Sort로 받는다. */
     Page<Product> findByCategoryCode(String categoryCode, Pageable pageable);
 
+    /** 중분류별 목록 — 대분류 × 상품 종류 조합 노드(V56). */
+    Page<Product> findBySubcategoryCode(String subcategoryCode, Pageable pageable);
+
     /** 상품명·브랜드 부분 일치 검색. MySQL 기본 콜레이션이 대소문자를 무시해 IgnoreCase와 결과가 같다. */
     Page<Product> findByNameContainingOrBrandContaining(String keyword, String sameKeyword, Pageable pageable);
 
@@ -18,4 +21,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> findByFeaturedTrue(Pageable pageable);
 
     long countByCategoryCode(String categoryCode);
+
+    long countBySubcategoryCode(String subcategoryCode);
 }

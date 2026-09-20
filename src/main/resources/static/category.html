@@ -86,24 +86,62 @@
   });
 
   (async function () {
-    var cats = await Store.categories();
+    var tree = await Store.categoryTree();
+    var byCode = {};
+    tree.forEach(function (c) { byCode[c.code] = c; });
+    var parents = tree.filter(function (c) { return !c.parentCode; });
 
-    document.getElementById('side-list').innerHTML =
-      '<a href="search.html"' + (code ? '' : ' class="on"') + '>전체 상품</a>' +
-      cats.map(function (c) {
-        return '<a href="category.html?code=' + encodeURIComponent(c.code) + '"' +
-          (c.code === code ? ' class="on"' : '') + '>' + Store.esc(c.name) +
-          '<span class="cnt">' + c.productCount + '</span></a>';
-      }).join('');
+    var current = byCode[code];
+    // 중분류를 보고 있으면 그 부모를 활성으로 편다 — 사이드바가 어디인지 알려줘야 한다.
+    var activeParent = current ? (current.parentCode || current.code) : '';
 
-    var current = cats.find(function (c) { return c.code === code; });
-    document.getElementById('crumb').innerHTML =
-      '<a href="index.html">홈</a><span class="sep">/</span>' +
-      (code ? '<a href="category.html">카테고리</a><span class="sep">/</span><span>' + Store.esc(current ? current.name : code) + '</span>'
-            : '<span>카테고리</span>');
-    document.getElementById('head').innerHTML = code && current
+    var side = '<a href="search.html"' + (code ? '' : ' class="on"') + '>전체 상품</a>';
+    parents.forEach(function (p) {
+      side += '<a href="category.html?code=' + encodeURIComponent(p.code) + '"' +
+        (p.code === activeParent ? ' class="on"' : '') + '>' + Store.esc(p.name) +
+        '<span class="cnt">' + p.productCount + '</span></a>';
+      if (p.code !== activeParent) return;
+      var kids = tree.filter(function (c) { return c.parentCode === p.code; });
+      if (!kids.length) return;
+      side += '<div class="sub">' + kids.map(function (k) {
+        return '<a href="category.html?code=' + encodeURIComponent(k.code) + '"' +
+          (k.code === code ? ' class="on"' : '') + '>' + Store.esc(k.name) +
+          '<span class="cnt">' + k.productCount + '</span></a>';
+      }).join('') + '</div>';
+    });
+    document.getElementById('side-list').innerHTML = side;
+
+    var crumb = '<a href="index.html">홈</a><span class="sep">/</span>';
+    if (!code) {
+      crumb += '<span>카테고리</span>';
+    } else if (current && current.parentCode) {
+      crumb += '<a href="category.html?code=' + encodeURIComponent(current.parentCode) + '">' +
+        Store.esc(byCode[current.parentCode].name) + '</a><span class="sep">/</span><span>' +
+        Store.esc(current.name) + '</span>';
+    } else {
+      crumb += '<a href="category.html">카테고리</a><span class="sep">/</span><span>' +
+        Store.esc(current ? current.name : code) + '</span>';
+    }
+    document.getElementById('crumb').innerHTML = crumb;
+
+    var head = code && current
       ? '<h1>' + Store.esc(current.name) + '</h1><p>' + Store.esc(current.description || '') + '</p>'
       : '<h1>전체 상품</h1><p>카탈로그의 모든 상품</p>';
+
+    // 대분류 안의 중분류 칩 — 목록을 보면서 바로 좁힐 수 있게 한다.
+    var siblings = activeParent ? tree.filter(function (c) { return c.parentCode === activeParent; }) : [];
+    if (siblings.length) {
+      head += '<div class="chips" style="margin-top:16px">' +
+        '<a class="chip' + (current && !current.parentCode ? ' on' : '') +
+          '" href="category.html?code=' + encodeURIComponent(activeParent) + '">전체' +
+          '<span class="cnt">' + byCode[activeParent].productCount + '</span></a>' +
+        siblings.map(function (k) {
+          return '<a class="chip' + (k.code === code ? ' on' : '') + '" href="category.html?code=' +
+            encodeURIComponent(k.code) + '">' + Store.esc(k.name) +
+            '<span class="cnt">' + k.productCount + '</span></a>';
+        }).join('') + '</div>';
+    }
+    document.getElementById('head').innerHTML = head;
 
     document.getElementById('grid').innerHTML = Store.skeletonGrid(SIZE);
 
