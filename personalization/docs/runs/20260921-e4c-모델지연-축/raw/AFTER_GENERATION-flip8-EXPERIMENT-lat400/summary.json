@@ -1,0 +1,302 @@
+{
+    "metrics": {
+        "checks": {
+            "passes": 1355,
+            "fails": 0,
+            "value": 1
+        },
+        "data_sent": {
+            "count": 690242,
+            "rate": 14315.946786910537
+        },
+        "http_reqs": {
+            "count": 1716,
+            "rate": 35.590654707100526
+        },
+        "http_req_connecting": {
+            "p(95)": 0,
+            "p(99)": 0.3279499999999999,
+            "avg": 0.005498834498834499,
+            "min": 0,
+            "med": 0,
+            "max": 0.447,
+            "p(90)": 0
+        },
+        "recommend_serving_ms": {
+            "avg": 534.9988901220866,
+            "min": 403,
+            "med": 414,
+            "max": 826,
+            "p(90)": 799,
+            "p(95)": 808,
+            "p(99)": 817
+        },
+        "constraint_window_changes": {
+            "med": 0,
+            "max": 2,
+            "p(90)": 2,
+            "p(95)": 2,
+            "p(99)": 2,
+            "avg": 0.21642619311875694,
+            "min": 0
+        },
+        "http_req_blocked": {
+            "max": 0.655,
+            "p(90)": 0.009500000000000038,
+            "p(95)": 0.015,
+            "p(99)": 0.4149499999999996,
+            "avg": 0.012868298368298503,
+            "min": 0.001,
+            "med": 0.005
+        },
+        "constraint_sold_out": {
+            "avg": 6,
+            "min": 6,
+            "med": 6,
+            "max": 6,
+            "p(90)": 6,
+            "p(95)": 6,
+            "p(99)": 6
+        },
+        "vus": {
+            "value": 0,
+            "min": 0,
+            "max": 17
+        },
+        "constraint_flips": {
+            "count": 722,
+            "rate": 14.97462278468915
+        },
+        "iterations": {
+            "count": 1712,
+            "rate": 35.50769280801638
+        },
+        "vus_max": {
+            "value": 23,
+            "min": 23,
+            "max": 23
+        },
+        "constraint_snapshot_age_ms": {
+            "med": 3,
+            "max": 29,
+            "p(90)": 5,
+            "p(95)": 5,
+            "p(99)": 6,
+            "avg": 3.37180910099889,
+            "min": 2
+        },
+        "iteration_duration": {
+            "avg": 431.8561632867995,
+            "min": 8.588667,
+            "med": 419.69985399999996,
+            "max": 849.398542,
+            "p(90)": 803.1189086,
+            "p(95)": 812.27105655,
+            "p(99)": 822.5711918799999
+        },
+        "constraint_filtered": {
+            "p(90)": 1,
+            "p(95)": 1,
+            "p(99)": 1,
+            "avg": 0.6293007769145395,
+            "min": 0,
+            "med": 1,
+            "max": 1
+        },
+        "recommend_coverage": {
+            "passes": 296,
+            "fails": 605,
+            "value": 0.32852386237513875
+        },
+        "data_received": {
+            "count": 1071139,
+            "rate": 22215.93140577445
+        },
+        "http_req_failed{expected_response:false}": {
+            "passes": 0,
+            "fails": 0,
+            "thresholds": {
+                "rate<0.05": false
+            },
+            "value": 0
+        },
+        "recommend_check_ms": {
+            "avg": 4.873473917869035,
+            "min": 2,
+            "med": 5,
+            "max": 24,
+            "p(90)": 7,
+            "p(95)": 8,
+            "p(99)": 10
+        },
+        "recommend_audit_ms": {
+            "max": 29,
+            "p(90)": 4,
+            "p(95)": 5,
+            "p(99)": 6,
+            "avg": 3.356270810210877,
+            "min": 1,
+            "med": 3
+        },
+        "http_req_tls_handshaking": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0
+        },
+        "http_req_receiving": {
+            "avg": 0.19994522144522173,
+            "min": 0.026,
+            "med": 0.182,
+            "max": 1.341,
+            "p(90)": 0.309,
+            "p(95)": 0.383,
+            "p(99)": 0.52485
+        },
+        "constraint_control_ok": {
+            "passes": 361,
+            "fails": 0,
+            "value": 1
+        },
+        "http_req_duration{expected_response:true}": {
+            "avg": 430.7376497669001,
+            "min": 5.468,
+            "med": 419.4415,
+            "max": 849.197,
+            "p(90)": 802.868,
+            "p(95)": 812.071,
+            "p(99)": 822.2854
+        },
+        "http_req_sending": {
+            "min": 0.007,
+            "med": 0.018,
+            "max": 0.332,
+            "p(90)": 0.032,
+            "p(95)": 0.045,
+            "p(99)": 0.065,
+            "avg": 0.02109382284382278
+        },
+        "http_req_waiting": {
+            "avg": 430.51661072261084,
+            "min": 4.897,
+            "med": 419.1785,
+            "max": 848.934,
+            "p(90)": 802.5865,
+            "p(95)": 811.7885,
+            "p(99)": 822.08385
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 1716,
+            "value": 0
+        },
+        "constraint_violation": {
+            "fails": 870,
+            "passes": 31,
+            "value": 0.03440621531631521
+        },
+        "constraint_violations": {
+            "p(99)": 1,
+            "avg": 0.03440621531631521,
+            "min": 0,
+            "med": 0,
+            "max": 1,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "http_req_duration": {
+            "med": 419.4415,
+            "max": 849.197,
+            "p(90)": 802.868,
+            "p(95)": 812.071,
+            "p(99)": 822.2854,
+            "avg": 430.7376497669001,
+            "min": 5.468
+        }
+    },
+    "setup_data": {
+        "pool": [
+            1000001,
+            1000002,
+            1000003,
+            1000004,
+            1000005,
+            1000006,
+            1000007,
+            1000008,
+            1000009,
+            1000010,
+            1000011,
+            1000012,
+            1000101,
+            1000102,
+            1000103,
+            1000104,
+            1000105,
+            1000106,
+            1000107,
+            1000108,
+            1000109,
+            1000110,
+            1000111,
+            1000112
+        ],
+        "startedAt": 1790022066191,
+        "token": "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJiZS1jb21tZXJjZSIsInN1YiI6IjI5MTciLCJleHAiOjE3OTAwMjM4NjYsImlhdCI6MTc5MDAyMjA2NiwianRpIjoiYzM4MGI3NmMtYzIyZS00ZWEzLWFlMjAtMzI0ZWJlMWM1YWJlIiwicm9sZXMiOlsiUk9MRV9VU0VSIl19.tOpuNAkz2JjneOvRmbKL2Q7gPN1a25DX1U7bKhAnR0Y"
+    },
+    "root_group": {
+        "checks": {
+            "recommend 200": {
+                "path": "::recommend 200",
+                "id": "0956af6ade56347c9427740e90e0e9f8",
+                "passes": 1351,
+                "fails": 0,
+                "name": "recommend 200"
+            }
+        },
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "path": "::setup",
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+                "groups": {},
+                "checks": {
+                        "signup 201": {
+                            "name": "signup 201",
+                            "path": "::setup::signup 201",
+                            "id": "5aec97d011cf16332b1e99836e0f519a",
+                            "passes": 1,
+                            "fails": 0
+                        },
+                        "login 200": {
+                            "id": "647055af8ffe21e58084ae4b140cdda0",
+                            "passes": 1,
+                            "fails": 0,
+                            "name": "login 200",
+                            "path": "::setup::login 200"
+                        },
+                        "prime 200": {
+                            "passes": 1,
+                            "fails": 0,
+                            "name": "prime 200",
+                            "path": "::setup::prime 200",
+                            "id": "09b7fd28734e5745b6788bf67aaa40ca"
+                        },
+                        "prime 세팅": {
+                            "passes": 1,
+                            "fails": 0,
+                            "name": "prime 세팅",
+                            "path": "::setup::prime 세팅",
+                            "id": "24dad390f720addf4d0bf9a70933bd9c"
+                        }
+                    },
+                "name": "setup"
+            }
+        }
+    }
+}

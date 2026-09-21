@@ -1,0 +1,302 @@
+{
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "checks": {
+                    "signup 201": {
+                        "passes": 1,
+                        "fails": 0,
+                        "name": "signup 201",
+                        "path": "::setup::signup 201",
+                        "id": "5aec97d011cf16332b1e99836e0f519a"
+                    },
+                    "login 200": {
+                        "name": "login 200",
+                        "path": "::setup::login 200",
+                        "id": "647055af8ffe21e58084ae4b140cdda0",
+                        "passes": 1,
+                        "fails": 0
+                    },
+                    "prime 200": {
+                        "name": "prime 200",
+                        "path": "::setup::prime 200",
+                        "id": "09b7fd28734e5745b6788bf67aaa40ca",
+                        "passes": 1,
+                        "fails": 0
+                    },
+                    "prime 세팅": {
+                        "name": "prime 세팅",
+                        "path": "::setup::prime 세팅",
+                        "id": "24dad390f720addf4d0bf9a70933bd9c",
+                        "passes": 1,
+                        "fails": 0
+                    }
+                },
+                "name": "setup",
+                "path": "::setup",
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+                "groups": {}
+            }
+        },
+        "checks": {
+            "recommend 200": {
+                "name": "recommend 200",
+                "path": "::recommend 200",
+                "id": "0956af6ade56347c9427740e90e0e9f8",
+                "passes": 1351,
+                "fails": 0
+            }
+        }
+    },
+    "metrics": {
+        "data_sent": {
+            "rate": 14318.205810211679,
+            "count": 690242
+        },
+        "http_req_connecting": {
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0.24924999999999992,
+            "avg": 0.004492424242424243,
+            "min": 0,
+            "med": 0,
+            "max": 0.472
+        },
+        "constraint_snapshot_age_ms": {
+            "max": 79,
+            "p(90)": 61,
+            "p(95)": 63,
+            "p(99)": 70,
+            "avg": 58.38845726970033,
+            "min": 52,
+            "med": 58
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 1716,
+            "value": 0
+        },
+        "recommend_coverage": {
+            "passes": 901,
+            "fails": 0,
+            "value": 1
+        },
+        "http_req_receiving": {
+            "p(90)": 0.29650000000000004,
+            "p(95)": 0.3732499999999999,
+            "p(99)": 0.5877499999999998,
+            "avg": 0.1998951048951051,
+            "min": 0.027,
+            "med": 0.176,
+            "max": 4.688
+        },
+        "iteration_duration": {
+            "p(90)": 70.16109589999999,
+            "p(95)": 72.96769549999999,
+            "p(99)": 83.39407437,
+            "avg": 55.791460744158954,
+            "min": 7.190417,
+            "med": 64.81425,
+            "max": 116.40125
+        },
+        "http_req_duration": {
+            "min": 7.074,
+            "med": 64.6215,
+            "max": 116.268,
+            "p(90)": 69.9565,
+            "p(95)": 72.63,
+            "p(99)": 83.24395,
+            "avg": 55.56064102564095
+        },
+        "constraint_violations": {
+            "p(99)": 1,
+            "avg": 0.29633740288568255,
+            "min": 0,
+            "med": 0,
+            "max": 1,
+            "p(90)": 1,
+            "p(95)": 1
+        },
+        "recommend_audit_ms": {
+            "p(99)": 14,
+            "avg": 4.788013318534961,
+            "min": 2,
+            "med": 4,
+            "max": 28,
+            "p(90)": 7,
+            "p(95)": 8
+        },
+        "recommend_serving_ms": {
+            "p(99)": 70,
+            "avg": 57.53052164261931,
+            "min": 53,
+            "med": 57,
+            "max": 79,
+            "p(90)": 60,
+            "p(95)": 61
+        },
+        "http_req_failed{expected_response:false}": {
+            "passes": 0,
+            "fails": 0,
+            "thresholds": {
+                "rate<0.05": false
+            },
+            "value": 0
+        },
+        "http_req_tls_handshaking": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0
+        },
+        "constraint_flips": {
+            "count": 722,
+            "rate": 14.976985745539727
+        },
+        "http_req_sending": {
+            "p(99)": 0.05984999999999998,
+            "avg": 0.020286713286713224,
+            "min": 0.006,
+            "med": 0.016,
+            "max": 1.649,
+            "p(90)": 0.028,
+            "p(95)": 0.037
+        },
+        "vus_max": {
+            "value": 23,
+            "min": 23,
+            "max": 23
+        },
+        "constraint_window_changes": {
+            "min": 0,
+            "med": 1,
+            "max": 2,
+            "p(90)": 2,
+            "p(95)": 2,
+            "p(99)": 2,
+            "avg": 1.0122086570477247
+        },
+        "constraint_violation": {
+            "passes": 267,
+            "fails": 634,
+            "value": 0.29633740288568255
+        },
+        "http_req_duration{expected_response:true}": {
+            "avg": 55.56064102564095,
+            "min": 7.074,
+            "med": 64.6215,
+            "max": 116.268,
+            "p(90)": 69.9565,
+            "p(95)": 72.63,
+            "p(99)": 83.24395
+        },
+        "constraint_control_ok": {
+            "passes": 361,
+            "fails": 0,
+            "value": 1
+        },
+        "vus": {
+            "value": 0,
+            "min": 0,
+            "max": 2
+        },
+        "http_req_blocked": {
+            "p(99)": 0.29939999999999994,
+            "avg": 0.011500000000000102,
+            "min": 0.001,
+            "med": 0.005,
+            "max": 1.184,
+            "p(90)": 0.008,
+            "p(95)": 0.012
+        },
+        "checks": {
+            "passes": 1355,
+            "fails": 0,
+            "value": 1
+        },
+        "http_req_waiting": {
+            "med": 64.4075,
+            "max": 116.033,
+            "p(90)": 69.677,
+            "p(95)": 72.28049999999999,
+            "p(99)": 82.64094999999999,
+            "avg": 55.340459207459226,
+            "min": 6.948
+        },
+        "recommend_check_ms": {
+            "p(99)": 11,
+            "avg": 3.9667036625971144,
+            "min": 2,
+            "med": 4,
+            "max": 26,
+            "p(90)": 5,
+            "p(95)": 6
+        },
+        "constraint_sold_out": {
+            "p(99)": 6,
+            "avg": 6,
+            "min": 6,
+            "med": 6,
+            "max": 6,
+            "p(90)": 6,
+            "p(95)": 6
+        },
+        "http_reqs": {
+            "count": 1716,
+            "rate": 35.59627083011935
+        },
+        "iterations": {
+            "rate": 35.51329583983935,
+            "count": 1712
+        },
+        "data_received": {
+            "count": 1065988,
+            "rate": 22112.58598464876
+        },
+        "constraint_filtered": {
+            "p(95)": 1,
+            "p(99)": 1,
+            "avg": 0.6204217536071032,
+            "min": 0,
+            "med": 1,
+            "max": 1,
+            "p(90)": 1
+        }
+    },
+    "setup_data": {
+        "token": "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJiZS1jb21tZXJjZSIsInN1YiI6IjI5MTEiLCJleHAiOjE3OTAwMjMwMTgsImlhdCI6MTc5MDAyMTIxOCwianRpIjoiZTFjZWY1N2YtM2NlNC00MmNiLWJlZWUtYTNiYTg5YTAxNTU3Iiwicm9sZXMiOlsiUk9MRV9VU0VSIl19.W1P3_oL4At4mzO5GohcLqc7MV-gAY2Ex6HklRreRZ-Y",
+        "pool": [
+            1000001,
+            1000002,
+            1000003,
+            1000004,
+            1000005,
+            1000006,
+            1000007,
+            1000008,
+            1000009,
+            1000010,
+            1000011,
+            1000012,
+            1000101,
+            1000102,
+            1000103,
+            1000104,
+            1000105,
+            1000106,
+            1000107,
+            1000108,
+            1000109,
+            1000110,
+            1000111,
+            1000112
+        ],
+        "startedAt": 1790021218216
+    }
+}

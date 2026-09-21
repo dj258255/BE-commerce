@@ -25,6 +25,13 @@ mkdir -p "$RAW"
 
 POLICIES=${POLICIES:-"NONE AT_GENERATION_START AFTER_GENERATION AT_RESPONSE"}
 FLIP_RATES=${FLIP_RATES:-"8"}
+# 후보 집합(#187/E4c): EXPERIMENT=합성 풀(24개) · CATALOG=실제 카탈로그(105,545개).
+# E4b 는 EXPERIMENT 로만 쟀고, 그때 "AT_GENERATION_START 와 AFTER_GENERATION 의 비용이 같다"가 나왔다 —
+# 그 결론이 **풀 크기에 기대고 있었는지**를 여기서 확인한다(스냅샷 비용은 풀에 비례할 수 있다).
+# CATALOG 로 돌리면 변화 주입이 **실제 상품의 재고**를 건드린다(런 시작 시 restock 으로 초기화).
+ITEM_POOL=${ITEM_POOL:-EXPERIMENT}
+# 모델 지연(#187): 창의 크기가 곧 모델 지연이라는 가설을 축으로 잰다.
+MODEL_LATENCY_MS=${MODEL_LATENCY_MS:-50}
 DURATION=${DURATION:-60s}
 WARMUP_MS=${WARMUP_MS:-15000}
 RATE=${RATE:-30}
@@ -59,8 +66,9 @@ start_app() {
   cleanup
   wait_port_free
   APP_RATELIMIT_ENABLED=false \
-  APP_RECOMMENDATION_ITEM_POOL=EXPERIMENT \
+  APP_RECOMMENDATION_ITEM_POOL="$ITEM_POOL" \
   APP_RECOMMENDATION_CONSTRAINT_POLICY="$policy" \
+  APP_RECOMMENDATION_MODEL_LATENCY_MS="$MODEL_LATENCY_MS" \
   APP_RECOMMENDATION_EXPERIMENT_ENABLED=true \
   "$JAVA" -jar "$JAR" \
     --spring.docker.compose.enabled=false \
@@ -80,14 +88,14 @@ start_app() {
 echo "== E4 실측 시작"
 echo "== 출력: $OUT"
 echo "== 정책: $POLICIES / 변화율: $FLIP_RATES / 품절 고정: ${SOLD_OUT_TARGET} / ${DURATION} @ ${RATE}req/s"
-echo "== 후보 집합: EXPERIMENT(합성 풀) — 실제 상점 재고를 건드리지 않기 위해 하네스가 명시한다"
+echo "== 후보 집합: $ITEM_POOL (EXPERIMENT=합성 24개 · CATALOG=실제 105,545개) / 모델 지연 ${MODEL_LATENCY_MS}ms"
 
 for policy in $POLICIES; do
   for flip in $FLIP_RATES; do
-    dir="$RAW/${policy}-flip${flip}"
+    dir="$RAW/${policy}-flip${flip}-${ITEM_POOL}-lat${MODEL_LATENCY_MS}"
     mkdir -p "$dir"
     LOG="$dir/app.log"
-    echo "-- $policy · 변화 ${flip}/s"
+    echo "-- $policy · 변화 ${flip}/s · 풀 $ITEM_POOL · 모델 지연 ${MODEL_LATENCY_MS}ms"
     start_app "$policy" || continue
 
     # 가용성 초기화 — 앞 런의 품절이 넘어오면 비교가 안 된다.
@@ -114,6 +122,8 @@ for policy in $POLICIES; do
 
     cat > "$dir/meta.txt" <<EOF
 constraint_policy=$policy
+item_pool=$ITEM_POOL
+model_latency_ms=$MODEL_LATENCY_MS
 flip_rate=$flip
 sold_out_target=$SOLD_OUT_TARGET
 duration=$DURATION

@@ -1,0 +1,302 @@
+{
+    "metrics": {
+        "recommend_audit_ms": {
+            "min": 2,
+            "med": 4,
+            "max": 10,
+            "p(90)": 7,
+            "p(95)": 8,
+            "p(99)": 9,
+            "avg": 4.655601659751038
+        },
+        "constraint_control_ok": {
+            "passes": 361,
+            "fails": 0,
+            "value": 1
+        },
+        "vus": {
+            "value": 0,
+            "min": 0,
+            "max": 1
+        },
+        "recommend_coverage": {
+            "passes": 241,
+            "fails": 0,
+            "value": 1
+        },
+        "http_req_receiving": {
+            "avg": 0.37434848484848476,
+            "min": 0.087,
+            "med": 0.351,
+            "max": 1.431,
+            "p(90)": 0.5510000000000002,
+            "p(95)": 0.695,
+            "p(99)": 0.9609999999999997
+        },
+        "http_req_failed{expected_response:false}": {
+            "passes": 0,
+            "fails": 0,
+            "thresholds": {
+                "rate<0.05": false
+            },
+            "value": 0
+        },
+        "constraint_violation": {
+            "passes": 0,
+            "fails": 241,
+            "value": 0
+        },
+        "data_received": {
+            "count": 385606,
+            "rate": 8001.108020021134
+        },
+        "iterations": {
+            "count": 722,
+            "rate": 14.981094667757397
+        },
+        "http_req_tls_handshaking": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0
+        },
+        "http_reqs": {
+            "count": 726,
+            "rate": 15.064092422149404
+        },
+        "http_req_duration": {
+            "min": 5.483,
+            "med": 56.5155,
+            "max": 127.695,
+            "p(90)": 80.083,
+            "p(95)": 83.19999999999999,
+            "p(99)": 88.92174999999999,
+            "avg": 49.927333333333294
+        },
+        "constraint_filtered": {
+            "med": 1,
+            "max": 1,
+            "p(90)": 1,
+            "p(95)": 1,
+            "p(99)": 1,
+            "avg": 0.6224066390041494,
+            "min": 0
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 726,
+            "value": 0
+        },
+        "http_req_blocked": {
+            "med": 0.007,
+            "max": 2.947,
+            "p(90)": 0.016,
+            "p(95)": 0.018,
+            "p(99)": 0.282,
+            "avg": 0.018990358126721677,
+            "min": 0.002
+        },
+        "http_req_waiting": {
+            "avg": 49.525024793388326,
+            "min": 4.935,
+            "med": 56.116,
+            "max": 127.26,
+            "p(90)": 79.707,
+            "p(95)": 82.71575,
+            "p(99)": 88.17375
+        },
+        "constraint_sold_out": {
+            "p(95)": 6,
+            "p(99)": 6,
+            "avg": 6,
+            "min": 6,
+            "med": 6,
+            "max": 6,
+            "p(90)": 6
+        },
+        "constraint_violations": {
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0,
+            "avg": 0,
+            "min": 0,
+            "med": 0
+        },
+        "iteration_duration": {
+            "p(90)": 80.4737417,
+            "p(95)": 83.5975149,
+            "p(99)": 89.54650050000001,
+            "avg": 50.27039357894735,
+            "min": 10.445167,
+            "med": 61.568166500000004,
+            "max": 130.826792
+        },
+        "data_sent": {
+            "count": 300182,
+            "rate": 6228.607977225416
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(99)": 88.92174999999999,
+            "avg": 49.927333333333294,
+            "min": 5.483,
+            "med": 56.5155,
+            "max": 127.695,
+            "p(90)": 80.083,
+            "p(95)": 83.19999999999999
+        },
+        "checks": {
+            "passes": 365,
+            "fails": 0,
+            "value": 1
+        },
+        "constraint_window_changes": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0
+        },
+        "constraint_snapshot_age_ms": {
+            "p(95)": 8,
+            "p(99)": 9,
+            "avg": 4.7012448132780085,
+            "min": 2,
+            "med": 4,
+            "max": 10,
+            "p(90)": 7
+        },
+        "http_req_sending": {
+            "p(99)": 0.09499999999999997,
+            "avg": 0.02796005509641866,
+            "min": 0.007,
+            "med": 0.023,
+            "max": 0.738,
+            "p(90)": 0.046,
+            "p(95)": 0.05174999999999996
+        },
+        "http_req_connecting": {
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0.22799999999999995,
+            "avg": 0.009023415977961432,
+            "min": 0,
+            "med": 0,
+            "max": 2.906
+        },
+        "recommend_serving_ms": {
+            "p(95)": 72,
+            "p(99)": 74.6,
+            "avg": 65.58091286307054,
+            "min": 55,
+            "med": 66,
+            "max": 77,
+            "p(90)": 71
+        },
+        "recommend_check_ms": {
+            "p(95)": 12,
+            "p(99)": 16,
+            "avg": 7.908713692946058,
+            "min": 3,
+            "med": 8,
+            "max": 23,
+            "p(90)": 11
+        },
+        "vus_max": {
+            "value": 11,
+            "min": 11,
+            "max": 11
+        },
+        "constraint_flips": {
+            "count": 722,
+            "rate": 14.981094667757397
+        }
+    },
+    "setup_data": {
+        "pool": [
+            1000001,
+            1000002,
+            1000003,
+            1000004,
+            1000005,
+            1000006,
+            1000007,
+            1000008,
+            1000009,
+            1000010,
+            1000011,
+            1000012,
+            1000101,
+            1000102,
+            1000103,
+            1000104,
+            1000105,
+            1000106,
+            1000107,
+            1000108,
+            1000109,
+            1000110,
+            1000111,
+            1000112
+        ],
+        "startedAt": 1790022213787,
+        "token": "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJiZS1jb21tZXJjZSIsInN1YiI6IjI5MTkiLCJleHAiOjE3OTAwMjQwMTMsImlhdCI6MTc5MDAyMjIxMywianRpIjoiMWIzNWY5YjctMzUzMy00Mjg4LWJmOWMtNzI3MmIwM2JlMjdlIiwicm9sZXMiOlsiUk9MRV9VU0VSIl19.5-dbOdmltsmQCY5EuX64xZrwStiuTCayBNgG17pshBQ"
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "name": "setup",
+                "path": "::setup",
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+                "groups": {},
+                "checks": {
+                        "signup 201": {
+                            "passes": 1,
+                            "fails": 0,
+                            "name": "signup 201",
+                            "path": "::setup::signup 201",
+                            "id": "5aec97d011cf16332b1e99836e0f519a"
+                        },
+                        "login 200": {
+                            "name": "login 200",
+                            "path": "::setup::login 200",
+                            "id": "647055af8ffe21e58084ae4b140cdda0",
+                            "passes": 1,
+                            "fails": 0
+                        },
+                        "prime 200": {
+                            "id": "09b7fd28734e5745b6788bf67aaa40ca",
+                            "passes": 1,
+                            "fails": 0,
+                            "name": "prime 200",
+                            "path": "::setup::prime 200"
+                        },
+                        "prime 세팅": {
+                            "name": "prime 세팅",
+                            "path": "::setup::prime 세팅",
+                            "id": "24dad390f720addf4d0bf9a70933bd9c",
+                            "passes": 1,
+                            "fails": 0
+                        }
+                    }
+            }
+        },
+        "checks": {
+            "recommend 200": {
+                "fails": 0,
+                "name": "recommend 200",
+                "path": "::recommend 200",
+                "id": "0956af6ade56347c9427740e90e0e9f8",
+                "passes": 361
+            }
+        }
+    }
+}

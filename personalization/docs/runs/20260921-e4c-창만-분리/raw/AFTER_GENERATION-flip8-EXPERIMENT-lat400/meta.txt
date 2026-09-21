@@ -1,0 +1,9 @@
+constraint_policy=AFTER_GENERATION
+item_pool=EXPERIMENT
+model_latency_ms=400
+flip_rate=8
+sold_out_target=6
+duration=45s
+rate=8
+vus=8
+warmup_ms=15000
