@@ -82,8 +82,13 @@ public class StubModelClient implements ModelClient {
                 ranked.add(itemId);
             }
         }
-        long seed = 1_000_000L + Math.floorMod(userId, 1_000L) * resultSize;
-        for (long candidate = seed; ranked.size() < resultSize; candidate++) {
+        // 채우는 id를 ItemPool 에서 가져오는 이유: E4 의 제약 확인이 **실제로 걸러낼 대상**이 응답에
+        // 들어 있어야 위반율이 의미를 갖는다. 풀이 갈라지면 위반율이 0으로 나오고, 그것은
+        // "확인이 잘 해서"가 아니라 "확인할 게 없어서"다.
+        // 시작점을 사용자마다 돌려 "모두 같은 목록" 편향을 줄인다(순서만 돌리므로 결정적이다).
+        int offset = (int) Math.floorMod(userId, ItemPool.POPULAR.size());
+        for (int i = 0; ranked.size() < resultSize && i < ItemPool.POPULAR.size(); i++) {
+            Long candidate = ItemPool.POPULAR.get((offset + i) % ItemPool.POPULAR.size());
             if (!ranked.contains(candidate)) {
                 ranked.add(candidate);
             }

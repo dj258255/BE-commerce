@@ -1,0 +1,274 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: k6/constraint-revalidation.js
+        output: -
+
+     scenarios: (100.00%) 2 scenarios, 23 max VUs, 1m32s max duration (incl. graceful stop):
+              * recommend: 30.00 iterations/s for 1m0s (maxVUs: 20, exec: recommend, gracefulStop: 5s)
+              * flip: 20.00 iterations/s for 1m0s (maxVUs: 3, exec: flip, startTime: 2s, gracefulStop: 30s)
+
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+running (0m02.0s), 02/23 VUs, 20 complete and 0 interrupted iterations
+recommend   [   1% ] 02/20 VUs  0m00.7s/1m0s  30.00 iters/s
+flip      • [   0% ] waiting    1.3s         
+
+running (0m03.0s), 02/23 VUs, 50 complete and 0 interrupted iterations
+recommend   [   3% ] 02/20 VUs  0m01.7s/1m0s  30.00 iters/s
+flip      • [   0% ] waiting    0.3s         
+
+running (0m04.0s), 02/23 VUs, 95 complete and 0 interrupted iterations
+recommend   [   5% ] 02/20 VUs  0m02.7s/1m0s  30.00 iters/s
+flip        [   1% ] 0/3 VUs    0m00.7s/1m0s  20.00 iters/s
+
+running (0m05.0s), 02/23 VUs, 145 complete and 0 interrupted iterations
+recommend   [   6% ] 02/20 VUs  0m03.7s/1m0s  30.00 iters/s
+flip        [   3% ] 0/3 VUs    0m01.7s/1m0s  20.00 iters/s
+
+running (0m06.0s), 02/23 VUs, 195 complete and 0 interrupted iterations
+recommend   [   8% ] 02/20 VUs  0m04.7s/1m0s  30.00 iters/s
+flip        [   5% ] 0/3 VUs    0m02.7s/1m0s  20.00 iters/s
+
+running (0m07.0s), 02/23 VUs, 245 complete and 0 interrupted iterations
+recommend   [  10% ] 02/20 VUs  0m05.7s/1m0s  30.00 iters/s
+flip        [   6% ] 0/3 VUs    0m03.7s/1m0s  20.00 iters/s
+
+running (0m08.0s), 02/23 VUs, 295 complete and 0 interrupted iterations
+recommend   [  11% ] 02/20 VUs  0m06.7s/1m0s  30.00 iters/s
+flip        [   8% ] 0/3 VUs    0m04.7s/1m0s  20.00 iters/s
+
+running (0m09.0s), 02/23 VUs, 345 complete and 0 interrupted iterations
+recommend   [  13% ] 02/20 VUs  0m07.7s/1m0s  30.00 iters/s
+flip        [  10% ] 0/3 VUs    0m05.7s/1m0s  20.00 iters/s
+
+running (0m10.0s), 02/23 VUs, 395 complete and 0 interrupted iterations
+recommend   [  15% ] 02/20 VUs  0m08.7s/1m0s  30.00 iters/s
+flip        [  11% ] 0/3 VUs    0m06.7s/1m0s  20.00 iters/s
+
+running (0m11.0s), 02/23 VUs, 445 complete and 0 interrupted iterations
+recommend   [  16% ] 02/20 VUs  0m09.7s/1m0s  30.00 iters/s
+flip        [  13% ] 0/3 VUs    0m07.7s/1m0s  20.00 iters/s
+
+running (0m12.0s), 02/23 VUs, 495 complete and 0 interrupted iterations
+recommend   [  18% ] 02/20 VUs  0m10.7s/1m0s  30.00 iters/s
+flip        [  15% ] 0/3 VUs    0m08.7s/1m0s  20.00 iters/s
+
+running (0m13.0s), 02/23 VUs, 545 complete and 0 interrupted iterations
+recommend   [  20% ] 02/20 VUs  0m11.7s/1m0s  30.00 iters/s
+flip        [  16% ] 0/3 VUs    0m09.7s/1m0s  20.00 iters/s
+
+running (0m14.0s), 02/23 VUs, 595 complete and 0 interrupted iterations
+recommend   [  21% ] 02/20 VUs  0m12.7s/1m0s  30.00 iters/s
+flip        [  18% ] 0/3 VUs    0m10.7s/1m0s  20.00 iters/s
+
+running (0m15.0s), 02/23 VUs, 645 complete and 0 interrupted iterations
+recommend   [  23% ] 02/20 VUs  0m13.7s/1m0s  30.00 iters/s
+flip        [  20% ] 0/3 VUs    0m11.7s/1m0s  20.00 iters/s
+
+running (0m16.0s), 02/23 VUs, 695 complete and 0 interrupted iterations
+recommend   [  25% ] 02/20 VUs  0m14.7s/1m0s  30.00 iters/s
+flip        [  21% ] 0/3 VUs    0m12.7s/1m0s  20.00 iters/s
+
+running (0m17.0s), 02/23 VUs, 745 complete and 0 interrupted iterations
+recommend   [  26% ] 02/20 VUs  0m15.7s/1m0s  30.00 iters/s
+flip        [  23% ] 0/3 VUs    0m13.7s/1m0s  20.00 iters/s
+
+running (0m18.0s), 02/23 VUs, 795 complete and 0 interrupted iterations
+recommend   [  28% ] 02/20 VUs  0m16.7s/1m0s  30.00 iters/s
+flip        [  25% ] 0/3 VUs    0m14.7s/1m0s  20.00 iters/s
+
+running (0m19.0s), 02/23 VUs, 845 complete and 0 interrupted iterations
+recommend   [  30% ] 02/20 VUs  0m17.7s/1m0s  30.00 iters/s
+flip        [  26% ] 0/3 VUs    0m15.7s/1m0s  20.00 iters/s
+
+running (0m20.0s), 02/23 VUs, 895 complete and 0 interrupted iterations
+recommend   [  31% ] 02/20 VUs  0m18.7s/1m0s  30.00 iters/s
+flip        [  28% ] 0/3 VUs    0m16.7s/1m0s  20.00 iters/s
+
+running (0m21.0s), 02/23 VUs, 945 complete and 0 interrupted iterations
+recommend   [  33% ] 02/20 VUs  0m19.7s/1m0s  30.00 iters/s
+flip        [  30% ] 0/3 VUs    0m17.7s/1m0s  20.00 iters/s
+
+running (0m22.0s), 02/23 VUs, 995 complete and 0 interrupted iterations
+recommend   [  35% ] 02/20 VUs  0m20.7s/1m0s  30.00 iters/s
+flip        [  31% ] 0/3 VUs    0m18.7s/1m0s  20.00 iters/s
+
+running (0m23.0s), 02/23 VUs, 1045 complete and 0 interrupted iterations
+recommend   [  36% ] 02/20 VUs  0m21.7s/1m0s  30.00 iters/s
+flip        [  33% ] 0/3 VUs    0m19.7s/1m0s  20.00 iters/s
+
+running (0m24.0s), 02/23 VUs, 1095 complete and 0 interrupted iterations
+recommend   [  38% ] 02/20 VUs  0m22.7s/1m0s  30.00 iters/s
+flip        [  35% ] 0/3 VUs    0m20.7s/1m0s  20.00 iters/s
+
+running (0m25.0s), 02/23 VUs, 1145 complete and 0 interrupted iterations
+recommend   [  40% ] 02/20 VUs  0m23.7s/1m0s  30.00 iters/s
+flip        [  36% ] 0/3 VUs    0m21.7s/1m0s  20.00 iters/s
+
+running (0m26.0s), 02/23 VUs, 1195 complete and 0 interrupted iterations
+recommend   [  41% ] 02/20 VUs  0m24.7s/1m0s  30.00 iters/s
+flip        [  38% ] 0/3 VUs    0m22.7s/1m0s  20.00 iters/s
+
+running (0m27.0s), 02/23 VUs, 1245 complete and 0 interrupted iterations
+recommend   [  43% ] 02/20 VUs  0m25.7s/1m0s  30.00 iters/s
+flip        [  40% ] 0/3 VUs    0m23.7s/1m0s  20.00 iters/s
+
+running (0m28.0s), 02/23 VUs, 1295 complete and 0 interrupted iterations
+recommend   [  45% ] 02/20 VUs  0m26.7s/1m0s  30.00 iters/s
+flip        [  41% ] 0/3 VUs    0m24.7s/1m0s  20.00 iters/s
+
+running (0m29.0s), 02/23 VUs, 1345 complete and 0 interrupted iterations
+recommend   [  46% ] 02/20 VUs  0m27.7s/1m0s  30.00 iters/s
+flip        [  43% ] 0/3 VUs    0m25.7s/1m0s  20.00 iters/s
+
+running (0m30.0s), 02/23 VUs, 1395 complete and 0 interrupted iterations
+recommend   [  48% ] 02/20 VUs  0m28.7s/1m0s  30.00 iters/s
+flip        [  45% ] 0/3 VUs    0m26.7s/1m0s  20.00 iters/s
+
+running (0m31.0s), 02/23 VUs, 1445 complete and 0 interrupted iterations
+recommend   [  50% ] 02/20 VUs  0m29.7s/1m0s  30.00 iters/s
+flip        [  46% ] 0/3 VUs    0m27.7s/1m0s  20.00 iters/s
+
+running (0m32.0s), 02/23 VUs, 1495 complete and 0 interrupted iterations
+recommend   [  51% ] 02/20 VUs  0m30.7s/1m0s  30.00 iters/s
+flip        [  48% ] 0/3 VUs    0m28.7s/1m0s  20.00 iters/s
+
+running (0m33.0s), 02/23 VUs, 1545 complete and 0 interrupted iterations
+recommend   [  53% ] 02/20 VUs  0m31.7s/1m0s  30.00 iters/s
+flip        [  50% ] 0/3 VUs    0m29.7s/1m0s  20.00 iters/s
+
+running (0m34.0s), 01/23 VUs, 1596 complete and 0 interrupted iterations
+recommend   [  55% ] 01/20 VUs  0m32.7s/1m0s  30.00 iters/s
+flip        [  51% ] 0/3 VUs    0m30.7s/1m0s  20.00 iters/s
+
+running (0m35.0s), 02/23 VUs, 1645 complete and 0 interrupted iterations
+recommend   [  56% ] 02/20 VUs  0m33.7s/1m0s  30.00 iters/s
+flip        [  53% ] 0/3 VUs    0m31.7s/1m0s  20.00 iters/s
+
+running (0m36.0s), 02/23 VUs, 1695 complete and 0 interrupted iterations
+recommend   [  58% ] 02/20 VUs  0m34.7s/1m0s  30.00 iters/s
+flip        [  55% ] 0/3 VUs    0m32.7s/1m0s  20.00 iters/s
+
+running (0m37.0s), 02/23 VUs, 1745 complete and 0 interrupted iterations
+recommend   [  60% ] 02/20 VUs  0m35.7s/1m0s  30.00 iters/s
+flip        [  56% ] 0/3 VUs    0m33.7s/1m0s  20.00 iters/s
+
+running (0m38.0s), 02/23 VUs, 1795 complete and 0 interrupted iterations
+recommend   [  61% ] 02/20 VUs  0m36.7s/1m0s  30.00 iters/s
+flip        [  58% ] 0/3 VUs    0m34.7s/1m0s  20.00 iters/s
+
+running (0m39.0s), 02/23 VUs, 1845 complete and 0 interrupted iterations
+recommend   [  63% ] 02/20 VUs  0m37.7s/1m0s  30.00 iters/s
+flip        [  60% ] 0/3 VUs    0m35.7s/1m0s  20.00 iters/s
+
+running (0m40.0s), 02/23 VUs, 1895 complete and 0 interrupted iterations
+recommend   [  65% ] 02/20 VUs  0m38.7s/1m0s  30.00 iters/s
+flip        [  61% ] 0/3 VUs    0m36.7s/1m0s  20.00 iters/s
+
+running (0m41.0s), 02/23 VUs, 1945 complete and 0 interrupted iterations
+recommend   [  66% ] 02/20 VUs  0m39.7s/1m0s  30.00 iters/s
+flip        [  63% ] 0/3 VUs    0m37.7s/1m0s  20.00 iters/s
+
+running (0m42.0s), 02/23 VUs, 1995 complete and 0 interrupted iterations
+recommend   [  68% ] 02/20 VUs  0m40.7s/1m0s  30.00 iters/s
+flip        [  65% ] 0/3 VUs    0m38.7s/1m0s  20.00 iters/s
+
+running (0m43.0s), 02/23 VUs, 2045 complete and 0 interrupted iterations
+recommend   [  70% ] 02/20 VUs  0m41.7s/1m0s  30.00 iters/s
+flip        [  66% ] 0/3 VUs    0m39.7s/1m0s  20.00 iters/s
+
+running (0m44.0s), 02/23 VUs, 2095 complete and 0 interrupted iterations
+recommend   [  71% ] 02/20 VUs  0m42.7s/1m0s  30.00 iters/s
+flip        [  68% ] 0/3 VUs    0m40.7s/1m0s  20.00 iters/s
+
+running (0m45.0s), 02/23 VUs, 2145 complete and 0 interrupted iterations
+recommend   [  73% ] 02/20 VUs  0m43.7s/1m0s  30.00 iters/s
+flip        [  70% ] 0/3 VUs    0m41.7s/1m0s  20.00 iters/s
+
+running (0m46.0s), 02/23 VUs, 2195 complete and 0 interrupted iterations
+recommend   [  75% ] 02/20 VUs  0m44.7s/1m0s  30.00 iters/s
+flip        [  71% ] 0/3 VUs    0m42.7s/1m0s  20.00 iters/s
+
+running (0m47.0s), 02/23 VUs, 2245 complete and 0 interrupted iterations
+recommend   [  76% ] 02/20 VUs  0m45.7s/1m0s  30.00 iters/s
+flip        [  73% ] 0/3 VUs    0m43.7s/1m0s  20.00 iters/s
+
+running (0m48.0s), 02/23 VUs, 2295 complete and 0 interrupted iterations
+recommend   [  78% ] 02/20 VUs  0m46.7s/1m0s  30.00 iters/s
+flip        [  75% ] 0/3 VUs    0m44.7s/1m0s  20.00 iters/s
+
+running (0m49.0s), 02/23 VUs, 2345 complete and 0 interrupted iterations
+recommend   [  80% ] 02/20 VUs  0m47.7s/1m0s  30.00 iters/s
+flip        [  76% ] 0/3 VUs    0m45.7s/1m0s  20.00 iters/s
+
+running (0m50.0s), 02/23 VUs, 2395 complete and 0 interrupted iterations
+recommend   [  81% ] 02/20 VUs  0m48.7s/1m0s  30.00 iters/s
+flip        [  78% ] 0/3 VUs    0m46.7s/1m0s  20.00 iters/s
+
+running (0m51.0s), 02/23 VUs, 2445 complete and 0 interrupted iterations
+recommend   [  83% ] 02/20 VUs  0m49.7s/1m0s  30.00 iters/s
+flip        [  80% ] 0/3 VUs    0m47.7s/1m0s  20.00 iters/s
+
+running (0m52.0s), 02/23 VUs, 2495 complete and 0 interrupted iterations
+recommend   [  85% ] 02/20 VUs  0m50.7s/1m0s  30.00 iters/s
+flip        [  81% ] 0/3 VUs    0m48.7s/1m0s  20.00 iters/s
+
+running (0m53.0s), 02/23 VUs, 2545 complete and 0 interrupted iterations
+recommend   [  86% ] 02/20 VUs  0m51.7s/1m0s  30.00 iters/s
+flip        [  83% ] 0/3 VUs    0m49.7s/1m0s  20.00 iters/s
+
+running (0m54.0s), 03/23 VUs, 2594 complete and 0 interrupted iterations
+recommend   [  88% ] 02/20 VUs  0m52.7s/1m0s  30.00 iters/s
+flip        [  85% ] 1/3 VUs    0m50.7s/1m0s  20.00 iters/s
+
+running (0m55.0s), 02/23 VUs, 2645 complete and 0 interrupted iterations
+recommend   [  90% ] 02/20 VUs  0m53.7s/1m0s  30.00 iters/s
+flip        [  86% ] 0/3 VUs    0m51.7s/1m0s  20.00 iters/s
+
+running (0m56.0s), 02/23 VUs, 2695 complete and 0 interrupted iterations
+recommend   [  91% ] 02/20 VUs  0m54.7s/1m0s  30.00 iters/s
+flip        [  88% ] 0/3 VUs    0m52.7s/1m0s  20.00 iters/s
+
+running (0m57.0s), 02/23 VUs, 2745 complete and 0 interrupted iterations
+recommend   [  93% ] 02/20 VUs  0m55.7s/1m0s  30.00 iters/s
+flip        [  90% ] 0/3 VUs    0m53.7s/1m0s  20.00 iters/s
+
+running (0m58.0s), 02/23 VUs, 2795 complete and 0 interrupted iterations
+recommend   [  95% ] 02/20 VUs  0m56.7s/1m0s  30.00 iters/s
+flip        [  91% ] 0/3 VUs    0m54.7s/1m0s  20.00 iters/s
+
+running (0m59.0s), 02/23 VUs, 2845 complete and 0 interrupted iterations
+recommend   [  96% ] 02/20 VUs  0m57.7s/1m0s  30.00 iters/s
+flip        [  93% ] 0/3 VUs    0m55.7s/1m0s  20.00 iters/s
+
+running (1m00.0s), 02/23 VUs, 2895 complete and 0 interrupted iterations
+recommend   [  98% ] 02/20 VUs  0m58.7s/1m0s  30.00 iters/s
+flip        [  95% ] 0/3 VUs    0m56.7s/1m0s  20.00 iters/s
+
+running (1m01.0s), 02/23 VUs, 2945 complete and 0 interrupted iterations
+recommend   [ 100% ] 02/20 VUs  0m59.7s/1m0s  30.00 iters/s
+flip        [  96% ] 0/3 VUs    0m57.7s/1m0s  20.00 iters/s
+
+running (1m02.0s), 00/23 VUs, 2976 complete and 0 interrupted iterations
+recommend ✓ [ 100% ] 00/20 VUs  1m0s          30.00 iters/s
+flip        [  98% ] 0/3 VUs    0m58.7s/1m0s  20.00 iters/s
+
+running (1m03.0s), 00/23 VUs, 2996 complete and 0 interrupted iterations
+recommend ✓ [ 100% ] 00/20 VUs  1m0s          30.00 iters/s
+flip        [ 100% ] 0/3 VUs    0m59.7s/1m0s  20.00 iters/s
+
+[E4] policy=NONE  flipRate=20/s  violationRate=7.11%  violationsPerResp=0.07  coverage=100.00%  serving_med=53.00ms  serving_p95=55.00ms  audit_med=0.00ms  filtered_avg=0.00  windowChanges_avg=0.00  snapshotAge_med=-1.00ms  flips=1201  iters=3002  dropped=0
+
+running (1m03.3s), 00/23 VUs, 3002 complete and 0 interrupted iterations
+recommend ✓ [ 100% ] 00/20 VUs  1m0s  30.00 iters/s
+flip      ✓ [ 100% ] 0/3 VUs    1m0s  20.00 iters/s

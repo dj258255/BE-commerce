@@ -502,6 +502,21 @@ app:
       latency-ms: ${APP_RECOMMENDATION_MODEL_LATENCY_MS:50}
       # 모델 용량을 기다리는 상한. 넘으면 ModelBusyException → 폴백(UNBOUNDED에서 특히 중요하다).
       busy-timeout-ms: ${APP_RECOMMENDATION_MODEL_BUSY_TIMEOUT_MS:400}
+    # 제약 확인 시점(M4·E4). 모델이 만든 목록은 **생성 중에 사실이 바뀌면** 응답 시점엔 거짓일 수 있다.
+    #
+    # 기본값은 E4 측정 결과다. 사전 등록 규칙("AFTER_GENERATION 과 AT_RESPONSE 의 위반율 차이가
+    # 1%p 미만이면 둘은 같다고 보고 싼 쪽을 기본으로")이 발동했다 — 실측: 둘 다 위반율 0.00%였고
+    # AT_RESPONSE 는 읽기를 한 번 더 쓴다(확인 2회 vs 1회). 판단과 못 잰 것은 ADR-038.
+    #   AFTER_GENERATION    — 모델 반환 **뒤에** 출력만 읽어 거른다. 좁고 최신이다(기본)
+    #   NONE                — 확인하지 않는다. 위반이 그대로 나간다(기준선 — 실측 0.96~7.11%)
+    #   AT_GENERATION_START — 모델 호출 **전에** 넓게(풀 전체) 읽어 그 스냅샷으로 거른다.
+    #                         읽기 1회지만 스냅샷이 **모델 지연만큼(실측 54ms)** 낡는다
+    #   AT_RESPONSE         — 응답 직전에 한 번 더 확인한다. 비용은 늘고 잡는 것은 그 사이뿐이다
+    constraint-policy: ${APP_RECOMMENDATION_CONSTRAINT_POLICY:AFTER_GENERATION}
+    experiment:
+      # E4 실험 계기(가용성 소진 엔드포인트)를 켠다. **기본 off** — 켜져 있으면 요청으로
+      # 상품 가용성이 바뀌므로 실험 밖에서는 열지 않는다(빈이 아예 안 만들어져 경로가 404다).
+      enabled: ${APP_RECOMMENDATION_EXPERIMENT_ENABLED:false}
   # 에스크로(자금 보류) — 결제금을 구매확정 전까지 HELD로 잡아둔다.
   escrow:
     # 자동 구매확정까지의 보류 기간(일). 이 기간 무응답이면 자동 릴리스 대상이 된다.

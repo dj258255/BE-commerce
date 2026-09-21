@@ -24,3 +24,36 @@ body:
       description: 무엇을 어떻게 확인하면 끝인가. 응답 코드가 아니라 상태 확정까지.
     validations:
       required: true
+  - type: textarea
+    id: uncertainty
+    attributes:
+      label: 주요 불확실성
+      description: |-
+        이 작업에서 **모르는 것**과, 그것이 밝혀지면 계획이 어떻게 바뀌는지.
+        "오래 걸릴 수도 있다"는 불확실성이 아니다 — **무엇을** 모르는지 적는다.
+        없으면 "없다"고 적는다. 없다고 적는 것도 기록이고, 나중에 틀렸다면 그게 근거다.
+      placeholder: |-
+        - X가 Y인지 모른다. Z로 판명되면 A 대신 B로 간다.
+    validations:
+      required: true
+  - type: input
+    id: estimate
+    attributes:
+      label: 예상 완료
+      description: |-
+        언제 끝날 것으로 보는가. **틀려도 된다 — 틀리면 여기를 갱신한다.** 갱신된 이력이
+        곧 "예측하고 고치는 습관"의 기록이다(추정은 커밋/PR에 한 줄로 남긴다).
+      placeholder: "2026-09-24 (또는 배치 2회)"
+    validations:
+      required: true
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: 예상 산출물
+      description: 끝났을 때 저장소에 남는 것. 코드만이 아니라 리포트·ADR·측정값도 포함한다.
+      placeholder: |-
+        - 코드: …
+        - 측정: … (측정이 없으면 "없음 — 그 이유")
+        - 문서: …
+    validations:
+      required: true

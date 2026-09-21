@@ -1,7 +1,7 @@
 {
   "_mock": true,
   "_source": "실험 목록은 이슈/마일스톤에서 온다. 측정이 끝난 실험의 status와 summary가 실제 값으로 채워진다.",
-  "_note": "E1(신선도 vs 지연)과 E2(online/offline 일치율)만 측정이 끝났다 — 그 두 행은 status=done 이고 summary 가 실측이다. 나머지 다섯은 아직 측정 전이므로 status=todo 로 두고 summary 를 비운다. **측정하지 않은 실험을 완료로 보이게 두지 않는다**(personalization/docs/02-experiments.md 와 같은 규칙).",
+  "_note": "E1·E2·E3·E4 네 행이 status=done 이고 summary 가 실측이다. 나머지 셋(생성 범위·캐시·추적)은 아직 측정 전이므로 status=todo 로 두고 summary 를 비운다. **측정하지 않은 실험을 완료로 보이게 두지 않는다**(personalization/docs/02-experiments.md 와 같은 규칙). 주의 — E3 은 측정이 끝났지만 **화면 fixture(exp-overload.json)는 아직 목**이다(`_mock: true` 라 화면이 목이라고 밝힌다). 실측으로 옮기는 것이 남았다.",
   "experiments": [
     {
       "id": "freshness",
@@ -29,8 +29,9 @@
       "milestone": "M3",
       "issue": 126,
       "question": "모델이 포화됐을 때 SLO를 지키려면 모델 사용을 얼마나 포기해야 하는가",
-      "status": "todo",
-      "href": "exp-overload.html"
+      "status": "done",
+      "href": "exp-overload.html",
+      "summary": "정책은 coverage를 사지 못하고(±0.3%p) 지연을 산다 — p95 160/320/454ms"
     },
     {
       "id": "constraints",
@@ -38,8 +39,9 @@
       "milestone": "M4",
       "issue": 127,
       "question": "모델 출력을 사실로 쓰지 않으려면 응답 직전에 얼마를 더 지불해야 하는가",
-      "status": "todo",
-      "href": "exp-constraints.html"
+      "status": "done",
+      "href": "exp-constraints.html",
+      "summary": "정책을 가른 것은 지연이 아니라 창 — 54ms vs 0ms. 응답 직전 확인은 더 살 것이 없었다"
     },
     {
       "id": "budget",

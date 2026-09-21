@@ -16,6 +16,15 @@ import org.springframework.stereotype.Component;
  * <p><b>폴백 사유를 나눠 센다</b> — {@code rejected}(정책이 거절) / {@code timeout}(모델 용량 대기 초과) /
  * {@code failed}(모델 오류). 사유가 뭉치면 "정책을 바꿔야 하나, 모델을 늘려야 하나"를 지표가
  * 답해 주지 못한다.
+ *
+ * <p><b>E4의 지표({@code constraint.*})가 따로 있는 이유</b>: 제약 확인은 <b>품질</b>을 사고
+ * <b>지연</b>을 낸다. 그 둘을 같은 지표에 섞으면 어느 쪽을 샀는지 알 수 없다. 그래서
+ * <ul>
+ *   <li>{@code filtered} — 확인이 뺀 개수. 0이면 확인이 할 일이 없었다(위반율 0이 확인 덕이 아니다)</li>
+ *   <li>{@code violation} — <b>응답에 실제로 나간</b> 위반. 정책이 스스로 보고하는 값이 아니라
+ *       최종 목록을 다시 대조해 센 값이다. 정책 태그를 달아 "어느 정책이 몇 개를 흘렸는가"를 남긴다</li>
+ *   <li>{@code audit} — 계기 자체의 비용. 이걸 안 나누면 계기가 정책의 비용처럼 보인다</li>
+ * </ul>
  */
 @Component
 public class RecommendationMetrics {
@@ -24,6 +33,7 @@ public class RecommendationMetrics {
     private final Counter servedByModel;
     private final Timer modelCall;
     private final Timer serving;
+    private final Timer audit;
 
     public RecommendationMetrics(MeterRegistry registry, OverloadGate gate) {
         this.registry = registry;
@@ -36,6 +46,9 @@ public class RecommendationMetrics {
                 .register(registry);
         this.serving = Timer.builder("recommendation.serving")
                 .description("추천 요청 전체 처리 시간")
+                .register(registry);
+        this.audit = Timer.builder("recommendation.constraint.audit")
+                .description("위반 검사(실험 계기)에 걸린 시간 — 정책 비용이 아니라 계기 비용이다")
                 .register(registry);
         // 지금 모델 쪽에 몇 개가 들어가 있는가 — 정책이 실제로 줄을 끊고 있는지 보는 창이다.
         Gauge.builder("recommendation.in_flight", gate, OverloadGate::inFlight)
@@ -52,6 +65,20 @@ public class RecommendationMetrics {
         registry.counter("recommendation.fallback", "reason", reason).increment();
     }
 
+    /** 제약 확인이 뺀 개수. 정책 태그로 나눠 "비싼 확인이 실제로 더 많이 막았는가"를 본다. */
+    public void constraintFiltered(ConstraintPolicy policy, int removed) {
+        if (removed > 0) {
+            registry.counter("recommendation.constraint.filtered", "policy", policy.name()).increment(removed);
+        }
+    }
+
+    /** 응답에 나간 위반(건수). 정책별로 갈라야 "어느 정책이 몇 개를 흘렸는가"가 남는다. */
+    public void constraintViolation(ConstraintPolicy policy, int violations) {
+        if (violations > 0) {
+            registry.counter("recommendation.constraint.violation", "policy", policy.name()).increment(violations);
+        }
+    }
+
     public Timer modelCallTimer() {
         return modelCall;
     }
@@ -59,4 +86,9 @@ public class RecommendationMetrics {
     public Timer servingTimer() {
         return serving;
     }
+
+    public Timer constraintAuditTimer() {
+        return audit;
+    }
 }
+

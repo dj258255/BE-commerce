@@ -16,13 +16,13 @@
   </div>
   <div class="grid g4" id="kpis" style="margin-bottom:16px"></div>
   <section class="panel" style="margin-bottom:16px">
-    <h2>위반율을 낮추는 값</h2>
-    <div class="hint">x축 = 추가 지연(ms), y축 = 제약 위반율(%). 왼쪽 아래가 공짜, 오른쪽 아래가 안전.</div>
+    <h2>확인 창이 위반을 만든다</h2>
+    <div class="hint">x축 = 확인에 쓴 사실이 응답 시점에 얼마나 낡았는가(ms), y축 = 제약 위반율(%). 창이 0이면 위반도 0이다 — <b>지연이 아니라 창이 정책을 가른다</b>.</div>
     <div id="chart"></div><div class="legend" id="legend"></div>
   </section>
   <section class="panel" style="margin-bottom:16px">
     <h2>검증 시점별 결과</h2>
-    <div class="hint">stale 창 = 검증한 시점과 응답 시점의 간격. 그 사이 사실이 바뀌면 통과한 제약이 무효가 된다.</div>
+    <div class="hint">stale 창 = 확인한 사실과 응답 시점의 간격. 확인하지 않으면 창이 정의되지 않는다(—). 추가 지연은 네 정책 모두 0ms다 — 제약 원천이 합성이라 확인 비용이 측정 하한 아래다(<b>이 한계는 리포트에 적었다</b>).</div>
     <div id="table"></div>
   </section>
   <section class="panel" style="margin-bottom:16px">
@@ -40,17 +40,17 @@
     var d = await PZ.fixture('exp-constraints'); if (!d) return;
     var m = d.modes;
     document.getElementById('kpis').innerHTML =
-      PZ.kpi('검증 없음 위반율', PZ.pct(m[0].violationPct), '추가 지연 0ms', 'bad') +
-      PZ.kpi('완료 후 재검증', PZ.pct(m[2].violationPct), '+' + m[2].addedMs + 'ms · stale ' + m[2].staleWindowMs + 'ms', 'warn') +
-      PZ.kpi('응답 직전 재검증', PZ.pct(m[3].violationPct), '+' + m[3].addedMs + 'ms', 'good') +
-      PZ.kpi('위반 1건 줄이는 값', '+' + PZ.num(m[3].addedMs - m[0].addedMs) + 'ms', '요청마다 지불');
+      PZ.kpi('검증 없음 위반율', PZ.pct(m[0].violationPct), '변화 8/s 기준 · 확인 0회', 'bad') +
+      PZ.kpi('생성 전 스냅샷', PZ.pct(m[1].violationPct), '창 ' + m[1].staleWindowMs + 'ms · 확인 1회', 'warn') +
+      PZ.kpi('생성 후 재검증', PZ.pct(m[2].violationPct), '창 0ms · 확인 1회', 'good') +
+      PZ.kpi('응답 직전 재검증', PZ.pct(m[3].violationPct), '창 0ms · 확인 2회 — 더 살 것이 없다', 'good');
 
-    PZ.line(document.getElementById('chart'), d.tradeoff, { xLabel: '추가 지연(ms)', y0: true, width: 760, height: 240 });
+    PZ.line(document.getElementById('chart'), d.tradeoff, { xLabel: '확인 창(ms)', y0: true, width: 760, height: 240 });
     PZ.legend(document.getElementById('legend'), d.tradeoff);
 
     PZ.table(document.getElementById('table'),
       [{ key: 'mode', label: '검증 시점' },
-       { key: 'addedMs', label: '추가 지연(ms)', num: true },
+       { key: 'reads', label: '확인 읽기(회)', num: true },
        { key: 'violationPct', label: '위반율', num: true, fmt: function (v) { return PZ.pct(v); } },
        { key: 'staleWindowMs', label: 'stale 창(ms)', num: true },
        { key: 'factsChanged', label: '창 안에서 바뀐 사실', num: true }],
