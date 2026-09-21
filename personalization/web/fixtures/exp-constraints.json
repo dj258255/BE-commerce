@@ -1,24 +1,25 @@
 {
-  "_mock": true,
-  "_source": "M4 실험(이슈 #127). 확률적 모델 출력을 business state로 쓸 때, 언제 재검증하고 얼마를 지불하는가.",
-  "_harness": "synthetic 재고·판매상태를 만들고 생성 중 상태를 바꿔가며 측정 (예정)",
+  "_source": "M4 실험(#127) 실측. personalization/docs/runs/20260921-e4-제약-재검증/report.md — 로컬 단일 장비, 추천 30req/s 60초(워밍업 15초 제외), 가용성 변화 8/s.",
+  "_harness": "k6/constraint-revalidation.js + tools/run-constraint-revalidation.sh (실측 완료)",
+  "_note": "제약 원천이 **합성**이다(메모리 안의 가용성 집합). 그래서 확인 비용이 측정 하한 아래이고 addedMs 가 네 정책 모두 0 이다 — 지연이 아니라 **읽기 횟수**로 값을 낸다. 어떤 것이 정책을 갈랐는지는 stale 창이다: 54ms vs 0ms.",
   "modes": [
-    { "mode": "검증 없음", "addedMs": 0, "violationPct": 3.8, "staleWindowMs": 108, "factsChanged": 41 },
-    { "mode": "생성 시작 시점 검증", "addedMs": 6, "violationPct": 1.9, "staleWindowMs": 108, "factsChanged": 41 },
-    { "mode": "생성 완료 후 재검증", "addedMs": 19, "violationPct": 0.6, "staleWindowMs": 26, "factsChanged": 9 },
-    { "mode": "응답 직전 재검증", "addedMs": 34, "violationPct": 0.1, "staleWindowMs": 4, "factsChanged": 1 }
+    { "mode": "검증 없음", "addedMs": 0, "reads": 0, "violationPct": 0.96, "staleWindowMs": null, "factsChanged": null },
+    { "mode": "생성 시작 시점 검증", "addedMs": 0, "reads": 1, "violationPct": 2.37, "staleWindowMs": 54, "factsChanged": 0.89 },
+    { "mode": "생성 완료 후 재검증", "addedMs": 0, "reads": 1, "violationPct": 0.0, "staleWindowMs": 0, "factsChanged": 0.0 },
+    { "mode": "응답 직전 재검증", "addedMs": 0, "reads": 2, "violationPct": 0.0, "staleWindowMs": 0, "factsChanged": 0.0 }
   ],
   "tradeoff": [
-    { "name": "위반율 vs 추가 지연", "cls": "s-a", "points": [[0, 3.8], [6, 1.9], [19, 0.6], [34, 0.1]] }
+    { "name": "생성 시작 스냅샷(창 54ms)", "cls": "s-b", "points": [[54, 2.37]] },
+    { "name": "생성 완료 후 · 응답 직전(창 0ms)", "cls": "s-a", "points": [[0, 0.0], [0, 0.0]] }
   ],
   "boundary": {
     "recommendation": "추천 단계는 '생성 완료 후 재검증'까지, 구매 단계는 강한 보장",
-    "statement": "추천은 stale을 허용해도 사용자가 손해를 보지 않는다(다음 요청에서 바뀐다). 그러나 결제 직전 재고 확인은 이미 별도 경로(주문·결제)가 강하게 보장한다.",
-    "openQuestion": "재검증을 완료 후로 두면 응답 직전 1건이 어긋난다. 이 1건을 폴백으로 흡수할지, 무시할지"
+    "statement": "추천은 stale을 허용한다 — 확인과 응답 사이의 창은 0으로 만들 수 없다(마지막 확인을 늘려도 남는다). 대신 그 창을 응답에 밝히고(snapshotAgeMs·changesInWindow) 구매 단계에 위임한다. CheckoutTx 가 주문 시 조건부 차감으로 재고를 다시 판정하므로, 낡은 목록이 팔리지 않는 물건을 팔게 하지는 않는다.",
+    "openQuestion": "가용성 읽기가 비싸지면(실제 재고 포트) '생성 전 캐시 스냅샷'과의 교환비가 처음으로 계산된다 — 이번엔 합성이 너무 싸서 못 쟀다"
   },
   "conclusion": {
-    "statement": "재검증을 강하게 할수록 위반율은 3.8%→0.1%로 떨어지지만 추가 지연이 0→34ms 붙는다.",
-    "tradeoff": "0.1%를 사려면 요청마다 34ms를 낸다. 추천에서 그 34ms가 값어치가 있는지는 사용자 지표 없이 판단할 수 없다.",
-    "openQuestion": "재검증 조회를 캐시하면 stale이 다시 생긴다 — 캐시 TTL과 위반율의 관계는 미측정"
+    "statement": "확인하지 않으면 위반이 그대로 나간다(변화율 8/s에서 0.96%, 20/s에서 7.11%). 확인하면 위반이 0이 되지만, 세는 값을 늘려도(응답 직전 확인) 0 이상으로는 내려가지 않는다.",
+    "tradeoff": "정책을 가른 것은 지연이 아니라 창이다 — 생성 전 스냅샷은 54ms 낡고(= 모델 지연), 생성 후 확인은 0ms다. AT_RESPONSE 는 같은 위반 0을 읽기 한 번 더로 산다. 그래서 기본값은 AFTER_GENERATION 이다.",
+    "openQuestion": "품절 집합 크기를 고정해 재측정해야 NONE 의 위반율이 정책 효과로 읽힌다 — 이번 변화 주입기는 같은 항목이 소진·해제를 반복해 그 크기가 통제되지 않았다(리포트 '틀렸던 것' 1번)"
   }
 }

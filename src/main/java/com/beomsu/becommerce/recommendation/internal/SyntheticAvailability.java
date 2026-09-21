@@ -90,6 +90,24 @@ public class SyntheticAvailability implements AvailabilitySource {
         return -1L;
     }
 
+    /**
+     * 팔 수 없게 된 것 하나를 되돌린다 — "입고됐다".
+     *
+     * <p><b>왜 필요한가</b>: 풀은 유한하다(24개). 소진만 하면 몇 초 만에 전부 품절되어 그 뒤로는
+     * <b>아무것도 바뀌지 않는다</b> — 그러면 창 안의 변경량이 0이 되고 위반율도 0이 되는데,
+     * 그것은 "확인이 잘 해서"가 아니라 "바뀐 게 없어서"다. 소진과 해제를 짝지어 돌려야
+     * <b>어떤 것이 팔리는지가 계속 바뀌는</b> 상태가 유지된다(실제로도 재고는 줄고 다시 채워진다).
+     */
+    public long releaseAny() {
+        for (Long itemId : pool) {
+            if (unavailable.remove(itemId)) {
+                version.incrementAndGet();
+                return itemId;
+            }
+        }
+        return -1L;
+    }
+
     /** 전부 팔 수 있게 되돌린다(런 사이 초기화). */
     public void restockAll() {
         unavailable.clear();

@@ -40,7 +40,21 @@ public class ConstraintExperimentController {
     @PostMapping("/consume")
     public Map<String, Object> consume() {
         long consumed = availability.consumeAny();
-        return Map.of("consumed", consumed, "unavailableCount", availability.unavailableCount(),
+        return Map.of("changed", consumed, "unavailableCount", availability.unavailableCount(),
+                "version", availability.version());
+    }
+
+    /**
+     * 품절된 것 하나를 되돌린다 — "입고됐다".
+     *
+     * <p>하네스가 {@code consume}·{@code release}를 짝지어 돌린다. 소진만 하면 풀이 몇 초 만에
+     * 전부 품절되어 그 뒤로는 <b>아무것도 안 바뀐다</b> — 그러면 위반율 0이 "확인이 잘 해서"인지
+     * "바뀐 게 없어서"인지 구분되지 않는다.
+     */
+    @PostMapping("/release")
+    public Map<String, Object> release() {
+        long released = availability.releaseAny();
+        return Map.of("changed", released, "unavailableCount", availability.unavailableCount(),
                 "version", availability.version());
     }
 

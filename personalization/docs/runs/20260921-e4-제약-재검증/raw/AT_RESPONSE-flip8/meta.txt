@@ -1,0 +1,6 @@
+constraint_policy=AT_RESPONSE
+flip_rate=8
+duration=60s
+rate=30
+vus=20
+warmup_ms=15000

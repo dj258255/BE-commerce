@@ -102,6 +102,9 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-033](adr/ADR-033-wishlist-server-side.md) | 찜을 서버에 저장하고 로그인을 요구한다 |
 | [ADR-034](adr/ADR-034-personalization-context-deployment-unit.md) | 개인화 온라인 컨텍스트를 같은 배포 단위에 둔다 |
 | [ADR-035](adr/ADR-035-order-tolerant-context-merge.md) | 컨텍스트 병합을 순서에 관대하게 만든다 |
+| [ADR-036](adr/ADR-036-context-window-aggregate.md) | 창 집계를 목록에서 떼어낸다 — 세는 일에는 세는 그릇을 준다 |
+| [ADR-037](adr/ADR-037-overload-admission-policy.md) | 과부하에서 무엇을 포기하는가 — 정책은 지연을 사고, coverage는 모델이 정한다 |
+| [ADR-038](adr/ADR-038-constraint-revalidation-timing.md) | 제약을 언제 다시 확인하는가 — 추천은 stale을 허용하고 구매는 강보장한다 |
 
 ## 보조 문서
 

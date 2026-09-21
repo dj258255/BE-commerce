@@ -7,6 +7,29 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — 제약 재검증 시점 (#127 / M4)
+
+### 추가
+
+- **제약 확인 시점 정책 4종**(`app.recommendation.constraint-policy`) — `NONE` · `AT_GENERATION_START` ·
+  **`AFTER_GENERATION`(기본)** · `AT_RESPONSE`. 확인 대상·방법은 하나를 공유하고(`ConstraintChecker`)
+  **시점만** 바뀐다
+- **추천 응답이 창을 밝힌다** — `snapshotAgeMs`(확인에 쓴 사실이 응답 시점에 얼마나 낡았나) ·
+  `changesInWindow`(그 창에서 바뀐 사실 수) · `filteredByConstraint` · `violations`(바깥에서 다시
+  대조한 위반 수). `servingMs`(정책 경로)와 `auditMs`(계기)를 나눠서 준다
+- **E4 실험 리포트** — `personalization/docs/runs/20260921-e4-제약-재검증/`(8절 + 원자료).
+  하네스: `k6/constraint-revalidation.js` · `tools/run-constraint-revalidation.sh` ·
+  `tools/constraint_report.py`
+- **이슈 템플릿에 3필드**(주요 불확실성 · 예상 완료 · 예상 산출물) — 예측하고 고치는 습관을 남기기 위해
+
+### 변경
+
+- **기본 제약 확인 시점이 `NONE` → `AFTER_GENERATION`으로 바뀌었다.** E4가 사전 등록한 규칙
+  ("응답 직전 확인과 생성 후 확인의 위반율 차이가 1%p 미만이면 싼 쪽을 기본으로")이 발동했다 —
+  실측: 둘 다 위반율 0.00%, 응답 직전 확인은 읽기를 한 번 더 쓴다. 근거와 못 잰 것은
+  [ADR-038](docs/adr/ADR-038-constraint-revalidation-timing.md)
+- **개인화 화면의 E4 fixture를 실측으로 교체**하고, E3도 측정이 끝났으므로 목록에서 `측정 완료`로 올렸다
+
 ## Unreleased — M2: 개인화 온라인 컨텍스트와 E1 실측
 
 ### 추가
