@@ -70,7 +70,35 @@
         '<button class="btn" id="add-cart"' + (soldOut ? ' disabled' : '') + '>장바구니</button>' +
         '<button class="btn btn-primary" id="buy-now"' + (soldOut ? ' disabled' : '') + '>바로 구매</button>' +
       '</div>' +
-      '<div class="spec"><h3>상품 설명</h3><p>' + Store.esc(p.description || '설명이 없습니다.') + '</p></div>';
+      '<div class="spec"><h3>상품 설명</h3><p>' + Store.esc(p.description || '설명이 없습니다.') + '</p></div>' +
+      reviewsHtml(p);
+  }
+
+  // 리뷰 — **합성임을 화면이 먼저 말한다**(#168). API 가 `reviewsSynthetic` 을 사실로 내보내므로
+  // 여기서 추측하지 않는다. 평점 평균은 계산해서 보여주지 않는다(합성 리뷰로 "4.3점"을 만들면
+  // 그 숫자가 품질 신호처럼 읽힌다 — ADR-046).
+  function reviewsHtml(p) {
+    var reviews = p.reviews || [];
+    if (!p.reviewsSynthetic && reviews.length === 0) {
+      return '<div class="spec"><h3>리뷰</h3><p class="muted">아직 리뷰가 없습니다.</p></div>';
+    }
+    var badge = '<span class="badge-synthetic" title="데모용으로 만든 리뷰입니다">합성</span>';
+    var note = '<p class="muted synthetic-note">이 리뷰는 <strong>데모용으로 만든 것</strong>이고 ' +
+      '실제 구매자가 쓴 것이 아닙니다(수집한 데이터에 리뷰가 없습니다). 평점은 집계하지 않습니다.</p>';
+    if (reviews.length === 0) {
+      return '<div class="spec"><h3>리뷰 ' + badge + '</h3>' + note +
+        '<p class="muted">아직 리뷰가 없습니다.</p></div>';
+    }
+    var items = reviews.map(function (r) {
+      return '<li class="review">' +
+        '<div class="review-head">' + badge +
+        ' <span class="review-author">' + Store.esc(r.author) + '</span>' +
+        ' <span class="review-rating" aria-label="별점 ' + r.rating + '점">' +
+        '★'.repeat(Math.max(0, Math.min(5, r.rating))) + '</span></div>' +
+        '<p class="review-body">' + Store.esc(r.body) + '</p></li>';
+    }).join('');
+    return '<div class="spec"><h3>리뷰 ' + badge + ' <span class="muted">' + reviews.length + '건</span></h3>' +
+      note + '<ul class="reviews">' + items + '</ul></div>';
   }
 
   function bind(product) {

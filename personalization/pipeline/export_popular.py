@@ -93,7 +93,10 @@ def emit_sql(rows_by_window: dict[str, pd.DataFrame], computed_at: str, out: Pat
 def load_sql(path: Path, container: str, db: str, user: str, pw: str) -> None:
     with open(path, "rb") as f:
         subprocess.run(
-            ["docker", "exec", "-i", container, "mysql", f"-u{user}", f"-p{pw}", db],
+            # `--default-character-set=utf8mb4` 가 없으면 mysql 클라이언트가 파일의 UTF-8 을
+            # latin1 로 읽어 **한글이 이중 인코딩**된다(리뷰 적재에서 실제로 겪었다).
+            ["docker", "exec", "-i", container, "mysql", "--default-character-set=utf8mb4",
+             f"-u{user}", f"-p{pw}", db],
             stdin=f, check=True,
         )
 

@@ -343,3 +343,17 @@ input,select,textarea{font:inherit}
   padding:6px 20px 16px;white-space:pre-wrap;margin:0}
 #logbar .req{color:#7FA8E8}#logbar .ok{color:#7CC7A1}#logbar .err{color:#E8918D}#logbar .dim{color:#6D675C}
 .spacer{flex:1}
+
+/* 합성 리뷰(#168) — **합성이라는 사실이 화면에서 가장 먼저 보이게** 한다.
+   실데이터처럼 보이게 하는 스타일(별점 강조·평균 배지)을 일부러 쓰지 않는다. */
+.badge-synthetic{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:10px;
+  font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.04em;
+  color:var(--amber);background:#FEF3E2;border:1px solid #F2D9AE;vertical-align:middle}
+.synthetic-note{margin:0 0 12px!important;font-size:12px;line-height:1.6}
+.synthetic-note strong{color:var(--amber)}
+.reviews{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.review{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--paper)}
+.review-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.review-author{font-size:12px;color:var(--sub)}
+.review-rating{font-size:12px;color:var(--line2);letter-spacing:1px}
+.review-body{margin:0!important;font-size:13px;color:var(--ink);white-space:pre-line}
