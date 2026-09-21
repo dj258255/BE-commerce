@@ -105,6 +105,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-036](adr/ADR-036-context-window-aggregate.md) | 창 집계를 목록에서 떼어낸다 — 세는 일에는 세는 그릇을 준다 |
 | [ADR-037](adr/ADR-037-overload-admission-policy.md) | 과부하에서 무엇을 포기하는가 — 정책은 지연을 사고, coverage는 모델이 정한다 |
 | [ADR-038](adr/ADR-038-constraint-revalidation-timing.md) | 제약을 언제 다시 확인하는가 — 추천은 stale을 허용하고 구매는 강보장한다 |
+| [ADR-039](adr/ADR-039-constraint-source-real-stock.md) | 제약의 원천을 실제 재고로 잇는다 — 추천이 커머스 재고를 읽는 경계 |
 
 ## 보조 문서
 

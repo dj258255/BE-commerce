@@ -29,6 +29,9 @@ DURATION=${DURATION:-60s}
 WARMUP_MS=${WARMUP_MS:-15000}
 RATE=${RATE:-30}
 VUS=${VUS:-20}
+# 품절 집합 크기 — 이 값을 **고정**해야 NONE 의 위반율이 정책 효과로 읽힌다.
+# 이전에는 소진·해제를 따로 돌려 이 크기가 통제되지 않았고, 그래서 순서가 뒤집혔다(리포트 '틀렸던 것' 1).
+SOLD_OUT_TARGET=${SOLD_OUT_TARGET:-6}
 PORT=${PORT:-18080}
 BASE="http://localhost:${PORT}"
 SETTLE_SECONDS=${SETTLE_SECONDS:-6}
@@ -75,7 +78,7 @@ start_app() {
 
 echo "== E4 실측 시작"
 echo "== 출력: $OUT"
-echo "== 정책: $POLICIES / 변화율: $FLIP_RATES / ${DURATION} @ ${RATE}req/s"
+echo "== 정책: $POLICIES / 변화율: $FLIP_RATES / 품절 고정: ${SOLD_OUT_TARGET} / ${DURATION} @ ${RATE}req/s"
 
 for policy in $POLICIES; do
   for flip in $FLIP_RATES; do
@@ -91,12 +94,16 @@ for policy in $POLICIES; do
       | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])' 2>/dev/null || echo "")
     if [ -n "$TOKEN" ]; then
       curl -s -o /dev/null -X POST "$BASE/api/v1/experiments/constraint/restock" -H "Authorization: Bearer $TOKEN" || true
+      # 품절 집합 크기를 K 로 고정한다. 이후 변화는 swap 이라 크기가 유지된다.
+      PRIMED=$(curl -s -X POST "$BASE/api/v1/experiments/constraint/prime?count=${SOLD_OUT_TARGET}" \
+        -H "Authorization: Bearer $TOKEN" | python3 -c 'import sys,json;print(json.load(sys.stdin)["unavailableCount"])' 2>/dev/null || echo "?")
+      echo "   품절 고정: ${PRIMED} (목표 ${SOLD_OUT_TARGET})"
     else
-      echo "  (경고: 데모 계정 로그인 실패 — restock 을 못 했다)"
+      echo "  (경고: 데모 계정 로그인 실패 — restock/prime 을 못 했다)"
     fi
 
     CONSTRAINT_POLICY="$policy" BASE_URL="$BASE" DURATION="$DURATION" RATE="$RATE" \
-    VUS="$VUS" FLIP_RATE="$flip" WARMUP_MS="$WARMUP_MS" \
+    VUS="$VUS" FLIP_RATE="$flip" WARMUP_MS="$WARMUP_MS" SOLD_OUT_TARGET="$SOLD_OUT_TARGET" \
     k6 run --summary-export "$dir/summary.json" \
       --summary-trend-stats='avg,min,med,max,p(90),p(95),p(99)' \
       k6/constraint-revalidation.js > "$dir/k6.txt" 2>&1 || true
@@ -106,6 +113,7 @@ for policy in $POLICIES; do
     cat > "$dir/meta.txt" <<EOF
 constraint_policy=$policy
 flip_rate=$flip
+sold_out_target=$SOLD_OUT_TARGET
 duration=$DURATION
 rate=$RATE
 vus=$VUS

@@ -33,6 +33,7 @@ public class RecommendationMetrics {
     private final Counter servedByModel;
     private final Timer modelCall;
     private final Timer serving;
+    private final Timer check;
     private final Timer audit;
 
     public RecommendationMetrics(MeterRegistry registry, OverloadGate gate) {
@@ -46,6 +47,9 @@ public class RecommendationMetrics {
                 .register(registry);
         this.serving = Timer.builder("recommendation.serving")
                 .description("추천 요청 전체 처리 시간")
+                .register(registry);
+        this.check = Timer.builder("recommendation.constraint.check")
+                .description("제약 확인에 쓴 시간(정책 경로) — E4 후속의 비용 축")
                 .register(registry);
         this.audit = Timer.builder("recommendation.constraint.audit")
                 .description("위반 검사(실험 계기)에 걸린 시간 — 정책 비용이 아니라 계기 비용이다")
@@ -85,6 +89,10 @@ public class RecommendationMetrics {
 
     public Timer servingTimer() {
         return serving;
+    }
+
+    public Timer constraintCheckTimer() {
+        return check;
     }
 
     public Timer constraintAuditTimer() {

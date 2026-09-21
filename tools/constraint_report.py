@@ -62,15 +62,19 @@ def build_rows(raw_dir):
         rows.append({
             "policy": meta.get("constraint_policy", name),
             "flip": meta.get("flip_rate", "?"),
+            "target": meta.get("sold_out_target", "?"),
             "violation": rate_value(summary, "constraint_violation"),
             "violationsPer": value(summary, "constraint_violations", "avg"),
             "coverage": rate_value(summary, "recommend_coverage"),
             "servingMed": value(summary, "recommend_serving_ms", "med"),
             "servingP95": value(summary, "recommend_serving_ms", "p(95)"),
+            "checkMed": value(summary, "recommend_check_ms", "med"),
             "auditMed": value(summary, "recommend_audit_ms", "med"),
             "filtered": value(summary, "constraint_filtered", "avg"),
             "changes": value(summary, "constraint_window_changes", "avg"),
             "ageMed": value(summary, "constraint_snapshot_age_ms", "med"),
+            "soldOutMed": value(summary, "constraint_sold_out", "med"),
+            "control": rate_value(summary, "constraint_control_ok"),
             "flips": value(summary, "constraint_flips", "count"),
             "iters": value(summary, "iterations", "count"),
             "dropped": value(summary, "dropped_iterations", "count"),
@@ -89,13 +93,14 @@ def main():
         print("원자료가 없다", file=sys.stderr)
         return 1
 
-    print("| 정책 | 변화율 | **위반율** | 응답당 위반 | coverage | serving 중앙 | serving p95 | 계기 중앙 | 확인이 뺀 개수 | 창 안 변경 | stale 창 중앙 | 표본 | 부하 미달 |")
-    print("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+    print("| 정책 | 변화율 | **위반율** | 응답당 위반 | coverage | serving 중앙 | serving p95 | **확인 중앙** | 계기 중앙 | 확인이 뺀 개수 | 창 안 변경 | stale 창 중앙 | 품절 수 중앙 | 제어(K 유지) | 표본 | 부하 미달 |")
+    print("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
     for r in rows:
         print(f"| `{r['policy']}` | {r['flip']}/s | **{pct(r['violation'])}** | {num(r['violationsPer'])} | "
               f"{pct(r['coverage'])} | {num(r['servingMed'])}ms | {num(r['servingP95'])}ms | "
-              f"{num(r['auditMed'])}ms | {num(r['filtered'])} | {num(r['changes'])} | "
-              f"{num(r['ageMed'])}ms | {num(r['iters'], 0)} | {num(r['dropped'], 0)} |")
+              f"**{num(r['checkMed'])}ms** | {num(r['auditMed'])}ms | {num(r['filtered'])} | {num(r['changes'])} | "
+              f"{num(r['ageMed'])}ms | {num(r['soldOutMed'])}/{r['target']} | {pct(r['control'])} | "
+              f"{num(r['iters'], 0)} | {num(r['dropped'], 0)} |")
     return 0
 
 

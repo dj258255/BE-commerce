@@ -10,7 +10,7 @@
 | E1 | 신선도 vs 지연 (M2) | 최신성 ↔ tail latency | 최신 반영률, p95, timeout | **측정 완료** — 무릎 50ms · [리포트](runs/20260921-e1-신선도-지연/report.md) |
 | E2 | online/offline 일치 (M2) | 정확도 ↔ 상태·지연 비용 | 일치율, 원인 분포 | **측정 완료** — 최대 원인 순서 역전·동시 적용 · [리포트](runs/20260921-e2-online-offline-일치율/report.md) |
 | E3 | 과부하 degradation (M3) | 개인화 coverage ↔ SLO | p95/p99, timeout, fallback, coverage | **측정 완료** |
-| E4 | 제약 재검증 비용 (M4) | 정확성 ↔ 추가 지연 | 위반율, +지연, stale 창 | **측정 완료** — 창 54ms vs 0ms · [리포트](runs/20260921-e4-제약-재검증/report.md) |
+| E4 | 제약 재검증 비용 (M4) | 정확성 ↔ 추가 지연 | 위반율, +지연, stale 창 | **측정 완료** — 창 54ms vs 0ms · [리포트](runs/20260921-e4-제약-재검증/report.md) · 후속 [E4b](runs/20260921-e4b-제약-재검증-실재고/report.md)(실제 재고·비용) |
 | E5 | 생성 범위·예산 (M5) | 페이지 일관성 ↔ 처리량 | e2e, throughput, 모델 몫 | 측정 전 |
 | E6 | 캐시 압축 임계값 (M6) | 메모리·네트워크 ↔ CPU | GET p50/95/99, 전송량, CPU | 측정 전 |
 | E7 | 요청 1건 추적 (M8) | (도구) 구간별 소모 | 구간 타임라인, stale 원인 | 측정 전 |
@@ -71,6 +71,16 @@
 > ([ADR-038](../../docs/adr/ADR-038-constraint-revalidation-timing.md)), 확인 비용은 재지 못했다
 > (합성 가용성이 너무 싸서 네 정책 모두 +0ms — 한계를 리포트에 적었다).
 > **위 가설 문장은 그대로 둔다** — 결과에 맞춰 고치지 않는다.
+>
+> **후속 측정 완료(E4b, 2026-09-21)** — [리포트](runs/20260921-e4b-제약-재검증-실재고/report.md).
+> 「남은 것」을 그대로 이었다: ① 품절 집합 크기를 **6/24로 고정**해 위반율 순서를 정책 효과로 읽을 수 있게
+> 했고(제어율 100% — `NONE` 63.14% > `AT_GENERATION_START` 29.16% ≫ `AFTER_GENERATION` 1.41%
+> ≈ `AT_RESPONSE` 2.52%), ② 제약 원천을 **실제 `stock` 테이블**로 바꿔 **확인 비용을 처음 쟀다**
+> (`checkMs` 0/3/4/5ms). **"미리 읽으면 싸다"는 반증됐다**: `AT_GENERATION_START`와
+> `AFTER_GENERATION`은 **둘 다 질의 1회(3ms vs 4ms)** 이고, 다른 것은 창(58ms vs 3ms)뿐이다.
+> 그리고 창이 0이 아님도 드러났다 — `AFTER_GENERATION`도 위반율이 **0.00%가 아니라 1.41%** 다
+> (확인이 시간을 쓰므로 마지막 확인과 계기 사이에 간격이 생긴다). 기본값 `AFTER_GENERATION`은 유지된다.
+> 제약 원천을 실제 재고로 이은 경계와 대가는 [ADR-039](../../docs/adr/ADR-039-constraint-source-real-stock.md).
 
 ## E5. 생성 범위·계산 예산 (M5)
 

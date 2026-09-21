@@ -18,9 +18,11 @@ import java.util.List;
  *       값이 아니라 바깥에서 센 값이다 — 검증이지 주장이 아니다</li>
  * </ul>
  *
- * <p><b>{@code servingMs}와 {@code auditMs}를 나눠서 준다.</b> 계기(위반 검사)는 정책과 무관하게
- * 모든 요청에 붙으므로 정책 간 비교에서 상수지만, 절대 지연에는 더해진다. 합쳐서 보고하면
- * <b>계기가 정책의 비용처럼 보인다</b> — 그래서 나눈다.
+ * <p><b>{@code servingMs}·{@code checkMs}·{@code auditMs}를 나눠서 준다.</b> 정책 경로 전체
+ * ({@code servingMs})에는 모델 지연(50ms)이 들어 있어 확인 비용이 그 안에 묻힌다 — 그래서
+ * <b>확인에 쓴 시간만</b> 따로 {@code checkMs}로 낸다. 이 값이 E4 후속의 비용 축이다(확인 0회 / 1회 /
+ * 1회 / 2회가 여기서 갈린다). 계기(위반 검사)는 정책과 무관하게 모든 요청에 붙으므로 정책 간 비교에서
+ * 상수지만, 절대 지연에는 더해진다 — 합쳐서 보고하면 <b>계기가 정책의 비용처럼 보인다</b>.
  */
 public record RecommendationView(long userId,
                                  List<Long> items,
@@ -29,6 +31,7 @@ public record RecommendationView(long userId,
                                  int contextItems,
                                  long modelMs,
                                  long servingMs,
+                                 long checkMs,
                                  String constraintPolicy,
                                  int filteredByConstraint,
                                  Long snapshotAgeMs,
