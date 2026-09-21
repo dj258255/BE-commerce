@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.member;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,8 @@ public class PasswordMigrationMetrics {
     static final String CURRENT_ENCODING_ID = "argon2";
 
     private final MemberRepository memberRepository;
+    private final Counter upgraded;
+    private final Counter failed;
 
     public PasswordMigrationMetrics(MeterRegistry meterRegistry, MemberRepository memberRepository) {
         this.memberRepository = memberRepository;
@@ -32,6 +35,21 @@ public class PasswordMigrationMetrics {
                 .description("현재 알고리즘(" + CURRENT_ENCODING_ID + ")으로 옮겨지지 않은 비밀번호 해시 수. "
                         + "0이 되면 레거시 인코더를 제거할 수 있다")
                 .register(meterRegistry);
+        // 게이지는 <남은 수>만 말한다. 왜 줄지 않는지는 실패 건수를 봐야 안다.
+        this.upgraded = Counter.builder("password.hash.upgrade.ok")
+                .description("로그인 순간에 해시를 현재 알고리즘으로 다시 인코딩한 건수")
+                .register(meterRegistry);
+        this.failed = Counter.builder("password.hash.upgrade.failed")
+                .description("재인코딩이 실패한 건수. 올라가면 레거시 해시가 그대로 남는다")
+                .register(meterRegistry);
+    }
+
+    void recordUpgraded() {
+        upgraded.increment();
+    }
+
+    void recordFailed() {
+        failed.increment();
     }
 
     /** 스크레이프마다 집계 쿼리 1회. 회원 수 규모에서는 무시할 비용이다. */

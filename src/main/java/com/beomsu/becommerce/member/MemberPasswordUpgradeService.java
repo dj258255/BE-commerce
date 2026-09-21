@@ -35,9 +35,11 @@ public class MemberPasswordUpgradeService implements UserDetailsPasswordService 
     private static final Logger log = LoggerFactory.getLogger(MemberPasswordUpgradeService.class);
 
     private final MemberRepository memberRepository;
+    private final PasswordMigrationMetrics metrics;
 
-    public MemberPasswordUpgradeService(MemberRepository memberRepository) {
+    public MemberPasswordUpgradeService(MemberRepository memberRepository, PasswordMigrationMetrics metrics) {
         this.memberRepository = memberRepository;
+        this.metrics = metrics;
     }
 
     /**
@@ -60,7 +62,16 @@ public class MemberPasswordUpgradeService implements UserDetailsPasswordService 
                     member.replacePasswordHash(newPassword);
                     // 명시 영속 — readOnly 조회가 세션 FlushMode를 MANUAL로 바꾼 뒤라면 dirty-check
                     // 자동 flush를 신뢰할 수 없다(pay-26 교훈).
-                    memberRepository.saveAndFlush(member);
+                    try {
+                        memberRepository.saveAndFlush(member);
+                    } catch (RuntimeException failure) {
+                        // 조용히 지나가면 "왜 레거시 해시가 줄지 않는가"를 아무도 답할 수 없다(ADR-009).
+                        // 여기서 삼키려면 별도 트랜잭션이 필요하다 — 같은 트랜잭션에서 예외를 잡아도
+                        // 그 트랜잭션은 rollback-only 라 커밋이 실패한다(pay-26 교훈). 그래서 세기만 하고 올린다.
+                        metrics.recordFailed();
+                        throw failure;
+                    }
+                    metrics.recordUpgraded();
                     log.info("비밀번호 해시 이관 memberId={}", memberId);
                     return withPassword(user, newPassword);
                 })

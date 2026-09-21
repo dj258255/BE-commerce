@@ -1,5 +1,7 @@
 package com.beomsu.becommerce.recommendation.internal;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -26,20 +28,32 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class StubModelClient implements ModelClient {
 
+    private static final Logger log = LoggerFactory.getLogger(StubModelClient.class);
+
     /** 모델의 동시 처리 용량 — 이 수를 넘는 호출은 기다린다. */
     private final Semaphore capacity;
-    private final long latencyMs;
+    /** 실제로 재우는 시간 — 범위(E5)에 따라 달라진다. 생성 구간이 직렬로 붙는다. */
+    private final long effectiveLatencyMs;
     private final long busyTimeoutMs;
     private final int resultSize;
 
     public StubModelClient(@Value("${app.recommendation.model.concurrency:4}") int concurrency,
                            @Value("${app.recommendation.model.latency-ms:50}") long latencyMs,
                            @Value("${app.recommendation.model.busy-timeout-ms:400}") long busyTimeoutMs,
-                           @Value("${app.recommendation.result-size:12}") int resultSize) {
+                           @Value("${app.recommendation.result-size:12}") int resultSize,
+                           @Value("${app.recommendation.generation.scope:RANKING}") GenerationScope scope,
+                           @Value("${app.recommendation.generation.ar-prefix:4}") int arPrefix,
+                           @Value("${app.recommendation.generation.per-item-ms:15}") long perItemMs) {
         this.capacity = new Semaphore(Math.max(concurrency, 1), true);
-        this.latencyMs = Math.max(latencyMs, 0);
-        this.busyTimeoutMs = Math.max(busyTimeoutMs, 1);
         this.resultSize = Math.max(resultSize, 1);
+        // 생성 범위가 직렬 구간을 정한다 — 랭킹은 항목 수와 무관, AR 은 항목 수에 비례(E5).
+        // 스텁이므로 CPU 가 아니라 <b>대기 시간</b>으로 모델링한다: 재는 것이 처리량(동시성/지연)이라
+        // 코어 수가 변수로 끼면 안 된다.
+        this.effectiveLatencyMs = scope.estimatedLatencyMs(latencyMs, this.resultSize, arPrefix, perItemMs);
+        this.busyTimeoutMs = Math.max(busyTimeoutMs, 1);
+        log.info("모델 스텁={} 직렬 {}항목 → 지연 {}ms (기준 {}ms, 항목당 {}ms) 용량 {}동시",
+                scope, scope.sequentialItems(this.resultSize, arPrefix), effectiveLatencyMs,
+                Math.max(latencyMs, 0), Math.max(perItemMs, 0), Math.max(concurrency, 1));
     }
 
     @Override
@@ -56,8 +70,8 @@ public class StubModelClient implements ModelClient {
             throw new ModelBusyException("모델 용량 대기 초과: " + busyTimeoutMs + "ms");
         }
         try {
-            if (latencyMs > 0) {
-                Thread.sleep(latencyMs);
+            if (effectiveLatencyMs > 0) {
+                Thread.sleep(effectiveLatencyMs);
             }
             return rank(userId, recentItemIds);
         } catch (InterruptedException e) {

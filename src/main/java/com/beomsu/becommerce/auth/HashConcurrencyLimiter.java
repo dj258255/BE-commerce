@@ -4,12 +4,13 @@ import com.beomsu.becommerce.auth.internal.PasswordHashingCapacityCheck;
 import com.beomsu.becommerce.auth.internal.HashCapacityExceededException;
 import com.beomsu.becommerce.SecurityConfig;
 import com.beomsu.becommerce.ratelimit.RateLimitFilter;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Supplier;
 
 /**
@@ -37,11 +38,14 @@ public class HashConcurrencyLimiter implements PasswordEncoder {
 
     private final PasswordEncoder delegate;
     private final Semaphore permits;
-    private final LongAdder rejected = new LongAdder();
+    private final Counter rejected;
 
-    public HashConcurrencyLimiter(PasswordEncoder delegate, int maxConcurrent) {
+    public HashConcurrencyLimiter(PasswordEncoder delegate, int maxConcurrent, MeterRegistry meterRegistry) {
         this.delegate = delegate;
         this.permits = new Semaphore(maxConcurrent);
+        this.rejected = Counter.builder("auth.hash.rejected")
+                .description("동시 실행 상한에 걸려 즉시 거절한 해싱 요청 수. 0보다 크면 상한이 낮거나 로그인이 몰린 것이다")
+                .register(meterRegistry);
         log.info("비밀번호 해싱 동시 실행 상한 {}건 (해시당 약 {}MB)",
                 maxConcurrent, PasswordHashingCapacityCheck.MEBIBYTES_PER_HASH);
     }
@@ -63,7 +67,7 @@ public class HashConcurrencyLimiter implements PasswordEncoder {
 
     /** 거절 누계 — 0보다 크면 상한이 낮거나 로그인이 몰리고 있다는 신호다. */
     long rejectedCount() {
-        return rejected.sum();
+        return (long) rejected.count();
     }
 
     private <T> T within(Supplier<T> body) {

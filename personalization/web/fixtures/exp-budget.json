@@ -1,21 +1,21 @@
 {
-  "_mock": true,
-  "_source": "M5 실험(이슈 #128). 생성 범위(AR vs ranking)에 따라 모델이 latency budget에서 차지하는 몫.",
-  "_harness": "같은 카탈로그·같은 컨텍스트로 세 모드를 돌려 구간별 시간 분해 (예정)",
+  "_source": "M5 실험(#128) 실측. personalization/docs/runs/20260921-e5-생성-범위-예산/report.md — 로컬 단일 장비, 추천 30·80req/s 40초(워밍업 10초 제외). 모델 스텁 4동시·기준 50ms·AR 항목당 15ms·결과 12개.",
+  "_harness": "k6/generation-budget.js + tools/run-generation-budget.sh (실측 완료)",
+  "_note": "생성 범위가 **모델 지연을 정한다** — AR 은 앞 항목이 정해져야 다음을 만들어 한 요청 안에서 직렬이다. 그래서 범위를 넓히면 용량(동시성/지연)이 80 → 36 → 17/s 로 준다. **품질(페이지 일관성)은 재지 않았다** — 이 화면의 값은 전부 비용이고, 비싼 쪽을 켤 근거는 여기 없다(ADR-040).",
   "budgetMs": 300,
   "modes": [
-    { "mode": "전부 ranking", "rankMs": 14, "arMs": 0, "contextMs": 11, "constraintMs": 6, "postMs": 4, "e2eMs": 35, "throughputRps": 420 },
-    { "mode": "앞부분 AR + Top-K", "rankMs": 6, "arMs": 62, "contextMs": 11, "constraintMs": 6, "postMs": 4, "e2eMs": 89, "throughputRps": 96 },
-    { "mode": "전부 AR", "rankMs": 0, "arMs": 210, "contextMs": 11, "constraintMs": 6, "postMs": 4, "e2eMs": 231, "throughputRps": 27 }
+    { "mode": "전부 ranking", "rankMs": 50, "arMs": 0, "contextMs": 0.3, "constraintMs": 6, "postMs": 1, "e2eMs": 60, "throughputRps": 80 },
+    { "mode": "앞부분 AR + Top-K", "rankMs": 50, "arMs": 60, "contextMs": 0.3, "constraintMs": 5, "postMs": 1, "e2eMs": 120, "throughputRps": 36 },
+    { "mode": "전부 AR", "rankMs": 50, "arMs": 180, "contextMs": 0.3, "constraintMs": 5, "postMs": 2, "e2eMs": 270, "throughputRps": 17 }
   ],
   "share": [
-    { "label": "전부 AR — 모델 몫", "value": 90.9, "display": "90.9%", "color": "var(--bad)" },
-    { "label": "앞부분 AR + Top-K — 모델 몫", "value": 69.7, "display": "69.7%", "color": "var(--warn)" },
-    { "label": "전부 ranking — 모델 몫", "value": 40.0, "display": "40.0%", "color": "var(--ok)" }
+    { "label": "전부 AR — 모델 몫", "value": 97.4, "display": "97.4%", "color": "var(--bad)" },
+    { "label": "앞부분 AR + Top-K — 모델 몫", "value": 95.0, "display": "95.0%", "color": "var(--warn)" },
+    { "label": "전부 ranking — 모델 몫", "value": 88.3, "display": "88.3%", "color": "var(--ok)" }
   ],
   "conclusion": {
-    "statement": "전부 AR은 e2e 231ms로 300ms 예산의 77%를 혼자 먹고, 처리량은 ranking의 1/15로 떨어진다.",
-    "tradeoff": "생성 범위를 늘리면 페이지 일관성은 올라가지만, 같은 하드웨어로 처리할 수 있는 요청이 급감한다. 남은 예산으로 캐시·폴백을 넣을 여지도 사라진다.",
-    "openQuestion": "앞부분만 AR(89ms)로도 페이지 일관성이 충분한가 — 이건 시스템 지표가 아니라 품질 지표가 필요"
+    "statement": "범위를 넓히면 같은 하드웨어가 감당하는 요청이 80 → 36 → 17/s 로 준다. 도착률을 고정하면 대가는 coverage 로 지불된다 — 80req/s 에서 94.4% → 44.4% → 21.5%. 전부 AR 은 30req/s 에서도 e2e p95 305ms 로 SLO(300ms)를 넘는다.",
+    "tradeoff": "페이지 일관성을 사려면 같은 하드웨어의 처리량을 판다. 그리고 예산은 모델이 먹는다 — 모델 경로에서 추론이 88.6~98.9% 다. 컨텍스트(0.3ms)와 제약(2~6ms)은 작아서, 예산을 줄이려면 모델을 줄여야 한다.",
+    "openQuestion": "일관성을 재는 방법이 없다 — 이 실험은 **비용만** 쟀다. 'AR 이 더 일관된다'는 여기서 검증된 적이 없고, 그래서 기본값은 가장 싼 ranking 이다. 지표가 생기면 앞부분 AR 의 최적 K 를 계산할 수 있다."
   }
 }

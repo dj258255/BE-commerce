@@ -49,6 +49,7 @@ public class RecommendationService {
     private final ConstraintChecker constraintChecker;
     private final RecommendationMetrics metrics;
     private final ConstraintPolicy constraintPolicy;
+    private final GenerationScope generationScope;
     private final int contextLimit;
 
     public RecommendationService(RecentActivityFacts recentActivity,
@@ -57,6 +58,7 @@ public class RecommendationService {
                                  ConstraintChecker constraintChecker,
                                  RecommendationMetrics metrics,
                                  @Value("${app.recommendation.constraint-policy:NONE}") ConstraintPolicy constraintPolicy,
+                                 @Value("${app.recommendation.generation.scope:RANKING}") GenerationScope generationScope,
                                  @Value("${app.recommendation.context-limit:20}") int contextLimit) {
         this.recentActivity = recentActivity;
         this.modelClient = modelClient;
@@ -64,8 +66,9 @@ public class RecommendationService {
         this.constraintChecker = constraintChecker;
         this.metrics = metrics;
         this.constraintPolicy = constraintPolicy;
+        this.generationScope = generationScope;
         this.contextLimit = Math.max(contextLimit, 1);
-        log.info("제약 확인 정책={} (E4 — 확인 시점이 곧 사는 것과 내주는 것이다)", constraintPolicy);
+        log.info("제약 확인 정책={} 생성 범위={} (E4·E5)", constraintPolicy, generationScope);
     }
 
     public RecommendationView recommend(long userId) {
@@ -79,13 +82,16 @@ public class RecommendationService {
         long preCheckNanos = System.nanoTime() - preCheckStartedAt;
 
         // ② 활동 읽기 — 모델을 기다리기 전에 한다. 여기서 실패하면 빈 목록으로 온다(개인화가 약해질 뿐).
+        // E5 의 구간 계기: 이 시간이 예산의 "컨텍스트" 몫이다.
+        long contextStartedAt = System.nanoTime();
         List<Long> recent = recentActivity.recentItemIds(userId, contextLimit);
+        long contextNanos = System.nanoTime() - contextStartedAt;
 
         // ③ 문 — 정책이 거절하면 모델을 아예 부르지 않는다.
         if (!gate.admit()) {
             metrics.fallback("rejected");
             return finish(userId, ItemPool.POPULAR, RecommendationView.SOURCE_FALLBACK, "REJECTED",
-                    recent.size(), 0L, snapshot, preCheckNanos, startedAt);
+                    recent.size(), contextNanos, 0L, snapshot, preCheckNanos, startedAt);
         }
 
         // ④ 모델
@@ -94,18 +100,18 @@ public class RecommendationService {
             List<Long> items = modelClient.recommend(userId, recent);
             metrics.servedByModel();
             return finish(userId, items, RecommendationView.SOURCE_MODEL, null,
-                    recent.size(), elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt);
+                    recent.size(), contextNanos, elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt);
         } catch (ModelBusyException e) {
             // 기다리다 지쳤다 — 모델이 죽은 게 아니라 우리가 못 기다린 것이다.
             metrics.fallback("timeout");
             log.debug("모델 용량 대기 초과 — 폴백한다. userId={}", userId);
             return finish(userId, ItemPool.POPULAR, RecommendationView.SOURCE_FALLBACK, "TIMEOUT",
-                    recent.size(), elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt);
+                    recent.size(), contextNanos, elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt);
         } catch (RuntimeException e) {
             metrics.fallback("failed");
             log.warn("모델 호출 실패 — 폴백한다. userId={} cause={}", userId, e.toString());
             return finish(userId, ItemPool.POPULAR, RecommendationView.SOURCE_FALLBACK, "FAILED",
-                    recent.size(), elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt);
+                    recent.size(), contextNanos, elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt);
         } finally {
             gate.release();
             metrics.modelCallTimer().record(Duration.ofNanos(System.nanoTime() - modelStartedAt));
@@ -119,7 +125,7 @@ public class RecommendationService {
      * 위반율만 보면 <b>"확인이 잘 해서 낮은 것"과 "바뀐 게 없어서 낮은 것"이 구분되지 않는다.</b>
      */
     private RecommendationView finish(long userId, List<Long> items, String source, String reason,
-                                      int contextItems, long modelMs,
+                                      int contextItems, long contextNanos, long modelMs,
                                       ConstraintChecker.Snapshot beforeGeneration, long preCheckNanos,
                                       long startedAt) {
         ConstraintChecker.Snapshot used = beforeGeneration;
@@ -169,8 +175,9 @@ public class RecommendationService {
         metrics.constraintFiltered(constraintPolicy, filtered);
         metrics.constraintViolation(constraintPolicy, violations.size());
 
-        return new RecommendationView(userId, finalItems, source, reason, contextItems, modelMs, policyMs,
-                checkMs, constraintPolicy.name(), filtered,
+        return new RecommendationView(userId, finalItems, source, reason, contextItems,
+                contextNanos / 1_000_000.0, modelMs, policyMs,
+                checkMs, generationScope.name(), constraintPolicy.name(), filtered,
                 used == null ? null : constraintChecker.ageMs(used),
                 used == null ? null : constraintChecker.changesSince(used),
                 violations.size(), auditMs);

@@ -17,9 +17,13 @@ class OverloadGateTest {
     private static final long LATENCY_MS = 50;
     private static final int MAX_IN_FLIGHT = 8;
     private static final long BUDGET_MS = 100;
+    private static final int RESULT_SIZE = 12;
+    private static final int AR_PREFIX = 4;
+    private static final long PER_ITEM_MS = 15;
 
     private OverloadGate gate(OverloadPolicy policy) {
-        return new OverloadGate(policy, MAX_IN_FLIGHT, BUDGET_MS, CONCURRENCY, LATENCY_MS);
+        return new OverloadGate(policy, MAX_IN_FLIGHT, BUDGET_MS, CONCURRENCY, LATENCY_MS,
+                RESULT_SIZE, GenerationScope.RANKING, AR_PREFIX, PER_ITEM_MS);
     }
 
     @Test
@@ -80,11 +84,30 @@ class OverloadGateTest {
     @Test
     @DisplayName("모델 용량이 다르면 같은 진행 중 수라도 대기 예상이 다르다 — 상한을 손으로 고르지 않아도 되는 이유")
     void waitEstimateFollowsModelCapacity() {
-        OverloadGate slow = new OverloadGate(OverloadPolicy.ADMISSION, MAX_IN_FLIGHT, BUDGET_MS, 2, 100);
-        OverloadGate fast = new OverloadGate(OverloadPolicy.ADMISSION, MAX_IN_FLIGHT, BUDGET_MS, 8, 25);
+        OverloadGate slow = new OverloadGate(OverloadPolicy.ADMISSION, MAX_IN_FLIGHT, BUDGET_MS, 2, 100,
+                RESULT_SIZE, GenerationScope.RANKING, AR_PREFIX, PER_ITEM_MS);
+        OverloadGate fast = new OverloadGate(OverloadPolicy.ADMISSION, MAX_IN_FLIGHT, BUDGET_MS, 8, 25,
+                RESULT_SIZE, GenerationScope.RANKING, AR_PREFIX, PER_ITEM_MS);
 
         int inFlight = 12;
         assertThat(slow.estimatedWaitMs(inFlight)).isGreaterThan(BUDGET_MS);
         assertThat(fast.estimatedWaitMs(inFlight)).isLessThanOrEqualTo(BUDGET_MS);
+    }
+
+    @Test
+    @DisplayName("생성 범위가 지연을 바꾸면 대기 예상도 바뀐다 — 정책이 모델 지연을 함께 봐야 하는 이유(E5)")
+    void waitEstimateFollowsGenerationScope() {
+        // 같은 조건에서 범위만 바꾼다. 전체 AR 은 12항목을 직렬 생성해 지연이 훨씬 길다.
+        OverloadGate ranking = new OverloadGate(OverloadPolicy.ADMISSION, MAX_IN_FLIGHT, BUDGET_MS,
+                CONCURRENCY, LATENCY_MS, RESULT_SIZE, GenerationScope.RANKING, AR_PREFIX, PER_ITEM_MS);
+        OverloadGate fullAr = new OverloadGate(OverloadPolicy.ADMISSION, MAX_IN_FLIGHT, BUDGET_MS,
+                CONCURRENCY, LATENCY_MS, RESULT_SIZE, GenerationScope.FULL_AR, AR_PREFIX, PER_ITEM_MS);
+
+        // 랭킹: 50ms → 5번째부터 12.5ms. 전체 AR: 50 + 12×15 = 230ms → 같은 자리에서 훨씬 길다.
+        assertThat(ranking.estimatedWaitMs(CONCURRENCY)).isEqualTo(12.5);
+        assertThat(fullAr.estimatedWaitMs(CONCURRENCY)).isEqualTo(57.5);
+        // 그 결과 같은 진행 중 수에서 전체 AR 만 예산을 넘긴다 — 범위를 바꾸면 정책도 같이 봐야 한다.
+        assertThat(ranking.estimatedWaitMs(CONCURRENCY + 3)).isLessThanOrEqualTo(BUDGET_MS);
+        assertThat(fullAr.estimatedWaitMs(CONCURRENCY + 3)).isGreaterThan(BUDGET_MS);
     }
 }

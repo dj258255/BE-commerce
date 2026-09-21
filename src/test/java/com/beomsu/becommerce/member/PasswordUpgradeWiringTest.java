@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.member;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -45,6 +46,11 @@ class PasswordUpgradeWiringTest {
         return d;
     }
 
+    /** 계측은 이 테스트의 관심사가 아니지만 생성자에는 필요하다. */
+    private static PasswordMigrationMetrics metrics(MemberRepository repository) {
+        return new PasswordMigrationMetrics(new SimpleMeterRegistry(), repository);
+    }
+
     private static DaoAuthenticationProvider providerWith(String storedHash,
                                                           MemberPasswordUpgradeService upgrades) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -61,7 +67,7 @@ class PasswordUpgradeWiringTest {
         MemberRepository repository = mock(MemberRepository.class);
         Member member = Member.of("a@b.com", "{bcrypt}old");
         when(repository.findById(1000L)).thenReturn(Optional.of(member));
-        MemberPasswordUpgradeService upgrades = new MemberPasswordUpgradeService(repository);
+        MemberPasswordUpgradeService upgrades = new MemberPasswordUpgradeService(repository, metrics(repository));
 
         String stored = "{bcrypt}" + new BCryptPasswordEncoder().encode(RAW);
         Authentication result = providerWith(stored, upgrades)
@@ -81,7 +87,7 @@ class PasswordUpgradeWiringTest {
         when(repository.findById(1000L)).thenReturn(Optional.of(member));
 
         String stored = new BCryptPasswordEncoder().encode(RAW);   // 접두사 없음
-        providerWith(stored, new MemberPasswordUpgradeService(repository))
+        providerWith(stored, new MemberPasswordUpgradeService(repository, metrics(repository)))
                 .authenticate(new UsernamePasswordAuthenticationToken("a@b.com", RAW));
 
         assertThat(member.getPasswordHash()).startsWith("{argon2}");
@@ -91,7 +97,7 @@ class PasswordUpgradeWiringTest {
     @DisplayName("이미 {argon2}면 이관을 호출하지 않는다 — 매 로그인마다 쓰지 않는다")
     void loginWithCurrentAlgorithmDoesNotUpgrade() {
         MemberRepository repository = mock(MemberRepository.class);
-        MemberPasswordUpgradeService upgrades = spy(new MemberPasswordUpgradeService(repository));
+        MemberPasswordUpgradeService upgrades = spy(new MemberPasswordUpgradeService(repository, metrics(repository)));
 
         String stored = productionEncoder().encode(RAW);            // 이미 {argon2}
         providerWith(stored, upgrades)

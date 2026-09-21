@@ -3,6 +3,7 @@ package com.beomsu.becommerce.member;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -21,6 +22,8 @@ import static org.mockito.Mockito.*;
 class MemberPasswordUpgradeServiceTest {
 
     private MemberRepository repository;
+    private SimpleMeterRegistry registry;
+    private PasswordMigrationMetrics metrics;
     private MemberPasswordUpgradeService service;
 
     private static final String NEW_HASH = "{argon2}$argon2id$v=19$m=19456,t=2,p=1$salt$hash";
@@ -28,7 +31,9 @@ class MemberPasswordUpgradeServiceTest {
     @BeforeEach
     void setUp() {
         repository = mock(MemberRepository.class);
-        service = new MemberPasswordUpgradeService(repository);
+        registry = new SimpleMeterRegistry();
+        metrics = new PasswordMigrationMetrics(registry, repository);
+        service = new MemberPasswordUpgradeService(repository, metrics);
     }
 
     private static UserDetails principal(String username) {
@@ -47,6 +52,22 @@ class MemberPasswordUpgradeServiceTest {
         assertThat(result.getPassword()).isEqualTo(NEW_HASH);
         // dirty-check 자동 flush를 신뢰하지 않는다 — 상태 확정을 강제한다.
         verify(repository).saveAndFlush(member);
+        assertThat(registry.get("password.hash.upgrade.ok").counter().count()).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("이관 저장이 실패하면 실패 카운터가 오른다 — 게이지만으로는 왜 안 줄는지 알 수 없다")
+    void countsUpgradeFailure() {
+        Member member = Member.of("a@b.com", "{bcrypt}$2a$10$old");
+        when(repository.findById(1000L)).thenReturn(Optional.of(member));
+        when(repository.saveAndFlush(member)).thenThrow(new IllegalStateException("db down"));
+
+        org.assertj.core.api.Assertions
+                .assertThatThrownBy(() -> service.updatePassword(principal("1000"), NEW_HASH))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(registry.get("password.hash.upgrade.failed").counter().count()).isEqualTo(1.0);
+        assertThat(registry.get("password.hash.upgrade.ok").counter().count()).isZero();
     }
 
     @Test

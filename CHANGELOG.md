@@ -7,6 +7,29 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — 생성 범위와 계산 예산 (#128 / M5)
+
+### 추가
+
+- **생성 범위 정책 3종**(`app.recommendation.generation.scope`) — `RANKING`(기본) ·
+  `PREFIX_AR_TOP_K` · `FULL_AR`. autoregressive 생성은 한 요청 안에서 **직렬**이라 범위가
+  **모델 지연을 정한다** — 기준 지연 + 직렬 항목 수 × 항목당 시간
+- **추천 응답의 예산 구간** — `contextMs`(활동 읽기) · `modelMs`(추론) · `checkMs`(제약 확인) ·
+  `generationScope`. 전체 예산에서 **모델 몫**을 계산할 수 있게 하려는 것이다
+- **E5 실험 리포트** — `personalization/docs/runs/20260921-e5-생성-범위-예산/`(8절 + 원자료).
+  하네스: `k6/generation-budget.js` · `tools/run-generation-budget.sh` · `tools/generation_report.py`.
+  ADR-040
+
+### 변경
+
+- **생성 범위가 과부하 정책의 대기 예상에도 쓰인다** — 범위가 지연을 바꾸므로 `OverloadGate` 가
+  스텁과 **같은 순수 함수**로 지연을 낸다. 둘이 다른 값을 쓰면 정책이 잘못된 지연으로 판단한다
+- **기본값은 `RANKING`** — E5 는 범위의 **비용만** 쟀다(용량 80 → 36 → 17/s, 도착률 고정 시 대가는
+  coverage 로 94.4% → 44.4% → 21.5%). **품질(페이지 일관성)은 재지 않았으므로** 비싼 쪽을 켤 근거가
+  없다. 일관성 지표가 생기면 다시 본다
+- **`FULL_AR` 는 이 하드웨어의 부하 모델에서 쓸 수 없다** — 30 req/s 에서도 coverage 56.8%,
+  e2e p95 305ms 로 SLO(300ms) 초과
+
 ## Unreleased — E4 후속: 제약의 원천을 실제 재고로 (#127 / M4)
 
 ### 추가
