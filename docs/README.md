@@ -109,6 +109,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-040](adr/ADR-040-generation-scope-and-budget.md) | 홈 페이지를 어떻게 만드는가 — 생성 범위는 비용을 사고, 품질은 재지 않았다 |
 | [ADR-041](adr/ADR-041-cache-compression-threshold.md) | 캐시 압축은 1KB부터 — 근거는 생겼고 적용할 자리는 아직 없다 |
 | [ADR-042](adr/ADR-042-home-composer-boundary.md) | 홈 컴포저를 별도 경계로 둔다 — 페이지는 추천의 합이 아니다 |
+| [ADR-043](adr/ADR-043-home-impression-log.md) | 홈 노출은 요청당 한 행으로 남긴다 — 관측을 도메인 이벤트에 태우지 않는다 |
 
 ## 보조 문서
 

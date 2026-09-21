@@ -525,6 +525,11 @@ app:
     # 한 행에서 같은 대분류를 몇 개까지 허용하는가(0이면 다양성 규칙 없음).
     # **이 값이 관련도와 다양성의 교환비다** — 낮추면 상위 항목을 포기하고 카테고리가 흩어진다.
     max-per-category: ${APP_HOME_MAX_PER_CATEGORY:3}
+    # 노출 기록 — 그 응답이 **무엇을 보여줬는가**(개인화 아키텍처의 "노출 이벤트").
+    # **요청당 한 행**이다: 항목당이면 홈 한 번에 20행, 30req/s 에서 초당 600행이 된다(ADR-043).
+    # 기록 실패는 홈을 죽이지 않는다(경고 + `home.impression.failed` 지표) — 기록은 관측이고 홈은 제품이다.
+    impression-log:
+      enabled: ${APP_HOME_IMPRESSION_LOG:true}
   # 추천 서빙 — 모델 호출과 **과부하 정책**(E3의 독립변수).
   recommendation:
     # UNBOUNDED | BOUNDED | ADMISSION

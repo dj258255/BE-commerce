@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.home;
 
+import com.beomsu.becommerce.home.internal.ImpressionRecorder;
 import com.beomsu.becommerce.order.ProductCatalogFacts;
 import com.beomsu.becommerce.personalization.RecentActivityFacts;
 import com.beomsu.becommerce.recommendation.RecommendationFacts;
@@ -55,6 +56,7 @@ public class HomeComposer {
     private final RecommendationFacts recommendations;
     private final ProductCatalogFacts catalog;
     private final RecentActivityFacts recentActivity;
+    private final ImpressionRecorder impressions;
 
     private final Rules rules;
     private final int contextLimit;
@@ -66,6 +68,7 @@ public class HomeComposer {
     public HomeComposer(RecommendationFacts recommendations,
                         ProductCatalogFacts catalog,
                         RecentActivityFacts recentActivity,
+                        ImpressionRecorder impressions,
                         @Value("${app.home.rules:FULL}") Rules rules,
                         @Value("${app.home.context-limit:8}") int contextLimit,
                         @Value("${app.home.row-cap:5}") int rowCap,
@@ -75,6 +78,7 @@ public class HomeComposer {
         this.recommendations = recommendations;
         this.catalog = catalog;
         this.recentActivity = recentActivity;
+        this.impressions = impressions;
         this.rules = rules;
         this.contextLimit = Math.max(contextLimit, 1);
         this.rowCap = Math.max(rowCap, 1);
@@ -121,10 +125,14 @@ public class HomeComposer {
         // **추론 시간은 모델이 쓴 시간이다** — 추천 호출 전체를 넣으면 제약 확인이 두 번 세어진다
         // (실제로 그렇게 만들어 잔차가 −400ms 로 나왔다). 추천 호출의 나머지(문·컨텍스트 등)는
         // 잔차로 남는다: total − (context + model + constraint). 숨기지 않고 남기는 편이 낫다.
-        return new HomePageView(String.valueOf(userId), Instant.now().toString(),
+        // 노출 기록 — **응답과 같은 값**을 남긴다(다른 곳에서 재구성하지 않는다).
+        // 기록이 실패해도 홈은 나간다(기록은 관측이고 홈은 제품이다).
+        HomePageView page = new HomePageView(String.valueOf(userId), Instant.now().toString(),
                 assembly.source(), recommended.fallbackReason(), null,
                 new HomePageView.Latency(contextMs, recommended.modelMs(), recommended.checkMs(), totalMs),
                 assembly.rows(), assembly.stats());
+        impressions.record(page);
+        return page;
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.home;
 
+import com.beomsu.becommerce.home.internal.ImpressionRecorder;
 import com.beomsu.becommerce.order.ProductCatalogFacts;
 import com.beomsu.becommerce.personalization.RecentActivityFacts;
 import com.beomsu.becommerce.recommendation.RecommendationFacts;
@@ -11,6 +12,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -27,18 +29,21 @@ class HomeComposerTest {
     private RecommendationFacts recommendations;
     private ProductCatalogFacts catalog;
     private RecentActivityFacts recentActivity;
+    private ImpressionRecorder impressions;
 
     @BeforeEach
     void setUp() {
         recommendations = mock(RecommendationFacts.class);
         catalog = mock(ProductCatalogFacts.class);
         recentActivity = mock(RecentActivityFacts.class);
+        impressions = mock(ImpressionRecorder.class);
         when(recentActivity.recentItemIds(USER, 8)).thenReturn(List.of());
         when(recommendations.popularItemIds()).thenReturn(List.of());
     }
 
     private HomeComposer composer(HomeComposer.Rules rules, int maxPerCategory, int minItems) {
-        return new HomeComposer(recommendations, catalog, recentActivity, rules, 8, 5, 8, minItems, maxPerCategory);
+        return new HomeComposer(recommendations, catalog, recentActivity, impressions, rules, 8, 5, 8,
+                minItems, maxPerCategory);
     }
 
     private static ProductCatalogFacts.ProductCardFacts card(long id, String category, boolean inStock) {
@@ -48,6 +53,18 @@ class HomeComposerTest {
     private void modelReturns(List<Long> ids) {
         when(recommendations.recommend(USER))
                 .thenReturn(new RecommendationFacts.Recommended(ids, "MODEL", null, 50, 4, "RANKING"));
+    }
+
+    @Test
+    @DisplayName("조립한 화면을 노출 기록에 넘긴다 — 응답과 같은 값을 남겨야 복원할 수 있다")
+    void recordsTheImpression() {
+        modelReturns(List.of(1L, 2L, 3L));
+        when(catalog.findAll(List.of(1L, 2L, 3L))).thenReturn(List.of(card(1, "fashion", true), card(2, "digital", true), card(3, "living", true)));
+
+        HomePageView page = composer(HomeComposer.Rules.FULL, 3, 1).compose(USER);
+
+        // 다른 곳에서 재구성하지 않고 **응답 자체**를 넘긴다 — 둘이 갈라지면 기록이 거짓이 된다.
+        verify(impressions).record(page);
     }
 
     @Test
