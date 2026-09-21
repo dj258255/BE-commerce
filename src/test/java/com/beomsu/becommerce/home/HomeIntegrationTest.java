@@ -12,6 +12,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
@@ -68,11 +69,37 @@ class HomeIntegrationTest {
     @Autowired
     TestRestTemplate rest;
 
+    @Autowired
+    JdbcTemplate jdbc;
+
     @Test
     @DisplayName("비로그인은 401 — 홈은 그 사용자의 활동으로 조립된다")
     void anonymousIsRejected() {
         assertThat(rest.getForEntity("/api/v1/personalization/homepage", String.class)
                 .getStatusCode().value()).isEqualTo(401);
+    }
+
+    @Test
+    @DisplayName("홈 응답 하나가 노출 기록 한 행을 남긴다 — 응답이 아니라 DB를 본다")
+    void homeResponseIsRecorded() {
+        jdbc.update("delete from home_impressions");
+        String token = login();
+
+        rest.exchange("/api/v1/personalization/homepage", HttpMethod.GET,
+                new HttpEntity<>(null, bearer(token)), JsonNode.class);
+
+        // 응답만 맞고 저장이 안 되는 회귀는 이 저장소가 실제로 겪은 실패다 — 표를 직접 본다.
+        Map<String, Object> row = jdbc.queryForMap(
+                "select user_id, source, row_count, item_count, item_ids from home_impressions order by id desc limit 1");
+        assertThat(row.get("user_id")).isEqualTo(1L);
+        assertThat(row.get("source")).isIn("MODEL", "FALLBACK");
+        // 행·항목 수가 실제 노출과 같아야 한다(둘이 갈라지면 기록이 거짓이 된다).
+        assertThat(((Number) row.get("item_count")).intValue())
+                .isEqualTo(countItems(row.get("item_ids").toString()));
+    }
+
+    private static int countItems(String itemIds) {
+        return itemIds == null || itemIds.isBlank() ? 0 : itemIds.split(",").length;
     }
 
     @Test
