@@ -1,9 +1,6 @@
 package com.beomsu.becommerce.personalization.internal;
 
-import com.beomsu.becommerce.personalization.UserActivityEvent;
-
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -14,6 +11,10 @@ import java.util.List;
  *
  * <p>{@code updatedAt}은 <b>적용한 시각</b>(서버 시계)이다. 이벤트가 발생한 시각이 아니다 —
  * {@code stalenessMs}가 "이 컨텍스트를 언제 마지막으로 새로 알았는가"를 뜻해야 신선도를 잴 수 있다.
+ *
+ * <p><b>병합은 여기 없다.</b> 예전에는 {@code applied(...)}가 Java에서 목록을 합쳤는데, 그러면
+ * 읽기와 쓰기 사이에 다른 스레드가 끼어들어 항목을 잃었다(E2가 관측). 지금은 {@code ContextStore}가
+ * Lua 안에서 병합한다 — 이 record는 값의 모양만 정의한다.
  */
 public record OnlineContext(long seq, Instant updatedAt, List<Item> items) {
 
@@ -23,15 +24,6 @@ public record OnlineContext(long seq, Instant updatedAt, List<Item> items) {
 
     public static OnlineContext empty() {
         return new OnlineContext(0L, null, List.of());
-    }
-
-    /** 이 이벤트를 반영한 새 컨텍스트. 최근 것부터 앞에 쌓고 {@code maxItems}로 자른다. */
-    public OnlineContext applied(UserActivityEvent event, int maxItems) {
-        List<Item> merged = new ArrayList<>(items.size() + 1);
-        merged.add(new Item(event.itemId(), event.activityType(), event.occurredAt()));
-        merged.addAll(items);
-        int keep = Math.min(merged.size(), Math.max(maxItems, 1));
-        return new OnlineContext(event.seq(), Instant.now(), List.copyOf(merged.subList(0, keep)));
     }
 
     /** 기대 순번까지 도달했는가 — 최신 반영률의 원천. */

@@ -1,0 +1,9 @@
+  user 2012: 40건 (긴 사용자=False)
+  user 2013: 40건 (긴 사용자=False)
+  user 2014: 40건 (긴 사용자=False)
+  user 2015: 40건 (긴 사용자=False)
+  user 2016: 40건 (긴 사용자=False)
+  user 2017: 40건 (긴 사용자=False)
+
+주입 완료 — 사용자 6명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260921-e2b-원자화-재측정/raw/order-kafka/manifest.json

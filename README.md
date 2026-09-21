@@ -208,7 +208,7 @@ docker compose --profile monitoring up -d prometheus grafana
 
 ## 일정과 작업 방식
 
-첫 커밋은 2025년 10월 1일(`Phase 0: Spring Modulith 뼈대`)입니다. **2026년 9월 21일 기준** 저장소 전체 커밋은 415개이고 가장 최근 커밋도 같은 날입니다. 아래 표의 수치도 같은 시점에 센 값입니다(릴리스마다 다시 셉니다).
+첫 커밋은 2025년 10월 1일(`Phase 0: Spring Modulith 뼈대`)입니다. **2026년 9월 21일 기준** 저장소 전체 커밋은 416개이고 가장 최근 커밋도 같은 날입니다. 아래 표의 수치도 같은 시점에 센 값입니다(릴리스마다 다시 셉니다).
 
 | 기간 | 한 일 | 산출물 |
 |---|---|---|
@@ -219,7 +219,7 @@ docker compose --profile monitoring up -d prometheus grafana
 | 2026.08 | AI 운영 자동화 실험(루브릭 설계, 블라인드 비교, 모델 비교) | rule-first 판단 기준 |
 | 2026.09 | GitHub 이슈와 PR로 작업 단위 전환, 이 달만 커밋 213개 | 이슈 60건, PR 117건 |
 
-설계 결정은 커밋 로그에 흩어지지 않게 ADR(Architecture Decision Record) 34편으로 따로 남겼습니다. `docs/adr/`에 있으며 트레이드오프가 있는 결정마다 배경과 대안, 대가를 한 편씩 적었습니다. 9월부터는 GitHub 이슈와 PR로 작업 단위가 뚜렷하게 남습니다. 이슈 60건과 PR 117건이 있고 두 번호는 같은 시퀀스를 공유해 최대 번호가 176까지 갑니다.
+설계 결정은 커밋 로그에 흩어지지 않게 ADR(Architecture Decision Record) 34편으로 따로 남겼습니다. `docs/adr/`에 있으며 트레이드오프가 있는 결정마다 배경과 대안, 대가를 한 편씩 적었습니다. 9월부터는 GitHub 이슈와 PR로 작업 단위가 뚜렷하게 남습니다. 이슈 61건과 PR 118건이 있고 두 번호는 같은 시퀀스를 공유해 최대 번호가 178까지 갑니다.
 
 프로젝트를 만든 배경과 트레이드오프 판단은 [블로그 소개 글](https://dj258255.github.io/IT-Oasis/blog/project/pay/pay-0-overview/)에 더 자세히 적었습니다.
 
