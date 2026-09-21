@@ -23,12 +23,27 @@
 
 ### 변경
 
-- **기본 전달 방식이 `KAFKA` → `IN_PROCESS`로 바뀌었다.** E1이 사전 등록한 규칙("브로커가 더하는
-  p95가 50ms 미만이고 다중 인스턴스에서도 차이가 없으면")이 발동했다 — 실측 +13ms, 인스턴스 2대에서
-  세 방식 모두 성립. **브로커가 불필요하다는 뜻은 아니다**(프로세스 밖 소비자·리플레이는 재지 않았다).
-  근거와 못 잰 것은 [ADR-034](docs/adr/ADR-034-personalization-context-deployment-unit.md)
-- 개인화 화면의 **목 요약을 실측으로 교체**하고, 측정하지 않은 실험 여섯을 `측정 전`으로 되돌렸다
-  (`personalization/web/fixtures/exp-freshness.json`·`experiments.json`) — 완료처럼 보이게 두지 않는다
+- **기본 전달 방식이 `KAFKA`로 되돌아왔다.** E1이 (지연·쓰기 비용·다중 인스턴스만 보고) `IN_PROCESS`를
+  골랐는데, **E2가 순서 보존을 재서 뒤집었다** — `IN_PROCESS`는 `@Async` 풀이라 같은 사용자의 이벤트가
+  겹쳐 항목을 잃는다(33.3% vs `KAFKA` 100%). 정확성이 편의보다 앞선다.
+  고치는 길(원자적 저장소)은 [#176](https://github.com/dj258255/BE-commerce/issues/176)
+- 개인화 화면의 **목 요약을 실측으로 교체**하고, 측정하지 않은 실험 다섯을 `측정 전`으로 되돌렸다
+  (`personalization/web/fixtures/exp-freshness.json`·`exp-consistency.json`·`experiments.json`)
+
+## Unreleased — M2: E2 online/offline 일치율
+
+### 추가
+
+- **E2 실험 리포트** — `personalization/docs/runs/20260921-e2-online-offline-일치율/`(8절 형식 + 원자료).
+  하네스: `tools/inject-activities.py`(통제된 주입) · `tools/compare-contexts.py`(offline 재계산 +
+  원인 분류) · `tools/run-consistency-experiment.sh` · `tools/consistency_report.py`
+
+### 검증된 것
+
+- 기준 조건 **일치율 100%** — 파이프라인 자체는 로그를 충실히 반영한다
+- 순서를 뒤집으면 **0%**(낮은 seq를 영구히 버린다), TTL이 짧으면 **0%**(로그는 안전),
+  로그가 `max-items`를 넘으면 **목록 100%·창 집계 60%**
+- **중복은 두 층이 막았다** — 입력 중복은 409, Kafka 오프셋을 되감아 **재배달**시켜도 컨텍스트 불변
 
 ## Unreleased — 위시리스트(찜)
 

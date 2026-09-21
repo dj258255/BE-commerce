@@ -24,6 +24,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -69,6 +70,9 @@ class PersonalizationIntegrationTest {
 
     @Autowired
     TestRestTemplate rest;
+
+    /** 같은 사용자로 여러 번 로그인하지 않는다 — IP 기준 초당 한도(5/s)에 걸린다. */
+    private static final Map<String, String> TOKENS = new ConcurrentHashMap<>();
 
     @Autowired
     JdbcTemplate jdbc;
@@ -178,11 +182,26 @@ class PersonalizationIntegrationTest {
         return res.getBody();
     }
 
+    /**
+     * 토큰은 **클래스당 사용자마다 한 번만** 받는다.
+     *
+     * <p>테스트마다 로그인하면 같은 IP로 1초에 6~7건이 나가는데, {@code RateLimitFilter}가
+     * 미인증 진입점(로그인·회원가입)을 <b>IP + 경로 기준 초당 5건</b>으로 막는다
+     * ({@code app.ratelimit.per-user-per-sec}). 그러면 로그인이 429로 거절되어 테스트가
+     * "로그인 실패"로 죽는다 — CI에서 실제로 그렇게 죽었다(#177).
+     */
+    private String authToken(String username) {
+        return TOKENS.computeIfAbsent(username, this::login);
+    }
+
     private String login(String username) {
         ResponseEntity<JsonNode> res = rest.postForEntity("/api/v1/auth/login",
                 new HttpEntity<>(Map.of("username", username, "password", "user-local-only"), json()),
                 JsonNode.class);
-        assertThat(res.getStatusCode().is2xxSuccessful()).describedAs("로그인 실패").isTrue();
+        assertThat(res.getStatusCode().is2xxSuccessful())
+                .describedAs("로그인 실패 — status=%s body=%s (IP 기준 초당 한도에 걸렸을 수 있다)",
+                        res.getStatusCode(), res.getBody())
+                .isTrue();
         return res.getBody().get("token").asText();
     }
 

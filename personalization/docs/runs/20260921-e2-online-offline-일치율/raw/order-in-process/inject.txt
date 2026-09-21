@@ -1,0 +1,9 @@
+  user 1974: 40건 (긴 사용자=False)
+  user 1975: 40건 (긴 사용자=False)
+  user 1976: 40건 (긴 사용자=False)
+  user 1977: 40건 (긴 사용자=False)
+  user 1978: 40건 (긴 사용자=False)
+  user 1979: 40건 (긴 사용자=False)
+
+주입 완료 — 사용자 6명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260921-e2-online-offline-일치율/raw/order-in-process/manifest.json

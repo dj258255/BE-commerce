@@ -1,43 +1,72 @@
 {
   "_mock": true,
   "_source": "실험 목록은 이슈/마일스톤에서 온다. 측정이 끝난 실험의 status와 summary가 실제 값으로 채워진다.",
-  "_note": "E1(신선도 vs 지연)만 측정이 끝났다 — 그 행은 status=done 이고 summary 가 실측이다. 나머지 여섯은 아직 측정 전이므로 status=todo 로 두고 summary 를 비운다. **측정하지 않은 실험을 완료로 보이게 두지 않는다**(personalization/docs/02-experiments.md 와 같은 규칙).",
+  "_note": "E1(신선도 vs 지연)과 E2(online/offline 일치율)만 측정이 끝났다 — 그 두 행은 status=done 이고 summary 가 실측이다. 나머지 다섯은 아직 측정 전이므로 status=todo 로 두고 summary 를 비운다. **측정하지 않은 실험을 완료로 보이게 두지 않는다**(personalization/docs/02-experiments.md 와 같은 규칙).",
   "experiments": [
     {
-      "id": "freshness", "title": "신선도 vs 지연", "milestone": "M2", "issue": 124,
+      "id": "freshness",
+      "title": "신선도 vs 지연",
+      "milestone": "M2",
+      "issue": 124,
       "question": "최신 이벤트를 모델에 넣으려면 얼마나 기다려야 하고, 그 대가는 무엇인가",
-      "status": "done", "href": "exp-freshness.html",
+      "status": "done",
+      "href": "exp-freshness.html",
       "summary": "무릎은 50ms — 반영률 7.3→100%, e2e p95 40ms. 브로커가 더한 지연 +13ms"
     },
     {
-      "id": "consistency", "title": "online/offline 컨텍스트 일치율", "milestone": "M2", "issue": 125,
+      "id": "consistency",
+      "title": "online/offline 컨텍스트 일치율",
+      "milestone": "M2",
+      "issue": 125,
       "question": "같은 로그로 만든 학습 피처와 서빙 피처가 어디서 갈라지는가",
-      "status": "todo", "href": "exp-consistency.html"
+      "status": "done",
+      "href": "exp-consistency.html",
+      "summary": "기준 100%, 망가뜨리면 0~100%. 최대 원인은 순서 역전·동시 적용(항목 유실)"
     },
     {
-      "id": "overload", "title": "과부하와 degradation", "milestone": "M3", "issue": 126,
+      "id": "overload",
+      "title": "과부하와 degradation",
+      "milestone": "M3",
+      "issue": 126,
       "question": "모델이 포화됐을 때 SLO를 지키려면 모델 사용을 얼마나 포기해야 하는가",
-      "status": "todo", "href": "exp-overload.html"
+      "status": "todo",
+      "href": "exp-overload.html"
     },
     {
-      "id": "constraints", "title": "제약과 재검증 비용", "milestone": "M4", "issue": 127,
+      "id": "constraints",
+      "title": "제약과 재검증 비용",
+      "milestone": "M4",
+      "issue": 127,
       "question": "모델 출력을 사실로 쓰지 않으려면 응답 직전에 얼마를 더 지불해야 하는가",
-      "status": "todo", "href": "exp-constraints.html"
+      "status": "todo",
+      "href": "exp-constraints.html"
     },
     {
-      "id": "budget", "title": "생성 범위와 계산 예산", "milestone": "M5", "issue": 128,
+      "id": "budget",
+      "title": "생성 범위와 계산 예산",
+      "milestone": "M5",
+      "issue": 128,
       "question": "생성 범위를 늘리면 전체 latency budget에서 모델 몫이 얼마가 되는가",
-      "status": "todo", "href": "exp-budget.html"
+      "status": "todo",
+      "href": "exp-budget.html"
     },
     {
-      "id": "cache", "title": "캐시 압축 임계값", "milestone": "M6", "issue": 129,
+      "id": "cache",
+      "title": "캐시 압축 임계값",
+      "milestone": "M6",
+      "issue": 129,
       "question": "값이 몇 KB를 넘을 때부터 압축이 이득인가",
-      "status": "todo", "href": "exp-cache.html"
+      "status": "todo",
+      "href": "exp-cache.html"
     },
     {
-      "id": "trace", "title": "요청 1건 추적", "milestone": "M8", "issue": 140,
+      "id": "trace",
+      "title": "요청 1건 추적",
+      "milestone": "M8",
+      "issue": 140,
       "question": "요청 하나가 어느 구간에서 얼마를 썼고 무엇이 stale이었는가",
-      "status": "todo", "href": "exp-trace.html"
+      "status": "todo",
+      "href": "exp-trace.html"
     }
   ]
 }

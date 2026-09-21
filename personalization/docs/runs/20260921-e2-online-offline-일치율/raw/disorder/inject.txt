@@ -1,0 +1,23 @@
+  user 1874: 12건 (긴 사용자=False)
+  user 1875: 12건 (긴 사용자=False)
+  user 1876: 12건 (긴 사용자=False)
+  user 1877: 12건 (긴 사용자=False)
+  user 1878: 12건 (긴 사용자=False)
+  user 1879: 12건 (긴 사용자=False)
+  user 1880: 12건 (긴 사용자=False)
+  user 1881: 12건 (긴 사용자=False)
+  user 1882: 12건 (긴 사용자=False)
+  user 1883: 12건 (긴 사용자=False)
+  user 1884: 12건 (긴 사용자=False)
+  user 1885: 12건 (긴 사용자=False)
+  user 1886: 12건 (긴 사용자=False)
+  user 1887: 12건 (긴 사용자=False)
+  user 1888: 12건 (긴 사용자=False)
+  user 1889: 12건 (긴 사용자=False)
+  user 1890: 12건 (긴 사용자=False)
+  user 1891: 12건 (긴 사용자=False)
+  user 1892: 12건 (긴 사용자=False)
+  user 1893: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260921-e2-online-offline-일치율/raw/disorder/manifest.json

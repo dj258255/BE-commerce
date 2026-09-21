@@ -1,0 +1,171 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.2)
+
+2026-09-21T06:34:02.307+09:00  INFO 31511 --- [be-commerce] [           main] c.b.becommerce.BeCommerceApplication     : Starting BeCommerceApplication v0.0.1-SNAPSHOT using Java 21.0.9 with PID 31511 (/Users/beomsu/Desktop/pay/build/libs/be-commerce-0.0.1-SNAPSHOT.jar started by beomsu in /Users/beomsu/Desktop/pay)
+2026-09-21T06:34:02.309+09:00  INFO 31511 --- [be-commerce] [           main] c.b.becommerce.BeCommerceApplication     : The following 1 profile is active: "kafka"
+2026-09-21T06:34:03.003+09:00  INFO 31511 --- [be-commerce] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-09-21T06:34:03.004+09:00  INFO 31511 --- [be-commerce] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-09-21T06:34:03.150+09:00  INFO 31511 --- [be-commerce] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 140 ms. Found 42 JPA repository interfaces.
+2026-09-21T06:34:03.707+09:00  INFO 31511 --- [be-commerce] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 18080 (http)
+2026-09-21T06:34:03.853+09:00  INFO 31511 --- [be-commerce] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-09-21T06:34:03.853+09:00  INFO 31511 --- [be-commerce] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.34]
+2026-09-21T06:34:03.893+09:00  INFO 31511 --- [be-commerce] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-09-21T06:34:03.894+09:00  INFO 31511 --- [be-commerce] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1558 ms
+2026-09-21T06:34:04.138+09:00  INFO 31511 --- [be-commerce] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-21T06:34:04.342+09:00  INFO 31511 --- [be-commerce] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@4280b20b
+2026-09-21T06:34:04.343+09:00  INFO 31511 --- [be-commerce] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-09-21T06:34:04.372+09:00  INFO 31511 --- [be-commerce] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:3306/becommerce?serverTimezone=UTC&characterEncoding=UTF-8 (MySQL 8.4)
+2026-09-21T06:34:04.841+09:00  WARN 31511 --- [be-commerce] [           main] o.f.c.internal.database.base.Database    : Flyway upgrade recommended: MySQL 8.4 is newer than this version of Flyway and support has not been tested. The latest supported version of MySQL is 8.1.
+2026-09-21T06:34:04.882+09:00  INFO 31511 --- [be-commerce] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 59 migrations (execution time 00:00.033s)
+2026-09-21T06:34:04.896+09:00  INFO 31511 --- [be-commerce] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `becommerce`: 59
+2026-09-21T06:34:04.898+09:00  INFO 31511 --- [be-commerce] [           main] o.f.core.internal.command.DbMigrate      : Schema `becommerce` is up to date. No migration necessary.
+2026-09-21T06:34:04.959+09:00  INFO 31511 --- [be-commerce] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-09-21T06:34:05.004+09:00  INFO 31511 --- [be-commerce] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.5.Final
+2026-09-21T06:34:05.025+09:00  INFO 31511 --- [be-commerce] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-09-21T06:34:05.208+09:00  INFO 31511 --- [be-commerce] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-09-21T06:34:05.257+09:00  INFO 31511 --- [be-commerce] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 8.4.11
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-09-21T06:34:06.137+09:00  INFO 31511 --- [be-commerce] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-09-21T06:34:06.174+09:00  INFO 31511 --- [be-commerce] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-09-21T06:34:06.411+09:00  INFO 31511 --- [be-commerce] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-09-21T06:34:07.411+09:00  INFO 31511 --- [be-commerce] [           main] c.b.b.auth.HashConcurrencyLimiter        : 비밀번호 해싱 동시 실행 상한 8건 (해시당 약 19.84MB)
+2026-09-21T06:34:07.642+09:00  INFO 31511 --- [be-commerce] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name userDetailsService
+2026-09-21T06:34:08.364+09:00  INFO 31511 --- [be-commerce] [           main] c.b.b.payment.web.TossWebhookController  : 토스 웹훅 발신 IP 검사 off — payment.webhook.toss-allowed-ips 미설정
+2026-09-21T06:34:08.576+09:00  INFO 31511 --- [be-commerce] [           main] o.s.b.a.w.s.WelcomePageHandlerMapping    : Adding welcome page: class path resource [static/index.html]
+2026-09-21T06:34:08.725+09:00  INFO 31511 --- [be-commerce] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 4 endpoints beneath base path '/actuator'
+2026-09-21T06:34:09.119+09:00  INFO 31511 --- [be-commerce] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 18080 (http) with context path '/'
+2026-09-21T06:34:09.132+09:00  INFO 31511 --- [be-commerce] [           main] o.s.s.config.TaskSchedulerRouter         : No TaskScheduler/ScheduledExecutorService bean found for scheduled processing
+2026-09-21T06:34:09.134+09:00  INFO 31511 --- [be-commerce] [           main] c.b.becommerce.BeCommerceApplication     : Started BeCommerceApplication in 7.142 seconds (process running for 7.498)
+2026-09-21T06:34:09.139+09:00  INFO 31511 --- [be-commerce] [           main] c.b.b.a.i.PasswordHashingCapacityCheck   : 비밀번호 해싱 메모리 여유 확인 (최악 1984MB / 힙 8192MB)
+2026-09-21T06:34:09.181+09:00  INFO 31511 --- [be-commerce] [           main] c.b.b.f.internal.FraudBlacklistReloader  : FDS 블랙리스트 재적재 count=0
+2026-09-21T06:34:09.861+09:00  INFO 31511 --- [be-commerce] [io-18080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-09-21T06:34:09.861+09:00  INFO 31511 --- [be-commerce] [io-18080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-09-21T06:34:09.862+09:00  INFO 31511 --- [be-commerce] [io-18080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-09-21T06:34:15.537+09:00  INFO 31511 --- [be-commerce] [         task-4] o.a.k.clients.producer.ProducerConfig    : ProducerConfig values: 
+	acks = -1
+	auto.include.jmx.reporter = true
+	batch.size = 16384
+	bootstrap.servers = [localhost:9092]
+	buffer.memory = 33554432
+	client.dns.lookup = use_all_dns_ips
+	client.id = be-commerce-producer-1
+	compression.gzip.level = -1
+	compression.lz4.level = 9
+	compression.type = none
+	compression.zstd.level = 3
+	connections.max.idle.ms = 540000
+	delivery.timeout.ms = 120000
+	enable.idempotence = true
+	enable.metrics.push = true
+	interceptor.classes = []
+	key.serializer = class org.apache.kafka.common.serialization.StringSerializer
+	linger.ms = 0
+	max.block.ms = 60000
+	max.in.flight.requests.per.connection = 5
+	max.request.size = 1048576
+	metadata.max.age.ms = 300000
+	metadata.max.idle.ms = 300000
+	metadata.recovery.strategy = none
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partitioner.adaptive.partitioning.enable = true
+	partitioner.availability.timeout.ms = 0
+	partitioner.class = null
+	partitioner.ignore.keys = false
+	receive.buffer.bytes = 32768
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retries = 2147483647
+	retry.backoff.max.ms = 1000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	transaction.timeout.ms = 60000
+	transactional.id = null
+	value.serializer = class org.apache.kafka.common.serialization.ByteArraySerializer
+
+2026-09-21T06:34:15.564+09:00  INFO 31511 --- [be-commerce] [         task-4] o.a.k.c.t.i.KafkaMetricsCollector        : initializing Kafka metrics collector
+2026-09-21T06:34:15.575+09:00  INFO 31511 --- [be-commerce] [         task-4] o.a.k.clients.producer.KafkaProducer     : [Producer clientId=be-commerce-producer-1] Instantiated an idempotent producer.
+2026-09-21T06:34:15.600+09:00  INFO 31511 --- [be-commerce] [         task-4] o.a.kafka.common.utils.AppInfoParser     : Kafka version: 3.8.1
+2026-09-21T06:34:15.600+09:00  INFO 31511 --- [be-commerce] [         task-4] o.a.kafka.common.utils.AppInfoParser     : Kafka commitId: 70d6ff42debf7e17
+2026-09-21T06:34:15.600+09:00  INFO 31511 --- [be-commerce] [         task-4] o.a.kafka.common.utils.AppInfoParser     : Kafka startTimeMs: 1789940055599
+2026-09-21T06:34:15.790+09:00  INFO 31511 --- [be-commerce] [erce-producer-1] org.apache.kafka.clients.Metadata        : [Producer clientId=be-commerce-producer-1] Cluster ID: 5L6g3nShT-eMCtK--X86sw
+2026-09-21T06:34:15.791+09:00  INFO 31511 --- [be-commerce] [erce-producer-1] o.a.k.c.p.internals.TransactionManager   : [Producer clientId=be-commerce-producer-1] ProducerId set to 52 with epoch 0
+2026-09-21T06:34:28.114+09:00  INFO 31511 --- [be-commerce] [ionShutdownHook] o.s.b.w.e.tomcat.GracefulShutdown        : Commencing graceful shutdown. Waiting for active requests to complete
+2026-09-21T06:34:28.116+09:00  INFO 31511 --- [be-commerce] [tomcat-shutdown] o.s.b.w.e.tomcat.GracefulShutdown        : Graceful shutdown complete
+2026-09-21T06:34:28.123+09:00  INFO 31511 --- [be-commerce] [ionShutdownHook] o.a.k.clients.producer.KafkaProducer     : [Producer clientId=be-commerce-producer-1] Closing the Kafka producer with timeoutMillis = 30000 ms.
+2026-09-21T06:34:28.127+09:00  INFO 31511 --- [be-commerce] [ionShutdownHook] o.apache.kafka.common.metrics.Metrics    : Metrics scheduler closed
+2026-09-21T06:34:28.127+09:00  INFO 31511 --- [be-commerce] [ionShutdownHook] o.apache.kafka.common.metrics.Metrics    : Closing reporter org.apache.kafka.common.metrics.JmxReporter
+2026-09-21T06:34:28.127+09:00  INFO 31511 --- [be-commerce] [ionShutdownHook] o.apache.kafka.common.metrics.Metrics    : Closing reporter org.apache.kafka.common.telemetry.internals.ClientTelemetryReporter
+2026-09-21T06:34:28.127+09:00  INFO 31511 --- [be-commerce] [ionShutdownHook] o.apache.kafka.common.metrics.Metrics    : Metrics reporters closed
+2026-09-21T06:34:28.127+09:00  INFO 31511 --- [be-commerce] [ionShutdownHook] o.a.kafka.common.utils.AppInfoParser     : App info kafka.producer for be-commerce-producer-1 unregistered
+2026-09-21T06:34:28.132+09:00  INFO 31511 --- [be-commerce] [ionShutdownHook] .s.m.e.c.DefaultEventPublicationRegistry : No publications outstanding!
+2026-09-21T06:34:28.143+09:00  INFO 31511 --- [be-commerce] [ionShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-09-21T06:34:28.144+09:00  INFO 31511 --- [be-commerce] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-09-21T06:34:28.156+09:00  INFO 31511 --- [be-commerce] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.

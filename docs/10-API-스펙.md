@@ -572,14 +572,16 @@ sequenceDiagram
 - 컨텍스트가 얼마나 낡았는지는 `stalenessMs`(마지막 적용 이후 흐른 시간)로 드러난다
 - 컨텍스트는 Redis `ctx:{userId}`에 있고 **TTL(기본 7일)로 만료된다** — 만료되면 `EMPTY`로 돌아간다
 
-**전달 방식**(`app.personalization.transport`)이 셋이다: `IN_PROCESS`(커밋 후 리스너, **기본값**) ·
-`KAFKA`(Outbox → 브로커 → 인앱 컨슈머) · `IN_REQUEST`(같은 트랜잭션). 적용 로직은 하나를 공유하고
-**누가 언제 적용하는지만** 다르다 — 그 셋을 비교한 것이 M2·E1 실험이고, 판단은
+**전달 방식**(`app.personalization.transport`)이 셋이다: `KAFKA`(**기본값**) ·
+`IN_PROCESS`(커밋 후 리스너) · `IN_REQUEST`(같은 트랜잭션). 적용 로직은 하나를 공유하고
+**누가 언제 적용하는지만** 다르다 — 그 셋을 비교한 것이 M2·E1·E2 실험이고, 판단은
 [ADR-034](adr/ADR-034-personalization-context-deployment-unit.md)에 있다.
 
-> **`KAFKA`를 고르면 `kafka` 프로파일이 필요하다.** 브로커가 없으면 발행도 소비도 없어
-> **컨텍스트가 갱신되지 않는다**(읽기는 `EMPTY`로 폴백한다). 기본값이 `IN_PROCESS`인 이유의
-> 절반이 이것이다 — 브로커 없이도 `docker compose up -d mysql redis` 하나로 동작한다.
+> **`KAFKA`는 `kafka` 프로파일이 필요하다.** 브로커가 없으면 발행도 소비도 없어 **컨텍스트가
+> 갱신되지 않는다**(읽기는 `EMPTY`로 폴백한다). 그런데도 기본값이 `KAFKA`인 이유는 **정확성**이다 —
+> `userId` 파티션 키가 사용자별 직렬성을 보장한다. `IN_PROCESS`는 그 보장이 없어 동시 적용에서
+> 항목을 잃는다(E2가 관측: 33.3% vs 100%). 자세한 것은
+> [E2 리포트](personalization/docs/runs/20260921-e2-online-offline-일치율/report.md).
 
 | HTTP | code | 상황 |
 |---|---|---|

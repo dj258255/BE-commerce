@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
@@ -43,6 +44,10 @@ import static org.awaitility.Awaitility.await;
 @Tag("integration")
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+// 이 클래스는 app.webhook.pending-retry.enabled=true 로 스케줄러를 켠다.
+// 컨텍스트가 캐시된 채 남으면 컨테이너가 내려간 뒤에도 5초마다 죽은 DB 를 두드려
+// Hikari 풀 타임아웃을 쏟아낸다(CI 에서 실제로 그렇게 됐다 — #177). 클래스가 끝나면 닫는다.
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @DisplayName("순서 역전 — 웹훅이 결제 행보다 먼저 와도 유실되지 않는다")
 class WebhookArrivesFirstIntegrationTest {
 

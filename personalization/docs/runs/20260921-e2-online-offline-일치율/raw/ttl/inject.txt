@@ -1,0 +1,23 @@
+  user 1934: 12건 (긴 사용자=False)
+  user 1935: 12건 (긴 사용자=False)
+  user 1936: 12건 (긴 사용자=False)
+  user 1937: 12건 (긴 사용자=False)
+  user 1938: 12건 (긴 사용자=False)
+  user 1939: 12건 (긴 사용자=False)
+  user 1940: 12건 (긴 사용자=False)
+  user 1941: 12건 (긴 사용자=False)
+  user 1942: 12건 (긴 사용자=False)
+  user 1943: 12건 (긴 사용자=False)
+  user 1944: 12건 (긴 사용자=False)
+  user 1945: 12건 (긴 사용자=False)
+  user 1946: 12건 (긴 사용자=False)
+  user 1947: 12건 (긴 사용자=False)
+  user 1948: 12건 (긴 사용자=False)
+  user 1949: 12건 (긴 사용자=False)
+  user 1950: 12건 (긴 사용자=False)
+  user 1951: 12건 (긴 사용자=False)
+  user 1952: 12건 (긴 사용자=False)
+  user 1953: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260921-e2-online-offline-일치율/raw/ttl/manifest.json

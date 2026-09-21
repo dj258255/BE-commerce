@@ -1,0 +1,23 @@
+  user 1954: 12건 (긴 사용자=False)
+  user 1955: 12건 (긴 사용자=False)
+  user 1956: 12건 (긴 사용자=False)
+  user 1957: 12건 (긴 사용자=False)
+  user 1958: 12건 (긴 사용자=False)
+  user 1959: 12건 (긴 사용자=False)
+  user 1960: 12건 (긴 사용자=False)
+  user 1961: 12건 (긴 사용자=False)
+  user 1962: 12건 (긴 사용자=False)
+  user 1963: 12건 (긴 사용자=False)
+  user 1964: 12건 (긴 사용자=False)
+  user 1965: 12건 (긴 사용자=False)
+  user 1966: 12건 (긴 사용자=False)
+  user 1967: 12건 (긴 사용자=False)
+  user 1968: 12건 (긴 사용자=False)
+  user 1969: 12건 (긴 사용자=False)
+  user 1970: 12건 (긴 사용자=False)
+  user 1971: 12건 (긴 사용자=False)
+  user 1972: 12건 (긴 사용자=False)
+  user 1973: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 240건 · 그 외 80건
+매니페스트: personalization/docs/runs/20260921-e2-online-offline-일치율/raw/duplicate/manifest.json

@@ -38,7 +38,7 @@
     document.getElementById('kpis').innerHTML =
       PZ.kpi('일치율', PZ.pct(d.replay.matchPct), '컨텍스트 ' + PZ.num(d.replay.contexts) + '건 replay') +
       PZ.kpi('불일치', PZ.num(miss) + '건', '원인 5종으로 분해') +
-      PZ.kpi('최대 원인', 'late event', PZ.pct(d.causes[0].sharePct) + ' — consumer 지연') +
+      PZ.kpi('최대 원인', d.causes[0].label, PZ.pct(d.causes[0].sharePct) + ' — 불일치한 컨텍스트 대비') +
       PZ.kpi('측정 방법', '동일 로그', 'offline 재계산 대조', 'warn');
 
     PZ.bars(document.getElementById('causes'),

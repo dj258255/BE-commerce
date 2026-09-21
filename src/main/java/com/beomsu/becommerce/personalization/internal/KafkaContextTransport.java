@@ -30,7 +30,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Profile("kafka")
-@ConditionalOnProperty(name = "app.personalization.transport", havingValue = "KAFKA")
+@ConditionalOnProperty(name = "app.personalization.transport", havingValue = "KAFKA", matchIfMissing = true)
 class KafkaContextTransport {
 
     /** 토픽명은 {@link UserActivityEvent}의 {@code @Externalized}와 같은 문자열이어야 한다. */
