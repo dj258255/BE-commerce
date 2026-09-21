@@ -111,6 +111,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-042](adr/ADR-042-home-composer-boundary.md) | 홈 컴포저를 별도 경계로 둔다 — 페이지는 추천의 합이 아니다 |
 | [ADR-043](adr/ADR-043-home-impression-log.md) | 홈 노출은 요청당 한 행으로 남긴다 — 관측을 도메인 이벤트에 태우지 않는다 |
 | [ADR-044](adr/ADR-044-no-search-engine-yet.md) | 검색 엔진을 지금 도입하지 않는다 — 패싯 사전 집계를 먼저 한다 |
+| [ADR-045](adr/ADR-045-real-popularity-and-refill.md) | 인기 신호를 실제 통계로 바꾸고, 되채우기를 켠다 — 신호를 바꾸면 화면이 짧아진다 |
 
 ## 보조 문서
 

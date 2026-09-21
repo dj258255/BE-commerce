@@ -1,0 +1,8 @@
+rules=FULL
+popularity=STRIDE
+users=6
+activity_per_user=8
+row_cap=5
+item_cap=8
+min_items=3
+max_per_category=3

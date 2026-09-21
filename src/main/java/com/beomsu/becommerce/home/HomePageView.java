@@ -49,9 +49,17 @@ public record HomePageView(String userId,
      * 카드를 그리려면 그 값이 필요하다. 없으면 소비자가 <b>상품 API를 한 번 더 불러야 하고</b>,
      * 그러면 홈이 조립한 것과 화면이 그리는 것이 갈라진다. 조립이 이미 그 값을 손에 쥐고 있으므로
      * (카탈로그 카드) 여기서 함께 내보낸다.
+     *
+     * <p><b>{@code category} 를 함께 내는 이유</b>: 조립의 <b>다양성 상한이 이 값으로 판단한다</b>.
+     * 응답에 없으면 그 결정을 결과물만 보고 검증할 수 없다 — 항목이 빠진 이유가 상한인지 다른 것인지
+     * 화면·응답 어디에도 안 남는다(실제로 #198 의 재측정에서 그 값이 필요했다).
+     *
+     * <p><b>{@code rank} 를 함께 내는 이유</b>: 조립이 <b>후보 리스트의 몇 번째를 꺼내 썼는가</b>다
+     * (1부터). 되채우기가 칸을 더 깊은 후보로 사면 이 값이 내려간다 — 그래서 <b>되채우기의 대가를
+     * 결과물에서 잴 수 있다</b>(#198①). 응답에 없으면 "더 나쁜 후보를 썼다"를 아무도 검증할 수 없다.
      */
     public record Item(String itemId, String name, long price, String imageUrl, boolean inStock,
-                       Double score, String reason) {
+                       Double score, String reason, String category, int rank) {
     }
 
     /**

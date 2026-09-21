@@ -112,6 +112,35 @@ def main():
               f"{num(avg([p.get('latency', {}).get('inferenceMs') for p in group]))}ms | "
               f"{num(avg([p.get('latency', {}).get('constraintMs') for p in group]))}ms | "
               f"{num(avg(residuals))}ms |")
+    print()
+    print("**행별 구성** — 행마다 몇 개가 나갔고 어느 대분류에 몰렸는가(#198 재측정에서 필요해졌다)")
+    print()
+    print("| 규칙 | 행 | 항목 중앙 | **평균 표시 순위** | distinct 대분류 중앙 | 대분류 분포(예시) |")
+    print("|---|---|---:|---:|---:|---|")
+    by_strategy = {}
+    for rules, _meta, page in rows:
+        for row in page.get("rows", []):
+            key = (rules, row.get("strategy", "?"))
+            entry = by_strategy.setdefault(key, {"mix": {}, "counts": [], "distinct": [], "ranks": []})
+            mix = {}
+            for item in row.get("items", []):
+                category = item.get("category") or "(없음)"
+                mix[category] = mix.get(category, 0) + 1
+            # **평균 표시 순위** — 후보 리스트의 몇 번째를 꺼내 썼는가(1부터). 되채우기의 대가다:
+            # 화면이 길어지는 만큼 이 값이 내려가면 "더 나쁜 후보를 사서 채웠다"는 뜻이다(#198①).
+            ranks = [item.get("rank") for item in row.get("items", []) if item.get("rank")]
+            entry["counts"].append(len(row.get("items", [])))
+            entry["distinct"].append(len(mix))
+            if ranks:
+                entry["ranks"].append(sum(ranks) / len(ranks))
+            for category, n in mix.items():
+                entry["mix"][category] = entry["mix"].get(category, 0) + n
+    for key in sorted(by_strategy, key=lambda k: (RULES_ORDER.get(k[0], 9), k[1])):
+        entry = by_strategy[key]
+        mix_text = ", ".join(f"{c} {n}" for c, n in
+                             sorted(entry["mix"].items(), key=lambda x: -x[1])[:4]) or "-"
+        print(f"| `{key[0]}` | `{key[1]}` | **{num(avg(entry['counts']))}** | "
+              f"**{num(avg(entry['ranks']))}** | **{num(avg(entry['distinct']))}** | {mix_text} |")
     return 0
 
 
