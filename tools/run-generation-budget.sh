@@ -63,6 +63,7 @@ start_app() {
   cleanup
   wait_port_free
   APP_RATELIMIT_ENABLED=false \
+  APP_RECOMMENDATION_ITEM_POOL=EXPERIMENT \
   APP_RECOMMENDATION_POLICY="$POLICY" \
   APP_RECOMMENDATION_ADMISSION_BUDGET_MS="$ADMISSION_BUDGET_MS" \
   APP_RECOMMENDATION_CONSTRAINT_POLICY="$CONSTRAINT_POLICY" \
@@ -87,6 +88,7 @@ start_app() {
 
 echo "== E5 실측 시작"
 echo "== 모델: ${MODEL_CONCURRENCY}동시 · 기준 ${MODEL_LATENCY_MS}ms · AR 항목당 ${PER_ITEM_MS}ms · 결과 ${RESULT_SIZE}개"
+echo "== 후보 집합: EXPERIMENT(합성 풀) — 하네스가 명시한다"
 echo "== 범위: $SCOPES / 부하: $RATES req/s / 과부하 정책: $POLICY (고정) / 제약: $CONSTRAINT_POLICY (고정)"
 echo "== 출력: $OUT"
 

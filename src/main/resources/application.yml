@@ -504,6 +504,27 @@ app:
       group-id: ${APP_PERSONALIZATION_CONSUMER_GROUP:be-commerce-personalization-context}
       # E1에서 consumer 지연을 주입하는 축. 기본 0이라 평소에는 비용이 없다.
       delay-ms: ${APP_PERSONALIZATION_CONSUMER_DELAY_MS:0}
+  # 홈 컴포저(M7) — 여러 출처를 **한 화면으로 조립**한다. 추천 코어는 행 하나의 재료다.
+  #
+  # 왜 규칙이 필요한가: 관련도만으로 채우면 **같은 상품이 여러 행에 반복되고 한 대분류가 화면을
+  # 독점한다**. 그래서 조립은 관련도·다양성·정합성을 **충돌시키며** 정한다 — 셋을 동시에 만족할 수
+  # 없으므로 무엇을 우선할지 고른다. 각 수준이 무엇을 잃는지는 응답의 `stats` 가 밝힌다.
+  #   NONE  — 아무것도 안 한다(중복·품절 그대로). **기준선** — 규칙이 실제로 무엇을 하는지 보려면 필요하다
+  #   DEDUP — 중복 제거 + 품절 제외
+  #   FULL  — + 카테고리 다양성(기본). 한 대분류가 화면을 독점하지 않게 자른다
+  home:
+    rules: ${APP_HOME_RULES:FULL}
+    # 최근 활동에서 "최근 본 상품" 행에 쓸 개수.
+    context-limit: ${APP_HOME_CONTEXT_LIMIT:8}
+    # 행 상한 — 화면에 담는 행 수. 늘리면 노출은 늘지만 화면이 길어지고 조립 비용도 는다.
+    row-cap: ${APP_HOME_ROW_CAP:5}
+    # 행당 항목 상한.
+    item-cap: ${APP_HOME_ITEM_CAP:8}
+    # 이보다 적은 행은 버린다 — 한 칸짜리 행은 화면에서 "빈 행"으로 보인다.
+    min-items: ${APP_HOME_MIN_ITEMS:3}
+    # 한 행에서 같은 대분류를 몇 개까지 허용하는가(0이면 다양성 규칙 없음).
+    # **이 값이 관련도와 다양성의 교환비다** — 낮추면 상위 항목을 포기하고 카테고리가 흩어진다.
+    max-per-category: ${APP_HOME_MAX_PER_CATEGORY:3}
   # 추천 서빙 — 모델 호출과 **과부하 정책**(E3의 독립변수).
   recommendation:
     # UNBOUNDED | BOUNDED | ADMISSION
@@ -518,6 +539,13 @@ app:
     # 모델에 넣을 최근 활동 수.
     context-limit: ${APP_RECOMMENDATION_CONTEXT_LIMIT:20}
     result-size: ${APP_RECOMMENDATION_RESULT_SIZE:12}
+    # 추천이 **무엇을 추천할 수 있는가** — 후보 집합의 원천(M7).
+    #   CATALOG   — 실제 커머스 카탈로그(기본). 홈이 상품 카드를 그릴 수 있고, 제약 확인이 실제
+    #               재고를 읽는다. **이것이 "제품 연결"이다** — 추천 id 가 products 에 있어야 한다
+    #   EXPERIMENT— 실험용 합성 풀(1_000_xxx). **E4·E5 하네스가 명시적으로 켠다.**
+    #               변화 주입이 실제 재고를 건드리면 안 되기 때문이다(ADR-039의 격리).
+    #               격리는 이제 기본값이 아니라 **하네스의 선택**으로 지켜진다(ADR-042)
+    item-pool: ${APP_RECOMMENDATION_ITEM_POOL:CATALOG}
     model:
       # 실험용 스텁의 **모델 용량** — 동시 처리 수와 건당 지연으로 처리량이 고정된다.
       # 이 둘을 올리면 모델이 빨라지고, 내리면 같은 부하에서 더 먼저 무너진다(E3의 부하 축).

@@ -7,6 +7,31 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — 홈 컴포저 (#130 / M7)
+
+### 추가
+
+- **홈 컴포저 모듈**(`home`) — 여러 출처를 **한 화면으로 조립**한다. 추천 코어는 별도 경계로 두고
+  `RecommendationFacts` 계약으로만 소비한다(ADR-042). `GET /api/v1/personalization/homepage`
+- **조립 규칙 3수준**(`app.home.rules`) — `NONE`(기준선) · `DEDUP`(중복+품절) · **`FULL`(기본, +카테고리
+  다양성)**. 규칙을 동시에 만족시킬 수 없으므로 무엇을 우선할지 고르고, 각 수준이 무엇을 잃는지를
+  **응답의 `stats` 가 밝힌다**(중복·품절·**다양성 상한**·미매칭)
+- **추천 후보 집합의 원천**(`app.recommendation.item-pool`) — `CATALOG`(기본, 실제 상품) ·
+  `EXPERIMENT`(합성 풀). **E4·E5 하네스가 EXPERIMENT를 명시**해 격리를 지킨다(ADR-042)
+- `ProductCatalogFacts` 에 `categoryCode`·`allProductIds` — 홈이 상품 카드를 그리고 대분류를 보게
+  (ADR-018의 "필요한 쪽이 생기면 그때 더한다")
+- **M7 리포트** — `personalization/docs/runs/20260921-m7-홈-조립/`(8절 + 원자료).
+  하네스: `tools/run-home-composition.sh` · `tools/home_report.py`
+
+### 변경
+
+- **조립 규칙은 지연을 쓰지 않고 노출을 쓴다** — 규칙 수준과 무관하게 추론 53ms·제약 7ms·잔차 25ms다.
+  바뀌는 것은 **화면에 담기는 칸**(32 → 20 → 19)이다. 중복 제거가 가장 큰 일을 한다(32칸 중 **12칸**)
+- **`ConstraintChecker.filterNow` 가 후보 풀 전체를 읽던 것을 고쳤다** — 합성 풀(24개)에서 3~4ms이던
+  확인이 실제 카탈로그(105,545개)에서 **405ms** 가 됐다. 출력만 걸러내면 되는데 풀 전체를 읽고 있었다.
+  **405ms → 7ms**. E4b의 "확인 1회 ≈ 3~4ms"는 **풀 24개에서만 유효**하다(리포트에 범위를 적었다)
+- 홈은 **모델이 죽어도 200** 이다 — 폴백은 카탈로그만으로 조립하고 `source=FALLBACK` 으로 밝힌다
+
 ## Unreleased — 캐시 압축 임계값 (#129 / M6)
 
 ### 추가
