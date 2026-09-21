@@ -1,0 +1,158 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: k6/generation-budget.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 200 max VUs, 50s max duration (incl. graceful stop):
+              * budget: 30.00 iterations/s for 40s (maxVUs: 200, gracefulStop: 10s)
+
+
+Run      [ 100% ] setup()
+budget   [   0% ]
+
+Run      [ 100% ] setup()
+budget   [   0% ]
+
+Run      [ 100% ] setup()
+budget   [   0% ]
+
+Run      [ 100% ] setup()
+budget   [   0% ]
+
+Run      [ 100% ] setup()
+budget   [   0% ]
+
+Run      [ 100% ] setup()
+budget   [   0% ]
+
+running (07.0s), 002/200 VUs, 11 complete and 0 interrupted iterations
+budget   [   1% ] 002/200 VUs  00.4s/40s  30.00 iters/s
+
+running (08.0s), 002/200 VUs, 41 complete and 0 interrupted iterations
+budget   [   4% ] 002/200 VUs  01.4s/40s  30.00 iters/s
+
+running (09.0s), 002/200 VUs, 71 complete and 0 interrupted iterations
+budget   [   6% ] 002/200 VUs  02.4s/40s  30.00 iters/s
+
+running (10.0s), 002/200 VUs, 101 complete and 0 interrupted iterations
+budget   [   9% ] 002/200 VUs  03.4s/40s  30.00 iters/s
+
+running (11.0s), 002/200 VUs, 131 complete and 0 interrupted iterations
+budget   [  11% ] 002/200 VUs  04.4s/40s  30.00 iters/s
+
+running (12.0s), 002/200 VUs, 161 complete and 0 interrupted iterations
+budget   [  14% ] 002/200 VUs  05.4s/40s  30.00 iters/s
+
+running (13.0s), 001/200 VUs, 192 complete and 0 interrupted iterations
+budget   [  16% ] 001/200 VUs  06.4s/40s  30.00 iters/s
+
+running (14.0s), 002/200 VUs, 221 complete and 0 interrupted iterations
+budget   [  19% ] 002/200 VUs  07.4s/40s  30.00 iters/s
+
+running (15.0s), 002/200 VUs, 251 complete and 0 interrupted iterations
+budget   [  21% ] 002/200 VUs  08.4s/40s  30.00 iters/s
+
+running (16.0s), 002/200 VUs, 281 complete and 0 interrupted iterations
+budget   [  24% ] 002/200 VUs  09.4s/40s  30.00 iters/s
+
+running (17.0s), 002/200 VUs, 311 complete and 0 interrupted iterations
+budget   [  26% ] 002/200 VUs  10.4s/40s  30.00 iters/s
+
+running (18.0s), 002/200 VUs, 341 complete and 0 interrupted iterations
+budget   [  29% ] 002/200 VUs  11.4s/40s  30.00 iters/s
+
+running (19.0s), 001/200 VUs, 372 complete and 0 interrupted iterations
+budget   [  31% ] 001/200 VUs  12.4s/40s  30.00 iters/s
+
+running (20.0s), 002/200 VUs, 401 complete and 0 interrupted iterations
+budget   [  34% ] 002/200 VUs  13.4s/40s  30.00 iters/s
+
+running (21.0s), 002/200 VUs, 431 complete and 0 interrupted iterations
+budget   [  36% ] 002/200 VUs  14.4s/40s  30.00 iters/s
+
+running (22.0s), 002/200 VUs, 461 complete and 0 interrupted iterations
+budget   [  39% ] 002/200 VUs  15.4s/40s  30.00 iters/s
+
+running (23.0s), 002/200 VUs, 491 complete and 0 interrupted iterations
+budget   [  41% ] 002/200 VUs  16.4s/40s  30.00 iters/s
+
+running (24.0s), 001/200 VUs, 522 complete and 0 interrupted iterations
+budget   [  44% ] 001/200 VUs  17.4s/40s  30.00 iters/s
+
+running (25.0s), 002/200 VUs, 551 complete and 0 interrupted iterations
+budget   [  46% ] 002/200 VUs  18.4s/40s  30.00 iters/s
+
+running (26.0s), 002/200 VUs, 581 complete and 0 interrupted iterations
+budget   [  49% ] 002/200 VUs  19.4s/40s  30.00 iters/s
+
+running (27.0s), 002/200 VUs, 611 complete and 0 interrupted iterations
+budget   [  51% ] 002/200 VUs  20.4s/40s  30.00 iters/s
+
+running (28.0s), 002/200 VUs, 641 complete and 0 interrupted iterations
+budget   [  54% ] 002/200 VUs  21.4s/40s  30.00 iters/s
+
+running (29.0s), 002/200 VUs, 671 complete and 0 interrupted iterations
+budget   [  56% ] 002/200 VUs  22.4s/40s  30.00 iters/s
+
+running (30.0s), 002/200 VUs, 701 complete and 0 interrupted iterations
+budget   [  59% ] 002/200 VUs  23.4s/40s  30.00 iters/s
+
+running (31.0s), 002/200 VUs, 731 complete and 0 interrupted iterations
+budget   [  61% ] 002/200 VUs  24.4s/40s  30.00 iters/s
+
+running (32.0s), 002/200 VUs, 761 complete and 0 interrupted iterations
+budget   [  64% ] 002/200 VUs  25.4s/40s  30.00 iters/s
+
+running (33.0s), 001/200 VUs, 792 complete and 0 interrupted iterations
+budget   [  66% ] 001/200 VUs  26.4s/40s  30.00 iters/s
+
+running (34.0s), 002/200 VUs, 821 complete and 0 interrupted iterations
+budget   [  69% ] 002/200 VUs  27.4s/40s  30.00 iters/s
+
+running (35.0s), 001/200 VUs, 852 complete and 0 interrupted iterations
+budget   [  71% ] 001/200 VUs  28.4s/40s  30.00 iters/s
+
+running (36.0s), 002/200 VUs, 881 complete and 0 interrupted iterations
+budget   [  74% ] 002/200 VUs  29.4s/40s  30.00 iters/s
+
+running (37.0s), 002/200 VUs, 911 complete and 0 interrupted iterations
+budget   [  76% ] 002/200 VUs  30.4s/40s  30.00 iters/s
+
+running (38.0s), 002/200 VUs, 941 complete and 0 interrupted iterations
+budget   [  79% ] 002/200 VUs  31.4s/40s  30.00 iters/s
+
+running (39.0s), 003/200 VUs, 970 complete and 0 interrupted iterations
+budget   [  81% ] 003/200 VUs  32.4s/40s  30.00 iters/s
+
+running (40.0s), 001/200 VUs, 1002 complete and 0 interrupted iterations
+budget   [  84% ] 001/200 VUs  33.4s/40s  30.00 iters/s
+
+running (41.0s), 002/200 VUs, 1031 complete and 0 interrupted iterations
+budget   [  86% ] 002/200 VUs  34.4s/40s  30.00 iters/s
+
+running (42.0s), 002/200 VUs, 1061 complete and 0 interrupted iterations
+budget   [  89% ] 002/200 VUs  35.4s/40s  30.00 iters/s
+
+running (43.0s), 002/200 VUs, 1091 complete and 0 interrupted iterations
+budget   [  91% ] 002/200 VUs  36.4s/40s  30.00 iters/s
+
+running (44.0s), 002/200 VUs, 1121 complete and 0 interrupted iterations
+budget   [  94% ] 002/200 VUs  37.4s/40s  30.00 iters/s
+
+running (45.0s), 002/200 VUs, 1151 complete and 0 interrupted iterations
+budget   [  96% ] 002/200 VUs  38.4s/40s  30.00 iters/s
+
+running (46.0s), 001/200 VUs, 1182 complete and 0 interrupted iterations
+budget   [  99% ] 001/200 VUs  39.4s/40s  30.00 iters/s
+
+[E5] scope=RANKING  rate=30  achieved=28  coverage=99.9%  personalized=99.9%  e2e_med=60.0ms  e2e_p95=64.0ms  model_e2e_med=60.0ms  model_e2e_p95=64.0ms  context_med=0.3ms  model_med=53.0ms  check_med=6.0ms  model_share=88.6%  rejected=1  timeout=0  zero_ctx=0  req_failed=0.0%  dropped=0
+
+running (46.6s), 000/200 VUs, 1200 complete and 0 interrupted iterations
+budget ✓ [ 100% ] 000/200 VUs  40s  30.00 iters/s

@@ -1,7 +1,7 @@
 {
   "_mock": true,
   "_source": "실험 목록은 이슈/마일스톤에서 온다. 측정이 끝난 실험의 status와 summary가 실제 값으로 채워진다.",
-  "_note": "E1·E2·E3·E4 네 행이 status=done 이고 summary 가 실측이다. 나머지 셋(생성 범위·캐시·추적)은 아직 측정 전이므로 status=todo 로 두고 summary 를 비운다. **측정하지 않은 실험을 완료로 보이게 두지 않는다**(personalization/docs/02-experiments.md 와 같은 규칙). 주의 — E3 은 측정이 끝났지만 **화면 fixture(exp-overload.json)는 아직 목**이다(`_mock: true` 라 화면이 목이라고 밝힌다). 실측으로 옮기는 것이 남았다.",
+  "_note": "E1~E5 다섯 행이 status=done 이고 summary 가 실측이다. 나머지 둘(캐시·추적)은 아직 측정 전이므로 status=todo 로 두고 summary 를 비운다. **측정하지 않은 실험을 완료로 보이게 두지 않는다**(personalization/docs/02-experiments.md 와 같은 규칙). 주의 — E3 은 측정이 끝났지만 **화면 fixture(exp-overload.json)는 아직 목**이다(`_mock: true` 라 화면이 목이라고 밝힌다). 실측으로 옮기는 것이 남았다.",
   "experiments": [
     {
       "id": "freshness",
@@ -49,8 +49,9 @@
       "milestone": "M5",
       "issue": 128,
       "question": "생성 범위를 늘리면 전체 latency budget에서 모델 몫이 얼마가 되는가",
-      "status": "todo",
-      "href": "exp-budget.html"
+      "status": "done",
+      "href": "exp-budget.html",
+      "summary": "범위는 비용을 산다 — 용량 80→36→17/s, 대가는 coverage로(80req/s에서 94.4→44.4→21.5%). 품질은 재지 않아 기본값은 랭킹"
     },
     {
       "id": "cache",

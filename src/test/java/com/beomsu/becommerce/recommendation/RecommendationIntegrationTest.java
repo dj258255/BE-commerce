@@ -123,6 +123,11 @@ class RecommendationIntegrationTest {
         assertThat(body.has("auditMs")).isTrue();
         // E4 후속의 비용 축 — 확인에 쓴 시간. 응답에서 사라지면 교환비를 계산할 수 없다.
         assertThat(body.has("checkMs")).isTrue();
+        // E5 의 범위 — 기본값은 측정으로 정했다(ADR-040). 값이 바뀌면 이 테스트가 먼저 알려 준다.
+        assertThat(body.get("generationScope").asText()).isEqualTo("RANKING");
+        // 예산 구간 — 이 필드가 사라지면 "모델이 예산을 얼마나 먹는가"를 계산할 수 없다.
+        assertThat(body.has("contextMs")).isTrue();
+        assertThat(body.has("modelMs")).isTrue();
         // 실험 재고 시드가 있으므로 걸러져 빈 목록이 되면 안 된다(시드-풀 표류를 여기서도 잡는다).
         assertThat(body.get("items")).as("시드가 실험 풀을 덮으면 모델 결과가 살아남는다").isNotEmpty();
         // 폴백이어도 200 이다 — 모델을 못 불러도 홈은 살아야 한다(E3 계약).

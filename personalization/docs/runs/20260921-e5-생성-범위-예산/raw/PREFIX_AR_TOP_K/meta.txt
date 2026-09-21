@@ -1,0 +1,9 @@
+generation_scope=PREFIX_AR_TOP_K
+model_concurrency=4
+model_latency_ms=50
+ar_prefix=4
+per_item_ms=15
+result_size=12
+policy=ADMISSION
+admission_budget_ms=100
+constraint_policy=AFTER_GENERATION

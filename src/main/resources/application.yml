@@ -502,6 +502,25 @@ app:
       latency-ms: ${APP_RECOMMENDATION_MODEL_LATENCY_MS:50}
       # 모델 용량을 기다리는 상한. 넘으면 ModelBusyException → 폴백(UNBOUNDED에서 특히 중요하다).
       busy-timeout-ms: ${APP_RECOMMENDATION_MODEL_BUSY_TIMEOUT_MS:400}
+    # 생성 범위(M5·E5) — 홈 한 페이지를 어떻게 만드는가. **모델 지연을 범위가 정한다.**
+    #
+    # autoregressive 생성은 앞 항목이 정해져야 다음을 만들 수 있어 **한 요청 안에서 직렬**이다.
+    # 그래서 범위를 넓히면 지연이 늘고, 같은 하드웨어의 처리량(동시성/지연)이 준다.
+    #   RANKING          — 후보를 한 번에 점수 매겨 상위 K. 직렬 구간 0. 항목 간 일관성은 없다(기본)
+    #   PREFIX_AR_TOP_K  — 앞 ar-prefix 개만 AR, 나머지는 랭킹. 일관성이 중요한 자리만 비싸게 산다
+    #   FULL_AR          — 페이지 전체를 AR. 가장 일관되지만 직렬 구간이 결과 크기에 비례한다
+    #
+    # 기본값이 RANKING 인 이유: 이 실험이 재는 것은 **비용**이고 품질(일관성)은 재지 않는다.
+    # 근거 없이 품질을 주장하며 비싼 쪽을 켜지 않는다 — 측정 결과와 판단은 ADR-040.
+    #
+    # 주의: 이 값은 **과부하 정책의 대기 예상에도 쓰인다**(OverloadGate). 범위를 바꾸면 모델 지연이
+    # 바뀌고, 대기 예산(admission-budget-ms)이 같은 값이어도 얼마나 받을지가 달라진다.
+    generation:
+      scope: ${APP_RECOMMENDATION_GENERATION_SCOPE:RANKING}
+      # 앞부분 AR 로 만들 항목 수(결과 크기를 넘으면 결과 크기까지만).
+      ar-prefix: ${APP_RECOMMENDATION_GENERATION_AR_PREFIX:4}
+      # AR 한 항목당 추가되는 시간(스텁). 실제 모델에서는 토큰 생성 시간에 해당한다.
+      per-item-ms: ${APP_RECOMMENDATION_GENERATION_PER_ITEM_MS:15}
     # 제약 확인 시점(M4·E4). 모델이 만든 목록은 **생성 중에 사실이 바뀌면** 응답 시점엔 거짓일 수 있다.
     #
     # 기본값은 E4 측정 결과다. 사전 등록 규칙("AFTER_GENERATION 과 AT_RESPONSE 의 위반율 차이가

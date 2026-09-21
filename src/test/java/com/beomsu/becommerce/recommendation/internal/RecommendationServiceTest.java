@@ -33,6 +33,7 @@ import static org.mockito.Mockito.when;
 class RecommendationServiceTest {
 
     private static final long USER = 1L;
+    private static final int RESULT_SIZE = 12;
 
     private RecentActivityFacts recentActivity;
     private ModelClient modelClient;
@@ -75,10 +76,10 @@ class RecommendationServiceTest {
     }
 
     private RecommendationService service(OverloadPolicy overload, ConstraintPolicy constraint) {
-        OverloadGate gate = new OverloadGate(overload, 24, 100, 4, 50);
+        OverloadGate gate = new OverloadGate(overload, 24, 100, 4, 50, RESULT_SIZE, GenerationScope.RANKING, 4, 15);
         RecommendationMetrics metrics = new RecommendationMetrics(registry, gate);
         return new RecommendationService(recentActivity, modelClient, gate,
-                new ConstraintChecker(availability), metrics, constraint, 20);
+                new ConstraintChecker(availability), metrics, constraint, GenerationScope.RANKING, 20);
     }
 
     private RecommendationService service(OverloadPolicy policy) {
@@ -102,6 +103,9 @@ class RecommendationServiceTest {
         assertThat(view.fallbackReason()).isNull();
         assertThat(view.items()).containsExactly(11L, 12L, 13L);
         assertThat(view.contextItems()).isEqualTo(2);
+        // E5 — 어떤 범위로 돌았는지가 응답에 남아야 나중에 결과를 재현할 수 있다.
+        assertThat(view.generationScope()).isEqualTo("RANKING");
+        assertThat(view.contextMs()).isGreaterThanOrEqualTo(0);
         assertThat(registry.get("recommendation.served").counter().count()).isEqualTo(1.0);
     }
 
@@ -110,10 +114,10 @@ class RecommendationServiceTest {
     void rejectionDoesNotTouchTheModel() {
         // 상한 1로 만든 문에서 하나를 붙잡아 두면 다음은 거절된다.
         when(recentActivity.recentItemIds(USER, 20)).thenReturn(List.of());
-        OverloadGate gate = new OverloadGate(OverloadPolicy.BOUNDED, 1, 100, 4, 50);
+        OverloadGate gate = new OverloadGate(OverloadPolicy.BOUNDED, 1, 100, 4, 50, RESULT_SIZE, GenerationScope.RANKING, 4, 15);
         RecommendationMetrics metrics = new RecommendationMetrics(registry, gate);
         RecommendationService service = new RecommendationService(recentActivity, modelClient, gate,
-                new ConstraintChecker(availability), metrics, ConstraintPolicy.NONE, 20);
+                new ConstraintChecker(availability), metrics, ConstraintPolicy.NONE, GenerationScope.RANKING, 20);
 
         assertThat(gate.admit()).isTrue();   // 다른 요청이 줄을 차지하고 있다
         RecommendationView view = service.recommend(USER);

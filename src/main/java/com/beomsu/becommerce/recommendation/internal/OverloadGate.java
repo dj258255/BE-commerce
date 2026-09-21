@@ -43,14 +43,22 @@ public class OverloadGate {
                         @Value("${app.recommendation.max-in-flight:24}") int maxInFlight,
                         @Value("${app.recommendation.admission-budget-ms:100}") long admissionBudgetMs,
                         @Value("${app.recommendation.model.concurrency:4}") int modelConcurrency,
-                        @Value("${app.recommendation.model.latency-ms:50}") long modelLatencyMs) {
+                        @Value("${app.recommendation.model.latency-ms:50}") long modelLatencyMs,
+                        @Value("${app.recommendation.result-size:12}") int resultSize,
+                        @Value("${app.recommendation.generation.scope:RANKING}") GenerationScope scope,
+                        @Value("${app.recommendation.generation.ar-prefix:4}") int arPrefix,
+                        @Value("${app.recommendation.generation.per-item-ms:15}") long perItemMs) {
         this.policy = policy;
         this.maxInFlight = Math.max(maxInFlight, 1);
         this.admissionBudgetMs = admissionBudgetMs;
         this.modelConcurrency = Math.max(modelConcurrency, 1);
-        this.modelLatencyMs = Math.max(modelLatencyMs, 1);
-        log.info("과부하 정책={} maxInFlight={} admissionBudget={}ms 모델용량={}동시/{}ms",
-                policy, this.maxInFlight, admissionBudgetMs, this.modelConcurrency, this.modelLatencyMs);
+        // 대기 예상은 <b>모델의 실제 지연</b>으로 계산해야 한다. 생성 범위(E5)가 지연을 바꾸므로
+        // 스텁과 <b>같은 함수</b>로 같은 값을 낸다 — 다르면 정책이 잘못된 지연으로 판단해
+        // 실험이 오염된다(과부하 실험 위에 생성 범위를 얹을 때 조용히 틀리는 자리다).
+        this.modelLatencyMs = Math.max(
+                scope.estimatedLatencyMs(modelLatencyMs, Math.max(resultSize, 1), arPrefix, perItemMs), 1);
+        log.info("과부하 정책={} maxInFlight={} admissionBudget={}ms 모델용량={}동시/{}ms(범위 {})",
+                policy, this.maxInFlight, admissionBudgetMs, this.modelConcurrency, this.modelLatencyMs, scope);
     }
 
     /** 통과시키면 {@code true}. <b>호출자는 반드시 {@link #release()}를 불러야 한다</b>(통과한 경우만). */
