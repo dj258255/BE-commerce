@@ -112,6 +112,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-043](adr/ADR-043-home-impression-log.md) | 홈 노출은 요청당 한 행으로 남긴다 — 관측을 도메인 이벤트에 태우지 않는다 |
 | [ADR-044](adr/ADR-044-no-search-engine-yet.md) | 검색 엔진을 지금 도입하지 않는다 — 패싯 사전 집계를 먼저 한다 |
 | [ADR-045](adr/ADR-045-real-popularity-and-refill.md) | 인기 신호를 실제 통계로 바꾸고, 되채우기를 켠다 — 신호를 바꾸면 화면이 짧아진다 |
+| [ADR-046](adr/ADR-046-synthetic-reviews.md) | 합성 리뷰를 쓰되, 집계하지 않는다 — 읽는 것이지 재는 것이 아니다 |
 
 ## 보조 문서
 

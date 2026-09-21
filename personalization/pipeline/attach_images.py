@@ -58,7 +58,8 @@ def main() -> int:
     if args.load:
         with open(out, "rb") as f:
             subprocess.run(
-                ["docker", "exec", "-i", args.container, "mysql",
+                # `--default-character-set=utf8mb4` 가 없으면 한글이 이중 인코딩된다(리뷰 적재에서 겪었다).
+                ["docker", "exec", "-i", args.container, "mysql", "--default-character-set=utf8mb4",
                  f"-u{args.user}", f"-p{args.password}", args.db],
                 stdin=f, check=True,
             )

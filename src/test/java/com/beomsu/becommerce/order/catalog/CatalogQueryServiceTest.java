@@ -36,6 +36,7 @@ class CatalogQueryServiceTest {
     private ProductRepository productRepository;
     private CategoryRepository categoryRepository;
     private StockRepository stockRepository;
+    private ProductReviewRepository reviewRepository;
     private FacetCache facetCache;
     private CatalogQueryService service;
 
@@ -44,12 +45,15 @@ class CatalogQueryServiceTest {
         productRepository = mock(ProductRepository.class);
         categoryRepository = mock(CategoryRepository.class);
         stockRepository = mock(StockRepository.class);
+        // 리뷰는 기본이 빈 목록(Mockito 의 List 기본값) — 리뷰 계약은 ReviewSyntheticGuardTest 가 본다.
+        reviewRepository = mock(ProductReviewRepository.class);
         // 캐시는 **통과시키는 목**으로 둔다 — 이 테스트가 보는 것은 "질의가 올바른 인자로 내려가는가"지
         // 캐시 동작이 아니다. 캐시 자체의 계약은 FacetCacheTest 가 본다.
         facetCache = mock(FacetCache.class);
         when(facetCache.get(anyString(), any()))
                 .thenAnswer(invocation -> ((java.util.function.Supplier<?>) invocation.getArgument(1)).get());
-        service = new CatalogQueryService(productRepository, categoryRepository, stockRepository, facetCache);
+        service = new CatalogQueryService(productRepository, categoryRepository, stockRepository,
+                reviewRepository, facetCache);
     }
 
     private static Product product(long id, String name, long price, String category, boolean featured) {

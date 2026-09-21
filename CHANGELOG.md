@@ -22,6 +22,34 @@
   중복 5 제외`, 3개 행(최근/추천/인기)에 실제 H&M 상품, 개발자 로그에 `GET /personalization/homepage`
   응답 전체가 남는다
 
+## Unreleased — 합성 리뷰 (#168)
+
+### 추가
+
+- **리뷰**(`product_reviews`, `V64`) — 상세 화면에 리뷰를 붙였다. **합성임을 세 곳에서 밝힌다**:
+  DB(`source`), API(`reviewsSynthetic`), 화면(합성 배지 + "데모용으로 만든 것" 문구)
+- `ProductDetailView.ReviewView` · `ProductReviewRepository`(목록 조회만) ·
+  `seed_synthetic_reviews.py`(결정적 생성 — 씨앗은 상품 id) · 상세 화면 리뷰 블록 + CSS
+- **`ReviewSyntheticGuardTest`** — 상품·카드 record 에 **집계성 필드가 생기면 깨진다**.
+  "만들지 않기로 했다"를 문서가 아니라 **구조로** 막는다
+- `CatalogApiIntegrationTest` — 공개 읽기 표면(로그인 없이 열려 있는 가장 넓은 문)에 통합 테스트가
+  **없었다**. 리뷰 계약(`reviewsSynthetic`)과 404 를 여기서 고정한다
+
+### 변경
+
+- **평점을 집계하지 않는다** — 평균·개수를 `products` 에 두지도, API 에 내보내지도 않는다.
+  **평점 정렬·필터도 만들지 않는다.** 합성 리뷰 5건의 평균 4.3은 **아무것도 측정하지 않은 숫자**인데,
+  화면에 "4.3점"으로 뜨면 상품의 품질 신호가 되고 정렬·추천으로 흘러간다(ADR-046)
+- **리뷰는 인기 두 창의 합집합(~380개 상품, 1,322건)에만 붙인다** — 홈의 인기 행이 `recent_7d` 를
+  쓰므로 전체 기간 상위만 고르면 **홈에 뜨는 상품에 리뷰가 없었다**(실제로 그렇게 만들어 1위 상품이
+  리뷰 0건이었고, 합집합으로 고쳤다)
+- **파이프라인 적재의 문자셋 버그를 찾아 고쳤다** — `docker exec mysql` 에 `--default-character-set=utf8mb4`
+  가 없어 한글이 **이중 인코딩**됐다(`잘` → `ìž˜`). 네 스크립트 전부 같은 경로였다
+  (`promote_products`·`attach_images`·`export_popular`·`seed_synthetic_reviews`).
+  `products.description` 이 영어라 지금까지 드러나지 않았다 — **리뷰 적재가 드러냈다**
+- **알려진 대가**: 리뷰 문구가 일반적이라 읽으면 합성인 것이 티가 난다(구체적 후기를 지어내면 데이터에
+  없는 사실을 만드는 것이므로 **의도한 대가**다). 커버리지도 인기 상품에만 있다
+
 ## Unreleased — 풀 크기와 창 (#187 / E4c)
 
 ### 추가

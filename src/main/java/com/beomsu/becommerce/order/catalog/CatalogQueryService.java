@@ -32,18 +32,24 @@ public class CatalogQueryService {
     /** 한 번에 요청할 수 있는 최대 페이지 크기 — 큰 size로 전건을 훑는 요청을 막는다. */
     private static final int MAX_PAGE_SIZE = 60;
 
+    /** 상세 응답에 싣는 리뷰 수 상한 — 응답이 무한히 커지지 않게 한다(#168). */
+    private static final int REVIEW_LIMIT = 20;
+
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final StockRepository stockRepository;
+    private final ProductReviewRepository reviewRepository;
     private final FacetCache facetCache;
 
     public CatalogQueryService(ProductRepository productRepository,
                                CategoryRepository categoryRepository,
                                StockRepository stockRepository,
+                               ProductReviewRepository reviewRepository,
                                FacetCache facetCache) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.stockRepository = stockRepository;
+        this.reviewRepository = reviewRepository;
         this.facetCache = facetCache;
     }
 
@@ -167,7 +173,21 @@ public class CatalogQueryService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> OrderException.productNotFound(productId));
         return ProductDetailView.of(product, categoryNames().get(product.getCategoryCode()),
-                inStock(product.getProductId()));
+                inStock(product.getProductId()), reviewsOf(product.getProductId()));
+    }
+
+    /**
+     * 리뷰 목록 — <b>합성임을 값으로 표시한다</b>(#168).
+     *
+     * <p>개수를 세어 평균을 내지 않는다. 화면은 "리뷰 4.3점"을 말하지 않고, 리뷰는 <b>읽는 것</b>으로만
+     * 남는다(ADR-046). 최신순 상한을 두는 이유는 상세 응답이 무한히 커지지 않게 하기 위함이다.
+     */
+    private List<ProductDetailView.ReviewView> reviewsOf(long productId) {
+        return reviewRepository.findByProductIdOrderByIdDesc(productId, PageRequest.of(0, REVIEW_LIMIT))
+                .stream()
+                .map(r -> new ProductDetailView.ReviewView(r.getSource(), r.getRating(), r.getBody(),
+                        r.getAuthorLabel(), r.getCreatedAt().toString()))
+                .toList();
     }
 
     private ProductPageView toPageView(Page<Product> page) {
