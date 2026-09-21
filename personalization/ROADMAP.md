@@ -9,8 +9,8 @@
 |---|---|---|---|
 | **M0** 설계와 관리 체계 | 헌장·아키텍처·데이터 계약·실험 명세·검증 형식·CI 게이트 | 구현 | #120, #121 |
 | **M1** 데이터 수집과 피처 정합 | 수집·품질 점검, 시간 스플릿, point-in-time 피처, baseline | 구현(진행) | #122, #123 |
-| **M2** 온라인 컨텍스트와 신선도 | 이벤트→컨텍스트 경로와 세 가지 전달 방식, E1 | **검증** | #124 · #125 |
-| **M3** 서빙과 과부하 | 추론 dependency, E3 | 계획 | #126 |
+| **M2** 온라인 컨텍스트와 신선도 | 이벤트→컨텍스트 경로와 세 가지 전달 방식, E1 | **완료** | #124 · #125 |
+| **M3** 서빙과 과부하 | 추론 dependency, E3 | **검증** | #126 |
 | **M4** 제약과 비즈니스 상태 | 재검증 시점, E4 | 계획 | #127 |
 | **M5** 생성 범위와 계산 예산 | E5 | 계획 | #128 |
 | **M6** 캐시와 압축 임계값 | E6 | 계획 | #129 |
@@ -24,11 +24,18 @@
 
 - **M0**: `docs/00-data.md`, `01-architecture.md`, `02-experiments.md`, `03-verification.md`,
   `04-storage.md` 작성. CI skip 게이트(#121)는 별도 PR로 완료.
-- **M2 검증**: 온라인 컨텍스트 경로와 전달 방식 3종(`KAFKA`·`IN_PROCESS`·`IN_REQUEST`)을 세우고
+- **M2 완료**: 온라인 컨텍스트 경로와 전달 방식 3종(`KAFKA`·`IN_PROCESS`·`IN_REQUEST`)을 세우고
   **E1을 측정했다** — [리포트](docs/runs/20260921-e1-신선도-지연/report.md). 무릎 50ms(반영률 7.3→100%,
-  e2e p95 40ms), 컨슈머가 못 따라오면 대기가 무력, 인스턴스 2대에서 세 방식 모두 성립. 그 결과로
-  기본 전달 방식이 `IN_PROCESS`가 됐다([ADR-034](../docs/adr/ADR-034-personalization-context-deployment-unit.md)).
-  **E2(#125)는 아직 측정 전**이다.
+  e2e p95 40ms), 컨슈머가 못 따라오면 대기가 무력, 인스턴스 2대에서 세 방식 모두 성립.
+  **E2**(online/offline 일치율, #125)와 그 후속(E2-b 원자화 · E2-c 순서 관대 병합 · E2-e 잔여 축 ·
+  E2-f 창 집계)까지 마쳤다. 기본 전달 방식은 네 번 뒤집혔고 지금은 **`IN_PROCESS`** 다 —
+  매번 측정이 이유를 줬다([ADR-034](../docs/adr/ADR-034-personalization-context-deployment-unit.md) ·
+  [ADR-035](../docs/adr/ADR-035-order-tolerant-context-merge.md) ·
+  [ADR-036](../docs/adr/ADR-036-context-window-aggregate.md)).
+- **M3 검증**: 추천 서빙(`recommendation` 모듈)과 과부하 정책 3종을 세우고 **E3을 측정했다** —
+  [리포트](docs/runs/20260921-e3-과부하-degradation/report.md). **정책은 coverage를 사지 못하고
+  (세 정책 차이 ±0.3%p) 지연을 산다**(같은 coverage에서 p95 160 / 320 / 454ms).
+  기본값은 `ADMISSION`([ADR-037](../docs/adr/ADR-037-overload-admission-policy.md)).
 - **M1**: 수집·품질 리포트 완료(거래 31.8M, 2018-09-20~2020-09-22, 재구매 25.16%, 거래 없는 상품 995개).
   시간 스플릿(cutoff 2020-09-16) + point-in-time 피처 1,356,709행 + baseline MAP@12
   (repeat 0.0234 > popular_recent7d 0.0087 > popular_all 0.0029). 누출 회귀 테스트 통과.

@@ -93,6 +93,9 @@ public class SecurityConfig {
                         // 개인화 표면(활동 수집·컨텍스트 읽기)은 본인 것만 다룬다 — userId를 경로·본문으로
                         // 받지 않고 principal에서 얻으므로 남의 컨텍스트를 가리킬 경로가 없다.
                         .requestMatchers("/api/v1/personalization/**").hasRole("USER")
+                        // 추천 서빙: 모델은 사용자별로 돌아가므로 로그인이 필요하다(userId는 principal에서).
+                        // 과부하 정책이 걸린 엔드포인트라 인증 안 된 트래픽이 모델 줄에 서면 안 된다.
+                        .requestMatchers("/api/v1/recommendations/**").hasRole("USER")
                         // 선착순 대기열: 로그인 사용자만 줄 서기(멤버=인증 principal userId). 결제 경로와는
                         // 결합하지 않는 독립 프리미티브(입장/상태/이탈)이지만 참가자 식별을 위해 인증은 요구한다.
                         .requestMatchers("/api/v1/queue/**").hasRole("USER")

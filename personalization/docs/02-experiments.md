@@ -9,7 +9,7 @@
 |---|---|---|---|---|
 | E1 | 신선도 vs 지연 (M2) | 최신성 ↔ tail latency | 최신 반영률, p95, timeout | **측정 완료** — 무릎 50ms · [리포트](runs/20260921-e1-신선도-지연/report.md) |
 | E2 | online/offline 일치 (M2) | 정확도 ↔ 상태·지연 비용 | 일치율, 원인 분포 | **측정 완료** — 최대 원인 순서 역전·동시 적용 · [리포트](runs/20260921-e2-online-offline-일치율/report.md) |
-| E3 | 과부하 degradation (M3) | 개인화 coverage ↔ SLO | p95/p99, timeout, fallback, coverage | 측정 전 |
+| E3 | 과부하 degradation (M3) | 개인화 coverage ↔ SLO | p95/p99, timeout, fallback, coverage | **측정 완료** |
 | E4 | 제약 재검증 비용 (M4) | 정확성 ↔ 추가 지연 | 위반율, +지연, stale 창 | 측정 전 |
 | E5 | 생성 범위·예산 (M5) | 페이지 일관성 ↔ 처리량 | e2e, throughput, 모델 몫 | 측정 전 |
 | E6 | 캐시 압축 임계값 (M6) | 메모리·네트워크 ↔ CPU | GET p50/95/99, 전송량, CPU | 측정 전 |
