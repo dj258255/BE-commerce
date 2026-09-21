@@ -1,0 +1,155 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: k6/inference-overload.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 200 max VUs, 50s max duration (incl. graceful stop):
+              * overload: 80.00 iterations/s for 40s (maxVUs: 200, gracefulStop: 10s)
+
+
+Run        [ 100% ] setup()
+overload   [   0% ]
+
+Run        [ 100% ] setup()
+overload   [   0% ]
+
+Run        [ 100% ] setup()
+overload   [   0% ]
+
+Run        [ 100% ] setup()
+overload   [   0% ]
+
+Run        [ 100% ] setup()
+overload   [   0% ]
+
+running (06.0s), 008/200 VUs, 38 complete and 0 interrupted iterations
+overload   [   1% ] 008/200 VUs  00.6s/40s  80.00 iters/s
+
+running (07.0s), 012/200 VUs, 114 complete and 0 interrupted iterations
+overload   [   4% ] 012/200 VUs  01.6s/40s  80.00 iters/s
+
+running (08.0s), 017/200 VUs, 189 complete and 0 interrupted iterations
+overload   [   6% ] 017/200 VUs  02.6s/40s  80.00 iters/s
+
+running (09.0s), 022/200 VUs, 264 complete and 0 interrupted iterations
+overload   [   9% ] 022/200 VUs  03.6s/40s  80.00 iters/s
+
+running (10.0s), 029/200 VUs, 337 complete and 0 interrupted iterations
+overload   [  11% ] 029/200 VUs  04.6s/40s  80.00 iters/s
+
+running (11.0s), 033/200 VUs, 413 complete and 0 interrupted iterations
+overload   [  14% ] 033/200 VUs  05.6s/40s  80.00 iters/s
+
+running (12.0s), 036/200 VUs, 490 complete and 0 interrupted iterations
+overload   [  16% ] 036/200 VUs  06.6s/40s  80.00 iters/s
+
+running (13.0s), 035/200 VUs, 571 complete and 0 interrupted iterations
+overload   [  19% ] 035/200 VUs  07.6s/40s  80.00 iters/s
+
+running (14.0s), 037/200 VUs, 649 complete and 0 interrupted iterations
+overload   [  21% ] 037/200 VUs  08.6s/40s  80.00 iters/s
+
+running (15.0s), 036/200 VUs, 730 complete and 0 interrupted iterations
+overload   [  24% ] 036/200 VUs  09.6s/40s  80.00 iters/s
+
+running (16.0s), 036/200 VUs, 810 complete and 0 interrupted iterations
+overload   [  26% ] 036/200 VUs  10.6s/40s  80.00 iters/s
+
+running (17.0s), 037/200 VUs, 889 complete and 0 interrupted iterations
+overload   [  29% ] 037/200 VUs  11.6s/40s  80.00 iters/s
+
+running (18.0s), 035/200 VUs, 971 complete and 0 interrupted iterations
+overload   [  31% ] 035/200 VUs  12.6s/40s  80.00 iters/s
+
+running (19.0s), 035/200 VUs, 1051 complete and 0 interrupted iterations
+overload   [  34% ] 035/200 VUs  13.6s/40s  80.00 iters/s
+
+running (20.0s), 035/200 VUs, 1131 complete and 0 interrupted iterations
+overload   [  36% ] 035/200 VUs  14.6s/40s  80.00 iters/s
+
+running (21.0s), 036/200 VUs, 1210 complete and 0 interrupted iterations
+overload   [  39% ] 036/200 VUs  15.6s/40s  80.00 iters/s
+
+running (22.0s), 035/200 VUs, 1291 complete and 0 interrupted iterations
+overload   [  41% ] 035/200 VUs  16.6s/40s  80.00 iters/s
+
+running (23.0s), 036/200 VUs, 1370 complete and 0 interrupted iterations
+overload   [  44% ] 036/200 VUs  17.6s/40s  80.00 iters/s
+
+running (24.0s), 035/200 VUs, 1451 complete and 0 interrupted iterations
+overload   [  46% ] 035/200 VUs  18.6s/40s  80.00 iters/s
+
+running (25.0s), 036/200 VUs, 1530 complete and 0 interrupted iterations
+overload   [  49% ] 036/200 VUs  19.6s/40s  80.00 iters/s
+
+running (26.0s), 036/200 VUs, 1610 complete and 0 interrupted iterations
+overload   [  51% ] 036/200 VUs  20.6s/40s  80.00 iters/s
+
+running (27.0s), 036/200 VUs, 1690 complete and 0 interrupted iterations
+overload   [  54% ] 036/200 VUs  21.6s/40s  80.00 iters/s
+
+running (28.0s), 036/200 VUs, 1770 complete and 0 interrupted iterations
+overload   [  56% ] 036/200 VUs  22.6s/40s  80.00 iters/s
+
+running (29.0s), 036/200 VUs, 1850 complete and 0 interrupted iterations
+overload   [  59% ] 036/200 VUs  23.6s/40s  80.00 iters/s
+
+running (30.0s), 036/200 VUs, 1930 complete and 0 interrupted iterations
+overload   [  61% ] 036/200 VUs  24.6s/40s  80.00 iters/s
+
+running (31.0s), 036/200 VUs, 2010 complete and 0 interrupted iterations
+overload   [  64% ] 036/200 VUs  25.6s/40s  80.00 iters/s
+
+running (32.0s), 035/200 VUs, 2091 complete and 0 interrupted iterations
+overload   [  66% ] 035/200 VUs  26.6s/40s  80.00 iters/s
+
+running (33.0s), 037/200 VUs, 2169 complete and 0 interrupted iterations
+overload   [  69% ] 037/200 VUs  27.6s/40s  80.00 iters/s
+
+running (34.0s), 036/200 VUs, 2250 complete and 0 interrupted iterations
+overload   [  71% ] 036/200 VUs  28.6s/40s  80.00 iters/s
+
+running (35.0s), 036/200 VUs, 2330 complete and 0 interrupted iterations
+overload   [  74% ] 036/200 VUs  29.6s/40s  80.00 iters/s
+
+running (36.0s), 036/200 VUs, 2410 complete and 0 interrupted iterations
+overload   [  76% ] 036/200 VUs  30.6s/40s  80.00 iters/s
+
+running (37.0s), 036/200 VUs, 2490 complete and 0 interrupted iterations
+overload   [  79% ] 036/200 VUs  31.6s/40s  80.00 iters/s
+
+running (38.0s), 036/200 VUs, 2570 complete and 0 interrupted iterations
+overload   [  81% ] 036/200 VUs  32.6s/40s  80.00 iters/s
+
+running (39.0s), 037/200 VUs, 2649 complete and 0 interrupted iterations
+overload   [  84% ] 037/200 VUs  33.6s/40s  80.00 iters/s
+
+running (40.0s), 036/200 VUs, 2730 complete and 0 interrupted iterations
+overload   [  86% ] 036/200 VUs  34.6s/40s  80.00 iters/s
+
+running (41.0s), 037/200 VUs, 2809 complete and 0 interrupted iterations
+overload   [  89% ] 037/200 VUs  35.6s/40s  80.00 iters/s
+
+running (42.0s), 036/200 VUs, 2890 complete and 0 interrupted iterations
+overload   [  91% ] 036/200 VUs  36.6s/40s  80.00 iters/s
+
+running (43.0s), 036/200 VUs, 2970 complete and 0 interrupted iterations
+overload   [  94% ] 036/200 VUs  37.6s/40s  80.00 iters/s
+
+running (44.0s), 035/200 VUs, 3051 complete and 0 interrupted iterations
+overload   [  96% ] 035/200 VUs  38.6s/40s  80.00 iters/s
+
+running (45.0s), 036/200 VUs, 3130 complete and 0 interrupted iterations
+overload   [  99% ] 036/200 VUs  39.6s/40s  80.00 iters/s
+
+[E3] policy=UNBOUNDED  rate=80  achieved=72  coverage=93.5%  personalized=93.5%  serving_p95=454.0ms  serving_p99=457.0ms  model_p95=454.0ms  rejected=0  timeout=155  failed=0  zero_ctx=0  req_failed=0.0%  dropped=0
+
+running (45.8s), 000/200 VUs, 3200 complete and 0 interrupted iterations
+overload ✓ [ 100% ] 000/200 VUs  40s  80.00 iters/s

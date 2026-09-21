@@ -45,6 +45,44 @@
   로그가 `max-items`를 넘으면 **목록 100%·창 집계 60%**
 - **중복은 두 층이 막았다** — 입력 중복은 409, Kafka 오프셋을 되감아 **재배달**시켜도 컨텍스트 불변
 
+## Unreleased — 추천 서빙과 과부하 정책 (#126 / M3)
+
+### 추가
+
+- **`recommendation` 모듈** — `GET /api/v1/recommendations`. 개인화 모듈에서 최근 활동을 받아
+  **모델에 넣고**, 모델이 못 대답하면 **개인화를 포기하고 인기 상품으로 답한다**(200).
+  응답의 `source`가 `MODEL`/`FALLBACK`을 밝히고 `fallbackReason`이 사유를 나눈다
+- **과부하 정책 3종**(E3의 독립변수) — `UNBOUNDED`(아무도 거절 안 함) / `BOUNDED`(상한) /
+  `ADMISSION`(Little의 법칙으로 대기 예상을 재서 예산을 넘으면 줄에 서지 않는다). **기본 `ADMISSION`**
+- **모델은 교체 가능한 dependency** — `ModelClient` 인터페이스 하나. 지금 구현은 실험용 스텁
+  (용량·지연을 설정으로 고정)이고, 실제 모델 서버를 붙일 때 바뀌는 것은 그 구현 하나다
+- **개인화 read port** — `personalization.RecentActivityFacts`. 내부 저장소를 열지 않고
+  **상품 id만** 내보낸다(ADR-018과 같은 방식)
+
+### 측정 (E3)
+
+[리포트](personalization/docs/runs/20260921-e3-과부하-degradation/report.md) · [ADR-037](docs/adr/ADR-037-overload-admission-policy.md)
+
+| 부하 (모델 용량 80/s) | `ADMISSION` | `BOUNDED` | `UNBOUNDED` |
+|---:|---:|---:|---:|
+| 0.5× | 99.9% / 55ms | 100.0% / 55ms | 100.0% / 55ms |
+| 1× | 93.6% / **160ms** | 93.7% / **320ms** | 93.5% / **454ms** |
+| 2× | 47.1% / 160ms | 47.1% / 320ms | 46.9% / 454ms |
+| 4× | 23.7% / **159ms** | 23.7% / 318ms | 31.4% / 453ms *(달성 212/320 — 생존자 편향)* |
+
+- **정책은 coverage를 사지 못한다** — 세 정책 차이 ±0.3%p. 커버리지는 모델 처리량이 정한다
+- **정책은 지연을 산다** — 같은 coverage에서 p95 160 / 320 / 454ms. **부하와 무관하게 고정**이다
+  (지연을 정하는 것은 부하가 아니라 정책 파라미터다)
+- **무한 큐는 API를 죽인다** — 4×에서 `UNBOUNDED`는 요청을 **받지도 못했다**(달성 212/320).
+  그 결과 coverage가 31.4%로 **더 좋아 보인다** — 못 받은 요청이 분모에서 빠져서다
+
+### 검증
+
+- `OverloadGateTest` 5건 · `RecommendationServiceTest` 6건 — 정책별 판정, 거절 시 **모델을 부르지 않음**,
+  폴백 사유 분리(REJECTED/TIMEOUT/FAILED), 활동이 없어도 모델은 부른다
+- 하네스가 **`achieved`(달성 부하)와 `personalized`(재료가 있었던 비율)**를 함께 낸다 —
+  이 둘이 없으면 coverage가 좋아 보이는 방향으로 틀린다(실제로 첫 실행이 그랬다)
+
 ## Unreleased — 창 집계를 목록에서 떼어낸다 (#182)
 
 ### 변경
