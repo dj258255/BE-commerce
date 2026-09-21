@@ -541,6 +541,20 @@ app:
     # 기록 실패는 홈을 죽이지 않는다(경고 + `home.impression.failed` 지표) — 기록은 관측이고 홈은 제품이다.
     impression-log:
       enabled: ${APP_HOME_IMPRESSION_LOG:true}
+      # 보존 정책 — 없으면 하루 260만 행이 쌓인다(ADR-043의 알려진 한계였고, 여기서 닫는다).
+      # 만료 행을 **배치로** 지운다: 전부를 한 트랜잭션에 지우면 그만큼 긴 잠금이 생겨 홈 조회를 막는다.
+      #
+      # **다른 정리 장치와 달리 기본이 on이다**(아웃박스·멱등키는 off). 이유: 표를 자라게 하는 쪽
+      # (기록)이 기본 on이므로, 고치는 쪽을 off로 두면 **문서에 적어 둔 결함이 그대로 살아 있다**.
+      # 부작용이 없도록 만료 행만 지우고(기본 7일) 배치·회차 상한을 둔다.
+      cleanup:
+        enabled: ${APP_HOME_IMPRESSION_CLEANUP:true}
+        # 보존 일수 — **근거는 측정이 아니라 관례다**(아웃박스와 같은 7일). 이 표를 실제로 쓰는 사람이
+        # 없어 "며칠이 맞는가"를 잴 대상이 없다. 쓰임이 생기면 그때 재서 정한다(ADR-043).
+        retention-days: ${APP_HOME_IMPRESSION_RETENTION_DAYS:7}
+        batch-size: ${APP_HOME_IMPRESSION_CLEANUP_BATCH:5000}
+        max-batches-per-run: ${APP_HOME_IMPRESSION_CLEANUP_MAX_BATCHES:20}
+        interval-ms: ${APP_HOME_IMPRESSION_CLEANUP_INTERVAL_MS:3600000}
   # 추천 서빙 — 모델 호출과 **과부하 정책**(E3의 독립변수).
   recommendation:
     # UNBOUNDED | BOUNDED | ADMISSION
