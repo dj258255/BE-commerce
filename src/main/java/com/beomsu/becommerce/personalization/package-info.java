@@ -13,11 +13,10 @@
  * 적용 로직({@code ContextApplier})은 하나를 공유하고 <b>누가 언제 적용하는지</b>만
  * {@code app.personalization.transport}로 바꾼다 — 그래야 전달 방식 외의 변수가 섞이지 않는다.
  * <ul>
- *   <li>{@code KAFKA} — Outbox → 브로커 → 인앱 컨슈머. <b>기본값</b>이고, userId 파티션 키가
- *       <b>사용자별 직렬성</b>을 보장한다. 대신 {@code kafka} 프로파일이 있어야 하고 브로커가
- *       없으면 컨텍스트가 갱신되지 않는다</li>
- *   <li>{@code IN_PROCESS} — 커밋 후 {@code @ApplicationModuleListener}. 브로커가 필요 없지만
- *       {@code @Async} 풀이라 <b>동시 적용 경합에 항목을 잃는다</b>(E2가 관측). 기본값이 아니다</li>
+ *   <li>{@code IN_PROCESS} — 커밋 후 {@code @ApplicationModuleListener}. <b>기본값</b>이고
+ *       브로커가 필요 없다. 순서 보장이 없어도 되는 이유는 병합이 순서에 무관하기 때문이다(ADR-035)</li>
+ *   <li>{@code KAFKA} — Outbox → 브로커 → 인앱 컨슈머. 프로세스 밖 소비자가 필요할 때 켠다.
+ *       {@code kafka} 프로파일이 있어야 하고, 없으면 컨텍스트가 갱신되지 않는다</li>
  *   <li>{@code IN_REQUEST} — 같은 트랜잭션에서 갱신. 순서는 지켜지지만 동시 요청은 겹치고,
  *       저장소 장애가 활동 기록을 롤백시킨다</li>
  * </ul>
