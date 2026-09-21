@@ -6,7 +6,6 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsPasswordService;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 로그인 성공 시 옛 알고리즘의 해시를 현재 알고리즘으로 재인코딩한다(ADR-009).
@@ -48,7 +47,6 @@ public class MemberPasswordUpgradeService implements UserDetailsPasswordService 
      * @param newPassword <b>이미 인코딩된</b> 새 해시(접두사 포함).
      */
     @Override
-    @Transactional
     public UserDetails updatePassword(UserDetails user, String newPassword) {
         long memberId;
         try {
@@ -58,24 +56,33 @@ public class MemberPasswordUpgradeService implements UserDetailsPasswordService 
         }
 
         return memberRepository.findById(memberId)
-                .map(member -> {
-                    member.replacePasswordHash(newPassword);
-                    // 명시 영속 — readOnly 조회가 세션 FlushMode를 MANUAL로 바꾼 뒤라면 dirty-check
-                    // 자동 flush를 신뢰할 수 없다(pay-26 교훈).
-                    try {
-                        memberRepository.saveAndFlush(member);
-                    } catch (RuntimeException failure) {
-                        // 조용히 지나가면 "왜 레거시 해시가 줄지 않는가"를 아무도 답할 수 없다(ADR-009).
-                        // 여기서 삼키려면 별도 트랜잭션이 필요하다 — 같은 트랜잭션에서 예외를 잡아도
-                        // 그 트랜잭션은 rollback-only 라 커밋이 실패한다(pay-26 교훈). 그래서 세기만 하고 올린다.
-                        metrics.recordFailed();
-                        throw failure;
-                    }
-                    metrics.recordUpgraded();
-                    log.info("비밀번호 해시 이관 memberId={}", memberId);
-                    return withPassword(user, newPassword);
-                })
+                .map(member -> upgrade(user, member, newPassword))
                 .orElse(user);   // 회원이 없다 — 이관을 포기하되 로그인은 통과시킨다
+    }
+
+    /**
+     * 이관 한 건. <b>실패해도 로그인을 막지 않는다.</b>
+     *
+     * <p>그래서 이 메서드에는 {@code @Transactional}을 두지 않는다. 호출한 쪽 트랜잭션 안에서 쓰기를
+     * 하면 예외를 잡아도 그 트랜잭션이 rollback-only 로 낙인찍혀 커밋이 실패한다(pay-26 교훈).
+     * <b>쓰기가 자기 트랜잭션에서 끝나야</b> 실패를 삼킬 수 있다. 조회와 쓰기가 한 트랜잭션이어야 할
+     * 불변식은 없다 — 쓰기는 해시 한 컬럼을 새 값으로 확정하는 것뿐이다.
+     */
+    private UserDetails upgrade(UserDetails user, Member member, String newPassword) {
+        try {
+            member.replacePasswordHash(newPassword);
+            // 명시 영속 — readOnly 조회가 세션 FlushMode를 MANUAL로 바꾼 뒤라면 dirty-check
+            // 자동 flush를 신뢰할 수 없다(pay-26 교훈).
+            memberRepository.saveAndFlush(member);
+        } catch (RuntimeException failure) {
+            // 삼키되 조용히는 아니다 — 세어서 "왜 레거시 해시가 줄지 않는지"를 답할 수 있게 한다(ADR-009).
+            metrics.recordFailed();
+            log.warn("비밀번호 해시 이관 실패 memberId={} — 로그인은 통과시킨다", member.getId(), failure);
+            return user;
+        }
+        metrics.recordUpgraded();
+        log.info("비밀번호 해시 이관 memberId={}", member.getId());
+        return withPassword(user, newPassword);
     }
 
     private static UserDetails withPassword(UserDetails user, String newPassword) {

@@ -53,6 +53,13 @@ dependencies {
     // --- Redis (멱등키 선체크 / 분산락) ---
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
+    // --- 압축 (M6·E6) ---
+    // 캐시 값이 커지면 전송·메모리가 문제가 되고, 그때 압축이 이득인 지점을 잰다.
+    // 두 코덱을 함께 두는 이유는 "무엇을 쓸까"가 아니라 "몇 KB부터 쓸까"를 정하는 것이 목적이라
+    // 코덱별 교차점을 같은 하네스로 비교해야 하기 때문이다(E6).
+    implementation 'org.lz4:lz4-java:1.8.0'
+    implementation 'org.xerial.snappy:snappy-java:1.1.10.7'
+
     // --- Observability ---
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'   // /actuator/prometheus

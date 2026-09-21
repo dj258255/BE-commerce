@@ -1,0 +1,1 @@
+{"setP50":0.118042,"getP99":0.274875,"redisUsedMemoryBytes":3924480,"decompressP50":0.001084,"getP95":0.23,"ratio":1.0,"redisMemoryDeltaBytes":173616,"thresholdBytes":0,"rawBytes":279,"rawBytesTotal":139500,"setP99":0.26975,"codec":"NONE","getP50":0.117083,"storedBytesTotal":139500,"setP95":0.2345,"compressP50":2.08E-4,"count":500,"appCpuMs":40.707,"requestedBytes":192}

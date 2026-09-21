@@ -93,7 +93,7 @@ class PersonalizationIntegrationTest {
     @Test
     @DisplayName("활동이 DB에 확정되고 컨텍스트에 즉시 반영된다 — 응답이 아니라 DB와 Redis를 본다")
     void activityIsPersistedAndApplied() {
-        String token = login("1");
+        String token = authToken("1");
 
         ResponseEntity<JsonNode> res = activity(token, 42L, "CLICK", 3L);
         assertThat(res.getStatusCode().value()).isEqualTo(201);
@@ -115,9 +115,23 @@ class PersonalizationIntegrationTest {
     }
 
     @Test
+    @DisplayName("캐시 압축 계기는 기본값으로 닫혀 있다 — 404(빈이 만들어지지 않는다)")
+    void cacheExperimentEndpointIsClosedByDefault() {
+        String token = authToken("1");
+
+        ResponseEntity<String> res = rest.exchange(
+                "/api/v1/experiments/cache/bench?sizeBytes=1024&count=1",
+                HttpMethod.POST, new HttpEntity<>(null, bearer(token)), String.class);
+
+        // 401/403 이 아니라 404 다 — 이 엔드포인트는 Redis 에 값을 쓰고 지운다.
+        // 실험 밖에서 열려 있으면 그 자체가 결함이므로 빈을 아예 만들지 않는다(E4·E5 계기와 같은 규칙).
+        assertThat(res.getStatusCode().value()).isEqualTo(404);
+    }
+
+    @Test
     @DisplayName("같은 (userId, seq)를 두 번 보내면 유니크 제약이 막는다 — DB는 1건")
     void duplicateSeqIsRejected() {
-        String token = login("1");
+        String token = authToken("1");
 
         assertThat(activity(token, 42L, "CLICK", 1L).getStatusCode().value()).isEqualTo(201);
         // 두 번째는 유니크에 부딪힌다. 500이 아니라 도메인 규칙 위반으로 알려야 한다.
@@ -129,7 +143,7 @@ class PersonalizationIntegrationTest {
     @Test
     @DisplayName("순번이 낮은 이벤트는 컨텍스트를 되돌리지 않는다 — 순서 역전 방어")
     void staleSeqDoesNotRewindContext() {
-        String token = login("1");
+        String token = authToken("1");
 
         activity(token, 42L, "CLICK", 5L);
         activity(token, 43L, "VIEW", 4L);
@@ -143,7 +157,7 @@ class PersonalizationIntegrationTest {
     @Test
     @DisplayName("활동이 없으면 컨텍스트는 EMPTY로 폴백한다 — 폴백을 숨기지 않는다")
     void emptyContextWhenNoActivity() {
-        String token = login("1");
+        String token = authToken("1");
 
         JsonNode context = context(token, null, 0L);
 
@@ -165,7 +179,7 @@ class PersonalizationIntegrationTest {
     @Test
     @DisplayName("잘못된 입력은 400 — seq는 1 이상, 유형은 CLICK/VIEW만")
     void invalidRequestIsRejected() {
-        String token = login("1");
+        String token = authToken("1");
 
         assertThat(activity(token, 42L, "CLICK", 0L).getStatusCode().value()).isEqualTo(400);
         assertThat(activity(token, 42L, "PURCHASE", 1L).getStatusCode().value()).isEqualTo(400);

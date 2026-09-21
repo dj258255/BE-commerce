@@ -1,0 +1,4 @@
+codec=NONE
+threshold_bytes=0
+count=500
+port=18080

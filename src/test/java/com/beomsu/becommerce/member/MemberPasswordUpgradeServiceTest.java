@@ -56,16 +56,19 @@ class MemberPasswordUpgradeServiceTest {
     }
 
     @Test
-    @DisplayName("이관 저장이 실패하면 실패 카운터가 오른다 — 게이지만으로는 왜 안 줄는지 알 수 없다")
-    void countsUpgradeFailure() {
+    @DisplayName("이관 저장이 실패해도 로그인은 통과하고, 실패 카운터가 오른다")
+    void swallowsUpgradeFailureAndCountsIt() {
         Member member = Member.of("a@b.com", "{bcrypt}$2a$10$old");
         when(repository.findById(1000L)).thenReturn(Optional.of(member));
         when(repository.saveAndFlush(member)).thenThrow(new IllegalStateException("db down"));
+        UserDetails user = principal("1000");
 
-        org.assertj.core.api.Assertions
-                .assertThatThrownBy(() -> service.updatePassword(principal("1000"), NEW_HASH))
-                .isInstanceOf(IllegalStateException.class);
+        UserDetails result = service.updatePassword(user, NEW_HASH);
 
+        // 이관은 편의, 인증은 기능 — 저장이 실패해도 로그인은 통과한다.
+        assertThat(result).isSameAs(user);
+        assertThat(result.getPassword()).as("반환된 인증 정보는 옛 해시 그대로다").isEqualTo("{bcrypt}$2a$10$old");
+        // 다만 조용하지는 않다. 게이지만으로는 왜 안 줄는지 알 수 없다.
         assertThat(registry.get("password.hash.upgrade.failed").counter().count()).isEqualTo(1.0);
         assertThat(registry.get("password.hash.upgrade.ok").counter().count()).isZero();
     }

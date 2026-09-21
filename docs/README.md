@@ -107,6 +107,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-038](adr/ADR-038-constraint-revalidation-timing.md) | 제약을 언제 다시 확인하는가 — 추천은 stale을 허용하고 구매는 강보장한다 |
 | [ADR-039](adr/ADR-039-constraint-source-real-stock.md) | 제약의 원천을 실제 재고로 잇는다 — 추천이 커머스 재고를 읽는 경계 |
 | [ADR-040](adr/ADR-040-generation-scope-and-budget.md) | 홈 페이지를 어떻게 만드는가 — 생성 범위는 비용을 사고, 품질은 재지 않았다 |
+| [ADR-041](adr/ADR-041-cache-compression-threshold.md) | 캐시 압축은 1KB부터 — 근거는 생겼고 적용할 자리는 아직 없다 |
 
 ## 보조 문서
 
