@@ -44,8 +44,14 @@ public record HomePageView(String userId,
      * <p><b>{@code score} 가 null 인 이유</b>: 모델 스텁은 <b>순위만 내고 점수를 내지 않는다.</b>
      * 없는 점수를 만들어 넣으면 화면이 "관련도 0.91"처럼 보이지만 그 숫자의 근거가 없다 —
      * 모르는 것은 null 로 두고, 화면은 순위를 그대로 쓴다.
+     *
+     * <p><b>{@code imageUrl}·{@code inStock} 을 함께 내는 이유</b>: 소비자(스토어프론트·Next 앱)가
+     * 카드를 그리려면 그 값이 필요하다. 없으면 소비자가 <b>상품 API를 한 번 더 불러야 하고</b>,
+     * 그러면 홈이 조립한 것과 화면이 그리는 것이 갈라진다. 조립이 이미 그 값을 손에 쥐고 있으므로
+     * (카탈로그 카드) 여기서 함께 내보낸다.
      */
-    public record Item(String itemId, String name, long price, Double score, String reason) {
+    public record Item(String itemId, String name, long price, String imageUrl, boolean inStock,
+                       Double score, String reason) {
     }
 
     /**

@@ -28,6 +28,13 @@
       <div class="chips" id="chips"><span class="muted">불러오는 중…</span></div>
     </section>
 
+    <section class="section" id="personalized-section" hidden>
+      <div class="section-head">
+        <div><h2>너를 위한 추천</h2><p id="personalized-note">조립 중…</p></div>
+      </div>
+      <div id="personalized-rows"></div>
+    </section>
+
     <section class="section">
       <div class="section-head">
         <div><h2>신상품</h2><p>최근 등록순</p></div>
@@ -82,6 +89,54 @@
     var featured = await Store.api('GET', '/products?featured=true&size=8', { noAuth: true });
     fill(document.getElementById('featured'),
       featured.ok ? featured.data.items.map(Store.productCard).join('') : '<p class="muted">상품을 불러오지 못했습니다</p>');
+  })();
+
+  // 개인화 홈(M7) — **홈 컴포저 API를 실제로 소비한다.**
+  //  · 로그인하지 않았거나 조립에 실패하면 **섹션을 조용히 지우지 않고 그 사실을 적는다**(이 저장소의 규칙).
+  //  · 행이 여러 개면 행마다 따로 그린다 — 행 구성이 이 API의 산출물이라 하나로 뭉치면 그게 안 보인다.
+  (async function () {
+    var section = document.getElementById('personalized-section');
+    var rows = document.getElementById('personalized-rows');
+    var note = document.getElementById('personalized-note');
+    section.hidden = false;
+
+    if (!Store.auth.isLoggedIn()) {
+      note.textContent = '로그인하면 이 자리에 들어옵니다';
+      rows.innerHTML = '<p class="muted">홈은 <b>그 사용자의 활동</b>으로 조립됩니다 — 로그인 후 다시 열어 보세요.</p>';
+      return;
+    }
+    rows.innerHTML = Store.skeletonGrid(6);
+
+    var r = await Store.api('GET', '/personalization/homepage');
+    if (!r.ok) {
+      note.textContent = '조립하지 못했습니다';
+      rows.innerHTML = '<p class="muted">개인화 홈을 불러오지 못했습니다 (HTTP ' + (r.status || '?') +
+        '). 위 목록은 그대로 동작합니다 — 개인화가 죽어도 상점은 열려야 합니다.</p>';
+      return;
+    }
+
+    var page = r.data;
+    var all = (page.rows || []).reduce(function (acc, row) { return acc.concat(row.items || []); }, []);
+    note.textContent = (page.source === 'MODEL' ? '모델' : '폴백') +
+      ' · 행 ' + (page.rows || []).length + ' · 항목 ' + all.length +
+      (page.latency ? ' · 조립 ' + page.latency.totalMs + 'ms' : '');
+    if (page.stats) {
+      // 조립이 무엇을 버렸는지도 밝힌다 — 버린 것을 감추면 "왜 이 화면인가"를 복원할 수 없다.
+      note.textContent += ' · 중복 ' + page.stats.duplicates + ' 제외';
+    }
+
+    rows.innerHTML = (page.rows || []).map(function (row) {
+      var cards = (row.items || []).map(function (it) {
+        // 홈 아이템은 상품 카드와 모양이 다르다 — 필요한 값을 맞춰 넘긴다(상품 API를 다시 부르지 않는다).
+        return Store.productCard({
+          productId: it.itemId, name: it.name, price: it.price,
+          imageUrl: it.imageUrl, inStock: it.inStock
+        });
+      }).join('');
+      return '<div class="section-head" style="margin-top:18px">' +
+          '<div><h3>' + Store.esc(row.title) + '</h3><p>' + Store.esc(row.strategy) + '</p></div>' +
+        '</div><div class="rail">' + cards + '</div>';
+    }).join('') || '<p class="muted">조립된 항목이 없습니다</p>';
   })();
 </script>
 </body>
