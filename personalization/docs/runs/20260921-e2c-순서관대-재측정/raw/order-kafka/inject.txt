@@ -1,0 +1,9 @@
+  user 2076: 40건 (긴 사용자=False)
+  user 2077: 40건 (긴 사용자=False)
+  user 2078: 40건 (긴 사용자=False)
+  user 2079: 40건 (긴 사용자=False)
+  user 2080: 40건 (긴 사용자=False)
+  user 2081: 40건 (긴 사용자=False)
+
+주입 완료 — 사용자 6명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260921-e2c-순서관대-재측정/raw/order-kafka/manifest.json

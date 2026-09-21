@@ -30,17 +30,40 @@ from collections import Counter
 from datetime import datetime, timezone
 
 
-def redis_get_many(host, keys):
-    """MGET 한 번으로 읽는다. 값은 JSON 한 줄이라 줄 단위로 대응된다(없는 키는 빈 줄)."""
+def read_contexts(host, user_ids):
+    """user_id → 온라인 컨텍스트 JSON(or None).
+
+    **키 형식을 가정하지 않는다.** `ctx:*` 를 훑어 가운데 조각을 userId 로 읽는다 —
+    키에 값 판이 붙어도(`ctx:1:v2`) 대조 도구가 따라 깨지지 않게 하려는 것이다.
+    (실제로 키에 판을 붙였을 때 이 도구가 옛 형식을 봐서 전부 `absent` 로 나온 적이 있다.)
+    """
+    wanted = set(user_ids)
+    scan = subprocess.run(["redis-cli", "-h", host, "--scan", "--pattern", "ctx:*"],
+                          capture_output=True, text=True, check=True).stdout
+    keys = []
+    owner = {}
+    for key in scan.split():
+        parts = key.split(":")
+        if len(parts) < 2:
+            continue
+        try:
+            user_id = int(parts[1])
+        except ValueError:
+            continue
+        if user_id in wanted:
+            keys.append(key)
+            owner[key] = user_id
+
+    values = {user_id: None for user_id in user_ids}
     if not keys:
-        return {}
+        return values
     out = subprocess.run(["redis-cli", "-h", host, "--raw", "MGET", *keys],
                          capture_output=True, text=True, check=True).stdout
     lines = out.split("\n")
-    values = {}
     for i, key in enumerate(keys):
         raw = lines[i] if i < len(lines) else ""
-        values[key] = raw if raw else None
+        if raw:
+            values[owner[key]] = raw
     return values
 
 
@@ -111,8 +134,7 @@ def main():
     user_ids = [u["userId"] for u in manifest["users"]]
     emails = {u["userId"]: u["email"] for u in manifest["users"]}
 
-    keys = [f"ctx:{u}" for u in user_ids]
-    raw = redis_get_many(args.redis_host, keys)
+    online_by_user = read_contexts(args.redis_host, user_ids)
     log = read_log(args.mysql_container, user_ids)
 
     rows = []
@@ -122,7 +144,7 @@ def main():
     causes = ["absent", "behind", "dropped", "truncated"]
 
     for user_id in user_ids:
-        value = raw.get(f"ctx:{user_id}")
+        value = online_by_user.get(user_id)
         online = json.loads(value) if value else None
         log_rows = log.get(user_id, [])
         offline_rows = offline_context(log_rows, args.max_items)

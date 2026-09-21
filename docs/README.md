@@ -101,6 +101,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-032](adr/ADR-032-frontend-nextjs-adoption.md) | 프론트 스택을 Next.js로 전환한다 |
 | [ADR-033](adr/ADR-033-wishlist-server-side.md) | 찜을 서버에 저장하고 로그인을 요구한다 |
 | [ADR-034](adr/ADR-034-personalization-context-deployment-unit.md) | 개인화 온라인 컨텍스트를 같은 배포 단위에 둔다 |
+| [ADR-035](adr/ADR-035-order-tolerant-context-merge.md) | 컨텍스트 병합을 순서에 관대하게 만든다 |
 
 ## 보조 문서
 

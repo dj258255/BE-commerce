@@ -1,0 +1,23 @@
+  user 2050: 12건 (긴 사용자=False)
+  user 2051: 12건 (긴 사용자=False)
+  user 2052: 12건 (긴 사용자=False)
+  user 2053: 12건 (긴 사용자=False)
+  user 2054: 12건 (긴 사용자=False)
+  user 2055: 12건 (긴 사용자=False)
+  user 2056: 12건 (긴 사용자=False)
+  user 2057: 12건 (긴 사용자=False)
+  user 2058: 12건 (긴 사용자=False)
+  user 2059: 12건 (긴 사용자=False)
+  user 2060: 12건 (긴 사용자=False)
+  user 2061: 12건 (긴 사용자=False)
+  user 2062: 12건 (긴 사용자=False)
+  user 2063: 12건 (긴 사용자=False)
+  user 2064: 12건 (긴 사용자=False)
+  user 2065: 12건 (긴 사용자=False)
+  user 2066: 12건 (긴 사용자=False)
+  user 2067: 12건 (긴 사용자=False)
+  user 2068: 12건 (긴 사용자=False)
+  user 2069: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260921-e2c-순서관대-재측정/raw/disorder/manifest.json

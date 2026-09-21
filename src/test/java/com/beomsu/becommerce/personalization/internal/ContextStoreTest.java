@@ -76,7 +76,7 @@ class ContextStoreTest {
     @Test
     @DisplayName("키가 없으면 빈 값 — 아직 활동이 없거나 TTL이 만료된 경우다")
     void missingKeyIsEmpty() {
-        when(ops.get("ctx:1")).thenReturn(null);
+        when(ops.get(store.key(USER))).thenReturn(null);
 
         assertThat(store.read(USER)).isEmpty();
         assertThat(failOpenCount()).isZero();
@@ -85,7 +85,7 @@ class ContextStoreTest {
     @Test
     @DisplayName("저장소가 죽어도 읽기는 던지지 않는다 — 빈 값으로 폴백하고 지표를 센다")
     void readFailsOpen() {
-        when(ops.get("ctx:1")).thenThrow(new RedisConnectionFailureException("연결 끊김"));
+        when(ops.get(store.key(USER))).thenThrow(new RedisConnectionFailureException("연결 끊김"));
 
         assertThat(store.read(USER)).isEmpty();
         // 조용히 꺼지면 안 된다 — 폴백한 사실이 지표에 남아야 알림을 걸 수 있다.
@@ -95,7 +95,7 @@ class ContextStoreTest {
     @Test
     @DisplayName("저장된 값이 우리 스키마와 다르면 읽기 실패로 폴백한다(영원히 빈 값으로 응답하지 않도록)")
     void corruptValueFallsBack() {
-        when(ops.get("ctx:1")).thenReturn("{이건 JSON이 아니다");
+        when(ops.get(store.key(USER))).thenReturn("{이건 JSON이 아니다");
 
         assertThat(store.read(USER)).isEmpty();
         assertThat(failOpenCount()).isEqualTo(1.0);
@@ -105,8 +105,8 @@ class ContextStoreTest {
     @DisplayName("읽은 값은 쓴 값과 같다(JSON 왕복)")
     void roundTrip() {
         OnlineContext written = new OnlineContext(7L, Instant.parse("2026-09-21T10:00:00Z"),
-                java.util.List.of(new OnlineContext.Item(42L, "VIEW", Instant.parse("2026-09-21T09:59:59Z"))));
-        when(ops.get("ctx:1")).thenReturn(encode(written));
+                java.util.List.of(new OnlineContext.Item(7L, 42L, "VIEW", Instant.parse("2026-09-21T09:59:59Z"))));
+        when(ops.get(store.key(USER))).thenReturn(encode(written));
 
         assertThat(store.read(USER)).contains(written);
     }
@@ -115,8 +115,8 @@ class ContextStoreTest {
     @DisplayName("적용은 Lua 스크립트 하나를 부르고, 돌려받은 컨텍스트를 그대로 읽는다")
     void applyUsesScriptAndParsesResult() {
         OnlineContext merged = new OnlineContext(3L, Instant.now(),
-                java.util.List.of(new OnlineContext.Item(103L, "CLICK", Instant.now())));
-        when(redis.execute(any(RedisScript.class), anyList(), any(), any(), any()))
+                java.util.List.of(new OnlineContext.Item(3L, 103L, "CLICK", Instant.now())));
+        when(redis.execute(any(RedisScript.class), anyList(), any(Object[].class)))
                 .thenReturn(encode(merged));
 
         OnlineContext result = store.apply(event(3));
@@ -129,7 +129,7 @@ class ContextStoreTest {
     @Test
     @DisplayName("스크립트가 값을 못 돌려주면 던진다 — 조용히 넘기면 이벤트가 사라진다")
     void applyRejectsNullResult() {
-        when(redis.execute(any(RedisScript.class), anyList(), any(), any(), any())).thenReturn(null);
+        when(redis.execute(any(RedisScript.class), anyList(), any(Object[].class))).thenReturn(null);
 
         assertThatThrownBy(() -> store.apply(event(1)))
                 .isInstanceOf(IllegalStateException.class)
@@ -140,7 +140,7 @@ class ContextStoreTest {
     @DisplayName("쓰기 실패는 전파한다 — 삼키면 이벤트가 조용히 사라진다")
     void applyPropagatesFailure() {
         doThrow(new RedisConnectionFailureException("연결 끊김"))
-                .when(redis).execute(any(RedisScript.class), anyList(), any(), any(), any());
+                .when(redis).execute(any(RedisScript.class), anyList(), any(Object[].class));
 
         assertThatThrownBy(() -> store.apply(event(1)))
                 .isInstanceOf(RedisConnectionFailureException.class);

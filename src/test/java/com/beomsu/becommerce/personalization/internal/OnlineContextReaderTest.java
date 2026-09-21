@@ -39,7 +39,7 @@ class OnlineContextReaderTest {
 
     private Optional<OnlineContext> contextAt(long seq) {
         return Optional.of(new OnlineContext(seq, Instant.now(),
-                List.of(new OnlineContext.Item(seq, "CLICK", Instant.now()))));
+                List.of(new OnlineContext.Item(seq, seq, "CLICK", Instant.now()))));
     }
 
     @Test
@@ -123,7 +123,7 @@ class OnlineContextReaderTest {
     @DisplayName("stalenessMs는 컨텍스트가 마지막으로 갱신된 뒤 흐른 시간이다")
     void stalenessIsMeasuredFromUpdate() {
         OnlineContext tenSecondsOld = new OnlineContext(1L, Instant.now().minusSeconds(10),
-                List.of(new OnlineContext.Item(1L, "CLICK", Instant.now())));
+                List.of(new OnlineContext.Item(1L, 1L, "CLICK", Instant.now())));
         when(store.read(USER)).thenReturn(Optional.of(tenSecondsOld));
 
         ContextView view = reader.read(USER, null, 0L);

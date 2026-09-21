@@ -83,8 +83,10 @@ class PersonalizationIntegrationTest {
     @BeforeEach
     void clean() {
         jdbc.update("delete from user_activities");
-        if (Boolean.TRUE.equals(redis.hasKey("ctx:1"))) {
-            redis.delete("ctx:1");
+        // 키 접두어 패턴으로 지운다 — 키에 값 판이 붙으면(:v2) 하드코딩한 키가 어긋난다.
+        var keys = redis.keys("ctx:*");
+        if (keys != null && !keys.isEmpty()) {
+            redis.delete(keys);
         }
     }
 
@@ -100,8 +102,11 @@ class PersonalizationIntegrationTest {
         // DB — 응답이 아니라 실제 행.
         assertThat(jdbc.queryForObject(
                 "select count(*) from user_activities where user_id = 1 and seq = 3", Long.class)).isEqualTo(1L);
-        // 저장소 — 컨텍스트 값이 실제로 들어갔다.
-        assertThat(redis.opsForValue().get("ctx:1")).isNotNull().contains("\"seq\":3");
+        // 저장소 — 컨텍스트 값이 실제로 들어갔다. 키에 값 판이 붙으므로(:v2) 패턴으로 찾는다.
+        var storedKeys = redis.keys("ctx:*");
+        assertThat(storedKeys).isNotEmpty();
+        String stored = redis.opsForValue().get(storedKeys.iterator().next());
+        assertThat(stored).isNotNull().contains("\"seq\":3");
 
         JsonNode context = context(token, 3L, 200L);
         assertThat(context.get("reflected").asBoolean()).isTrue();
