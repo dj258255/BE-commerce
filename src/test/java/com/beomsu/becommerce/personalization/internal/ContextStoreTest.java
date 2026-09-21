@@ -105,7 +105,8 @@ class ContextStoreTest {
     @DisplayName("읽은 값은 쓴 값과 같다(JSON 왕복)")
     void roundTrip() {
         OnlineContext written = new OnlineContext(7L, Instant.parse("2026-09-21T10:00:00Z"),
-                java.util.List.of(new OnlineContext.Item(7L, 42L, "VIEW", Instant.parse("2026-09-21T09:59:59Z"))));
+                java.util.List.of(new OnlineContext.Item(7L, 42L, "VIEW", Instant.parse("2026-09-21T09:59:59Z"))),
+                java.util.Map.of("VIEW", 1L));
         when(ops.get(store.key(USER))).thenReturn(encode(written));
 
         assertThat(store.read(USER)).contains(written);
@@ -115,7 +116,8 @@ class ContextStoreTest {
     @DisplayName("적용은 Lua 스크립트 하나를 부르고, 돌려받은 컨텍스트를 그대로 읽는다")
     void applyUsesScriptAndParsesResult() {
         OnlineContext merged = new OnlineContext(3L, Instant.now(),
-                java.util.List.of(new OnlineContext.Item(3L, 103L, "CLICK", Instant.now())));
+                java.util.List.of(new OnlineContext.Item(3L, 103L, "CLICK", Instant.now())),
+                java.util.Map.of("CLICK", 1L));
         when(redis.execute(any(RedisScript.class), anyList(), any(Object[].class)))
                 .thenReturn(encode(merged));
 

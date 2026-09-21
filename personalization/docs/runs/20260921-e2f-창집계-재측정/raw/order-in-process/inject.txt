@@ -1,0 +1,9 @@
+  user 2352: 40건 (긴 사용자=False)
+  user 2353: 40건 (긴 사용자=False)
+  user 2354: 40건 (긴 사용자=False)
+  user 2355: 40건 (긴 사용자=False)
+  user 2356: 40건 (긴 사용자=False)
+  user 2357: 40건 (긴 사용자=False)
+
+주입 완료 — 사용자 6명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260921-e2f-창집계-재측정/raw/order-in-process/manifest.json

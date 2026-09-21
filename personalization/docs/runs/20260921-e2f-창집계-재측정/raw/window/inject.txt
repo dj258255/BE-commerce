@@ -1,0 +1,23 @@
+  user 2292: 30건 (긴 사용자=True)
+  user 2293: 30건 (긴 사용자=True)
+  user 2294: 30건 (긴 사용자=True)
+  user 2295: 30건 (긴 사용자=True)
+  user 2296: 30건 (긴 사용자=True)
+  user 2297: 30건 (긴 사용자=True)
+  user 2298: 30건 (긴 사용자=True)
+  user 2299: 30건 (긴 사용자=True)
+  user 2300: 12건 (긴 사용자=False)
+  user 2301: 12건 (긴 사용자=False)
+  user 2302: 12건 (긴 사용자=False)
+  user 2303: 12건 (긴 사용자=False)
+  user 2304: 12건 (긴 사용자=False)
+  user 2305: 12건 (긴 사용자=False)
+  user 2306: 12건 (긴 사용자=False)
+  user 2307: 12건 (긴 사용자=False)
+  user 2308: 12건 (긴 사용자=False)
+  user 2309: 12건 (긴 사용자=False)
+  user 2310: 12건 (긴 사용자=False)
+  user 2311: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 384건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260921-e2f-창집계-재측정/raw/window/manifest.json

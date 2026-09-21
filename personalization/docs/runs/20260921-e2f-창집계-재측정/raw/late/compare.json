@@ -1,0 +1,1022 @@
+{
+  "condition": "late @IN_PROCESS",
+  "measuredAt": "2026-09-21T08:57:42.271921+00:00",
+  "manifest": "personalization/docs/runs/20260921-e2f-창집계-재측정/raw/late/manifest.json",
+  "users": 20,
+  "contextMatchPct": 95.0,
+  "windowCountMatchPct": 95.0,
+  "causes": [
+    {
+      "cause": "absent",
+      "users": 0,
+      "sharePct": 0.0
+    },
+    {
+      "cause": "behind",
+      "users": 1,
+      "sharePct": 5.0
+    },
+    {
+      "cause": "dropped",
+      "users": 1,
+      "sharePct": 5.0
+    }
+  ],
+  "observations": [
+    {
+      "observation": "truncated",
+      "users": 0,
+      "sharePct": 0.0
+    }
+  ],
+  "matchedUsers": 19,
+  "samples": [
+    {
+      "userId": 2291,
+      "email": "e2-20260921-085731-19@load.test",
+      "causes": [
+        "behind",
+        "dropped"
+      ],
+      "matched": false,
+      "observations": [],
+      "onlineSeq": 8,
+      "logMaxSeq": 12,
+      "onlineCount": 8,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 8
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2291008,
+        2291007,
+        2291006,
+        2291005,
+        2291004,
+        2291003,
+        2291002,
+        2291001
+      ],
+      "offlineItems": [
+        2291012,
+        2291011,
+        2291010,
+        2291009,
+        2291008,
+        2291007,
+        2291006,
+        2291005,
+        2291004,
+        2291003,
+        2291002,
+        2291001
+      ],
+      "listMatch": false,
+      "countMatch": false
+    }
+  ],
+  "rows": [
+    {
+      "userId": 2272,
+      "email": "e2-20260921-085731-0@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2272012,
+        2272011,
+        2272010,
+        2272009,
+        2272008,
+        2272007,
+        2272006,
+        2272005,
+        2272004,
+        2272003,
+        2272002,
+        2272001
+      ],
+      "offlineItems": [
+        2272012,
+        2272011,
+        2272010,
+        2272009,
+        2272008,
+        2272007,
+        2272006,
+        2272005,
+        2272004,
+        2272003,
+        2272002,
+        2272001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2273,
+      "email": "e2-20260921-085731-1@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2273012,
+        2273011,
+        2273010,
+        2273009,
+        2273008,
+        2273007,
+        2273006,
+        2273005,
+        2273004,
+        2273003,
+        2273002,
+        2273001
+      ],
+      "offlineItems": [
+        2273012,
+        2273011,
+        2273010,
+        2273009,
+        2273008,
+        2273007,
+        2273006,
+        2273005,
+        2273004,
+        2273003,
+        2273002,
+        2273001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2274,
+      "email": "e2-20260921-085731-2@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2274012,
+        2274011,
+        2274010,
+        2274009,
+        2274008,
+        2274007,
+        2274006,
+        2274005,
+        2274004,
+        2274003,
+        2274002,
+        2274001
+      ],
+      "offlineItems": [
+        2274012,
+        2274011,
+        2274010,
+        2274009,
+        2274008,
+        2274007,
+        2274006,
+        2274005,
+        2274004,
+        2274003,
+        2274002,
+        2274001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2275,
+      "email": "e2-20260921-085731-3@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2275012,
+        2275011,
+        2275010,
+        2275009,
+        2275008,
+        2275007,
+        2275006,
+        2275005,
+        2275004,
+        2275003,
+        2275002,
+        2275001
+      ],
+      "offlineItems": [
+        2275012,
+        2275011,
+        2275010,
+        2275009,
+        2275008,
+        2275007,
+        2275006,
+        2275005,
+        2275004,
+        2275003,
+        2275002,
+        2275001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2276,
+      "email": "e2-20260921-085731-4@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2276012,
+        2276011,
+        2276010,
+        2276009,
+        2276008,
+        2276007,
+        2276006,
+        2276005,
+        2276004,
+        2276003,
+        2276002,
+        2276001
+      ],
+      "offlineItems": [
+        2276012,
+        2276011,
+        2276010,
+        2276009,
+        2276008,
+        2276007,
+        2276006,
+        2276005,
+        2276004,
+        2276003,
+        2276002,
+        2276001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2277,
+      "email": "e2-20260921-085731-5@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2277012,
+        2277011,
+        2277010,
+        2277009,
+        2277008,
+        2277007,
+        2277006,
+        2277005,
+        2277004,
+        2277003,
+        2277002,
+        2277001
+      ],
+      "offlineItems": [
+        2277012,
+        2277011,
+        2277010,
+        2277009,
+        2277008,
+        2277007,
+        2277006,
+        2277005,
+        2277004,
+        2277003,
+        2277002,
+        2277001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2278,
+      "email": "e2-20260921-085731-6@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2278012,
+        2278011,
+        2278010,
+        2278009,
+        2278008,
+        2278007,
+        2278006,
+        2278005,
+        2278004,
+        2278003,
+        2278002,
+        2278001
+      ],
+      "offlineItems": [
+        2278012,
+        2278011,
+        2278010,
+        2278009,
+        2278008,
+        2278007,
+        2278006,
+        2278005,
+        2278004,
+        2278003,
+        2278002,
+        2278001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2279,
+      "email": "e2-20260921-085731-7@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2279012,
+        2279011,
+        2279010,
+        2279009,
+        2279008,
+        2279007,
+        2279006,
+        2279005,
+        2279004,
+        2279003,
+        2279002,
+        2279001
+      ],
+      "offlineItems": [
+        2279012,
+        2279011,
+        2279010,
+        2279009,
+        2279008,
+        2279007,
+        2279006,
+        2279005,
+        2279004,
+        2279003,
+        2279002,
+        2279001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2280,
+      "email": "e2-20260921-085731-8@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2280012,
+        2280011,
+        2280010,
+        2280009,
+        2280008,
+        2280007,
+        2280006,
+        2280005,
+        2280004,
+        2280003,
+        2280002,
+        2280001
+      ],
+      "offlineItems": [
+        2280012,
+        2280011,
+        2280010,
+        2280009,
+        2280008,
+        2280007,
+        2280006,
+        2280005,
+        2280004,
+        2280003,
+        2280002,
+        2280001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2281,
+      "email": "e2-20260921-085731-9@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2281012,
+        2281011,
+        2281010,
+        2281009,
+        2281008,
+        2281007,
+        2281006,
+        2281005,
+        2281004,
+        2281003,
+        2281002,
+        2281001
+      ],
+      "offlineItems": [
+        2281012,
+        2281011,
+        2281010,
+        2281009,
+        2281008,
+        2281007,
+        2281006,
+        2281005,
+        2281004,
+        2281003,
+        2281002,
+        2281001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2282,
+      "email": "e2-20260921-085731-10@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2282012,
+        2282011,
+        2282010,
+        2282009,
+        2282008,
+        2282007,
+        2282006,
+        2282005,
+        2282004,
+        2282003,
+        2282002,
+        2282001
+      ],
+      "offlineItems": [
+        2282012,
+        2282011,
+        2282010,
+        2282009,
+        2282008,
+        2282007,
+        2282006,
+        2282005,
+        2282004,
+        2282003,
+        2282002,
+        2282001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2283,
+      "email": "e2-20260921-085731-11@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2283012,
+        2283011,
+        2283010,
+        2283009,
+        2283008,
+        2283007,
+        2283006,
+        2283005,
+        2283004,
+        2283003,
+        2283002,
+        2283001
+      ],
+      "offlineItems": [
+        2283012,
+        2283011,
+        2283010,
+        2283009,
+        2283008,
+        2283007,
+        2283006,
+        2283005,
+        2283004,
+        2283003,
+        2283002,
+        2283001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2284,
+      "email": "e2-20260921-085731-12@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2284012,
+        2284011,
+        2284010,
+        2284009,
+        2284008,
+        2284007,
+        2284006,
+        2284005,
+        2284004,
+        2284003,
+        2284002,
+        2284001
+      ],
+      "offlineItems": [
+        2284012,
+        2284011,
+        2284010,
+        2284009,
+        2284008,
+        2284007,
+        2284006,
+        2284005,
+        2284004,
+        2284003,
+        2284002,
+        2284001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2285,
+      "email": "e2-20260921-085731-13@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2285012,
+        2285011,
+        2285010,
+        2285009,
+        2285008,
+        2285007,
+        2285006,
+        2285005,
+        2285004,
+        2285003,
+        2285002,
+        2285001
+      ],
+      "offlineItems": [
+        2285012,
+        2285011,
+        2285010,
+        2285009,
+        2285008,
+        2285007,
+        2285006,
+        2285005,
+        2285004,
+        2285003,
+        2285002,
+        2285001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2286,
+      "email": "e2-20260921-085731-14@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2286012,
+        2286011,
+        2286010,
+        2286009,
+        2286008,
+        2286007,
+        2286006,
+        2286005,
+        2286004,
+        2286003,
+        2286002,
+        2286001
+      ],
+      "offlineItems": [
+        2286012,
+        2286011,
+        2286010,
+        2286009,
+        2286008,
+        2286007,
+        2286006,
+        2286005,
+        2286004,
+        2286003,
+        2286002,
+        2286001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2287,
+      "email": "e2-20260921-085731-15@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2287012,
+        2287011,
+        2287010,
+        2287009,
+        2287008,
+        2287007,
+        2287006,
+        2287005,
+        2287004,
+        2287003,
+        2287002,
+        2287001
+      ],
+      "offlineItems": [
+        2287012,
+        2287011,
+        2287010,
+        2287009,
+        2287008,
+        2287007,
+        2287006,
+        2287005,
+        2287004,
+        2287003,
+        2287002,
+        2287001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2288,
+      "email": "e2-20260921-085731-16@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2288012,
+        2288011,
+        2288010,
+        2288009,
+        2288008,
+        2288007,
+        2288006,
+        2288005,
+        2288004,
+        2288003,
+        2288002,
+        2288001
+      ],
+      "offlineItems": [
+        2288012,
+        2288011,
+        2288010,
+        2288009,
+        2288008,
+        2288007,
+        2288006,
+        2288005,
+        2288004,
+        2288003,
+        2288002,
+        2288001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2289,
+      "email": "e2-20260921-085731-17@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2289012,
+        2289011,
+        2289010,
+        2289009,
+        2289008,
+        2289007,
+        2289006,
+        2289005,
+        2289004,
+        2289003,
+        2289002,
+        2289001
+      ],
+      "offlineItems": [
+        2289012,
+        2289011,
+        2289010,
+        2289009,
+        2289008,
+        2289007,
+        2289006,
+        2289005,
+        2289004,
+        2289003,
+        2289002,
+        2289001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2290,
+      "email": "e2-20260921-085731-18@load.test",
+      "causes": [],
+      "matched": true,
+      "observations": [],
+      "onlineSeq": 12,
+      "logMaxSeq": 12,
+      "onlineCount": 12,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 12
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2290012,
+        2290011,
+        2290010,
+        2290009,
+        2290008,
+        2290007,
+        2290006,
+        2290005,
+        2290004,
+        2290003,
+        2290002,
+        2290001
+      ],
+      "offlineItems": [
+        2290012,
+        2290011,
+        2290010,
+        2290009,
+        2290008,
+        2290007,
+        2290006,
+        2290005,
+        2290004,
+        2290003,
+        2290002,
+        2290001
+      ],
+      "listMatch": true,
+      "countMatch": true
+    },
+    {
+      "userId": 2291,
+      "email": "e2-20260921-085731-19@load.test",
+      "causes": [
+        "behind",
+        "dropped"
+      ],
+      "matched": false,
+      "observations": [],
+      "onlineSeq": 8,
+      "logMaxSeq": 12,
+      "onlineCount": 8,
+      "logCount": 12,
+      "onlineCounts": {
+        "CLICK": 8
+      },
+      "logCounts": {
+        "CLICK": 12
+      },
+      "onlineItems": [
+        2291008,
+        2291007,
+        2291006,
+        2291005,
+        2291004,
+        2291003,
+        2291002,
+        2291001
+      ],
+      "offlineItems": [
+        2291012,
+        2291011,
+        2291010,
+        2291009,
+        2291008,
+        2291007,
+        2291006,
+        2291005,
+        2291004,
+        2291003,
+        2291002,
+        2291001
+      ],
+      "listMatch": false,
+      "countMatch": false
+    }
+  ]
+}

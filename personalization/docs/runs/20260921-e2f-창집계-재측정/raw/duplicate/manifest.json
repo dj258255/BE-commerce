@@ -1,0 +1,1851 @@
+{
+  "base": "http://localhost:18080",
+  "injected_at": "2026-09-21T08:59:03.421133+00:00",
+  "maxItems": 20,
+  "disorderRatio": 0.0,
+  "duplicateRatio": 0.4,
+  "accepted": 240,
+  "rejected": 80,
+  "users": [
+    {
+      "userId": 2332,
+      "email": "e2-20260921-085851-0@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2332001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2332002,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2332002,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 3,
+          "itemId": 2332003,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2332003,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 4,
+          "itemId": 2332004,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2332004,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 5,
+          "itemId": 2332005,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2332006,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2332006,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 7,
+          "itemId": 2332007,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2332007,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 8,
+          "itemId": 2332008,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2332008,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 9,
+          "itemId": 2332009,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2332009,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 10,
+          "itemId": 2332010,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2332011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2332012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2333,
+      "email": "e2-20260921-085851-1@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2333001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2333002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2333003,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2333003,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 4,
+          "itemId": 2333004,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2333005,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2333006,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2333007,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2333008,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2333008,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 9,
+          "itemId": 2333009,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2333010,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2333011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2333012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2334,
+      "email": "e2-20260921-085851-2@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2334001,
+          "status": 201
+        },
+        {
+          "seq": 1,
+          "itemId": 2334001,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 2,
+          "itemId": 2334002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2334003,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2334004,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2334004,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 5,
+          "itemId": 2334005,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2334005,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 6,
+          "itemId": 2334006,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2334007,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2334008,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2334009,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2334010,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2334010,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 11,
+          "itemId": 2334011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2334012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2335,
+      "email": "e2-20260921-085851-3@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2335001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2335002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2335003,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2335003,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 4,
+          "itemId": 2335004,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2335004,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 5,
+          "itemId": 2335005,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2335005,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 6,
+          "itemId": 2335006,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2335007,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2335008,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2335009,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2335010,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2335011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2335012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2336,
+      "email": "e2-20260921-085851-4@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2336001,
+          "status": 201
+        },
+        {
+          "seq": 1,
+          "itemId": 2336001,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 2,
+          "itemId": 2336002,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2336002,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 3,
+          "itemId": 2336003,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2336003,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 4,
+          "itemId": 2336004,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2336004,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 5,
+          "itemId": 2336005,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2336005,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 6,
+          "itemId": 2336006,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2336006,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 7,
+          "itemId": 2336007,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2336008,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2336009,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2336009,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 10,
+          "itemId": 2336010,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2336011,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2336011,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 12,
+          "itemId": 2336012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2337,
+      "email": "e2-20260921-085851-5@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2337001,
+          "status": 201
+        },
+        {
+          "seq": 1,
+          "itemId": 2337001,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 2,
+          "itemId": 2337002,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2337002,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 3,
+          "itemId": 2337003,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2337003,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 4,
+          "itemId": 2337004,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2337004,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 5,
+          "itemId": 2337005,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2337005,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 6,
+          "itemId": 2337006,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2337006,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 7,
+          "itemId": 2337007,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2337007,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 8,
+          "itemId": 2337008,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2337008,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 9,
+          "itemId": 2337009,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2337010,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2337010,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 11,
+          "itemId": 2337011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2337012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2338,
+      "email": "e2-20260921-085851-6@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2338001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2338002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2338003,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2338003,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 4,
+          "itemId": 2338004,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2338005,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2338005,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 6,
+          "itemId": 2338006,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2338007,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2338008,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2338009,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2338010,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2338011,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2338011,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 12,
+          "itemId": 2338012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2339,
+      "email": "e2-20260921-085851-7@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2339001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2339002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2339003,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2339004,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2339005,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2339006,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2339007,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2339007,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 8,
+          "itemId": 2339008,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2339008,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 9,
+          "itemId": 2339009,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2339009,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 10,
+          "itemId": 2339010,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2339011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2339012,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2339012,
+          "status": 409,
+          "duplicate": true
+        }
+      ]
+    },
+    {
+      "userId": 2340,
+      "email": "e2-20260921-085851-8@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2340001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2340002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2340003,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2340003,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 4,
+          "itemId": 2340004,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2340005,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2340006,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2340007,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2340007,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 8,
+          "itemId": 2340008,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2340009,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2340010,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2340010,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 11,
+          "itemId": 2340011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2340012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2341,
+      "email": "e2-20260921-085851-9@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2341001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2341002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2341003,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2341004,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2341005,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2341005,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 6,
+          "itemId": 2341006,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2341006,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 7,
+          "itemId": 2341007,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2341008,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2341009,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2341009,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 10,
+          "itemId": 2341010,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2341010,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 11,
+          "itemId": 2341011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2341012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2342,
+      "email": "e2-20260921-085851-10@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2342001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2342002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2342003,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2342003,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 4,
+          "itemId": 2342004,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2342004,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 5,
+          "itemId": 2342005,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2342005,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 6,
+          "itemId": 2342006,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2342007,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2342008,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2342008,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 9,
+          "itemId": 2342009,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2342009,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 10,
+          "itemId": 2342010,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2342011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2342012,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2342012,
+          "status": 409,
+          "duplicate": true
+        }
+      ]
+    },
+    {
+      "userId": 2343,
+      "email": "e2-20260921-085851-11@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2343001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2343002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2343003,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2343004,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2343004,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 5,
+          "itemId": 2343005,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2343006,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2343007,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2343008,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2343009,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2343010,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2343011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2343012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2344,
+      "email": "e2-20260921-085851-12@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2344001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2344002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2344003,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2344004,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2344005,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2344006,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2344006,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 7,
+          "itemId": 2344007,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2344008,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2344009,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2344010,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2344011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2344012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2345,
+      "email": "e2-20260921-085851-13@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2345001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2345002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2345003,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2345004,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2345005,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2345005,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 6,
+          "itemId": 2345006,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2345007,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2345007,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 8,
+          "itemId": 2345008,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2345009,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2345010,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2345010,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 11,
+          "itemId": 2345011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2345012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2346,
+      "email": "e2-20260921-085851-14@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2346001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2346002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2346003,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2346004,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2346005,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2346006,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2346006,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 7,
+          "itemId": 2346007,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2346008,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2346008,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 9,
+          "itemId": 2346009,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2346009,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 10,
+          "itemId": 2346010,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2346010,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 11,
+          "itemId": 2346011,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2346011,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 12,
+          "itemId": 2346012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2347,
+      "email": "e2-20260921-085851-15@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2347001,
+          "status": 201
+        },
+        {
+          "seq": 1,
+          "itemId": 2347001,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 2,
+          "itemId": 2347002,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2347002,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 3,
+          "itemId": 2347003,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2347004,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2347005,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2347006,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2347007,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2347008,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2347009,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2347010,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2347010,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 11,
+          "itemId": 2347011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2347012,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2347012,
+          "status": 409,
+          "duplicate": true
+        }
+      ]
+    },
+    {
+      "userId": 2348,
+      "email": "e2-20260921-085851-16@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2348001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2348002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2348003,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2348003,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 4,
+          "itemId": 2348004,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2348005,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2348005,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 6,
+          "itemId": 2348006,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2348007,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2348007,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 8,
+          "itemId": 2348008,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2348009,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2348010,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2348011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2348012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2349,
+      "email": "e2-20260921-085851-17@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2349001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2349002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2349003,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2349004,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2349005,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2349006,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2349006,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 7,
+          "itemId": 2349007,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2349008,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2349009,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2349010,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2349010,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 11,
+          "itemId": 2349011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2349012,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2349012,
+          "status": 409,
+          "duplicate": true
+        }
+      ]
+    },
+    {
+      "userId": 2350,
+      "email": "e2-20260921-085851-18@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2350001,
+          "status": 201
+        },
+        {
+          "seq": 1,
+          "itemId": 2350001,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 2,
+          "itemId": 2350002,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2350002,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 3,
+          "itemId": 2350003,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2350004,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2350005,
+          "status": 201
+        },
+        {
+          "seq": 6,
+          "itemId": 2350006,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2350007,
+          "status": 201
+        },
+        {
+          "seq": 8,
+          "itemId": 2350008,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2350009,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2350009,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 10,
+          "itemId": 2350010,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2350010,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 11,
+          "itemId": 2350011,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2350011,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 12,
+          "itemId": 2350012,
+          "status": 201
+        }
+      ]
+    },
+    {
+      "userId": 2351,
+      "email": "e2-20260921-085851-19@load.test",
+      "long": false,
+      "sentCount": 12,
+      "sent": [
+        {
+          "seq": 1,
+          "itemId": 2351001,
+          "status": 201
+        },
+        {
+          "seq": 2,
+          "itemId": 2351002,
+          "status": 201
+        },
+        {
+          "seq": 3,
+          "itemId": 2351003,
+          "status": 201
+        },
+        {
+          "seq": 4,
+          "itemId": 2351004,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2351005,
+          "status": 201
+        },
+        {
+          "seq": 5,
+          "itemId": 2351005,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 6,
+          "itemId": 2351006,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2351007,
+          "status": 201
+        },
+        {
+          "seq": 7,
+          "itemId": 2351007,
+          "status": 409,
+          "duplicate": true
+        },
+        {
+          "seq": 8,
+          "itemId": 2351008,
+          "status": 201
+        },
+        {
+          "seq": 9,
+          "itemId": 2351009,
+          "status": 201
+        },
+        {
+          "seq": 10,
+          "itemId": 2351010,
+          "status": 201
+        },
+        {
+          "seq": 11,
+          "itemId": 2351011,
+          "status": 201
+        },
+        {
+          "seq": 12,
+          "itemId": 2351012,
+          "status": 201
+        }
+      ]
+    }
+  ]
+}

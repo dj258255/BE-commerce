@@ -2,6 +2,7 @@ package com.beomsu.becommerce.personalization.internal;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 온라인 읽기 응답 — 컨텍스트와 <b>그 컨텍스트가 얼마나 최신인지</b>를 함께 돌려준다.
@@ -13,6 +14,10 @@ import java.util.List;
  * <p>{@code source}로 <b>폴백을 숨기지 않는다.</b> {@code EMPTY}면 저장소 장애이거나 활동이 아직
  * 없는 것이다. 화면이 "폴백으로 응답했으면 폴백이라고 보여준다"는 규칙
  * ({@code personalization/web/README.md})의 서버 쪽 짝이다.
+ *
+ * <p>{@code counts}와 {@code windowTotal}은 <b>창 집계</b>다 — {@code items}가 {@code max-items}로
+ * 잘려도 집계는 잘리지 않는다. {@code itemCount}로 창을 세면 목록이 꽉 찬 순간부터 틀리기
+ * 시작하고, E2가 실제로 그렇게 틀렸다(집계 60%). 세는 일에는 세는 그릇을 따로 준다.
  */
 public record ContextView(long userId,
                           long seq,
@@ -20,6 +25,8 @@ public record ContextView(long userId,
                           Long stalenessMs,
                           long waitedMs,
                           int itemCount,
+                          long windowTotal,
+                          Map<String, Long> counts,
                           List<OnlineContext.Item> items,
                           String source) {
 
@@ -32,7 +39,8 @@ public record ContextView(long userId,
                                  long waitedMs, String source) {
         return new ContextView(userId, context.seq(), reflected,
                 context.updatedAt() == null ? null : Math.max(0, Instant.now().toEpochMilli() - context.updatedAt().toEpochMilli()),
-                waitedMs, context.items().size(), context.items(), source);
+                waitedMs, context.items().size(), context.totalActivities(), context.counts(),
+                context.items(), source);
     }
 
     public static ContextView empty(long userId, long waitedMs) {

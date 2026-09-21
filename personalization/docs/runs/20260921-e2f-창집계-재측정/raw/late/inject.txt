@@ -1,0 +1,23 @@
+  user 2272: 12건 (긴 사용자=False)
+  user 2273: 12건 (긴 사용자=False)
+  user 2274: 12건 (긴 사용자=False)
+  user 2275: 12건 (긴 사용자=False)
+  user 2276: 12건 (긴 사용자=False)
+  user 2277: 12건 (긴 사용자=False)
+  user 2278: 12건 (긴 사용자=False)
+  user 2279: 12건 (긴 사용자=False)
+  user 2280: 12건 (긴 사용자=False)
+  user 2281: 12건 (긴 사용자=False)
+  user 2282: 12건 (긴 사용자=False)
+  user 2283: 12건 (긴 사용자=False)
+  user 2284: 12건 (긴 사용자=False)
+  user 2285: 12건 (긴 사용자=False)
+  user 2286: 12건 (긴 사용자=False)
+  user 2287: 12건 (긴 사용자=False)
+  user 2288: 12건 (긴 사용자=False)
+  user 2289: 12건 (긴 사용자=False)
+  user 2290: 12건 (긴 사용자=False)
+  user 2291: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260921-e2f-창집계-재측정/raw/late/manifest.json

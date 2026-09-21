@@ -1,0 +1,9 @@
+  user 2358: 40건 (긴 사용자=False)
+  user 2359: 40건 (긴 사용자=False)
+  user 2360: 40건 (긴 사용자=False)
+  user 2361: 40건 (긴 사용자=False)
+  user 2362: 40건 (긴 사용자=False)
+  user 2363: 40건 (긴 사용자=False)
+
+주입 완료 — 사용자 6명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260921-e2f-창집계-재측정/raw/order-kafka/manifest.json

@@ -1,0 +1,2 @@
+
+GROUP                          TOPIC                          PARTITION  NEW-OFFSET     e2-20260921-175623-redelivery  user.activity                  0          0              
