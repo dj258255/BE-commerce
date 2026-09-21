@@ -1,25 +1,25 @@
 {
-  "_source": "M4 실험(#127) 실측. personalization/docs/runs/20260921-e4-제약-재검증/report.md — 로컬 단일 장비, 추천 30req/s 60초(워밍업 15초 제외), 가용성 변화 8/s.",
+  "_source": "M4 실험(#127) 실측. personalization/docs/runs/20260921-e4b-제약-재검증-실재고/report.md — 로컬 단일 장비, 추천 30req/s 60초(워밍업 15초 제외), 교체 8/s, 품절 6/24 고정. 제약 원천은 실제 stock 테이블이다.",
   "_harness": "k6/constraint-revalidation.js + tools/run-constraint-revalidation.sh (실측 완료)",
-  "_note": "제약 원천이 **합성**이다(메모리 안의 가용성 집합). 그래서 확인 비용이 측정 하한 아래이고 addedMs 가 네 정책 모두 0 이다 — 지연이 아니라 **읽기 횟수**로 값을 낸다. 어떤 것이 정책을 갈랐는지는 stale 창이다: 54ms vs 0ms.",
+  "_note": "제약 원천이 **실제 재고**다(order.StockAvailabilityFacts, 실험 시드 V60). 그래서 확인이 DB 왕복이고 비용이 처음 보인다 — addedMs 가 정책별로 벌어진다(0 / 3 / 4 / 5ms). 품절 집합 크기는 6/24 로 고정돼(제어 100%) 위반율 순서를 정책 효과로 읽을 수 있다. 어떤 것이 정책을 갈랐는지는 stale 창이다: 58ms vs 3ms.",
   "modes": [
-    { "mode": "검증 없음", "addedMs": 0, "reads": 0, "violationPct": 0.96, "staleWindowMs": null, "factsChanged": null },
-    { "mode": "생성 시작 시점 검증", "addedMs": 0, "reads": 1, "violationPct": 2.37, "staleWindowMs": 54, "factsChanged": 0.89 },
-    { "mode": "생성 완료 후 재검증", "addedMs": 0, "reads": 1, "violationPct": 0.0, "staleWindowMs": 0, "factsChanged": 0.0 },
-    { "mode": "응답 직전 재검증", "addedMs": 0, "reads": 2, "violationPct": 0.0, "staleWindowMs": 0, "factsChanged": 0.0 }
+    { "mode": "검증 없음", "addedMs": 0, "reads": 0, "violationPct": 63.14, "staleWindowMs": null, "factsChanged": null },
+    { "mode": "생성 시작 시점 검증", "addedMs": 3, "reads": 1, "violationPct": 29.16, "staleWindowMs": 58, "factsChanged": 1.03 },
+    { "mode": "생성 완료 후 재검증", "addedMs": 4, "reads": 1, "violationPct": 1.41, "staleWindowMs": 3, "factsChanged": 0.21 },
+    { "mode": "응답 직전 재검증", "addedMs": 5, "reads": 2, "violationPct": 2.52, "staleWindowMs": 2, "factsChanged": 0.12 }
   ],
   "tradeoff": [
-    { "name": "생성 시작 스냅샷(창 54ms)", "cls": "s-b", "points": [[54, 2.37]] },
-    { "name": "생성 완료 후 · 응답 직전(창 0ms)", "cls": "s-a", "points": [[0, 0.0], [0, 0.0]] }
+    { "name": "생성 시작 스냅샷(창 58ms)", "cls": "s-b", "points": [[58, 29.16]] },
+    { "name": "생성 완료 후(창 3ms)", "cls": "s-a", "points": [[3, 1.41]] }
   ],
   "boundary": {
     "recommendation": "추천 단계는 '생성 완료 후 재검증'까지, 구매 단계는 강한 보장",
     "statement": "추천은 stale을 허용한다 — 확인과 응답 사이의 창은 0으로 만들 수 없다(마지막 확인을 늘려도 남는다). 대신 그 창을 응답에 밝히고(snapshotAgeMs·changesInWindow) 구매 단계에 위임한다. CheckoutTx 가 주문 시 조건부 차감으로 재고를 다시 판정하므로, 낡은 목록이 팔리지 않는 물건을 팔게 하지는 않는다.",
-    "openQuestion": "가용성 읽기가 비싸지면(실제 재고 포트) '생성 전 캐시 스냅샷'과의 교환비가 처음으로 계산된다 — 이번엔 합성이 너무 싸서 못 쟀다"
+    "openQuestion": "실제 카탈로그를 읽게 되면 비용이 상점 트래픽과 겹친다 — 그때 checkMs 를 다시 재고 인덱스를 다시 본다(ADR-039 '다시 볼 조건')"
   },
   "conclusion": {
-    "statement": "확인하지 않으면 위반이 그대로 나간다(변화율 8/s에서 0.96%, 20/s에서 7.11%). 확인하면 위반이 0이 되지만, 세는 값을 늘려도(응답 직전 확인) 0 이상으로는 내려가지 않는다.",
-    "tradeoff": "정책을 가른 것은 지연이 아니라 창이다 — 생성 전 스냅샷은 54ms 낡고(= 모델 지연), 생성 후 확인은 0ms다. AT_RESPONSE 는 같은 위반 0을 읽기 한 번 더로 산다. 그래서 기본값은 AFTER_GENERATION 이다.",
-    "openQuestion": "품절 집합 크기를 고정해 재측정해야 NONE 의 위반율이 정책 효과로 읽힌다 — 이번 변화 주입기는 같은 항목이 소진·해제를 반복해 그 크기가 통제되지 않았다(리포트 '틀렸던 것' 1번)"
+    "statement": "확인하지 않으면 위반이 그대로 나간다(63.14%). 확인하면 1~29% 로 떨어지고, 확인을 한 번 더 해도(응답 직전) 더 내려가지 않는다 — 오히려 비용만 는다.",
+    "tradeoff": "정책을 가른 것은 지연이 아니라 창이다 — 생성 전 스냅샷은 58ms 낡고, 생성 후 확인은 3ms다. 그리고 그 둘의 비용은 사실상 같다(질의 1회, 3ms vs 4ms): '미리 읽으면 싸다'는 '미리 읽으면 낡는다'였다. 그래서 기본값은 AFTER_GENERATION 이다.",
+    "openQuestion": "창은 0이 아니다 — 생성 후 확인도 위반율이 1.41% 다(확인이 시간을 쓰므로). 이 바닥을 줄이는 것은 확인을 늘리는 게 아니라 응답을 사실의 결정으로 삼지 않는 것(구매 위임)이다."
   }
 }

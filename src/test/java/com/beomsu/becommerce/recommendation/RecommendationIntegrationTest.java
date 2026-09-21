@@ -1,5 +1,7 @@
 package com.beomsu.becommerce.recommendation;
 
+import com.beomsu.becommerce.order.StockAvailabilityFacts;
+import com.beomsu.becommerce.recommendation.internal.ItemPool;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -20,6 +22,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,6 +73,10 @@ class RecommendationIntegrationTest {
     @Autowired
     TestRestTemplate rest;
 
+    /** 실제 재고 읽기 포트 — 실험 재고 시드가 실험 풀을 덮는지 확인한다. */
+    @Autowired
+    StockAvailabilityFacts stockFacts;
+
     @Test
     @DisplayName("실험 계기는 기본값으로 닫혀 있다 — 404(빈이 만들어지지 않는다)")
     void experimentEndpointIsClosedByDefault() {
@@ -77,12 +84,26 @@ class RecommendationIntegrationTest {
 
         ResponseEntity<String> state = rest.exchange("/api/v1/experiments/constraint/state",
                 HttpMethod.GET, new HttpEntity<>(null, bearer(token)), String.class);
-        ResponseEntity<String> consume = rest.exchange("/api/v1/experiments/constraint/consume",
+        ResponseEntity<String> swap = rest.exchange("/api/v1/experiments/constraint/swap?count=6",
+                HttpMethod.POST, new HttpEntity<>(null, bearer(token)), String.class);
+        ResponseEntity<String> prime = rest.exchange("/api/v1/experiments/constraint/prime?count=6",
                 HttpMethod.POST, new HttpEntity<>(null, bearer(token)), String.class);
 
         // 401/403 이 아니라 404 다 — 경로가 없어야 한다(있으면 그 자체가 결함이다).
         assertThat(state.getStatusCode().value()).isEqualTo(404);
-        assertThat(consume.getStatusCode().value()).isEqualTo(404);
+        assertThat(swap.getStatusCode().value()).isEqualTo(404);
+        assertThat(prime.getStatusCode().value()).isEqualTo(404);
+    }
+
+    @Test
+    @DisplayName("실험 재고 시드(V60)가 실험 풀을 덮는다 — SQL 과 ItemPool 이 갈라지면 추천이 빈다")
+    void experimentStockSeedCoversPool() {
+        List<Long> pool = ItemPool.experimentPool();
+
+        assertThat(pool).isNotEmpty();
+        assertThat(stockFacts.unavailableAmong(pool))
+                .as("시드가 빠진 id 가 있으면 fail-closed 로 전부 걸러진다 — 추천이 조용히 빈다")
+                .isEmpty();
     }
 
     @Test
@@ -100,6 +121,10 @@ class RecommendationIntegrationTest {
         assertThat(body.has("violations")).isTrue();
         assertThat(body.has("servingMs")).isTrue();
         assertThat(body.has("auditMs")).isTrue();
+        // E4 후속의 비용 축 — 확인에 쓴 시간. 응답에서 사라지면 교환비를 계산할 수 없다.
+        assertThat(body.has("checkMs")).isTrue();
+        // 실험 재고 시드가 있으므로 걸러져 빈 목록이 되면 안 된다(시드-풀 표류를 여기서도 잡는다).
+        assertThat(body.get("items")).as("시드가 실험 풀을 덮으면 모델 결과가 살아남는다").isNotEmpty();
         // 폴백이어도 200 이다 — 모델을 못 불러도 홈은 살아야 한다(E3 계약).
         assertThat(body.get("source").asText()).isIn("MODEL", "FALLBACK");
     }

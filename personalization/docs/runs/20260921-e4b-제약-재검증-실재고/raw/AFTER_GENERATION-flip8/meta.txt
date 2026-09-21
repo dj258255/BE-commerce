@@ -1,0 +1,7 @@
+constraint_policy=AFTER_GENERATION
+flip_rate=8
+sold_out_target=6
+duration=60s
+rate=30
+vus=20
+warmup_ms=15000

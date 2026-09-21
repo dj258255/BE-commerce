@@ -72,8 +72,11 @@ public class RecommendationService {
         long startedAt = System.nanoTime();
 
         // ① 확인을 미리 하는 정책이면 여기서 넓게 읽는다(풀 전체). 모델 출력을 아직 모르기 때문이다.
+        // 이 읽기도 확인 비용이므로 따로 재 둔다 — 모델 호출 뒤의 확인과 합쳐서 checkMs 로 보고한다.
+        long preCheckStartedAt = System.nanoTime();
         ConstraintChecker.Snapshot snapshot =
                 constraintPolicy.snapshotsBeforeGeneration() ? constraintChecker.snapshot() : null;
+        long preCheckNanos = System.nanoTime() - preCheckStartedAt;
 
         // ② 활동 읽기 — 모델을 기다리기 전에 한다. 여기서 실패하면 빈 목록으로 온다(개인화가 약해질 뿐).
         List<Long> recent = recentActivity.recentItemIds(userId, contextLimit);
@@ -82,7 +85,7 @@ public class RecommendationService {
         if (!gate.admit()) {
             metrics.fallback("rejected");
             return finish(userId, ItemPool.POPULAR, RecommendationView.SOURCE_FALLBACK, "REJECTED",
-                    recent.size(), 0L, snapshot, startedAt);
+                    recent.size(), 0L, snapshot, preCheckNanos, startedAt);
         }
 
         // ④ 모델
@@ -91,18 +94,18 @@ public class RecommendationService {
             List<Long> items = modelClient.recommend(userId, recent);
             metrics.servedByModel();
             return finish(userId, items, RecommendationView.SOURCE_MODEL, null,
-                    recent.size(), elapsedMs(modelStartedAt), snapshot, startedAt);
+                    recent.size(), elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt);
         } catch (ModelBusyException e) {
             // 기다리다 지쳤다 — 모델이 죽은 게 아니라 우리가 못 기다린 것이다.
             metrics.fallback("timeout");
             log.debug("모델 용량 대기 초과 — 폴백한다. userId={}", userId);
             return finish(userId, ItemPool.POPULAR, RecommendationView.SOURCE_FALLBACK, "TIMEOUT",
-                    recent.size(), elapsedMs(modelStartedAt), snapshot, startedAt);
+                    recent.size(), elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt);
         } catch (RuntimeException e) {
             metrics.fallback("failed");
             log.warn("모델 호출 실패 — 폴백한다. userId={} cause={}", userId, e.toString());
             return finish(userId, ItemPool.POPULAR, RecommendationView.SOURCE_FALLBACK, "FAILED",
-                    recent.size(), elapsedMs(modelStartedAt), snapshot, startedAt);
+                    recent.size(), elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt);
         } finally {
             gate.release();
             metrics.modelCallTimer().record(Duration.ofNanos(System.nanoTime() - modelStartedAt));
@@ -117,11 +120,14 @@ public class RecommendationService {
      */
     private RecommendationView finish(long userId, List<Long> items, String source, String reason,
                                       int contextItems, long modelMs,
-                                      ConstraintChecker.Snapshot beforeGeneration, long startedAt) {
+                                      ConstraintChecker.Snapshot beforeGeneration, long preCheckNanos,
+                                      long startedAt) {
         ConstraintChecker.Snapshot used = beforeGeneration;
         int filtered = 0;
         List<Long> finalItems = items;
 
+        // 확인 구간만 따로 잰다 — servingMs 에는 모델 지연(50ms)이 들어 있어 확인 비용이 그 안에 묻힌다.
+        long checkStartedAt = System.nanoTime();
         switch (constraintPolicy) {
             case NONE -> {
                 // 아무것도 하지 않는다 — 이것이 기준선이다.
@@ -148,6 +154,11 @@ public class RecommendationService {
         }
 
         long policyMs = elapsedMs(startedAt);
+        long postCheckNanos = System.nanoTime() - checkStartedAt;
+        // 확인 비용은 사전 스냅샷(모델 호출 전)과 여기(모델 호출 뒤) 둘로 나뉜다. 합쳐서 보고한다 —
+        // 사전 읽기를 빼면 AT_GENERATION_START 가 공짜처럼 보여 교환비 계산이 틀어진다(실제로 그랬다).
+        long checkMs = (preCheckNanos + postCheckNanos) / 1_000_000;
+        metrics.constraintCheckTimer().record(Duration.ofNanos(preCheckNanos + postCheckNanos));
 
         // 계기 — 정책과 무관하게 <b>최종 목록</b>을 다시 사실과 대조한다. 정책의 자기 보고가 아니다.
         long auditStartedAt = System.nanoTime();
@@ -159,7 +170,7 @@ public class RecommendationService {
         metrics.constraintViolation(constraintPolicy, violations.size());
 
         return new RecommendationView(userId, finalItems, source, reason, contextItems, modelMs, policyMs,
-                constraintPolicy.name(), filtered,
+                checkMs, constraintPolicy.name(), filtered,
                 used == null ? null : constraintChecker.ageMs(used),
                 used == null ? null : constraintChecker.changesSince(used),
                 violations.size(), auditMs);
