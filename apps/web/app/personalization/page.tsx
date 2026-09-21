@@ -58,7 +58,11 @@ export default async function PersonalizationHome({ searchParams }: { searchPara
               desc={res.data.fallbackReason ?? '모델이 구성함'}
               kind={res.data.source === 'MODEL' ? '' : 'warn'}
             />
-            <Kpi label="컨텍스트 신선도" value={`${res.data.contextStalenessMs}ms`} desc="가장 최근 반영된 이벤트 기준" />
+            <Kpi
+              label="컨텍스트 신선도"
+              value={res.data.contextStalenessMs === null ? '—' : `${res.data.contextStalenessMs}ms`}
+              desc={res.data.contextStalenessMs === null ? '계기가 아직 안 낸다(0과 "모른다"는 다르다)' : '가장 최근 반영된 이벤트 기준'}
+            />
             <Kpi
               label="총 지연"
               value={`${res.data.latency.totalMs}ms`}
@@ -66,6 +70,26 @@ export default async function PersonalizationHome({ searchParams }: { searchPara
             />
             <Kpi label="행 수" value={res.data.rows.length} desc="각 행은 서로 다른 전략으로 만든다" />
           </div>
+
+          {res.data.stats ? (
+            <section className="panel" style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+                <h2 style={{ fontSize: 15 }}>조립이 버린 것</h2>
+                <span className="mono" style={{ fontSize: 12, color: 'var(--sub)' }}>
+                  후보 {res.data.stats.candidates}
+                </span>
+              </div>
+              <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+                중복 <b>{res.data.stats.duplicates}</b> · 품절 <b>{res.data.stats.outOfStock}</b> · 다양성 상한{' '}
+                <b>{res.data.stats.cappedOut}</b> · 카탈로그에 없음 <b>{res.data.stats.unmatched}</b> · 화면의 대분류{' '}
+                <b>{res.data.stats.distinctCategories}</b>
+              </p>
+              <p className="muted" style={{ fontSize: 12.5, margin: '6px 0 0' }}>
+                버린 것을 밝히지 않으면 “왜 이 화면인가”를 복원할 수 없다. 중복을 지우고 <b>되채우지 않아</b> 화면이
+                짧아진다 — 그 자리를 채울지는 <b>정하지 않았다</b>(관련도를 더 지불하는 선택이다).
+              </p>
+            </section>
+          ) : null}
 
           {res.data.rows.map((row) => (
             <section className="panel" key={row.id} style={{ marginBottom: 14 }}>
@@ -83,7 +107,7 @@ export default async function PersonalizationHome({ searchParams }: { searchPara
                       <div style={{ fontSize: 12.5, fontWeight: 650 }}>{it.name}</div>
                       <div className="mono" style={{ fontSize: 10.5, color: 'var(--sub)', marginTop: 5 }}>{it.reason}</div>
                       <div className="mono" style={{ fontSize: 11, color: 'var(--accent-ink)', marginTop: 4 }}>
-                        {won(it.price)} · score {it.score.toFixed(2)}
+                        {won(it.price)} · {it.score === null ? '순위만' : `score ${it.score.toFixed(2)}`}
                       </div>
                     </div>
                   </article>
