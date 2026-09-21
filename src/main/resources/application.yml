@@ -536,6 +536,14 @@ app:
     # 한 행에서 같은 대분류를 몇 개까지 허용하는가(0이면 다양성 규칙 없음).
     # **이 값이 관련도와 다양성의 교환비다** — 낮추면 상위 항목을 포기하고 카테고리가 흩어진다.
     max-per-category: ${APP_HOME_MAX_PER_CATEGORY:3}
+    # 되채우기 깊이(#198①) — 규칙이 버린 칸을 **더 깊은 후보**로 채울지.
+    #   1 — 항목 상한만큼만 후보를 받는다(되채우기 없음)
+    #   2(기본) — 2배까지. 화면이 길어지고(측정 +12.6%) **평균 표시 순위가 내려간다**(1.18배)
+    # M7c 리포트가 사전 등록 기준 셋으로 판정했다: 항목 +12.6%(≥10% 통과) · 순위 1.18배(<2배 통과) ·
+    # 지연은 **폭이 차이보다 커서 판정 불가**(그래서 지연을 근거로 삼지 않는다). 그래서 기본을 2로 올렸다.
+    # 적용 범위: 원천이 싼 행(최근 활동·인기 표)만. **모델 행은 그대로** — 모델에 더 요구하려면
+    # result-size 를 키워야 하고 그 값이 과부하 게이트의 지연 추정에 들어가 입장 판단까지 바뀐다(E5).
+    refill-depth: ${APP_HOME_REFILL_DEPTH:2}
     # 노출 기록 — 그 응답이 **무엇을 보여줬는가**(개인화 아키텍처의 "노출 이벤트").
     # **요청당 한 행**이다: 항목당이면 홈 한 번에 20행, 30req/s 에서 초당 600행이 된다(ADR-043).
     # 기록 실패는 홈을 죽이지 않는다(경고 + `home.impression.failed` 지표) — 기록은 관측이고 홈은 제품이다.
@@ -557,6 +565,14 @@ app:
         interval-ms: ${APP_HOME_IMPRESSION_CLEANUP_INTERVAL_MS:3600000}
   # 추천 서빙 — 모델 호출과 **과부하 정책**(E3의 독립변수).
   recommendation:
+    # 홈의 "인기" 행을 무엇으로 채우는가(#198②) — 추천이 내놓는 값이라 여기 있다.
+    #   AUTO(기본) — 인기 통계(M1 배치가 적재한 `product_popularity`)를 읽는다. 비어 있으면 폴백
+    #   STRIDE     — 후보 집합에 퍼뜨리기만. **인기 신호를 켜기 전의 동작**이라 A/B 의 대조군이다
+    # 폴백은 조용하지 않다: `recommendation.popular.signal.fallback` 지표 + 경고 로그가 남는다.
+    popularity-source: ${APP_RECOMMENDATION_POPULARITY_SOURCE:AUTO}
+    # 인기 창 — recent_7d(데이터 기준 마지막 7일) | all_time(전체). "최근"은 벽시계가 아니라
+    # **데이터 기준일**이다(이 데이터는 2020-09-22 에 끝난다).
+    popularity-window: ${APP_RECOMMENDATION_POPULARITY_WINDOW:recent_7d}
     # UNBOUNDED | BOUNDED | ADMISSION
     #   UNBOUNDED — 아무도 거절하지 않는다. 모델은 살아 있는데 API가 죽는다(스레드가 줄에 갇힌다)
     #   BOUNDED   — max-in-flight를 넘으면 **기다리지 않고** 포기한다(기본)

@@ -52,8 +52,14 @@ public class RecommendationFacts {
                 view.modelMs(), view.checkMs(), view.generationScope());
     }
 
-    /** 후보 집합이 아는 "인기" 목록 — 홈이 인기 행을 만들 때 쓴다. */
-    public List<Long> popularItemIds() {
-        return pool.popular();
+    /**
+     * 후보 집합이 아는 "인기" 목록 — 홈이 인기 행을 만들 때 쓴다.
+     *
+     * <p><b>{@code limit} 이 있는 이유(#198①)</b>: 홈이 되채우기를 켜면 인기 행이 <b>더 깊은 순위</b>를
+     * 요구한다(중복·다양성 상한으로 빈 칸을 채우려면 후보가 더 필요하다). 인기 표는 200행을 들고 있고
+     * 조회는 인덱스 한 페이지라 <b>깊이 늘리는 값이 싸다</b> — 그래서 이 원천만 깊이를 받는다.
+     */
+    public List<Long> popularItemIds(int limit) {
+        return pool.popular(limit);
     }
 }

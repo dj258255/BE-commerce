@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,12 +40,16 @@ class HomeComposerTest {
         recentActivity = mock(RecentActivityFacts.class);
         impressions = mock(ImpressionRecorder.class);
         when(recentActivity.recentItemIds(USER, 8)).thenReturn(List.of());
-        when(recommendations.popularItemIds()).thenReturn(List.of());
+        when(recommendations.popularItemIds(anyInt())).thenReturn(List.of());
     }
 
     private HomeComposer composer(HomeComposer.Rules rules, int maxPerCategory, int minItems) {
+        return composer(rules, maxPerCategory, minItems, 1);
+    }
+
+    private HomeComposer composer(HomeComposer.Rules rules, int maxPerCategory, int minItems, int refillDepth) {
         return new HomeComposer(recommendations, catalog, recentActivity, impressions, rules, 8, 5, 8,
-                minItems, maxPerCategory);
+                minItems, maxPerCategory, refillDepth);
     }
 
     private static ProductCatalogFacts.ProductCardFacts card(long id, String category, boolean inStock) {
@@ -53,6 +59,52 @@ class HomeComposerTest {
     private void modelReturns(List<Long> ids) {
         when(recommendations.recommend(USER))
                 .thenReturn(new RecommendationFacts.Recommended(ids, "MODEL", null, 50, 4, "RANKING"));
+    }
+
+    @Test
+    @DisplayName("되채우기는 더 깊은 후보를 산다 — 화면은 길어지고 평균 표시 순위는 내려간다")
+    void refillTradesRelevanceForLength() {
+        // 인기 후보: 앞 12개가 전부 한 대분류(a)라 상한 1이면 **첫 8개에서 1개만** 남는다.
+        // 그래서 되채우기 깊이가 화면 길이를 가른다.
+        List<Long> popularIds = new java.util.ArrayList<>();
+        for (long id = 1; id <= 12; id++) {
+            popularIds.add(id);
+        }
+        popularIds.addAll(List.of(13L, 14L, 15L));
+        when(recommendations.popularItemIds(anyInt())).thenAnswer(invocation ->
+                popularIds.subList(0, Math.min(invocation.getArgument(0), popularIds.size())));
+        when(catalog.findAll(anyList())).thenAnswer(invocation -> {
+            List<Long> ids = invocation.getArgument(0);
+            return ids.stream()
+                    .map(id -> card(id, id <= 12 ? "a" : "x" + id, true))
+                    .toList();
+        });
+        modelReturns(List.of());
+
+        HomePageView withoutRefill = composer(HomeComposer.Rules.FULL, 1, 1, 1).compose(USER);
+        HomePageView withRefill = composer(HomeComposer.Rules.FULL, 1, 1, 2).compose(USER);
+
+        List<HomePageView.Item> before = itemsOf(withoutRefill, "POPULARITY");
+        List<HomePageView.Item> after = itemsOf(withRefill, "POPULARITY");
+
+        // 되채우기 없이는 첫 묶음에서 1개뿐 — 나머지는 다양성 상한이 버렸다.
+        assertThat(before).hasSize(1);
+        // 켜면 더 깊은 후보(13~15)로 칸을 채운다: 화면이 길어진다.
+        assertThat(after).hasSize(4);
+        // **그 대가를 같은 객체가 밝힌다** — 추가된 항목의 순위는 13 이상이다(앞 묶음이 아니다).
+        assertThat(after).filteredOn(item -> item.rank() > 12).hasSize(3);
+        assertThat(avgRank(before)).isLessThan(avgRank(after));
+    }
+
+    private static List<HomePageView.Item> itemsOf(HomePageView page, String strategy) {
+        return page.rows().stream()
+                .filter(row -> row.strategy().equals(strategy))
+                .flatMap(row -> row.items().stream())
+                .toList();
+    }
+
+    private static double avgRank(List<HomePageView.Item> items) {
+        return items.stream().mapToInt(HomePageView.Item::rank).average().orElse(0);
     }
 
     @Test
@@ -142,7 +194,7 @@ class HomeComposerTest {
     @DisplayName("모델이 준 id 가 카탈로그에 없으면 홈은 카탈로그만으로 서고, 그 사실을 밝힌다")
     void degradesWhenModelItemsAreNotInCatalog() {
         modelReturns(List.of(999_001L, 999_002L, 999_003L));
-        when(recommendations.popularItemIds()).thenReturn(List.of(1L, 2L, 3L));
+        when(recommendations.popularItemIds(anyInt())).thenReturn(List.of(1L, 2L, 3L));
         when(catalog.findAll(List.of(999_001L, 999_002L, 999_003L))).thenReturn(List.of());
         when(catalog.findAll(List.of(1L, 2L, 3L))).thenReturn(List.of(card(1, "fashion", true), card(2, "digital", true), card(3, "living", true)));
 

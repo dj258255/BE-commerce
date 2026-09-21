@@ -1,9 +1,12 @@
 package com.beomsu.becommerce.recommendation.internal;
 
 import com.beomsu.becommerce.order.ProductCatalogFacts;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -40,19 +43,56 @@ public class ItemPoolSource {
         EXPERIMENT
     }
 
+    /**
+     * "인기"를 어디서 얻는가(#198②) — 측정 대조군을 남기기 위한 축이다.
+     *
+     * <ul>
+     *   <li>{@link #AUTO}(기본) — 인기 통계(M1 배치 적재분)를 읽고, <b>없으면</b> 후보 집합에 퍼뜨린다</li>
+     *   <li>{@link #STRIDE} — 퍼뜨리기만 쓴다. <b>인기 신호를 켜기 전의 동작</b>이라 A/B 의 대조군이다</li>
+     * </ul>
+     */
+    public enum PopularitySource {
+        AUTO,
+        STRIDE
+    }
+
     private final Mode mode;
     private final ProductCatalogFacts catalog;
     private final int popularSize;
+    private final PopularitySource popularitySource;
+    private final String popularityWindow;
+    private final ProductPopularityRepository popularity;
+    private final Counter realSignal;
+    private final Counter fallbackSignal;
+
+    private volatile boolean warnedAboutFallback;
+    private volatile boolean loggedRealSignal;
 
     private volatile List<Long> cached;
 
     public ItemPoolSource(@Value("${app.recommendation.item-pool:CATALOG}") Mode mode,
                           @Value("${app.recommendation.result-size:12}") int popularSize,
-                          ProductCatalogFacts catalog) {
+                          @Value("${app.recommendation.popularity-source:AUTO}") PopularitySource popularitySource,
+                          @Value("${app.recommendation.popularity-window:recent_7d}") String popularityWindow,
+                          ProductPopularityRepository popularity,
+                          ProductCatalogFacts catalog,
+                          MeterRegistry registry) {
         this.mode = mode;
         this.popularSize = Math.max(popularSize, 1);
+        this.popularitySource = popularitySource;
+        this.popularityWindow = popularityWindow;
+        this.popularity = popularity;
         this.catalog = catalog;
-        log.info("추천 후보 집합={} (CATALOG=실제 상품 · EXPERIMENT=실험용 합성 풀)", mode);
+        // **인기 신호가 실제로 쓰였는지**를 지표로 남긴다 — "인기를 붙였다"가 주장으로 끝나지 않게.
+        // 폴백은 정상 상태에서 0 이어야 하고, 0 이 아니면 "인기가 아니라 퍼뜨리기"가 나가고 있다는 뜻이다.
+        this.realSignal = Counter.builder("recommendation.popular.signal.real")
+                .description("인기 통계를 실제로 읽어 채운 횟수")
+                .register(registry);
+        this.fallbackSignal = Counter.builder("recommendation.popular.signal.fallback")
+                .description("인기 통계가 없어 후보 집합에 퍼뜨린 횟수")
+                .register(registry);
+        log.info("추천 후보 집합={} (CATALOG=실제 상품 · EXPERIMENT=실험용 합성 풀) · 인기 신호={} 창={}",
+                mode, popularitySource, popularityWindow);
     }
 
     public Mode mode() {
@@ -68,29 +108,96 @@ public class ItemPoolSource {
     }
 
     /**
-     * 모델이 "인기 상품"으로 채울 때 쓰는 id — <b>후보 집합에 고르게 퍼뜨려 뽑는다.</b>
+     * 모델이 "인기 상품"으로 채울 때 쓰는 id.
+     *
+     * <p><b>이제 진짜 인기다(#198②)</b>: M1 이 3,178만 거래로 센 상위 상품을 읽는다
+     * ({@code product_popularity}, 창 = {@code app.recommendation.popularity-window}). 그 전에는
+     * 아래 퍼뜨리기(stride)가 이 자리를 대신했고, <b>그건 인기가 아니라 편향 회피였다</b> —
+     * 이름만 "인기"였던 것이다.
+     *
+     * <p><b>왜 퍼뜨리기가 남아 있는가</b>: 인기 통계는 오프라인 배치가 적재하므로, **적재 전에는 표가
+     * 비어 있다**(그리고 배치가 실패할 수도 있다). 그때 홈의 인기 행이 통째로 비면 화면이 망가지므로
+     * 폴백을 남긴다. 대신 <b>조용히 넘어가지 않는다</b>: {@code recommendation.popular.signal.fallback}
+     * 지표와 경고 로그가 "지금 인기가 아니라 퍼뜨리기를 내보내고 있다"를 밝힌다.
+     * 퍼뜨리기가 무엇을 하는지는 아래 {@link #spreadAcrossCatalog()} 주석에 있다.
+     *
+     * <p><b>캐시하지 않는다</b>: 12행 인덱스 조회라 비용이 무시할 만하고, 캐시하면 배치 적재 뒤
+     * 재기동이 필요해진다(값이 바뀌었는데 화면이 옛 인기를 보여주는 상태가 조용히 생긴다).
+     */
+    public List<Long> popular() {
+        return popular(popularSize);
+    }
+
+    /**
+     * 인기 목록을 {@code limit} 개까지 — <b>되채우기용 깊이</b>(#198①).
+     *
+     * <p>인기 표는 200행을 들고 있으므로 순위를 더 내려가도 조회는 여전히 인덱스 한 페이지다.
+     * 깊이를 늘리는 값이 <b>지연이 아니라 관련도</b>라는 것이 이 정책의 요점이다.
+     */
+    public List<Long> popular(int limit) {
+        if (mode == Mode.EXPERIMENT) {
+            return ItemPool.POPULAR;
+        }
+        int want = Math.max(limit, 1);
+        if (popularitySource == PopularitySource.STRIDE) {
+            return spreadAcrossCatalog(want);
+        }
+        List<Long> real = realPopularity(want);
+        if (!real.isEmpty()) {
+            realSignal.increment();
+            logRealSignalOnce();
+            return real;
+        }
+        fallbackSignal.increment();
+        if (!warnedAboutFallback) {
+            warnedAboutFallback = true;
+            log.warn("인기 통계가 비어 있다 — 후보 집합에 퍼뜨려 채운다. 창={} "
+                            + "(적재: personalization/pipeline/export_popular.py --emit-sql --load)",
+                    popularityWindow);
+        }
+        return spreadAcrossCatalog(want);
+    }
+
+    /** 인기 통계에서 순위 순으로 읽는다. 표가 비었으면 빈 목록(예외가 아니다 — 적재 전이 정상 상태다). */
+    private List<Long> realPopularity(int limit) {
+        try {
+            List<ProductPopularity> rows = popularity.findByWindowKindOrderByRankNoAsc(
+                    popularityWindow, PageRequest.of(0, limit));
+            return rows.stream().map(ProductPopularity::getProductId).toList();
+        } catch (RuntimeException e) {
+            // 표가 아직 없을 수도 있다(마이그레이션 전 부팅). 홈을 죽이지 않고 폴백으로 간다.
+            log.warn("인기 통계를 읽지 못했다 — 폴백으로 간다. cause={}", e.toString());
+            return List.of();
+        }
+    }
+
+    private void logRealSignalOnce() {
+        if (loggedRealSignal) {
+            return;
+        }
+        loggedRealSignal = true;
+        // "요즘"이 언제인지 밝힌다 — 이 데이터는 2020년에 끝나므로 그 사실이 로그에 남아야 한다.
+        log.info("인기 신호를 읽었다 — 창={} 기준일={} (개수={})",
+                popularityWindow, popularity.latestComputedAt(popularityWindow), popularSize);
+    }
+
+    /**
+     * 후보 집합에 <b>결정적 간격으로 퍼뜨린다</b> — 인기 흉내가 아니라 <b>카테고리 편향 회피</b>다.
      *
      * <p><b>왜 앞에서 자르지 않는가(M7 실측)</b>: {@code subList(0, 12)} 로 앞을 잘랐더니 그 12개가
      * <b>전부 한 대분류</b>였다 — H&M 상품 id 가 카테고리별로 뭉쳐 있어서 id 순서는 곧 카테고리 순서다.
      * 그 결과 홈이 <b>한 카테고리짜리 화면</b>이 되었고(실측 distinct 대분류 = 1), 다양성 규칙이
      * 그 뒤에서 조용히 항목을 버렸다. **인기 신호가 없는 것을 id 순서로 대신하면 안 된다.**
-     *
-     * <p>그래서 지금은 <b>결정적 간격(stride)으로 퍼뜨린다</b> — 인기를 흉내 내는 것이 아니라
-     * <b>카테고리 편향을 만들지 않는 것</b>이 목적이다. 진짜 인기 통계(M1의 인기 상품)가 들어오면
-     * 이 메서드가 그것을 읽는다. 그때까지 이 행의 이름은 "인기"가 아니라 <b>"후보 집합"</b>에 가깝다.
      */
-    public List<Long> popular() {
-        if (mode == Mode.EXPERIMENT) {
-            return ItemPool.POPULAR;
-        }
+    private List<Long> spreadAcrossCatalog(int want) {
         List<Long> all = catalogIds();
-        int want = Math.min(popularSize, all.size());
-        if (want == 0) {
+        int take = Math.min(want, all.size());
+        if (take == 0) {
             return List.of();
         }
-        List<Long> spread = new java.util.ArrayList<>(want);
-        for (int i = 0; i < want; i++) {
-            spread.add(all.get((int) ((long) i * all.size() / want)));
+        List<Long> spread = new java.util.ArrayList<>(take);
+        for (int i = 0; i < take; i++) {
+            spread.add(all.get((int) ((long) i * all.size() / take)));
         }
         return List.copyOf(spread);
     }

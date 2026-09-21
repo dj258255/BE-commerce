@@ -22,6 +22,8 @@ RAW="$OUT/raw"
 mkdir -p "$RAW"
 
 RULES_LEVELS=${RULES_LEVELS:-"NONE DEDUP FULL"}
+POPULARITY=${POPULARITY:-AUTO}          # AUTO=인기 통계(M1) · STRIDE=퍼뜨리기(대조군)
+REFILL_DEPTH=${REFILL_DEPTH:-1}         # 1=되채우기 없음 · 2=더 깊은 후보로 칸을 채운다(#198①)
 USERS=${USERS:-6}
 ACTIVITY_PER_USER=${ACTIVITY_PER_USER:-8}
 ROW_CAP=${ROW_CAP:-5}
@@ -59,6 +61,8 @@ start_app() {
   APP_HOME_ITEM_CAP="$ITEM_CAP" \
   APP_HOME_MIN_ITEMS="$MIN_ITEMS" \
   APP_HOME_MAX_PER_CATEGORY="$MAX_PER_CATEGORY" \
+  APP_RECOMMENDATION_POPULARITY_SOURCE="$POPULARITY" \
+  APP_HOME_REFILL_DEPTH="$REFILL_DEPTH" \
   APP_PERSONALIZATION_TRANSPORT=IN_REQUEST \
   "$JAVA" -jar "$JAR" \
     --spring.docker.compose.enabled=false \
@@ -73,7 +77,7 @@ start_app() {
 }
 
 echo "== M7 홈 조립 실측 시작"
-echo "== 규칙: $RULES_LEVELS / 사용자 ${USERS}명 / 활동 ${ACTIVITY_PER_USER}건"
+echo "== 규칙: $RULES_LEVELS / 인기 신호: $POPULARITY / 되채우기 깊이: $REFILL_DEPTH / 사용자 ${USERS}명 / 활동 ${ACTIVITY_PER_USER}건"
 echo "== 행 상한 $ROW_CAP · 항목 상한 $ITEM_CAP · 최소 항목 $MIN_ITEMS · 카테고리 상한 $MAX_PER_CATEGORY"
 echo "== 전달 방식 IN_REQUEST(동기) — 활동을 심은 직후 홈을 부르므로 컨텍스트가 반영돼 있어야 한다"
 echo "== 출력: $OUT"
@@ -118,6 +122,8 @@ for rules in $RULES_LEVELS; do
 
   cat > "$RAW/$rules/meta.txt" <<EOF
 rules=$rules
+popularity=$POPULARITY
+refill_depth=$REFILL_DEPTH
 users=$USERS
 activity_per_user=$ACTIVITY_PER_USER
 row_cap=$ROW_CAP

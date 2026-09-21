@@ -64,6 +64,7 @@ public class HomeComposer {
     private final int itemCap;
     private final int minItems;
     private final int maxPerCategory;
+    private final int candidateDepth;
 
     public HomeComposer(RecommendationFacts recommendations,
                         ProductCatalogFacts catalog,
@@ -74,7 +75,8 @@ public class HomeComposer {
                         @Value("${app.home.row-cap:5}") int rowCap,
                         @Value("${app.home.item-cap:8}") int itemCap,
                         @Value("${app.home.min-items:3}") int minItems,
-                        @Value("${app.home.max-per-category:3}") int maxPerCategory) {
+                        @Value("${app.home.max-per-category:3}") int maxPerCategory,
+                        @Value("${app.home.refill-depth:1}") int refillDepth) {
         this.recommendations = recommendations;
         this.catalog = catalog;
         this.recentActivity = recentActivity;
@@ -85,8 +87,11 @@ public class HomeComposer {
         this.itemCap = Math.max(itemCap, 1);
         this.minItems = Math.max(minItems, 1);
         this.maxPerCategory = Math.max(maxPerCategory, 0);
-        log.info("홈 조립 규칙={} 행상한={} 항목상한={} 최소항목={} 카테고리상한={}",
-                rules, this.rowCap, this.itemCap, this.minItems, this.maxPerCategory);
+        // 되채우기 깊이(#198①) — 1이면 행마다 항목 상한만큼만 후보를 받는다(규칙 도입 전과 같은 동작).
+        // 2면 2배까지: 규칙이 버린 칸을 **더 깊은 후보**로 채운다. 그 대가는 관련도(평균 표시 순위)다.
+        this.candidateDepth = Math.max(refillDepth, 1) * this.itemCap;
+        log.info("홈 조립 규칙={} 행상한={} 항목상한={} 최소항목={} 카테고리상한={} 후보깊이={}",
+                rules, this.rowCap, this.itemCap, this.minItems, this.maxPerCategory, this.candidateDepth);
     }
 
     /**
@@ -99,18 +104,23 @@ public class HomeComposer {
         long startedAt = System.nanoTime();
 
         long t0 = System.nanoTime();
-        List<Long> recent = recentActivity.recentItemIds(userId, contextLimit);
+        // 최근 활동은 **이 행만** 쓴다(컨텍스트는 추천 모듈이 스스로 읽는다) — 그래서 깊이를 늘려도
+        // 모델이 보는 컨텍스트는 그대로다. 되채우기의 효과가 다른 축과 섞이지 않는다.
+        List<Long> recent = recentActivity.recentItemIds(userId, candidateDepth);
         long contextMs = elapsed(t0);
 
         RecommendationFacts.Recommended recommended = recommendations.recommend(userId);
 
         // 행 후보 — 순서가 곧 우선순위다. 앞 행이 중복 제거에서 이긴다.
+        // **모델 행의 깊이는 그대로 둔다**: 모델에 더 많이 요구하려면 result-size 를 키워야 하고,
+        // 그 값은 과부하 게이트의 지연 추정에 들어가 **입장 판단까지 바뀐다**(E5 영역).
+        // 되채우기는 원천이 싼 곳(최근 활동·인기 표)에만 적용한다 — 그 사실을 측정 리포트에 적었다.
         List<Candidate> candidates = new ArrayList<>();
         candidates.add(new Candidate("recent", "최근 본 상품", "RECENT_VIEW", recent, "최근 조회"));
         candidates.add(new Candidate("for-you", "너를 위한 추천", "MODEL_TOP_K",
                 recommended.itemIds(), "모델 추천"));
         candidates.add(new Candidate("popular", "인기 상품", "POPULARITY",
-                recommendations.popularItemIds(), "인기"));
+                recommendations.popularItemIds(candidateDepth), "인기"));
 
         Map<Long, ProductCatalogFacts.ProductCardFacts> cards = new LinkedHashMap<>();
         for (Candidate candidate : candidates) {
@@ -161,8 +171,10 @@ public class HomeComposer {
             }
             List<HomePageView.Item> items = new ArrayList<>();
             Map<String, Integer> perCategory = new LinkedHashMap<>();
+            int position = 0;   // 후보 리스트에서의 자리(1부터). **되채우기 깊이의 대리 지표**다.
 
             for (Long itemId : candidate.itemIds()) {
+                position++;
                 if (rules != Rules.NONE) {
                     candidateCount++;
                 }
@@ -172,7 +184,7 @@ public class HomeComposer {
                     continue;
                 }
                 if (rules == Rules.NONE) {
-                    items.add(item(card, candidate.reason()));
+                    items.add(item(card, candidate.reason(), position));
                     categories.add(String.valueOf(card.categoryCode()));
                     continue;
                 }
@@ -194,7 +206,7 @@ public class HomeComposer {
                     perCategory.merge(card.categoryCode(), 1, Integer::sum);
                 }
                 seen.add(itemId);
-                items.add(item(card, candidate.reason()));
+                items.add(item(card, candidate.reason(), position));
                 if (card.categoryCode() != null) {
                     categories.add(card.categoryCode());
                 }
@@ -225,9 +237,9 @@ public class HomeComposer {
                 source);
     }
 
-    private static HomePageView.Item item(ProductCatalogFacts.ProductCardFacts card, String reason) {
+    private static HomePageView.Item item(ProductCatalogFacts.ProductCardFacts card, String reason, int rank) {
         return new HomePageView.Item(String.valueOf(card.productId()), card.name(), card.price(),
-                card.imageUrl(), card.inStock(), null, reason);
+                card.imageUrl(), card.inStock(), null, reason, card.categoryCode(), rank);
     }
 
     private static long elapsed(long fromNanos) {
