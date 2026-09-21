@@ -1,0 +1,23 @@
+  user 2252: 12건 (긴 사용자=False)
+  user 2253: 12건 (긴 사용자=False)
+  user 2254: 12건 (긴 사용자=False)
+  user 2255: 12건 (긴 사용자=False)
+  user 2256: 12건 (긴 사용자=False)
+  user 2257: 12건 (긴 사용자=False)
+  user 2258: 12건 (긴 사용자=False)
+  user 2259: 12건 (긴 사용자=False)
+  user 2260: 12건 (긴 사용자=False)
+  user 2261: 12건 (긴 사용자=False)
+  user 2262: 12건 (긴 사용자=False)
+  user 2263: 12건 (긴 사용자=False)
+  user 2264: 12건 (긴 사용자=False)
+  user 2265: 12건 (긴 사용자=False)
+  user 2266: 12건 (긴 사용자=False)
+  user 2267: 12건 (긴 사용자=False)
+  user 2268: 12건 (긴 사용자=False)
+  user 2269: 12건 (긴 사용자=False)
+  user 2270: 12건 (긴 사용자=False)
+  user 2271: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260921-e2f-창집계-재측정/raw/disorder/manifest.json

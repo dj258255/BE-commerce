@@ -91,6 +91,78 @@ class ContextStoreConcurrencyTest {
         return new UserActivityEvent(USER, seq, "CLICK", seq, Instant.now(), "SYNTHETIC");
     }
 
+    private UserActivityEvent typed(long seq, String type) {
+        return new UserActivityEvent(USER, seq, type, seq, Instant.now(), "SYNTHETIC");
+    }
+
+    /** 목록 크기를 바꾼 저장소 — 잘림과 집계의 관계를 보려면 작은 max-items 가 필요하다. */
+    private ContextStore storeWithMaxItems(int maxItems) {
+        ObjectMapper mapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return new ContextStore(redis, mapper, Duration.ofDays(7), maxItems,
+                new PersonalizationMetrics(new SimpleMeterRegistry()));
+    }
+
+    @Test
+    @DisplayName("창 집계는 목록 잘림을 넘어선다 — 목록은 20건, 집계는 30건")
+    void countsOutliveTheTruncatedList() {
+        ContextStore small = storeWithMaxItems(20);
+        for (long seq = 1; seq <= 30; seq++) {
+            small.apply(event(seq));
+        }
+
+        OnlineContext context = small.read(USER).orElseThrow();
+        // 목록은 잘렸다 — 이건 정상이다(컨텍스트는 "최근 것"을 담는다).
+        assertThat(context.items()).hasSize(20);
+        // 그런데 집계는 잘리지 않는다. 이 둘이 갈라지는 것이 E2 가 집계 60% 를 본 이유다.
+        assertThat(context.totalActivities()).isEqualTo(30);
+        assertThat(context.counts()).containsEntry("CLICK", 30L);
+    }
+
+    @Test
+    @DisplayName("집계는 유형별로 센다")
+    void countsArePerActivityType() {
+        store.apply(typed(1, "VIEW"));
+        store.apply(typed(2, "VIEW"));
+        store.apply(typed(3, "CLICK"));
+
+        assertThat(store.read(USER).orElseThrow().counts())
+                .containsExactlyInAnyOrderEntriesOf(java.util.Map.of("VIEW", 2L, "CLICK", 1L));
+    }
+
+    @Test
+    @DisplayName("재배달은 집계를 두 번 세지 않는다 — 멱등이 목록과 집계에 함께 걸린다")
+    void redeliveryIsNotCountedTwice() {
+        store.apply(event(1));
+        store.apply(event(1));
+        store.apply(event(1));
+
+        OnlineContext context = store.read(USER).orElseThrow();
+        assertThat(context.items()).hasSize(1);
+        assertThat(context.totalActivities()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("도착 순서가 뒤집혀도 목록과 집계가 같다 — 순서에 관대한 병합의 짝")
+    void countsDoNotDependOnArrivalOrder() {
+        for (long seq = 1; seq <= 10; seq++) {
+            store.apply(typed(seq, "VIEW"));
+        }
+        OnlineContext inOrder = store.read(USER).orElseThrow();
+
+        clearContext();
+        for (long seq = 10; seq >= 1; seq--) {
+            store.apply(typed(seq, "VIEW"));
+        }
+        OnlineContext reversed = store.read(USER).orElseThrow();
+
+        assertThat(reversed.counts()).isEqualTo(inOrder.counts());
+        // occurredAt 은 두 실행에서 다르므로 순서를 seq 로 비교한다 — 값이 아니라 **배열**이 같아야 한다.
+        assertThat(reversed.items()).extracting(OnlineContext.Item::seq)
+                .isEqualTo(inOrder.items().stream().map(OnlineContext.Item::seq).toList());
+    }
+
     @Test
     @DisplayName("같은 이벤트를 다시 적용해도 1건 — 재배달 멱등")
     void reapplyIsIdempotent() {

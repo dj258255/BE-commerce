@@ -13,11 +13,15 @@
   behind     온라인 seq < 로그 max seq — 소비가 못 따라왔다(late event)
   dropped    로그에는 있는 항목이 온라인에 없다 — 낮은 seq가 나중에 도착해 버려졌거나
              read-modify-write 경합에서 덮였다(순서 역전·동시 적용)
-  truncated  로그가 max-items를 넘고 온라인 목록이 꽉 찼다 — **창 집계가 잘린다**
+  truncated  로그가 max-items를 넘고 온라인 목록이 꽉 찼다 — **목록은 잘린다**
+             (창 집계는 이제 별도 카운터라 잘리지 않는다 — counts 로 따로 센다)
 
 두 가지 일치율을 따로 낸다 — 처방이 다르기 때문이다:
-  컨텍스트 일치율 = 항목 목록이 같은 비율
-  창 집계 일치율 = 개수까지 같은 비율
+  컨텍스트 일치율 = 항목 목록이 같은 비율 (max-items 로 잘린다)
+  창 집계 일치율 = **유형별 개수**까지 같은 비율 (잘리지 않는다 — counts 를 쓴다)
+
+창을 목록 길이로 세면 안 된다: 목록이 꽉 찬 순간부터 집계가 틀리기 시작한다.
+E2 는 그렇게 재서 60% 가 나왔고, 그 뒤 컨텍스트가 counts 를 따로 들도록 고쳤다.
 
 사용:
   python3 tools/compare-contexts.py --manifest /tmp/e2-manifest.json --out /tmp/e2-compare.json
@@ -68,9 +72,13 @@ def read_contexts(host, user_ids):
 
 
 def read_log(container, user_ids):
-    """로그 전체를 한 번에 읽는다 — offline 재계산의 입력이다."""
+    """로그 전체를 한 번에 읽는다 — offline 재계산의 입력이다.
+
+    `activity_type` 을 함께 읽는다 — 창 집계를 **유형별로** 비교해야 하기 때문이다.
+    목록 비교만 할 때는 필요 없었지만, 집계를 목록 길이로 세는 것이 E2 의 실수였다.
+    """
     ids = ",".join(str(u) for u in user_ids)
-    sql = ("select user_id, seq, item_id from user_activities "
+    sql = ("select user_id, seq, item_id, activity_type from user_activities "
            f"where user_id in ({ids}) order by user_id, seq")
     out = subprocess.run(
         ["docker", "exec", container, "mysql", "-N", "-B", "-h127.0.0.1", "--protocol=TCP",
@@ -79,10 +87,11 @@ def read_log(container, user_ids):
     log = {}
     for line in out.splitlines():
         parts = line.split("\t")
-        if len(parts) != 3:
+        if len(parts) != 4:
             continue
-        user_id, seq, item_id = int(parts[0]), int(parts[1]), int(parts[2])
-        log.setdefault(user_id, []).append({"seq": seq, "itemId": item_id})
+        user_id, seq, item_id, activity_type = int(parts[0]), int(parts[1]), int(parts[2]), parts[3]
+        log.setdefault(user_id, []).append(
+            {"seq": seq, "itemId": item_id, "activityType": activity_type})
     return log
 
 
@@ -141,7 +150,11 @@ def main():
     flag_counts = Counter()
     list_ok = count_ok = 0
     samples = []
-    causes = ["absent", "behind", "dropped", "truncated"]
+    causes = ["absent", "behind", "dropped"]
+    # `truncated` 는 **원인이 아니다** — 목록이 `max-items` 로 잘리는 것은 설계다. 창 집계를 목록에서
+    # 세던 시절에는 이것이 집계 오차의 원인이었지만, 이제 집계는 `counts` 라는 별도 그릇에 있다.
+    # 그래서 "관찰"로 내리고 일치 판정에서 뺀다.
+    observations = ["truncated"]
 
     for user_id in user_ids:
         value = online_by_user.get(user_id)
@@ -149,12 +162,17 @@ def main():
         log_rows = log.get(user_id, [])
         offline_rows = offline_context(log_rows, args.max_items)
         flags, online_items, offline_items = classify(online, offline_rows, log_rows, args.max_items)
-        for name in causes:
+        for name in causes + observations:
             if flags[name]:
                 flag_counts[name] += 1
 
         list_match = online_items is not None and online_items == offline_items
-        count_match = online_items is not None and len(online_items) == len(log_rows)
+        # 창 집계는 **유형별 카운터**로 센다 — 목록 길이로 세면 목록이 꽉 찬 순간부터 틀린다.
+        online_counts = None
+        if online is not None:
+            online_counts = {str(k): int(v) for k, v in (online.get("counts") or {}).items()}
+        log_counts = dict(Counter(r["activityType"] for r in log_rows))
+        count_match = online_counts is not None and online_counts == log_counts
         list_ok += 1 if list_match else 0
         count_ok += 1 if count_match else 0
 
@@ -162,9 +180,11 @@ def main():
         rows.append({
             "userId": user_id, "email": emails.get(user_id),
             "causes": fired, "matched": not fired,
+            "observations": [o for o in observations if flags[o]],
             "onlineSeq": online.get("seq") if online else None,
             "logMaxSeq": max((r["seq"] for r in log_rows), default=0),
             "onlineCount": len(online_items or []), "logCount": len(log_rows),
+            "onlineCounts": online_counts, "logCounts": log_counts,
             "onlineItems": online_items, "offlineItems": offline_items,
             "listMatch": list_match, "countMatch": count_match,
         })
@@ -182,6 +202,9 @@ def main():
         "causes": [{"cause": c, "users": flag_counts[c],
                     "sharePct": round(100.0 * flag_counts[c] / total, 1) if total else 0.0}
                    for c in causes],
+        "observations": [{"observation": o, "users": flag_counts[o],
+                          "sharePct": round(100.0 * flag_counts[o] / total, 1) if total else 0.0}
+                         for o in observations],
         "matchedUsers": total - sum(1 for r in rows if r["causes"]),
         "samples": samples,
         "rows": rows,
@@ -194,6 +217,9 @@ def main():
     for c in result["causes"]:
         if c["users"]:
             print(f"    {c['cause']:10s} {c['users']:3d}명 ({c['sharePct']}%)  ← 원인은 겹칠 수 있다")
+    for o in result["observations"]:
+        if o["users"]:
+            print(f"    {o['observation']:10s} {o['users']:3d}명 ({o['sharePct']}%)  ← 원인 아님(목록이 잘렸다)")
     return 0
 
 

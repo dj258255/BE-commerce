@@ -72,6 +72,7 @@ public class ContextStore {
 
             local raw = redis.call('GET', key)
             local items = {}
+            local counts = {}
             local curSeq = 0
             if raw then
               local ctx = cjson.decode(raw)
@@ -81,6 +82,9 @@ public class ContextStore {
               if ctx.items then
                 items = ctx.items
               end
+              if ctx.counts then
+                counts = ctx.counts
+              end
             end
 
             -- 재배달 멱등: 같은 seq 가 이미 있으면 아무것도 하지 않는다(쓰지도, TTL 을 건드리지도 않는다).
@@ -88,6 +92,12 @@ public class ContextStore {
               if tonumber(items[i].seq) == incoming.seq then
                 return raw
               end
+            end
+
+            -- 창 집계: 유형별 수를 따로 센다. 목록과 달리 잘리지 않으므로 집계가 목록 크기에
+            -- 의존하지 않는다. 재배달은 위에서 걸러졌으므로 여기 오는 이벤트는 정확히 한 번 세어진다.
+            if incoming.activityType then
+              counts[incoming.activityType] = (counts[incoming.activityType] or 0) + 1
             end
 
             -- seq 내림차순 위치에 끼워 넣고 maxItems 로 자른다 — 낮은 seq 를 버리지 않는다.
@@ -109,7 +119,8 @@ public class ContextStore {
             local encoded = cjson.encode({
               seq = math.max(curSeq, incoming.seq),
               updatedAt = updatedAt,
-              items = merged
+              items = merged,
+              counts = counts
             })
             redis.call('SET', key, encoded, 'PX', ttlMs)
             return encoded
