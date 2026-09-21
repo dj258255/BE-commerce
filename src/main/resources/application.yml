@@ -468,6 +468,29 @@ app:
     #   IN_REQUEST — 같은 트랜잭션에서 갱신. 순서는 지켜지지만 같은 사용자의 **동시 요청**은 겹친다.
     #               쓰기 경로 p95 가 셋 중 가장 높다(컨텍스트 쓰기를 같은 트랜잭션에서 지불한다)
     transport: ${APP_PERSONALIZATION_TRANSPORT:IN_PROCESS}
+    # 캐시 값 저장 방식(M6·E6) — **몇 바이트를 넘을 때부터 압축하는가**.
+    #
+    # 캐시는 DB 조회를 없애도 네트워크·메모리 비용은 없애지 않는다. 압축은 그 둘을 줄이는 대신
+    # CPU 를 쓰고, 값이 작으면 **압축 결과가 원본보다 커진다**(헤더·표식·base64 팽창 33%).
+    # 그래서 임계값을 두고 그 아래는 원본을 그대로 둔다.
+    #
+    #   NONE  — 압축하지 않는다(기본)
+    #   LZ4   — 빠르고 압축률은 낮다. 왕복이 잦은 캐시에 맞는 쪽
+    #   SNAPPY— LZ4 보다 조금 낫게 줄이고 조금 느리다
+    #
+    # 기본이 NONE 인 이유: **적용할 캐시가 아직 없다.** E6 가 임계값을 쟀고(교차점 187~279B,
+    # 1KB 에서 66% 감소 + 500KB 에서 get p99 7.5배 개선), 켤 때 쓸 값은 **SNAPPY + 1024** 다.
+    # 그런데 컨텍스트 캐시(`ctx:`)는 **Lua 가 값을 읽어 병합**하므로(ADR-035) 압축을 넣을 수 없다 —
+    # 첫 적용 자리는 M7 의 홈 컴포저 결과 캐시다(값이 불투명하고 크다). 판단은 ADR-041.
+    cache:
+      codec: ${APP_PERSONALIZATION_CACHE_CODEC:NONE}
+      # 이 바이트 수 **이상**이면 압축한다. 0 이면 (코덱이 NONE 이 아닐 때) 항상 압축한다.
+      # E6 측정: 187B 에서는 압축이 **손해**(저장량 1.070 — 표식 + base64 팽창), 1KB 에서는 66% 감소.
+      compress-threshold-bytes: ${APP_PERSONALIZATION_CACHE_THRESHOLD:0}
+    # E6 실험 계기(캐시 압축 벤치)를 켠다. **기본 off** — 이 엔드포인트는 Redis 에 값을 쓰고 지운다.
+    # 실험 밖에서 열지 않는다(빈이 아예 안 만들어져 경로가 404다).
+    experiment:
+      enabled: ${APP_PERSONALIZATION_EXPERIMENT_ENABLED:false}
     context:
       # 컨텍스트 TTL. 컨텍스트는 영원히 유효하지 않다 — 만료되면 "아직 모른다"로 돌아간다.
       ttl: ${APP_PERSONALIZATION_CONTEXT_TTL:7d}
