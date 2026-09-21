@@ -1,6 +1,7 @@
 package com.beomsu.becommerce.home;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.beomsu.becommerce.home.internal.ImpressionCleanupScheduler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -71,6 +72,32 @@ class HomeIntegrationTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    ImpressionCleanupScheduler cleanup;
+
+    @Test
+    @DisplayName("보존 정리는 만료 행만 지운다 — 안 지우면 표가 하루 260만 행으로 자란다")
+    void cleanupDeletesOnlyExpiredRows() {
+        jdbc.update("delete from home_impressions");
+        // 만료 행은 SQL 로 직접 심는다(앱의 기록 경로는 항상 '지금'을 쓴다).
+        jdbc.update("insert into home_impressions (user_id, source, total_ms, model_ms, constraint_ms,"
+                + " row_count, item_count, item_ids, created_at) values (?,?,?,?,?,?,?,?,?)",
+                1L, "MODEL", 1L, 1L, 1L, 1, 1, "1", java.sql.Timestamp.from(
+                        java.time.Instant.now().minus(java.time.Duration.ofDays(8))));
+        String token = login();
+        rest.exchange("/api/v1/personalization/homepage", HttpMethod.GET,
+                new HttpEntity<>(null, bearer(token)), JsonNode.class);
+
+        cleanup.run();
+
+        // 응답이 아니라 DB 를 본다 — 오래된 행은 사라지고 방금 낸 행은 남아야 한다.
+        assertThat(jdbc.queryForObject(
+                "select count(*) from home_impressions where created_at < now() - interval 7 day", Integer.class))
+                .isZero();
+        assertThat(jdbc.queryForObject("select count(*) from home_impressions", Integer.class))
+                .isPositive();
+    }
 
     @Test
     @DisplayName("비로그인은 401 — 홈은 그 사용자의 활동으로 조립된다")
