@@ -16,6 +16,8 @@ mkdir -p "$RAW"
 
 VUS_LIST=${VUS_LIST:-"1 10 50"}
 DURATION=${DURATION:-30s}
+# 패싯 사전 집계(ADR-044). **`0s` 가 기준선(캐시 없음)** 이고, 기본값 60s 와 같은 하네스로 비교한다.
+FACET_TTL=${FACET_TTL:-0s}
 PORT=${PORT:-18080}
 BASE="http://localhost:${PORT}"
 JAR=build/libs/be-commerce-0.0.1-SNAPSHOT.jar
@@ -42,10 +44,10 @@ wait_port_free() {
   sleep 2
 }
 
-echo "== #172 검색 베이스라인 시작 (동시성: $VUS_LIST, ${DURATION}씩)"
+echo "== #172 검색 베이스라인 시작 (동시성: $VUS_LIST, ${DURATION}씩, 패싯 캐시 TTL=$FACET_TTL)"
 echo "== 출력: $OUT"
 wait_port_free
-APP_RATELIMIT_ENABLED=false "$JAVA" -jar "$JAR" \
+APP_RATELIMIT_ENABLED=false APP_CATALOG_FACETS_CACHE_TTL="$FACET_TTL" "$JAVA" -jar "$JAR" \
   --spring.docker.compose.enabled=false --server.port="$PORT" > "$RAW/app.log" 2>&1 &
 APP=$!
 for _ in $(seq 1 120); do
@@ -67,6 +69,7 @@ cat > "$RAW/meta.txt" <<EOF
 corpus_products=$ROWS
 vus_list=$VUS_LIST
 duration=$DURATION
+facet_cache_ttl=$FACET_TTL
 EOF
 
 echo

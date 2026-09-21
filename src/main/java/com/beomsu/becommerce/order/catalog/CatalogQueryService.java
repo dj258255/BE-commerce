@@ -35,13 +35,16 @@ public class CatalogQueryService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final StockRepository stockRepository;
+    private final FacetCache facetCache;
 
     public CatalogQueryService(ProductRepository productRepository,
                                CategoryRepository categoryRepository,
-                               StockRepository stockRepository) {
+                               StockRepository stockRepository,
+                               FacetCache facetCache) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.stockRepository = stockRepository;
+        this.facetCache = facetCache;
     }
 
     /**
@@ -129,11 +132,18 @@ public class CatalogQueryService {
     public FacetView facets(String category, Boolean featured, String colour, String productType,
                             Long minPrice, Long maxPrice) {
         String[] axis = categoryAxis(category);
-        List<FacetCount> colours = productRepository.colourFacet(axis[0], axis[1],
-                blankToNull(productType), minPrice, maxPrice, featured);
-        List<FacetCount> productTypes = productRepository.typeFacet(axis[0], axis[1],
-                blankToNull(colour), minPrice, maxPrice, featured);
-        return new FacetView(colours, productTypes);
+        // **요청마다 세지 않는다**(ADR-044). 패싯은 카탈로그가 바뀔 때만 달라지는데, 실측에서
+        // 패싯이 페이지 지연의 82~90% 를 차지했다. 키는 필터 조합이다 — 값이 아니라 **조합**이 키다.
+        String key = String.join("|", String.valueOf(axis[0]), String.valueOf(axis[1]),
+                String.valueOf(blankToNull(colour)), String.valueOf(blankToNull(productType)),
+                String.valueOf(minPrice), String.valueOf(maxPrice), String.valueOf(featured));
+        return facetCache.get(key, () -> {
+            List<FacetCount> colours = productRepository.colourFacet(axis[0], axis[1],
+                    blankToNull(productType), minPrice, maxPrice, featured);
+            List<FacetCount> productTypes = productRepository.typeFacet(axis[0], axis[1],
+                    blankToNull(colour), minPrice, maxPrice, featured);
+            return new FacetView(colours, productTypes);
+        });
     }
 
     /**

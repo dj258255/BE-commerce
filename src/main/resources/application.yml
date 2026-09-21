@@ -504,6 +504,17 @@ app:
       group-id: ${APP_PERSONALIZATION_CONSUMER_GROUP:be-commerce-personalization-context}
       # E1에서 consumer 지연을 주입하는 축. 기본 0이라 평소에는 비용이 없다.
       delay-ms: ${APP_PERSONALIZATION_CONSUMER_DELAY_MS:0}
+  # 상점 카탈로그(#172). 패싯은 **요청마다 세지 않는다** — 실측에서 페이지 지연의 82~90% 를 차지했다.
+  #
+  # 무효화를 TTL로 하는 이유: 카탈로그는 **앱 밖에서** 적재된다(`pipeline/promote_products.py`).
+  # 앱은 그 사건을 볼 수 없어 버전으로 즉시 무효화할 수 없다 — 그래서 TTL이고, 그 대가는
+  # **TTL 창 안에서 낡은 개수를 보여주는 것**이다(숨기지 않고 ADR-044 에 적었다).
+  # `0s` 로 두면 캐시를 끈다(**측정의 기준선** — 켠 것과 끈 것을 같은 하네스로 재야 한다).
+  catalog:
+    facets:
+      cache-ttl: ${APP_CATALOG_FACETS_CACHE_TTL:60s}
+      # 상한이 없으면 캐시는 메모리 누수다. 상한에 닿으면 통째로 비운다(축출 정책은 근거가 생기면).
+      cache-max-entries: ${APP_CATALOG_FACETS_CACHE_MAX:200}
   # 홈 컴포저(M7) — 여러 출처를 **한 화면으로 조립**한다. 추천 코어는 행 하나의 재료다.
   #
   # 왜 규칙이 필요한가: 관련도만으로 채우면 **같은 상품이 여러 행에 반복되고 한 대분류가 화면을
