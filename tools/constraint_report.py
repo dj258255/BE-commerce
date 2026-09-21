@@ -53,7 +53,12 @@ def build_rows(raw_dir):
     for name in sorted(os.listdir(raw_dir)):
         run_dir = os.path.join(raw_dir, name)
         meta_path = os.path.join(run_dir, "meta.txt")
+        # `summary.json` 이 원본이지만, 후보 집합이 큰 런은 `setup_data.pool`(상품 id 10만 개) 때문에
+        # 2.3MB 가 된다 — 그런 런은 **파생 사본**(`summary-metrics.json`, `metrics` 만)을 둔다.
+        # 어느 쪽이든 읽는다: 없으면 건너뛴다.
         summary_path = os.path.join(run_dir, "summary.json")
+        if not os.path.isfile(summary_path):
+            summary_path = os.path.join(run_dir, "summary-metrics.json")
         if not (os.path.isfile(meta_path) and os.path.isfile(summary_path)):
             continue
         meta = read_meta(meta_path)
@@ -62,6 +67,8 @@ def build_rows(raw_dir):
         rows.append({
             "policy": meta.get("constraint_policy", name),
             "flip": meta.get("flip_rate", "?"),
+            "pool": meta.get("item_pool", "-"),
+            "latency": meta.get("model_latency_ms", "-"),
             "target": meta.get("sold_out_target", "?"),
             "violation": rate_value(summary, "constraint_violation"),
             "violationsPer": value(summary, "constraint_violations", "avg"),
@@ -80,7 +87,7 @@ def build_rows(raw_dir):
             "dropped": value(summary, "dropped_iterations", "count"),
         })
     order = {"NONE": 0, "AT_GENERATION_START": 1, "AFTER_GENERATION": 2, "AT_RESPONSE": 3}
-    rows.sort(key=lambda r: (order.get(r["policy"], 9), r["flip"]))
+    rows.sort(key=lambda r: (order.get(r["policy"], 9), r["pool"], r["latency"], r["flip"]))
     return rows
 
 
@@ -93,10 +100,11 @@ def main():
         print("원자료가 없다", file=sys.stderr)
         return 1
 
-    print("| 정책 | 변화율 | **위반율** | 응답당 위반 | coverage | serving 중앙 | serving p95 | **확인 중앙** | 계기 중앙 | 확인이 뺀 개수 | 창 안 변경 | stale 창 중앙 | 품절 수 중앙 | 제어(K 유지) | 표본 | 부하 미달 |")
-    print("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+    print("| 정책 | 후보 집합 | 모델 지연 | 변화율 | **위반율** | 응답당 위반 | coverage | serving 중앙 | serving p95 | **확인 중앙** | 계기 중앙 | 확인이 뺀 개수 | 창 안 변경 | stale 창 중앙 | 품절 수 중앙 | 제어(K 유지) | 표본 | 부하 미달 |")
+    print("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
     for r in rows:
-        print(f"| `{r['policy']}` | {r['flip']}/s | **{pct(r['violation'])}** | {num(r['violationsPer'])} | "
+        print(f"| `{r['policy']}` | {r['pool']} | {r['latency']}ms | {r['flip']}/s | **{pct(r['violation'])}** | "
+              f"{num(r['violationsPer'])} | "
               f"{pct(r['coverage'])} | {num(r['servingMed'])}ms | {num(r['servingP95'])}ms | "
               f"**{num(r['checkMed'])}ms** | {num(r['auditMed'])}ms | {num(r['filtered'])} | {num(r['changes'])} | "
               f"{num(r['ageMed'])}ms | {num(r['soldOutMed'])}/{r['target']} | {pct(r['control'])} | "

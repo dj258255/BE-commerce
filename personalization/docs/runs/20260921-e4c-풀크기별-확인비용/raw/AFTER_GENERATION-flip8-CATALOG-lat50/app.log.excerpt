@@ -1,0 +1,49 @@
+# 60MB 원본의 발췌 — 원본은 저장소에 넣지 않았다(아래 사유와 함께 리포트에 적었다)
+# 원본:       72줄 / 280K · 최장 줄 211338자
+# 발췌 규칙: 부팅 40줄 + 가장 긴 줄 첫 3줄(각 400자) + 예외 요약
+=== 부팅(앞 40줄) ===
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.2)
+
+2026-09-22T05:13:18.715+09:00  INFO 19692 --- [be-commerce] [           main] c.b.becommerce.BeCommerceApplication     : Starting BeCommerceApplication v0.0.1-SNAPSHOT using Java 21.0.9 with PID 19692 (/Users/beomsu/Desktop/pay/build/libs/be-commerce-0.0.1-SNAPSHOT.jar started by beomsu in /Users/beomsu/Desktop/pay)
+2026-09-22T05:13:18.716+09:00  INFO 19692 --- [be-commerce] [           main] c.b.becommerce.BeCommerceApplication     : No active profile set, falling back to 1 default profile: "default"
+2026-09-22T05:13:19.541+09:00  INFO 19692 --- [be-commerce] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-09-22T05:13:19.542+09:00  INFO 19692 --- [be-commerce] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-09-22T05:13:19.705+09:00  INFO 19692 --- [be-commerce] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 157 ms. Found 44 JPA repository interfaces.
+2026-09-22T05:13:20.341+09:00  INFO 19692 --- [be-commerce] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 18080 (http)
+2026-09-22T05:13:20.512+09:00  INFO 19692 --- [be-commerce] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-09-22T05:13:20.513+09:00  INFO 19692 --- [be-commerce] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.34]
+2026-09-22T05:13:20.550+09:00  INFO 19692 --- [be-commerce] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-09-22T05:13:20.552+09:00  INFO 19692 --- [be-commerce] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1808 ms
+2026-09-22T05:13:20.836+09:00  INFO 19692 --- [be-commerce] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-22T05:13:21.054+09:00  INFO 19692 --- [be-commerce] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@7f5a25e2
+2026-09-22T05:13:21.055+09:00  INFO 19692 --- [be-commerce] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-09-22T05:13:21.086+09:00  INFO 19692 --- [be-commerce] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:3306/becommerce?serverTimezone=UTC&characterEncoding=UTF-8 (MySQL 8.4)
+2026-09-22T05:13:21.553+09:00  WARN 19692 --- [be-commerce] [           main] o.f.c.internal.database.base.Database    : Flyway upgrade recommended: MySQL 8.4 is newer than this version of Flyway and support has not been tested. The latest supported version of MySQL is 8.1.
+2026-09-22T05:13:21.596+09:00  INFO 19692 --- [be-commerce] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 63 migrations (execution time 00:00.035s)
+2026-09-22T05:13:21.612+09:00  INFO 19692 --- [be-commerce] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `becommerce`: 63
+2026-09-22T05:13:21.614+09:00  INFO 19692 --- [be-commerce] [           main] o.f.core.internal.command.DbMigrate      : Schema `becommerce` is up to date. No migration necessary.
+2026-09-22T05:13:21.678+09:00  INFO 19692 --- [be-commerce] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-09-22T05:13:21.727+09:00  INFO 19692 --- [be-commerce] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.5.Final
+2026-09-22T05:13:21.753+09:00  INFO 19692 --- [be-commerce] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-09-22T05:13:21.996+09:00  INFO 19692 --- [be-commerce] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-09-22T05:13:22.062+09:00  INFO 19692 --- [be-commerce] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 8.4.11
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+
+=== 가장 긴 줄(400자로 자름) ===
+2026-09-22T05:16:47.146+09:00  INFO 19692 --- [be-commerce] [io-18080-exec-4] org.hibernate.SQL_SLOW                   : Slow query took 321 milliseconds [select s1_0.product_id,s1_0.quantity,s1_0.version from stock s1_0 where s1_0.product_id in (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+
+=== 예외 종류별 빈도 ===
