@@ -1,0 +1,227 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: k6/freshness-vs-latency.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 15 max VUs, 1m5s max duration (incl. graceful stop):
+              * freshness: 20.00 iterations/s for 1m0s (maxVUs: 15, gracefulStop: 5s)
+
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+running (0m10.0s), 00/15 VUs, 17 complete and 0 interrupted iterations
+freshness   [   1% ] 00/15 VUs  0m00.8s/1m0s  20.00 iters/s
+
+running (0m11.0s), 00/15 VUs, 37 complete and 0 interrupted iterations
+freshness   [   3% ] 00/15 VUs  0m01.8s/1m0s  20.00 iters/s
+
+running (0m12.0s), 00/15 VUs, 57 complete and 0 interrupted iterations
+freshness   [   5% ] 00/15 VUs  0m02.8s/1m0s  20.00 iters/s
+
+running (0m13.0s), 00/15 VUs, 77 complete and 0 interrupted iterations
+freshness   [   6% ] 00/15 VUs  0m03.8s/1m0s  20.00 iters/s
+
+running (0m14.0s), 00/15 VUs, 97 complete and 0 interrupted iterations
+freshness   [   8% ] 00/15 VUs  0m04.8s/1m0s  20.00 iters/s
+
+running (0m15.0s), 00/15 VUs, 117 complete and 0 interrupted iterations
+freshness   [  10% ] 00/15 VUs  0m05.8s/1m0s  20.00 iters/s
+
+running (0m16.0s), 00/15 VUs, 137 complete and 0 interrupted iterations
+freshness   [  11% ] 00/15 VUs  0m06.8s/1m0s  20.00 iters/s
+
+running (0m17.0s), 00/15 VUs, 157 complete and 0 interrupted iterations
+freshness   [  13% ] 00/15 VUs  0m07.8s/1m0s  20.00 iters/s
+
+running (0m18.0s), 00/15 VUs, 177 complete and 0 interrupted iterations
+freshness   [  15% ] 00/15 VUs  0m08.8s/1m0s  20.00 iters/s
+
+running (0m19.0s), 00/15 VUs, 197 complete and 0 interrupted iterations
+freshness   [  16% ] 00/15 VUs  0m09.8s/1m0s  20.00 iters/s
+
+running (0m20.0s), 00/15 VUs, 217 complete and 0 interrupted iterations
+freshness   [  18% ] 00/15 VUs  0m10.8s/1m0s  20.00 iters/s
+
+running (0m21.0s), 00/15 VUs, 237 complete and 0 interrupted iterations
+freshness   [  20% ] 00/15 VUs  0m11.8s/1m0s  20.00 iters/s
+
+running (0m22.0s), 00/15 VUs, 257 complete and 0 interrupted iterations
+freshness   [  21% ] 00/15 VUs  0m12.8s/1m0s  20.00 iters/s
+
+running (0m23.0s), 00/15 VUs, 277 complete and 0 interrupted iterations
+freshness   [  23% ] 00/15 VUs  0m13.8s/1m0s  20.00 iters/s
+
+running (0m24.0s), 00/15 VUs, 297 complete and 0 interrupted iterations
+freshness   [  25% ] 00/15 VUs  0m14.8s/1m0s  20.00 iters/s
+
+running (0m25.0s), 00/15 VUs, 317 complete and 0 interrupted iterations
+freshness   [  26% ] 00/15 VUs  0m15.8s/1m0s  20.00 iters/s
+
+running (0m26.0s), 00/15 VUs, 337 complete and 0 interrupted iterations
+freshness   [  28% ] 00/15 VUs  0m16.8s/1m0s  20.00 iters/s
+
+running (0m27.0s), 00/15 VUs, 357 complete and 0 interrupted iterations
+freshness   [  30% ] 00/15 VUs  0m17.8s/1m0s  20.00 iters/s
+
+running (0m28.0s), 00/15 VUs, 377 complete and 0 interrupted iterations
+freshness   [  31% ] 00/15 VUs  0m18.8s/1m0s  20.00 iters/s
+
+running (0m29.0s), 00/15 VUs, 397 complete and 0 interrupted iterations
+freshness   [  33% ] 00/15 VUs  0m19.8s/1m0s  20.00 iters/s
+
+running (0m30.0s), 00/15 VUs, 417 complete and 0 interrupted iterations
+freshness   [  35% ] 00/15 VUs  0m20.8s/1m0s  20.00 iters/s
+
+running (0m31.0s), 00/15 VUs, 437 complete and 0 interrupted iterations
+freshness   [  36% ] 00/15 VUs  0m21.8s/1m0s  20.00 iters/s
+
+running (0m32.0s), 00/15 VUs, 457 complete and 0 interrupted iterations
+freshness   [  38% ] 00/15 VUs  0m22.8s/1m0s  20.00 iters/s
+
+running (0m33.0s), 00/15 VUs, 477 complete and 0 interrupted iterations
+freshness   [  40% ] 00/15 VUs  0m23.8s/1m0s  20.00 iters/s
+
+running (0m34.0s), 00/15 VUs, 497 complete and 0 interrupted iterations
+freshness   [  41% ] 00/15 VUs  0m24.8s/1m0s  20.00 iters/s
+
+running (0m35.0s), 00/15 VUs, 517 complete and 0 interrupted iterations
+freshness   [  43% ] 00/15 VUs  0m25.8s/1m0s  20.00 iters/s
+
+running (0m36.0s), 00/15 VUs, 537 complete and 0 interrupted iterations
+freshness   [  45% ] 00/15 VUs  0m26.8s/1m0s  20.00 iters/s
+
+running (0m37.0s), 00/15 VUs, 557 complete and 0 interrupted iterations
+freshness   [  46% ] 00/15 VUs  0m27.8s/1m0s  20.00 iters/s
+
+running (0m38.0s), 00/15 VUs, 577 complete and 0 interrupted iterations
+freshness   [  48% ] 00/15 VUs  0m28.8s/1m0s  20.00 iters/s
+
+running (0m39.0s), 00/15 VUs, 597 complete and 0 interrupted iterations
+freshness   [  50% ] 00/15 VUs  0m29.8s/1m0s  20.00 iters/s
+
+running (0m40.0s), 00/15 VUs, 617 complete and 0 interrupted iterations
+freshness   [  51% ] 00/15 VUs  0m30.8s/1m0s  20.00 iters/s
+
+running (0m41.0s), 00/15 VUs, 637 complete and 0 interrupted iterations
+freshness   [  53% ] 00/15 VUs  0m31.8s/1m0s  20.00 iters/s
+
+running (0m42.0s), 00/15 VUs, 657 complete and 0 interrupted iterations
+freshness   [  55% ] 00/15 VUs  0m32.8s/1m0s  20.00 iters/s
+
+running (0m43.0s), 00/15 VUs, 677 complete and 0 interrupted iterations
+freshness   [  56% ] 00/15 VUs  0m33.8s/1m0s  20.00 iters/s
+
+running (0m44.0s), 00/15 VUs, 697 complete and 0 interrupted iterations
+freshness   [  58% ] 00/15 VUs  0m34.8s/1m0s  20.00 iters/s
+
+running (0m45.0s), 01/15 VUs, 716 complete and 0 interrupted iterations
+freshness   [  60% ] 01/15 VUs  0m35.8s/1m0s  20.00 iters/s
+
+running (0m46.0s), 00/15 VUs, 737 complete and 0 interrupted iterations
+freshness   [  61% ] 00/15 VUs  0m36.8s/1m0s  20.00 iters/s
+
+running (0m47.0s), 00/15 VUs, 757 complete and 0 interrupted iterations
+freshness   [  63% ] 00/15 VUs  0m37.8s/1m0s  20.00 iters/s
+
+running (0m48.0s), 00/15 VUs, 777 complete and 0 interrupted iterations
+freshness   [  65% ] 00/15 VUs  0m38.8s/1m0s  20.00 iters/s
+
+running (0m49.0s), 00/15 VUs, 797 complete and 0 interrupted iterations
+freshness   [  66% ] 00/15 VUs  0m39.8s/1m0s  20.00 iters/s
+
+running (0m50.0s), 00/15 VUs, 817 complete and 0 interrupted iterations
+freshness   [  68% ] 00/15 VUs  0m40.8s/1m0s  20.00 iters/s
+
+running (0m51.0s), 00/15 VUs, 837 complete and 0 interrupted iterations
+freshness   [  70% ] 00/15 VUs  0m41.8s/1m0s  20.00 iters/s
+
+running (0m52.0s), 00/15 VUs, 857 complete and 0 interrupted iterations
+freshness   [  71% ] 00/15 VUs  0m42.8s/1m0s  20.00 iters/s
+
+running (0m53.0s), 00/15 VUs, 877 complete and 0 interrupted iterations
+freshness   [  73% ] 00/15 VUs  0m43.8s/1m0s  20.00 iters/s
+
+running (0m54.0s), 00/15 VUs, 897 complete and 0 interrupted iterations
+freshness   [  75% ] 00/15 VUs  0m44.8s/1m0s  20.00 iters/s
+
+running (0m55.0s), 00/15 VUs, 917 complete and 0 interrupted iterations
+freshness   [  76% ] 00/15 VUs  0m45.8s/1m0s  20.00 iters/s
+
+running (0m56.0s), 00/15 VUs, 937 complete and 0 interrupted iterations
+freshness   [  78% ] 00/15 VUs  0m46.8s/1m0s  20.00 iters/s
+
+running (0m57.0s), 00/15 VUs, 957 complete and 0 interrupted iterations
+freshness   [  80% ] 00/15 VUs  0m47.8s/1m0s  20.00 iters/s
+
+running (0m58.0s), 00/15 VUs, 977 complete and 0 interrupted iterations
+freshness   [  81% ] 00/15 VUs  0m48.8s/1m0s  20.00 iters/s
+
+running (0m59.0s), 00/15 VUs, 997 complete and 0 interrupted iterations
+freshness   [  83% ] 00/15 VUs  0m49.8s/1m0s  20.00 iters/s
+
+running (1m00.0s), 00/15 VUs, 1017 complete and 0 interrupted iterations
+freshness   [  85% ] 00/15 VUs  0m50.8s/1m0s  20.00 iters/s
+
+running (1m01.0s), 00/15 VUs, 1037 complete and 0 interrupted iterations
+freshness   [  86% ] 00/15 VUs  0m51.8s/1m0s  20.00 iters/s
+
+running (1m02.0s), 00/15 VUs, 1057 complete and 0 interrupted iterations
+freshness   [  88% ] 00/15 VUs  0m52.8s/1m0s  20.00 iters/s
+
+running (1m03.0s), 00/15 VUs, 1077 complete and 0 interrupted iterations
+freshness   [  90% ] 00/15 VUs  0m53.8s/1m0s  20.00 iters/s
+
+running (1m04.0s), 00/15 VUs, 1097 complete and 0 interrupted iterations
+freshness   [  91% ] 00/15 VUs  0m54.8s/1m0s  20.00 iters/s
+
+running (1m05.0s), 00/15 VUs, 1117 complete and 0 interrupted iterations
+freshness   [  93% ] 00/15 VUs  0m55.8s/1m0s  20.00 iters/s
+
+running (1m06.0s), 00/15 VUs, 1137 complete and 0 interrupted iterations
+freshness   [  95% ] 00/15 VUs  0m56.8s/1m0s  20.00 iters/s
+
+running (1m07.0s), 00/15 VUs, 1157 complete and 0 interrupted iterations
+freshness   [  96% ] 00/15 VUs  0m57.8s/1m0s  20.00 iters/s
+
+running (1m08.0s), 00/15 VUs, 1177 complete and 0 interrupted iterations
+freshness   [  98% ] 00/15 VUs  0m58.8s/1m0s  20.00 iters/s
+
+running (1m09.0s), 00/15 VUs, 1197 complete and 0 interrupted iterations
+freshness   [ 100% ] 00/15 VUs  0m59.8s/1m0s  20.00 iters/s
+
+[E1] waitMs=100  reflected=100.0%  e2e_p95=22.0ms  e2e_p99=30.0ms  write_p95=18.4ms  read_p95=3.2ms  lag_p95=12.0ms  wait_p95=0.0ms  gaveup=0  req_failed=0.0%  dropped=0
+
+running (1m09.2s), 00/15 VUs, 1201 complete and 0 interrupted iterations
+freshness ✓ [ 100% ] 00/15 VUs  1m0s  20.00 iters/s

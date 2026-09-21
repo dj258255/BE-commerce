@@ -1,0 +1,23 @@
+  user 2102: 12건 (긴 사용자=False)
+  user 2103: 12건 (긴 사용자=False)
+  user 2104: 12건 (긴 사용자=False)
+  user 2105: 12건 (긴 사용자=False)
+  user 2106: 12건 (긴 사용자=False)
+  user 2107: 12건 (긴 사용자=False)
+  user 2108: 12건 (긴 사용자=False)
+  user 2109: 12건 (긴 사용자=False)
+  user 2110: 12건 (긴 사용자=False)
+  user 2111: 12건 (긴 사용자=False)
+  user 2112: 12건 (긴 사용자=False)
+  user 2113: 12건 (긴 사용자=False)
+  user 2114: 12건 (긴 사용자=False)
+  user 2115: 12건 (긴 사용자=False)
+  user 2116: 12건 (긴 사용자=False)
+  user 2117: 12건 (긴 사용자=False)
+  user 2118: 12건 (긴 사용자=False)
+  user 2119: 12건 (긴 사용자=False)
+  user 2120: 12건 (긴 사용자=False)
+  user 2121: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260921-e2d-late-재측정/raw/late/manifest.json
