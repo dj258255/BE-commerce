@@ -227,7 +227,8 @@ public class SecurityConfig {
     @Bean
     PasswordEncoder passwordEncoder(
             @org.springframework.beans.factory.annotation.Value(
-                    "${app.auth.hash-concurrency:8}") int hashConcurrency) {
+                    "${app.auth.hash-concurrency:8}") int hashConcurrency,
+            io.micrometer.core.instrument.MeterRegistry meterRegistry) {
         String encodingId = "argon2";
         // OWASP 최소 권고: 메모리 19MiB(=19456KB), iterations 2, parallelism 1.
         PasswordEncoder argon2 = new Argon2PasswordEncoder(16, 32, 1, 19456, 2);
@@ -240,6 +241,6 @@ public class SecurityConfig {
 
         // 유입 제어(RPS)는 <시작하는 요청 수>를 묶고, 이 제한은 <동시에 잡히는 메모리>를 묶는다.
         // 둘은 다른 자원이라 유입 제어만으로는 순간 메모리 상한이 보장되지 않는다.
-        return new HashConcurrencyLimiter(delegating, hashConcurrency);
+        return new HashConcurrencyLimiter(delegating, hashConcurrency, meterRegistry);
     }
 }

@@ -4,6 +4,7 @@ import com.beomsu.becommerce.auth.HashConcurrencyLimiter;
 import com.beomsu.becommerce.auth.internal.HashCapacityExceededException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.concurrent.CountDownLatch;
@@ -45,7 +46,7 @@ class HashConcurrencyLimiterTest {
             @Override public boolean matches(CharSequence raw, String encoded) { return true; }
         };
 
-        var limiter = new HashConcurrencyLimiter(blocking, limit);
+        var limiter = new HashConcurrencyLimiter(blocking, limit, new SimpleMeterRegistry());
         try (ExecutorService pool = Executors.newFixedThreadPool(callers)) {
             for (int i = 0; i < callers; i++) {
                 pool.submit(() -> {
@@ -71,7 +72,7 @@ class HashConcurrencyLimiterTest {
         var limiter = new HashConcurrencyLimiter(new PasswordEncoder() {
             @Override public String encode(CharSequence raw) { return "h"; }
             @Override public boolean matches(CharSequence raw, String encoded) { return true; }
-        }, 1);
+        }, 1, new SimpleMeterRegistry());
 
         assertThat(limiter.encode("a")).isEqualTo("h");
         assertThat(limiter.encode("b")).isEqualTo("h");
@@ -85,7 +86,7 @@ class HashConcurrencyLimiterTest {
             @Override public String encode(CharSequence raw) { throw new IllegalStateException(); }
             @Override public boolean matches(CharSequence raw, String encoded) { return true; }
             @Override public boolean upgradeEncoding(String encoded) { return true; }
-        }, 0);
+        }, 0, new SimpleMeterRegistry());
 
         assertThat(limiter.upgradeEncoding("{bcrypt}$2a$...")).isTrue();
         assertThatThrownBy(() -> limiter.encode("pw"))
