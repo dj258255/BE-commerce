@@ -54,49 +54,65 @@ public class ContextStore {
     private static final String PREFIX = "ctx:";
 
     /**
-     * 읽기·비교·쓰기를 한 번에 한다. 읽은 값이 없으면 새로 만들고, seq가 크지 않으면 <b>아무것도
-     * 쓰지 않고 현재 값을 돌려준다</b>(TTL도 건드리지 않는다).
+     * 읽기·병합·쓰기를 한 번에 한다. <b>도착 순서에 관대하다</b>(ADR-035) — 늦게 온 이벤트도
+     * {@code seq} 위치에 끼워 넣고, 같은 {@code seq}가 이미 있으면 아무것도 하지 않는다(재배달 멱등).
      *
-     * <p>ARGV[1] = {@code {seq, updatedAt, item}}, ARGV[2] = maxItems, ARGV[3] = TTL(ms).
-     * 반환은 반영된 컨텍스트의 JSON이다.
+     * <p>결과는 "적용된 {@code seq} 집합에서 큰 것 {@code max-items}개"이므로 <b>도착 순서가 값을
+     * 바꾸지 않는다.</b> 그래서 전송이 순서를 보장할 필요가 없다.
+     *
+     * <p>ARGV[1] = 항목 JSON({@code seq,itemId,activityType,occurredAt}), ARGV[2] = 적용 시각(ISO),
+     * ARGV[3] = maxItems, ARGV[4] = TTL(ms). 반환은 반영된 컨텍스트의 JSON이다.
      */
     private static final String APPLY_LUA = """
             local key = KEYS[1]
-            local pending = cjson.decode(ARGV[1])
-            local maxItems = tonumber(ARGV[2])
-            local ttlMs = tonumber(ARGV[3])
+            local incoming = cjson.decode(ARGV[1])
+            local updatedAt = ARGV[2]
+            local maxItems = tonumber(ARGV[3])
+            local ttlMs = tonumber(ARGV[4])
 
             local raw = redis.call('GET', key)
-            local ctx = nil
-            if raw then
-              ctx = cjson.decode(raw)
-            end
-
+            local items = {}
             local curSeq = 0
-            if ctx and ctx.seq then
-              curSeq = tonumber(ctx.seq)
-            end
-            if pending.seq <= curSeq then
-              return raw
-            end
-
-            local items = { pending.item }
-            if ctx and ctx.items then
-              for i = 1, #ctx.items do
-                if #items >= maxItems then
-                  break
-                end
-                items[#items + 1] = ctx.items[i]
+            if raw then
+              local ctx = cjson.decode(raw)
+              if ctx.seq then
+                curSeq = tonumber(ctx.seq)
+              end
+              if ctx.items then
+                items = ctx.items
               end
             end
 
-            local merged = cjson.encode({
-              seq = pending.seq,
-              updatedAt = pending.updatedAt,
-              items = items
+            -- 재배달 멱등: 같은 seq 가 이미 있으면 아무것도 하지 않는다(쓰지도, TTL 을 건드리지도 않는다).
+            for i = 1, #items do
+              if tonumber(items[i].seq) == incoming.seq then
+                return raw
+              end
+            end
+
+            -- seq 내림차순 위치에 끼워 넣고 maxItems 로 자른다 — 낮은 seq 를 버리지 않는다.
+            local merged = {}
+            local i = 1
+            local placed = false
+            while #merged < maxItems do
+              if not placed and (i > #items or incoming.seq > tonumber(items[i].seq)) then
+                table.insert(merged, incoming)
+                placed = true
+              elseif i <= #items then
+                table.insert(merged, items[i])
+                i = i + 1
+              else
+                break
+              end
+            end
+
+            local encoded = cjson.encode({
+              seq = math.max(curSeq, incoming.seq),
+              updatedAt = updatedAt,
+              items = merged
             })
-            redis.call('SET', key, merged, 'PX', ttlMs)
-            return merged
+            redis.call('SET', key, encoded, 'PX', ttlMs)
+            return encoded
             """;
 
     private static final RedisScript<String> APPLY_SCRIPT =
@@ -138,11 +154,12 @@ public class ContextStore {
      * <p>순번이 낮거나 같으면 아무것도 하지 않고 현재 값을 그대로 돌려준다(재배달·순서 역전).
      */
     public OnlineContext apply(UserActivityEvent event) {
-        String pending = encode(new Pending(event.seq(), Instant.now(),
-                new OnlineContext.Item(event.itemId(), event.activityType(), event.occurredAt())));
+        String item = encode(new OnlineContext.Item(event.seq(), event.itemId(),
+                event.activityType(), event.occurredAt()));
 
         String merged = redis.execute(APPLY_SCRIPT, List.of(key(event.userId())),
-                pending, String.valueOf(maxItems), String.valueOf(ttl.toMillis()));
+                item, Instant.now().toString(),
+                String.valueOf(maxItems), String.valueOf(ttl.toMillis()));
 
         if (merged == null) {
             // 스크립트는 항상 값을 돌려준다 — null 이면 저장소가 응답하지 않은 것이다.
@@ -178,11 +195,12 @@ public class ContextStore {
         }
     }
 
-    private String key(long userId) {
-        return PREFIX + userId;
-    }
-
-    /** Lua에 넘기는 반영 요청 — 이벤트 하나와 적용 시각. */
-    private record Pending(long seq, Instant updatedAt, OnlineContext.Item item) {
+    /**
+     * 키에 <b>값 판을 붙인다</b>. 항목이 {@code seq}를 갖게 되면서 값 모양이 바뀌었고(ADR-035),
+     * 옛 값에는 그 필드가 없어 제자리 병합이 성립하지 않는다. 컨텍스트는 TTL 7일의 캐시라
+     * 마이그레이션하지 않고 새 키로 시작한다 — 옛 키는 만료로 사라진다.
+     */
+    String key(long userId) {
+        return PREFIX + userId + ":v2";
     }
 }

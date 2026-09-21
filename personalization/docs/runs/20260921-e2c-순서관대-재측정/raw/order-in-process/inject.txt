@@ -1,0 +1,9 @@
+  user 2070: 40건 (긴 사용자=False)
+  user 2071: 40건 (긴 사용자=False)
+  user 2072: 40건 (긴 사용자=False)
+  user 2073: 40건 (긴 사용자=False)
+  user 2074: 40건 (긴 사용자=False)
+  user 2075: 40건 (긴 사용자=False)
+
+주입 완료 — 사용자 6명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260921-e2c-순서관대-재측정/raw/order-in-process/manifest.json

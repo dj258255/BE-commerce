@@ -91,7 +91,7 @@ run_condition() {
   [ "$settle" -gt 0 ] && sleep "$settle"
 
   python3 tools/compare-contexts.py --manifest "$dir/manifest.json" \
-    --condition "$name" --out "$dir/compare.json" | tee "$dir/compare.txt"
+    --condition "$name @$transport" --out "$dir/compare.json" | tee "$dir/compare.txt"
   cleanup
 }
 

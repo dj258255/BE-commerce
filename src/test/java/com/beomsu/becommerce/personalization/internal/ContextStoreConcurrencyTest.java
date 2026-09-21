@@ -70,12 +70,20 @@ class ContextStoreConcurrencyTest {
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         store = new ContextStore(redis, mapper, Duration.ofDays(7), MAX_ITEMS,
                 new PersonalizationMetrics(new SimpleMeterRegistry()));
-        redis.delete("ctx:" + USER);
+        clearContext();
     }
 
     @AfterEach
     void tearDown() {
         factory.destroy();
+    }
+
+    /** 키 형식에 의존하지 않는다 — 값 판이 붙어도(:v2) 테스트가 깨지지 않게. */
+    private void clearContext() {
+        var keys = redis.keys("ctx:*");
+        if (keys != null && !keys.isEmpty()) {
+            redis.delete(keys);
+        }
     }
 
     /** itemId에 seq를 실어 보낸다 — 어떤 항목이 살아남았는지 셀 수 있게. */
@@ -96,14 +104,62 @@ class ContextStoreConcurrencyTest {
     }
 
     @Test
-    @DisplayName("낮은 seq는 무시한다 — 순서 역전은 설계대로 버린다")
-    void lowerSeqIsIgnored() {
+    @DisplayName("낮은 seq도 제자리에 들어간다 — 버리지 않는다")
+    void lowerSeqIsInsertedInPlace() {
         store.apply(event(5));
         store.apply(event(3));
 
         OnlineContext context = store.read(USER).orElseThrow();
+        // 대표 순번은 되돌아가지 않는다(5가 최대다).
         assertThat(context.seq()).isEqualTo(5L);
-        assertThat(context.items()).extracting(OnlineContext.Item::itemId).containsExactly(5L);
+        // 그러나 늦게 온 3도 남는다 — 버리지 않고 seq 내림차순 위치에 들어간다.
+        assertThat(context.items()).extracting(OnlineContext.Item::seq).containsExactly(5L, 3L);
+        assertThat(context.items()).extracting(OnlineContext.Item::itemId).containsExactly(5L, 3L);
+    }
+
+    @Test
+    @DisplayName("도착 순서가 달라도 결과가 같다 — 병합이 순서에 무관하다")
+    void arrivalOrderDoesNotChangeResult() {
+        List<Long> seqs = List.of(4L, 1L, 7L, 2L, 9L, 5L, 8L, 3L, 6L, 10L);
+        for (long seq : seqs) {
+            store.apply(event(seq));
+        }
+        OnlineContext shuffled = store.read(USER).orElseThrow();
+
+        // 같은 집합을 순서대로 적용한 결과와 같아야 한다 — 이게 이 설계의 핵심 성질이다.
+        clearContext();
+        for (long seq = 1; seq <= 10; seq++) {
+            store.apply(event(seq));
+        }
+        OnlineContext ordered = store.read(USER).orElseThrow();
+
+        assertThat(shuffled.seq()).isEqualTo(ordered.seq());
+        assertThat(shuffled.items()).extracting(OnlineContext.Item::seq)
+                .containsExactlyElementsOf(ordered.items().stream().map(OnlineContext.Item::seq).toList());
+    }
+
+    @Test
+    @DisplayName("max-items를 넘으면 가장 낮은 seq부터 버린다 — 적용 순서가 아니라 나이 기준")
+    void trimsByLowestSeq() {
+        store.apply(event(9));
+        store.apply(event(1));
+        store.apply(event(8));
+
+        ContextStore small = new ContextStore(redis, mapper(), Duration.ofDays(7), 2,
+                new PersonalizationMetrics(new SimpleMeterRegistry()));
+        clearContext();
+        small.apply(event(9));
+        small.apply(event(1));
+        small.apply(event(8));
+
+        OnlineContext context = small.read(USER).orElseThrow();
+        assertThat(context.items()).extracting(OnlineContext.Item::seq).containsExactly(9L, 8L);
+    }
+
+    private static ObjectMapper mapper() {
+        return new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
     @Test
