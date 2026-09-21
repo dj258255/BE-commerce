@@ -226,7 +226,8 @@ public class HomeComposer {
     }
 
     private static HomePageView.Item item(ProductCatalogFacts.ProductCardFacts card, String reason) {
-        return new HomePageView.Item(String.valueOf(card.productId()), card.name(), card.price(), null, reason);
+        return new HomePageView.Item(String.valueOf(card.productId()), card.name(), card.price(),
+                card.imageUrl(), card.inStock(), null, reason);
     }
 
     private static long elapsed(long fromNanos) {

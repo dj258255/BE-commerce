@@ -14,6 +14,9 @@ export type RowItem = {
   itemId: string;
   name: string;
   price: number;
+  /** 카드에 그릴 값 — 없으면 소비자가 상품 API 를 한 번 더 불러야 해서 조립과 화면이 갈라진다. */
+  imageUrl: string | null;
+  inStock: boolean;
   /**
    * 모델이 낸 관련도 점수. **null 일 수 있다** — 모델 스텁은 순위만 내지 점수를 내지 않는다.
    * 없는 점수를 화면이 지어내면 "관련도 0.91"처럼 보이지만 그 숫자의 근거가 없다.
