@@ -30,11 +30,14 @@ public class StockBackedAvailability implements AvailabilitySource {
 
     private final StockAvailabilityFacts stockFacts;
     private final ObjectProvider<ExperimentStockChurn> churn;
+    private final ItemPoolSource pool;
 
     public StockBackedAvailability(StockAvailabilityFacts stockFacts,
-                                   ObjectProvider<ExperimentStockChurn> churn) {
+                                   ObjectProvider<ExperimentStockChurn> churn,
+                                   ItemPoolSource pool) {
         this.stockFacts = stockFacts;
         this.churn = churn;
+        this.pool = pool;
     }
 
     /** 실제 재고를 읽는다 — 이 호출이 E4 의 비용 축이다(DB 왕복 한 번). */
@@ -52,7 +55,7 @@ public class StockBackedAvailability implements AvailabilitySource {
      */
     @Override
     public List<Long> knownItemIds() {
-        return ItemPool.experimentPool();
+        return pool.pool();
     }
 
     /** 가용성이 바뀐 횟수 — 변화 주입기(게이트)가 없으면 0이다(바뀐 것이 없다는 뜻). */

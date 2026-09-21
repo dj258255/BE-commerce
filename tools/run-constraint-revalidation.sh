@@ -59,6 +59,7 @@ start_app() {
   cleanup
   wait_port_free
   APP_RATELIMIT_ENABLED=false \
+  APP_RECOMMENDATION_ITEM_POOL=EXPERIMENT \
   APP_RECOMMENDATION_CONSTRAINT_POLICY="$policy" \
   APP_RECOMMENDATION_EXPERIMENT_ENABLED=true \
   "$JAVA" -jar "$JAR" \
@@ -79,6 +80,7 @@ start_app() {
 echo "== E4 실측 시작"
 echo "== 출력: $OUT"
 echo "== 정책: $POLICIES / 변화율: $FLIP_RATES / 품절 고정: ${SOLD_OUT_TARGET} / ${DURATION} @ ${RATE}req/s"
+echo "== 후보 집합: EXPERIMENT(합성 풀) — 실제 상점 재고를 건드리지 않기 위해 하네스가 명시한다"
 
 for policy in $POLICIES; do
   for flip in $FLIP_RATES; do

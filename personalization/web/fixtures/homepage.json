@@ -1,23 +1,30 @@
 {
-  "_mock": true,
-  "_source": "GET /api/v1/personalization/homepage?userId= 계약. 실험 M7에서 실데이터로 교체한다.",
+  "_source": "M7 실측(personalization/docs/runs/20260921-m7-홈-조립/report.md). 실제 H&M 카탈로그 105,542개, 조립 규칙 3수준 × 사용자 6명.",
+  "_harness": "GET /api/v1/personalization/homepage (실 API) + tools/run-home-composition.sh + tools/home_report.py (실측 완료)",
+  "_method": "계정마다 **실제 카탈로그 상품 id** 로 활동 8건을 심고(V55 가 데모 카탈로그를 은퇴시켰다) 홈을 조립한다. 응답의 `stats` 가 무엇을 버렸는지 밝힌다.",
+  "_note": "이 파일은 **모듈이 아니라 계약**을 보여준다 — 화면과 스텁이 이미 이 모양 위에 서 있었고(M10), M7 이 그 자리에 실 API 를 넣었다. 목 계약과 달라진 것 셋: ① `score` 는 지금 **null** 이다(모델 스텁은 순위만 내지 점수를 내지 않는다 — 없는 점수를 지어내지 않는다) ② `stats` 를 더했다(무엇을 버렸는지 밝히기 위해) ③ 목에 있던 `similar`(CONTENT_SIMILARITY) 행은 **아직 없다** — 콘텐츠 유사도는 만들지 않았고, 그 사실을 숨기지 않는다.",
+  "rules": {
+    "_note": "규칙 수준별 실측 평균. **규칙은 지연을 쓰지 않고 노출을 쓴다** — 시간은 53ms 로 같고 항목 수만 줄어든다.",
+    "levels": [
+      { "rules": "NONE", "title": "규칙 없음(기준선)", "rows": 3.0, "items": 32.0, "duplicates": 0.0, "cappedOut": 0.0, "stockDropped": 0.0, "distinctCategories": 6.0, "inferenceMs": 53.5, "constraintMs": 6.8, "residualMs": 27.2 },
+      { "rules": "DEDUP", "title": "중복 제거 + 품절 제외", "rows": 3.0, "items": 20.0, "duplicates": 12.0, "cappedOut": 0.0, "stockDropped": 0.0, "distinctCategories": 5.0, "inferenceMs": 53.2, "constraintMs": 7.5, "residualMs": 25.2 },
+      { "rules": "FULL", "title": "기본 — + 카테고리 다양성", "rows": 3.0, "items": 19.0, "duplicates": 9.0, "cappedOut": 2.7, "stockDropped": 0.0, "distinctCategories": 5.0, "inferenceMs": 52.5, "constraintMs": 8.3, "residualMs": 24.7 }
+    ]
+  },
   "userId": "u-1024",
-  "generatedAt": "2026-09-20T10:30:00Z",
+  "generatedAt": "2026-09-21T15:07:00Z",
   "source": "MODEL",
   "fallbackReason": null,
-  "contextStalenessMs": 420,
-  "latency": { "contextMs": 11, "inferenceMs": 88, "constraintMs": 6, "totalMs": 108 },
+  "contextStalenessMs": null,
+  "latency": { "contextMs": 0, "inferenceMs": 53, "constraintMs": 8, "totalMs": 110 },
   "rows": [
     {
       "id": "recent",
       "title": "최근 본 상품",
       "strategy": "RECENT_VIEW",
       "items": [
-        { "itemId": "0123456001", "name": "Strap top", "price": 9990, "score": 1.0, "reason": "3일 전 조회" },
-        { "itemId": "0123456002", "name": "Jersey top", "price": 12990, "score": 1.0, "reason": "1일 전 조회" },
-        { "itemId": "0567890001", "name": "Slim Jeans", "price": 39900, "score": 1.0, "reason": "어제 조회" },
-        { "itemId": "0678901001", "name": "Cotton shirt", "price": 29900, "score": 1.0, "reason": "2일 전 조회" },
-        { "itemId": "0789012001", "name": "Knit sweater", "price": 45900, "score": 1.0, "reason": "5일 전 조회" }
+        { "itemId": "108775015", "name": "Strap top", "price": 9990, "score": null, "reason": "최근 조회" },
+        { "itemId": "110065001", "name": "OP T-shirt", "price": 12990, "score": null, "reason": "최근 조회" }
       ]
     },
     {
@@ -25,24 +32,24 @@
       "title": "너를 위한 추천",
       "strategy": "MODEL_TOP_K",
       "items": [
-        { "itemId": "0912345001", "name": "Oversized hoodie", "price": 39900, "score": 0.91, "reason": "같은 색상 계열 재구매" },
-        { "itemId": "0223344001", "name": "Linen shorts", "price": 24900, "score": 0.88, "reason": "여름 시즌 유사 고객" },
-        { "itemId": "0334455001", "name": "Canvas tote", "price": 19900, "score": 0.84, "reason": "함께 구매된 상품" },
-        { "itemId": "0445566001", "name": "Ribbed tank", "price": 12900, "score": 0.79, "reason": "기본템 보완" },
-        { "itemId": "0556677001", "name": "Wide pants", "price": 45900, "score": 0.76, "reason": "체형 유사 고객" }
+        { "itemId": "112679048", "name": "Sweatshirt", "price": 39900, "score": null, "reason": "모델 추천" },
+        { "itemId": "111593001", "name": "Support 40 den", "price": 19900, "score": null, "reason": "모델 추천" }
       ]
     },
     {
-      "id": "similar",
-      "title": "비슷한 스타일",
-      "strategy": "CONTENT_SIMILARITY",
+      "id": "popular",
+      "title": "인기 상품",
+      "strategy": "POPULARITY",
       "items": [
-        { "itemId": "0667788001", "name": "Denim jacket", "price": 59900, "score": 0.72, "reason": "이미지 유사도 0.72" },
-        { "itemId": "0778899001", "name": "Pleated skirt", "price": 39900, "score": 0.70, "reason": "이미지 유사도 0.70" },
-        { "itemId": "0889900001", "name": "Basic tee", "price": 9990, "score": 0.68, "reason": "카테고리 근접" },
-        { "itemId": "0990011001", "name": "Wool coat", "price": 89900, "score": 0.64, "reason": "질감 유사" },
-        { "itemId": "0111122001", "name": "Sneakers", "price": 49900, "score": 0.60, "reason": "코디 완성" }
+        { "itemId": "116553001", "name": "Cotton shirt", "price": 29900, "score": null, "reason": "인기" },
+        { "itemId": "123456001", "name": "Denim jacket", "price": 59900, "score": null, "reason": "인기" }
       ]
     }
-  ]
+  ],
+  "stats": { "candidates": 32, "unmatched": 0, "outOfStock": 0, "duplicates": 9, "cappedOut": 3, "distinctCategories": 5 },
+  "conclusion": {
+    "statement": "조립 규칙은 지연을 쓰지 않고 노출을 쓴다 — 규칙 수준과 무관하게 추론 53ms·제약 7ms·잔차 25ms 이고, 바뀌는 것은 화면에 담기는 칸(32 → 20 → 19)이다. 중복 제거가 가장 큰 일을 한다(32칸 중 12칸이 중복).",
+    "tradeoff": "중복을 지우고 되채우지 않아 화면이 짧아진다 — 낭비는 없앴지만 보여줄 기회도 줄었다. 되채우면 관련도가 더 낮은 후보로 지불한다. 그 정책은 정하지 않았다.",
+    "openQuestion": "사용자가 더 만족하는지는 못 잰다 — 노출 구조와 품질은 다르다(온라인 A/B의 몫). '인기' 행은 아직 인기가 아니다(진짜 인기 신호는 M1). 그리고 가장 큰 발견은 실측이 찾은 버그다 — 제약 확인이 요청마다 후보 풀 전체(10만 개)를 읽고 있었다(405ms → 7ms)."
+  }
 }

@@ -41,16 +41,36 @@ public class ConstraintChecker {
     public record Snapshot(long version, Set<Long> known, Set<Long> unavailable, long takenAtNanos) {
     }
 
-    /** 모델을 부르기 전에 뜨는 넓은 스냅샷(풀 전체). */
+    /**
+     * 모델을 부르기 전에 뜨는 넓은 스냅샷(풀 전체).
+     *
+     * <p><b>비용이 풀 크기에 비례한다.</b> 이것이 {@code AT_GENERATION_START} 의 정의이자 대가다 —
+     * "미리 읽으면 싸다"는 풀이 작을 때의 말이고, 실제 카탈로그(10만 개)에서는 <b>풀 전체 조회</b>가
+     * 요청마다 붙는다(M7 실측: 405ms). 그래서 이 정책의 기본값은 여전히 {@code AFTER_GENERATION} 이다.
+     */
     public Snapshot snapshot() {
         List<Long> pool = availability.knownItemIds();
         return new Snapshot(availability.version(), Set.copyOf(pool),
                 availability.unavailableAmong(pool), System.nanoTime());
     }
 
-    /** 지금 상태로 걸러낸다(출력만 읽는다). */
+    /**
+     * 지금 상태로 걸러낸다 — <b>출력만 읽는다.</b>
+     *
+     * <p><b>풀 전체를 읽지 않는 것이 중요하다(M7에서 드러났다).</b> 예전에는 {@link #snapshot()} 을
+     * 불러 <b>후보 풀 전체</b>의 가용성을 읽었다. 실험용 풀(24개)에서는 0ms 라 안 보였지만,
+     * 후보가 실제 카탈로그(10만 개)가 되자 <b>요청마다 10만 건짜리 조회</b>가 붙어 확인 비용이
+     * 405ms 가 됐다 — 폴리시 비교가 아니라 <b>풀 크기</b>를 재고 있었다.
+     *
+     * <p>걸러내는 데 필요한 것은 <b>출력의 가용성</b>뿐이다. 모르는 id 는
+     * {@link AvailabilitySource} 계약이 fail-closed(모르면 없다)라 그대로 걸러지므로,
+     * "풀에 있었는가"를 따로 볼 필요도 없다 — 그 검사가 사라져도 계약은 유지된다.
+     */
     public Filtered filterNow(List<Long> items) {
-        return filter(items, snapshot());
+        long version = availability.version();
+        Set<Long> unavailable = availability.unavailableAmong(items);
+        Snapshot tight = new Snapshot(version, Set.copyOf(items), unavailable, System.nanoTime());
+        return filter(items, tight);
     }
 
     /** 스냅샷으로 걸러낸다 — 스냅샷이 얼마나 낡았든 그대로 쓴다. 그게 {@code AT_GENERATION_START}의 정의다. */

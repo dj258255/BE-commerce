@@ -1,7 +1,7 @@
 package com.beomsu.becommerce.recommendation.web;
 
 import com.beomsu.becommerce.order.ExperimentStockChurn;
-import com.beomsu.becommerce.recommendation.internal.ItemPool;
+import com.beomsu.becommerce.recommendation.internal.ItemPoolSource;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -42,13 +42,22 @@ import java.util.Map;
 public class ConstraintExperimentController {
 
     private final ExperimentStockChurn churn;
+    private final ItemPoolSource poolSource;
 
-    public ConstraintExperimentController(ExperimentStockChurn churn) {
+    public ConstraintExperimentController(ExperimentStockChurn churn, ItemPoolSource poolSource) {
         this.churn = churn;
+        this.poolSource = poolSource;
     }
 
-    private static List<Long> pool() {
-        return ItemPool.experimentPool();
+    /**
+     * 실험이 흔들 대상 — <b>하네스가 고른 풀</b>이다(`app.recommendation.item-pool=EXPERIMENT`).
+     *
+     * <p>기본값이 카탈로그(M7)이므로, E4 하네스는 <b>명시적으로 실험 풀을 켜야</b> 한다. 그래야
+     * 변화 주입이 <b>실제 상점 재고를 건드리지 않는다</b>(ADR-039의 격리를 기본값이 아니라
+     * 하네스의 선택으로 지킨다 — ADR-042).
+     */
+    private List<Long> pool() {
+        return poolSource.pool();
     }
 
     /**

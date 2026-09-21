@@ -37,6 +37,22 @@ public class ProductCatalogFacts {
         this.catalogQueryService = catalogQueryService;
     }
 
+    /**
+     * 카탈로그에 있는 <b>모든 상품 id</b> — 순서는 id 오름차순(결정적).
+     *
+     * <p><b>왜 이게 필요한가</b>: 홈 컴포저와 추천 코어는 "무엇을 추천할 수 있는가"의 후보 집합이
+     * 필요하다. 그 집합의 원천은 커머스 카탈로그 하나여야 한다 — 추천이 자기만의 id 공간을 따로
+     * 들고 있으면 홈이 그 id로 상품 카드를 그릴 수 없다(이름·가격이 없으니까). M7의 "제품 연결"이
+     * 이 메서드다.
+     *
+     * <p>전체를 돌려주는 것이 부담이면 호출자가 자른다 — 계약을 좁게 잡아 두고 필요할 때 넓히는
+     * 규칙(ADR-018)에 따라, 여기서는 "후보 전체"라는 사실만 내준다.
+     */
+    @Transactional(readOnly = true)
+    public List<Long> allProductIds() {
+        return productRepository.findAll().stream().map(Product::getProductId).sorted().toList();
+    }
+
     /** 이 상품이 존재하는가. 없으면 {@code false} — 예외가 아니라 사실이다(찜 대상 검증). */
     @Transactional(readOnly = true)
     public boolean exists(long productId) {
@@ -49,6 +65,7 @@ public class ProductCatalogFacts {
         return productRepository.findById(productId)
                 .map(product -> new ProductCardFacts(product.getProductId(), product.getName(),
                         product.getPrice(), product.getBrand(), product.getImageUrl(),
+                        product.getCategoryCode(),
                         catalogQueryService.idsInStock(List.of(product.getProductId()))
                                 .contains(product.getProductId())));
     }
@@ -66,6 +83,7 @@ public class ProductCatalogFacts {
         return productRepository.findAllById(productIds).stream()
                 .map(product -> new ProductCardFacts(product.getProductId(), product.getName(),
                         product.getPrice(), product.getBrand(), product.getImageUrl(),
+                        product.getCategoryCode(),
                         inStock.contains(product.getProductId())))
                 .toList();
     }
@@ -73,10 +91,14 @@ public class ProductCatalogFacts {
     /**
      * 카드에 그릴 값만 담은 읽기 전용 뷰.
      *
-     * <p>{@code description}·{@code categoryCode} 같은 탐색 전용 속성은 넣지 않는다 —
-     * 필요한 쪽이 생기면 그때 그 필드를 더한다. 처음부터 다 내주면 계약이 이유 없이 넓어진다.
+     * <p>{@code description} 같은 탐색 전용 속성은 넣지 않는다 — 필요한 쪽이 생기면 그때 그 필드를
+     * 더한다. 처음부터 다 내주면 계약이 이유 없이 넓어진다.
+     *
+     * <p>{@code categoryCode} 는 <b>홈 컴포저가 필요해서 더했다</b>(M7). 페이지를 여러 행으로 나눌 때
+     * "같은 대분류가 한 화면을 독점하지 않게" 하는 규칙이 이 값을 쓴다 — 그 규칙 없이는 홈이
+     * 점수순 목록의 반복이 된다. <b>필요한 쪽이 생겼기 때문에 넓혔고, 그 이유를 여기 적는다.</b>
      */
     public record ProductCardFacts(long productId, String name, long price,
-                                   String brand, String imageUrl, boolean inStock) {
+                                   String brand, String imageUrl, String categoryCode, boolean inStock) {
     }
 }

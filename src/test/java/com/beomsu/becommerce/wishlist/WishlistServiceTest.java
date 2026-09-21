@@ -44,7 +44,7 @@ class WishlistServiceTest {
     }
 
     private ProductCardFacts card(long productId) {
-        return new ProductCardFacts(productId, "테스트 상품", 10_000, "H&M", "/uploads/x.jpg", true);
+        return new ProductCardFacts(productId, "테스트 상품", 10_000, "H&M", "/uploads/x.jpg", "fashion", true);
     }
 
     @Test
