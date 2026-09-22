@@ -8,6 +8,12 @@ services:
       MYSQL_ROOT_PASSWORD: root
     ports:
       - "3306:3306"
+    # Debezium CDC는 행 단위 전후 이미지를 읽는다 — ROW와 FULL이 둘 다 있어야 변경 내용이 만들어진다.
+    command:
+      - --log-bin=mysql-bin
+      - --binlog-format=ROW
+      - --binlog_row_image=FULL
+      - --server-id=1
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
       interval: 5s
@@ -52,6 +58,26 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  # CDC — mysql binlog를 읽어 Kafka로 흘린다. cdc 프로필로만 기동한다(기본 up에는 포함되지 않음).
+  #   docker compose --profile cdc up -d debezium
+  debezium:
+    image: debezium/connect:2.7
+    profiles: ["cdc"]
+    ports:
+      - "8083:8083"
+    environment:
+      # 호스트용 9092는 광고 주소일 뿐 컨테이너 안에서는 자기 자신이라 못 붙는다 — 내부 주소를 쓴다.
+      BOOTSTRAP_SERVERS: kafka:29092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: connect_configs
+      OFFSET_STORAGE_TOPIC: connect_offsets
+      STATUS_STORAGE_TOPIC: connect_statuses
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   # 관측성 스택 — monitoring 프로필로만 기동한다(기본 up에는 포함되지 않음).
   #   docker compose --profile monitoring up -d prometheus grafana
