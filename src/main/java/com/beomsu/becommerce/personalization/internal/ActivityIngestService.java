@@ -20,7 +20,8 @@ import java.time.Instant;
  * E1-b가 재는 "결합"이 이 한 줄이다. 나머지 두 방식은 커밋 뒤로 미루므로 쓰기 경로가 저장소
  * 장애에 영향받지 않는다.
  *
- * <p>이벤트는 <b>모드와 무관하게 항상 발행</b>한다. {@code IN_PROCESS}·{@code IN_REQUEST}에서는
+ * <p>이벤트는 <b>{@code CDC}를 뺀 나머지 모드에서 항상 발행</b>한다 — {@code CDC}는 같은 사실을 binlog가
+ * 나르므로 여기서 내보내지 않는다(아래 {@code ingest} 참고). {@code IN_PROCESS}·{@code IN_REQUEST}에서는
  * 지금 소비자가 없지만, 프로세스 밖 소비자가 생겼을 때 경로가 이미 열려 있게 하려는 것이다.
  * 그 "옵션의 값"은 이 실험이 재지 못한 항목이다.
  */
@@ -49,7 +50,12 @@ public class ActivityIngestService {
 
         UserActivityEvent event = new UserActivityEvent(userId, itemId, activityType, seq,
                 activity.getOccurredAt(), UserActivity.SOURCE_SYNTHETIC);
-        events.publishEvent(event);
+
+        // CDC 는 발행하지 않는다 — CDC 가 같은 사실을 binlog 에서 읽어 나르므로(위 저장이 곧 CDC 의
+        // 입력이다), 여기서도 발행하면 같은 활동이 두 번 흐른다. 저장은 그대로 한다.
+        if (transport != ContextTransport.CDC) {
+            events.publishEvent(event);
+        }
 
         if (transport == ContextTransport.IN_REQUEST) {
             contextApplier.apply(event);

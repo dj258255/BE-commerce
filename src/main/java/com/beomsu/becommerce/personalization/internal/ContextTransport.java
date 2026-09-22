@@ -14,10 +14,16 @@ package com.beomsu.becommerce.personalization.internal;
  *       이후)은 그대로면서 브로커가 필요 없다. 대신 프로세스 밖 소비자는 불가능하다</li>
  *   <li>{@link #IN_REQUEST} — 같은 트랜잭션에서 갱신. 신선도는 정의상 최상이지만 <b>쓰기 경로가
  *       결합된다</b> — 컨텍스트 저장소가 실패하면 활동 기록까지 롤백된다</li>
+ *   <li>{@link #CDC} — 앱은 <b>DB에만 쓴다.</b> 쓰기 경로에 브로커 의존이 없다 — 활동은 binlog가
+ *       원천이 되고 발행은 커넥터가 맡는다. 대신 발행 보장의 근거가 아웃박스에서 <b>binlog와 커넥터
+ *       건강</b>으로 옮겨간다 — 커넥터가 죽으면 활동이 멈추는데 <b>지금 그것을 감시하는 수단이
+ *       없다</b>. 소비자는 {@link #KAFKA}와 같다(둘 다 {@code user.activity}를 듣는 인앱 컨슈머).
+ *       다른 것은 <b>누가 토픽에 넣는가</b>뿐이다</li>
  * </ul>
  */
 public enum ContextTransport {
     KAFKA,
     IN_PROCESS,
-    IN_REQUEST
+    IN_REQUEST,
+    CDC
 }
