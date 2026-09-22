@@ -3,7 +3,7 @@ package com.beomsu.becommerce.personalization.internal;
 import com.beomsu.becommerce.personalization.UserActivityEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -13,7 +13,9 @@ import org.springframework.stereotype.Component;
  * 프로젝트({@code consumer-app/})에만 있었다. 그 판단과 대가는 ADR-034에 적었다.
  *
  * <p><b>게이트가 둘인 이유</b>: {@code @Profile("kafka")}는 브로커가 있을 때만, 프로퍼티는 전달
- * 방식이 KAFKA일 때만 켠다. 프로파일이 없으면 외부화 자체가 꺼져 있어 이벤트가 나가지 않으므로
+ * 방식이 <b>KAFKA 이거나 CDC</b>일 때만 켠다 — 둘은 <b>누가 토픽에 넣는가</b>만 다르고(앱의 아웃박스냐
+ * binlog 냐) <b>소비는 같다</b>. KAFKA 만 열어 두면 CDC 모드에서 컨슈머 빈이 아예 안 만들어져
+ * 토픽에 메시지가 쌓여도 <b>반영률이 0 이 된다</b>(실제로 그렇게 측정됐다). 프로파일이 없으면 외부화 자체가 꺼져 있어 이벤트가 나가지 않으므로
  * 리스너가 떠도 할 일이 없다 — 대신 브로커 연결을 시도해 테스트를 깨뜨린다. 그래서 둘 다 필요하다.
  *
  * <p><b>직렬화</b>: 여기서는 {@code JsonDeserializer}를 쓰지 않는다. 프로듀서가
@@ -30,7 +32,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Profile("kafka")
-@ConditionalOnProperty(name = "app.personalization.transport", havingValue = "KAFKA", matchIfMissing = true)
+@ConditionalOnExpression(
+        "'${app.personalization.transport:KAFKA}' == 'KAFKA' or '${app.personalization.transport:KAFKA}' == 'CDC'")
 class KafkaContextTransport {
 
     /** 토픽명은 {@link UserActivityEvent}의 {@code @Externalized}와 같은 문자열이어야 한다. */
