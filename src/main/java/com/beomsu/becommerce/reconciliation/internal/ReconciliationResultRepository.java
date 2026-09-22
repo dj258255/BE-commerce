@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 // 하위 패키지가 같은 모듈 안에서 참조하므로 public 이다. 모듈 밖 접근은 package-private 이 아니라
 // ModularityTests 의 allowedDependencies 가 막는다.
@@ -18,6 +19,17 @@ public interface ReconciliationResultRepository extends JpaRepository<Reconcilia
 
     /** SLO 게이지용 — 상태별 대사 결과 건수(운영이 PENDING 적체를 관측). */
     long countByStatus(ReconStatus status);
+
+    /** PENDING 건의 내부·외부 금액 차이 절대값 합. 내부 전용·외부 전용도 미설명 금액으로 포함한다. */
+    @org.springframework.data.jpa.repository.Query("""
+            select coalesce(sum(abs(coalesce(r.internalAmount, 0) - coalesce(r.externalAmount, 0))), 0)
+              from ReconciliationResult r
+             where r.status = :status
+            """)
+    long sumUnexplainedAmountByStatus(ReconStatus status);
+
+    /** 가장 오래된 미해결 건의 나이를 계산하는 운영 지표용 조회. */
+    Optional<ReconciliationResult> findTopByStatusOrderByReconciledAtAsc(ReconStatus status);
 
     /** 재실행 멱등: 그 거래일 판정을 지우고 다시 쓴다. 같은 파일을 두 번 올려도 큐가 늘지 않는다. */
     void deleteByTradeDate(LocalDate tradeDate);
