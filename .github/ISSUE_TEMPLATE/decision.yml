@@ -1,0 +1,58 @@
+name: 의사결정·실험
+description: 정답이 하나가 아니어서 선택지와 검증이 필요한 작업
+labels: ["decision", "experiment"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문제와 목적
+      description: 무엇이 불확실하거나 충돌하는가. 이 작업이 끝나면 무엇을 결정할 수 있어야 하는가.
+    validations:
+      required: true
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: 가설과 선택지
+      description: 가설, 대안, 각 대안의 이득·손실·버릴 비용을 적는다.
+      placeholder: |-
+        가설:
+        선택지 A:
+        선택지 B:
+        가장 중요한 판단 기준:
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 작업 범위와 완료 조건
+      description: 이번 작업에서 하는 것·하지 않는 것·완료 판정 기준을 적는다.
+    validations:
+      required: true
+  - type: input
+    id: estimate
+    attributes:
+      label: 예상 시간과 완료일
+      placeholder: "예: 4시간 / 2026-09-24"
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: 검증 계획
+      description: 조건, 입력, 관측 지표, 예상과 실제 비교 방법을 적는다.
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: 위험과 다음 갱신 조건
+      description: 무엇을 아직 모르는가. 어떤 결과가 나오면 계획을 바꿀 것인가.
+    validations:
+      required: true
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: 예상 산출물
+      description: 코드·테스트·ADR·측정 리포트·블로그 등 남길 결과물.
+    validations:
+      required: true

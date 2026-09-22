@@ -202,7 +202,11 @@ docker compose --profile monitoring up -d prometheus grafana
 3. [장애 시나리오](docs/04-장애-시나리오-설계.md)
 4. [성능 리포트](docs/performance/README.md)
 5. [ERD](docs/09-ERD-설계.md)와 [API 스펙](docs/10-API-스펙.md)
-6. [ADR](docs/README.md#아키텍처-결정-기록)
+6. [결제 의사결정 검증](docs/29-결제-의사결정-검증.md)
+7. [결제 포트폴리오 초안](docs/30-결제-포트폴리오-초안.md)
+8. [결제 플랫폼 확장 계획](docs/32-결제-플랫폼-확장-계획.md)
+9. [작업 보드](docs/PROJECT-BOARD.md) — 목표·예상 시간·산출물·위험·검증 상태
+8. [ADR](docs/README.md#아키텍처-결정-기록)
 
 전체 문서는 목적별로 정리한 [문서 안내](docs/README.md)를 참고하세요.
 
