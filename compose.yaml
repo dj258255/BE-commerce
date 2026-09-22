@@ -25,7 +25,7 @@ services:
       retries: 10
 
   # 결제 이벤트 외부화용 Kafka(KRaft 단일 브로커 — ZooKeeper 없음).
-  # kafka 프로파일로 앱을 띄우고 KAFKA_BOOTSTRAP=localhost:9092 로 연결한다.
+  # 호스트는 KAFKA_BOOTSTRAP=localhost:9092, 컨테이너는 kafka:29092 로 연결한다.
   kafka:
     image: apache/kafka:3.8.0
     ports:
@@ -34,11 +34,14 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      # 리스너가 둘인 이유: 클라이언트는 <접속한 주소>가 아니라 <브로커가 광고한 주소>로 다시 붙는다.
+      # 광고가 localhost:9092 하나뿐이면 컨테이너 안에서는 그 localhost가 자기 자신이라 못 붙는다 —
+      # 그래서 컨테이너용 광고 주소(kafka:29092)를 따로 둔다. 하나로는 호스트와 컨테이너를 같이 못 만족한다.
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       # 외부화 producer가 payment.confirmed / payment.canceled 첫 발행 시 토픽을 자동 생성한다
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
@@ -85,3 +88,55 @@ services:
       - ./monitoring/dashboard.json:/var/lib/grafana/dashboards/dashboard.json:ro
     depends_on:
       - prometheus
+
+  # 애플리케이션 — 이미지로 굽고 인프라에 붙인다.
+  #   docker compose --profile app up -d
+  #
+  # 프로파일을 둔 이유: 기본 `docker compose up -d`(인프라만)로 개발하고 앱은 bootRun으로 띄우는
+  # 기존 흐름을 깨지 않기 위해서다 — 앱도 8080을 쓰므로 둘을 동시에 띄우면 포트가 충돌한다.
+  app:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      # bootRun과 같은 포트를 쓴다. 동시에 띄우지 않는다.
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      # application.yml의 기본값이 localhost라 컨테이너 안에서는 못 쓴다 — 서비스 이름으로 덮는다.
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/becommerce?serverTimezone=UTC&characterEncoding=UTF-8
+      SPRING_DATA_REDIS_HOST: redis
+      KAFKA_BOOTSTRAP: kafka:29092
+      # 업로드 이미지는 리포지토리 밖 산출물이다(29GB). 이미지에 굽지 않고 볼륨으로 붙인다.
+      APP_UPLOADS_DIR: /app/uploads
+      # kafka 프로파일이 이벤트 외부화를 켠다(= 전체 스택).
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-kafka}
+    volumes:
+      - ${UPLOADS_DIR:-./personalization/data/hm/images}:/app/uploads:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      # Flyway V1~V65 validate + JPA 부팅까지 걸리는 시간. 넉넉히 준다.
+      start_period: 90s
+
+  # 결제 이벤트를 프로세스 밖에서 소비하는 별도 워커 — Kafka 외부화(ADR-005)가 실제로 되는지 보이는 자리다.
+  # 웹서버가 없어 HTTP 헬스체크를 쓸 수 없다.
+  consumer:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: consumer-app/Dockerfile
+    environment:
+      KAFKA_BOOTSTRAP: kafka:29092
+    depends_on:
+      kafka:
+        condition: service_healthy
