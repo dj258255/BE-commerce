@@ -1,0 +1,167 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: k6/freshness-vs-latency.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 15 max VUs, 45s max duration (incl. graceful stop):
+              * freshness: 8.00 iterations/s for 40s (maxVUs: 15, gracefulStop: 5s)
+
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+Run         [ 100% ] setup()
+freshness   [   0% ]
+
+running (10.0s), 00/15 VUs, 8 complete and 0 interrupted iterations
+freshness   [   2% ] 00/15 VUs  00.9s/40s  8.00 iters/s
+
+running (11.0s), 00/15 VUs, 16 complete and 0 interrupted iterations
+freshness   [   5% ] 00/15 VUs  01.9s/40s  8.00 iters/s
+
+running (12.0s), 00/15 VUs, 24 complete and 0 interrupted iterations
+freshness   [   7% ] 00/15 VUs  02.9s/40s  8.00 iters/s
+
+running (13.0s), 00/15 VUs, 32 complete and 0 interrupted iterations
+freshness   [  10% ] 00/15 VUs  03.9s/40s  8.00 iters/s
+
+running (14.0s), 00/15 VUs, 40 complete and 0 interrupted iterations
+freshness   [  12% ] 00/15 VUs  04.9s/40s  8.00 iters/s
+
+running (15.0s), 00/15 VUs, 48 complete and 0 interrupted iterations
+freshness   [  15% ] 00/15 VUs  05.9s/40s  8.00 iters/s
+
+running (16.0s), 00/15 VUs, 56 complete and 0 interrupted iterations
+freshness   [  17% ] 00/15 VUs  06.9s/40s  8.00 iters/s
+
+running (17.0s), 00/15 VUs, 64 complete and 0 interrupted iterations
+freshness   [  20% ] 00/15 VUs  07.9s/40s  8.00 iters/s
+
+running (18.0s), 00/15 VUs, 72 complete and 0 interrupted iterations
+freshness   [  22% ] 00/15 VUs  08.9s/40s  8.00 iters/s
+
+running (19.0s), 00/15 VUs, 80 complete and 0 interrupted iterations
+freshness   [  25% ] 00/15 VUs  09.9s/40s  8.00 iters/s
+
+running (20.0s), 00/15 VUs, 88 complete and 0 interrupted iterations
+freshness   [  27% ] 00/15 VUs  10.9s/40s  8.00 iters/s
+
+running (21.0s), 00/15 VUs, 96 complete and 0 interrupted iterations
+freshness   [  30% ] 00/15 VUs  11.9s/40s  8.00 iters/s
+
+running (22.0s), 00/15 VUs, 104 complete and 0 interrupted iterations
+freshness   [  32% ] 00/15 VUs  12.9s/40s  8.00 iters/s
+
+running (23.0s), 00/15 VUs, 112 complete and 0 interrupted iterations
+freshness   [  35% ] 00/15 VUs  13.9s/40s  8.00 iters/s
+
+running (24.0s), 00/15 VUs, 120 complete and 0 interrupted iterations
+freshness   [  37% ] 00/15 VUs  14.9s/40s  8.00 iters/s
+
+running (25.0s), 00/15 VUs, 128 complete and 0 interrupted iterations
+freshness   [  40% ] 00/15 VUs  15.9s/40s  8.00 iters/s
+
+running (26.0s), 00/15 VUs, 136 complete and 0 interrupted iterations
+freshness   [  42% ] 00/15 VUs  16.9s/40s  8.00 iters/s
+
+running (27.0s), 00/15 VUs, 144 complete and 0 interrupted iterations
+freshness   [  45% ] 00/15 VUs  17.9s/40s  8.00 iters/s
+
+running (28.0s), 00/15 VUs, 152 complete and 0 interrupted iterations
+freshness   [  47% ] 00/15 VUs  18.9s/40s  8.00 iters/s
+
+running (29.0s), 00/15 VUs, 160 complete and 0 interrupted iterations
+freshness   [  50% ] 00/15 VUs  19.9s/40s  8.00 iters/s
+
+running (30.0s), 00/15 VUs, 168 complete and 0 interrupted iterations
+freshness   [  52% ] 00/15 VUs  20.9s/40s  8.00 iters/s
+
+running (31.0s), 00/15 VUs, 176 complete and 0 interrupted iterations
+freshness   [  55% ] 00/15 VUs  21.9s/40s  8.00 iters/s
+
+running (32.0s), 00/15 VUs, 184 complete and 0 interrupted iterations
+freshness   [  57% ] 00/15 VUs  22.9s/40s  8.00 iters/s
+
+running (33.0s), 00/15 VUs, 192 complete and 0 interrupted iterations
+freshness   [  60% ] 00/15 VUs  23.9s/40s  8.00 iters/s
+
+running (34.0s), 00/15 VUs, 200 complete and 0 interrupted iterations
+freshness   [  62% ] 00/15 VUs  24.9s/40s  8.00 iters/s
+
+running (35.0s), 00/15 VUs, 208 complete and 0 interrupted iterations
+freshness   [  65% ] 00/15 VUs  25.9s/40s  8.00 iters/s
+
+running (36.0s), 00/15 VUs, 216 complete and 0 interrupted iterations
+freshness   [  67% ] 00/15 VUs  26.9s/40s  8.00 iters/s
+
+running (37.0s), 00/15 VUs, 224 complete and 0 interrupted iterations
+freshness   [  70% ] 00/15 VUs  27.9s/40s  8.00 iters/s
+
+running (38.0s), 00/15 VUs, 232 complete and 0 interrupted iterations
+freshness   [  72% ] 00/15 VUs  28.9s/40s  8.00 iters/s
+
+running (39.0s), 00/15 VUs, 240 complete and 0 interrupted iterations
+freshness   [  75% ] 00/15 VUs  29.9s/40s  8.00 iters/s
+
+running (40.0s), 00/15 VUs, 248 complete and 0 interrupted iterations
+freshness   [  77% ] 00/15 VUs  30.9s/40s  8.00 iters/s
+
+running (41.0s), 00/15 VUs, 256 complete and 0 interrupted iterations
+freshness   [  80% ] 00/15 VUs  31.9s/40s  8.00 iters/s
+
+running (42.0s), 00/15 VUs, 264 complete and 0 interrupted iterations
+freshness   [  82% ] 00/15 VUs  32.9s/40s  8.00 iters/s
+
+running (43.0s), 00/15 VUs, 272 complete and 0 interrupted iterations
+freshness   [  85% ] 00/15 VUs  33.9s/40s  8.00 iters/s
+
+running (44.0s), 00/15 VUs, 280 complete and 0 interrupted iterations
+freshness   [  87% ] 00/15 VUs  34.9s/40s  8.00 iters/s
+
+running (45.0s), 00/15 VUs, 288 complete and 0 interrupted iterations
+freshness   [  90% ] 00/15 VUs  35.9s/40s  8.00 iters/s
+
+running (46.0s), 00/15 VUs, 296 complete and 0 interrupted iterations
+freshness   [  92% ] 00/15 VUs  36.9s/40s  8.00 iters/s
+
+running (47.0s), 00/15 VUs, 304 complete and 0 interrupted iterations
+freshness   [  95% ] 00/15 VUs  37.9s/40s  8.00 iters/s
+
+running (48.0s), 00/15 VUs, 312 complete and 0 interrupted iterations
+freshness   [  97% ] 00/15 VUs  38.9s/40s  8.00 iters/s
+
+running (49.0s), 00/15 VUs, 320 complete and 0 interrupted iterations
+freshness   [ 100% ] 00/15 VUs  39.9s/40s  8.00 iters/s
+
+[E1] waitMs=100  reflected=100.0%  e2e_p95=39.0ms  e2e_p99=45.0ms  write_p95=22.6ms  read_p95=17.4ms  lag_p95=14.0ms  wait_p95=14.0ms  gaveup=0  req_failed=0.0%  dropped=0
+
+running (49.1s), 00/15 VUs, 321 complete and 0 interrupted iterations
+freshness ✓ [ 100% ] 00/15 VUs  40s  8.00 iters/s

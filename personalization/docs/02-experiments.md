@@ -8,6 +8,7 @@
 | # | 실험 | 질문(충돌축) | 지표 | 상태 |
 |---|---|---|---|---|
 | E1 | 신선도 vs 지연 (M2) | 최신성 ↔ tail latency | 최신 반영률, p95, timeout | **측정 완료** — 무릎 50ms · [리포트](runs/20260921-e1-신선도-지연/report.md) |
+| E1b | CDC 대 아웃박스 (M12) | 신선도 ↔ 결합 | 반영률, lag p95 | **측정 완료** — 튜닝 후 **lag 13ms 대 14ms 로 사실상 같다.** 기본값으로는 139배 차이가 났고 그건 CDC 가 아니라 `poll.interval.ms` 였다 · [리포트](runs/20260923-e1b-cdc-대-아웃박스/report.md) |
 | E2 | online/offline 일치 (M2) | 정확도 ↔ 상태·지연 비용 | 일치율, 원인 분포 | **측정 완료** — 최대 원인 순서 역전·동시 적용 · [리포트](runs/20260921-e2-online-offline-일치율/report.md) |
 | E3 | 과부하 degradation (M3) | 개인화 coverage ↔ SLO | p95/p99, timeout, fallback, coverage | **측정 완료** |
 | E4 | 제약 재검증 비용 (M4) | 정확성 ↔ 추가 지연 | 위반율, +지연, stale 창 | **측정 완료** — 창 54ms vs 0ms · [리포트](runs/20260921-e4-제약-재검증/report.md) · 후속 [E4b](runs/20260921-e4b-제약-재검증-실재고/report.md)(실제 재고·비용) |
