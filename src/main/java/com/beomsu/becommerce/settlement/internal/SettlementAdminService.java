@@ -31,6 +31,7 @@ public class SettlementAdminService {
     private final SettlementItemRepository itemRepository;
     private final SettlementService settlementService;
     private final ApplicationEventPublisher events;
+    private final PayoutReconciliationEngine reconciliationEngine = new PayoutReconciliationEngine();
 
     /** 정산 집계 페이지(뷰 record로 노출). */
     @Transactional(readOnly = true)
@@ -88,10 +89,44 @@ public class SettlementAdminService {
     public SettlementView confirmPayout(long settlementId) {
         Settlement settlement = repository.findById(settlementId)
                 .orElseThrow(() -> SettlementException.notFound(settlementId));
+        if (settlement.getStatus() == SettlementStatus.CREATED
+                && settlement.getPayoutReconciliationStatus() != PayoutReconciliationStatus.MATCHED) {
+            throw SettlementException.payoutReconciliationRequired(settlementId);
+        }
         boolean transitioned = settlement.markPaidOut();
         repository.saveAndFlush(settlement);
         if (transitioned) {
             // 원장이 PG 미수금을 회수 처리한다. 이 사건이 없으면 미수금이 단조 증가만 한다.
+            events.publishEvent(new SettlementPaidOutEvent(
+                    settlement.getId(), settlement.getGrossAmount(),
+                    settlement.getFeeAmount() + settlement.getFeeVatAmount(),
+                    settlement.getNetAmount()));
+        }
+        return SettlementView.from(settlement);
+    }
+
+    /**
+     * 외부 지급 report 한 행을 대사하고, MATCHED일 때만 같은 트랜잭션에서 지급을 확정한다.
+     * pending·불일치 결과도 저장하므로 다음 report 재수집으로 재대사할 수 있다.
+     */
+    @Transactional
+    public SettlementView reconcileAndConfirmPayout(long settlementId, String payoutReference,
+                                                     String currency, long amount, boolean posted) {
+        Settlement settlement = repository.findById(settlementId)
+                .orElseThrow(() -> SettlementException.notFound(settlementId));
+        var expected = new PayoutReconciliationEngine.SettlementExpectation(
+                settlement.getPayoutInstructionReference(), settlement.getCurrency(), settlement.getNetAmount());
+        var observed = new PayoutReconciliationEngine.ExternalPayout(
+                payoutReference, currency, amount, posted);
+        var result = reconciliationEngine.reconcile(List.of(expected), List.of(observed)).stream()
+                .filter(r -> expected.payoutReference().equals(r.payoutReference()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("대사 결과가 없습니다"));
+
+        settlement.recordPayoutReconciliation(result, payoutReference);
+        boolean transitioned = result.status() == PayoutReconciliationStatus.MATCHED && settlement.markPaidOut();
+        repository.saveAndFlush(settlement);
+        if (transitioned) {
             events.publishEvent(new SettlementPaidOutEvent(
                     settlement.getId(), settlement.getGrossAmount(),
                     settlement.getFeeAmount() + settlement.getFeeVatAmount(),

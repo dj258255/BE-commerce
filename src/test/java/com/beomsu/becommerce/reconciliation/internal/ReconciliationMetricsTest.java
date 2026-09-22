@@ -28,27 +28,33 @@ class ReconciliationMetricsTest {
     @DisplayName("게이지가 레지스트리에 등록된다")
     void registersGauge() {
         when(repository.countByStatus(ReconStatus.PENDING)).thenReturn(0L);
+        when(repository.sumUnexplainedAmountByStatus(ReconStatus.PENDING)).thenReturn(0L);
         new ReconciliationMetrics(meterRegistry, repository);
 
         Gauge gauge = meterRegistry.find("recon.pending.count").gauge();
         assertThat(gauge).isNotNull();
+        assertThat(meterRegistry.find("recon.pending.unexplained.amount").gauge()).isNotNull();
     }
 
     @Test
     @DisplayName("PENDING이 없으면 0을 반환한다")
     void zeroWhenNoPending() {
         when(repository.countByStatus(ReconStatus.PENDING)).thenReturn(0L);
+        when(repository.sumUnexplainedAmountByStatus(ReconStatus.PENDING)).thenReturn(0L);
         new ReconciliationMetrics(meterRegistry, repository);
 
         assertThat(meterRegistry.get("recon.pending.count").gauge().value()).isEqualTo(0.0);
+        assertThat(meterRegistry.get("recon.pending.unexplained.amount").gauge().value()).isEqualTo(0.0);
     }
 
     @Test
     @DisplayName("PENDING 건수를 게이지로 노출한다")
     void exposesPendingCount() {
         when(repository.countByStatus(ReconStatus.PENDING)).thenReturn(3L);
+        when(repository.sumUnexplainedAmountByStatus(ReconStatus.PENDING)).thenReturn(13_000L);
         new ReconciliationMetrics(meterRegistry, repository);
 
         assertThat(meterRegistry.get("recon.pending.count").gauge().value()).isEqualTo(3.0);
+        assertThat(meterRegistry.get("recon.pending.unexplained.amount").gauge().value()).isEqualTo(13_000.0);
     }
 }

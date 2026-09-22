@@ -103,7 +103,7 @@ tasks.named('test') {
     // (@Tag("integration")) 테스트는 제외. 순수 단위 테스트(서킷브레이커 포함) + 경량 슬라이스만 돌아
     // CI가 빠르고 재현 가능하다.
     useJUnitPlatform {
-        excludeTags 'chaos', 'integration', 'eval', 'capture'
+        excludeTags 'chaos', 'integration', 'eval', 'capture', 'experiment'
     }
 
     // ErdDocMatchesSchemaTest는 문서(.md)와 마이그레이션(.sql)을 읽는다. 이 둘을 태스크 입력으로
@@ -167,6 +167,18 @@ tasks.register('integrationTest', Test) {
         includeTags 'integration'
     }
     testLogging { showStandardStreams = true }   // 실측 수치를 콘솔로 봐야 한다
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    shouldRunAfter('test')
+}
+
+tasks.register('experimentTest', Test) {
+    description = '재시도 폭주·경계 조건 실험 — 의도적으로 장애를 주입하고 측정값을 콘솔에 출력'
+    group = 'verification'
+    useJUnitPlatform {
+        includeTags 'experiment'
+    }
+    testLogging { showStandardStreams = true }
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     shouldRunAfter('test')

@@ -12,9 +12,12 @@
 #
 # 주의: 원장 테이블에 벤치용 행을 심었다가 지운다(transaction_id 를 마커로 쓴다). 실제 분개는
 # 건드리지 않는다. 끝나면 벤치 행과 인덱스를 원상복구한다.
+# 기본값은 10만·100만·1000만 행이지만, 로컬 실험은 TARGETS="10000 50000 100000"처럼
+# 축소할 수 있다. TARGETS는 공백으로 구분한다.
 set -euo pipefail
 
 RUNS=${RUNS:-30}
+TARGETS=${TARGETS:-"100000 1000000 10000000"}
 MYSQL=(docker exec -i pay-mysql-1 mysql -ubecommerce -pbecommerce becommerce -N -B)
 
 q() { "${MYSQL[@]}" -e "$1"; }
@@ -64,6 +67,16 @@ TX=$(q "INSERT INTO ledger_transactions(tx_type,source_type,source_id,source_seq
         SELECT LAST_INSERT_ID();" | tail -1)
 echo "bench transaction_id=$TX"
 
+cleanup() {
+  if [ -n "${TX:-}" ]; then
+    q "DELETE FROM ledger_entries WHERE transaction_id=$TX" >/dev/null 2>&1 || true
+    q "DELETE FROM ledger_transactions WHERE id=$TX" >/dev/null 2>&1 || true
+  fi
+  q "CREATE INDEX IF NOT EXISTS idx_ledger_entries_account_covering ON ledger_entries(account,direction,amount)" >/dev/null 2>&1 || true
+  q "DROP TABLE IF EXISTS ledger_balance_bench" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
 q "INSERT INTO ledger_entries(transaction_id,account,direction,amount) VALUES
    ($TX,'PG_RECEIVABLE','DEBIT',10000),($TX,'SALES','CREDIT',10000),($TX,'CASH','DEBIT',9703),
    ($TX,'PG_FEE','DEBIT',297),($TX,'PG_RECEIVABLE','CREDIT',10000),($TX,'SALES','DEBIT',10000)"
@@ -80,29 +93,29 @@ double_until() {
 }
 
 echo "== 3) 인덱스 있는 상태로 크기별 측정 =="
-for target in 100000 1000000 10000000; do
+for target in $TARGETS; do
   echo "-- target=$target"
   double_until "$target"
   q "CALL bench_balance($RUNS, 1)"
 done
 
-echo "== 4) 인덱스를 떼고 1000만 행에서 재측정 =="
+echo "== 4) 인덱스를 떼고 마지막 target에서 재측정 =="
 q "DROP INDEX idx_ledger_entries_account_covering ON ledger_entries"
 q "CALL bench_balance($RUNS, 0)"
 q "CREATE INDEX idx_ledger_entries_account_covering ON ledger_entries(account,direction,amount)"
 
 echo "== 5) 결과 (p95 = 상위 5% 지점) =="
-q "SELECT rows_total, indexed, variant, n, avg_ms, p95_ms, max_ms FROM (
+q "SELECT rows_total, indexed, variant,
+       COUNT(*) n,
+       ROUND(AVG(ms),1) avg_ms,
+       ROUND(MAX(CASE WHEN rn = CEIL(0.95*cnt) THEN ms END),1) p95_ms,
+       ROUND(MAX(ms),1) max_ms
+   FROM (
      SELECT rows_total, indexed, variant, ms,
        ROW_NUMBER() OVER (PARTITION BY rows_total,indexed,variant ORDER BY ms) rn,
        COUNT(*)      OVER (PARTITION BY rows_total,indexed,variant) cnt
      FROM ledger_balance_bench) w
-   JOIN (
-     SELECT rows_total, indexed, variant, COUNT(*) n,
-            ROUND(AVG(ms),1) avg_ms, ROUND(MAX(ms),1) max_ms
-     FROM ledger_balance_bench GROUP BY rows_total,indexed,variant) a
-   USING (rows_total,indexed,variant)
-   WHERE rn = CEIL(0.95*cnt)
+   GROUP BY rows_total, indexed, variant
    ORDER BY rows_total, indexed, variant"
 
 echo "== 6) 정리 =="

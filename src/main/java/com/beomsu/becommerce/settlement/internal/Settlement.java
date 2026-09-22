@@ -92,6 +92,29 @@ public class Settlement {
     @Column(length = 200)
     private String payoutHoldReason;
 
+    /** 외부 지급 report가 되돌려야 하는 내부 지급 지시 reference. */
+    @Column(nullable = false, unique = true, length = 100)
+    private String payoutInstructionReference;
+
+    /** 마지막 외부 지급 report의 대사 결과. MATCHED일 때만 PAID_OUT으로 전이할 수 있다. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 40)
+    private PayoutReconciliationStatus payoutReconciliationStatus;
+
+    /** 마지막으로 관측한 외부 report reference. 누락이면 null이다. */
+    @Column(length = 100)
+    private String payoutReportReference;
+
+    @Column(length = 3)
+    private String payoutReportCurrency;
+
+    private Long payoutReportAmount;
+
+    private Instant payoutReconciledAt;
+
+    @Column(length = 200)
+    private String payoutReconciliationReason;
+
     /**
      * 회수 조정을 반영해 금액을 다시 쓴다. <b>생성 직후, 지급 전에만</b> 부른다.
      *
@@ -119,6 +142,7 @@ public class Settlement {
         this.payoutDate = payoutDate;
         this.status = SettlementStatus.CREATED;
         this.createdAt = Instant.now();
+        this.payoutInstructionReference = instructionReference(settlementDate, currency, sellerId);
     }
 
     /**
@@ -162,6 +186,10 @@ public class Settlement {
             throw new IllegalStateException("지급이 보류된 정산이다 id=" + id + " 이유=" + payoutHoldReason);
         }
         if (this.status == SettlementStatus.CREATED) {
+            if (this.payoutReconciliationStatus != PayoutReconciliationStatus.MATCHED) {
+                throw new IllegalStateException("외부 지급 대사가 MATCHED가 아니어서 확정할 수 없습니다: "
+                        + this.payoutReconciliationStatus);
+            }
             this.status = SettlementStatus.PAID_OUT;
             this.paidOutAt = Instant.now();
             return true;
@@ -189,5 +217,36 @@ public class Settlement {
         }
         this.status = SettlementStatus.CREATED;
         this.payoutHoldReason = null;
+    }
+
+    /**
+     * 외부 지급 report의 판정과 원문 reference를 저장한다.
+     *
+     * <p>대사 결과를 먼저 저장하고 지급 상태 전이는 호출자가 MATCHED인 경우에만 수행한다.
+     * 따라서 pending·불일치도 사라지지 않고 운영자가 재처리할 수 있다.
+     */
+    public void recordPayoutReconciliation(PayoutReconciliationEngine.Result result,
+                                            String observedReference) {
+        if (!payoutInstructionReference.equals(result.payoutReference())) {
+            throw new IllegalArgumentException("정산의 지급 지시 reference와 대사 결과가 다릅니다: "
+                    + payoutInstructionReference + " != " + result.payoutReference());
+        }
+        if (this.status == SettlementStatus.PAID_OUT) {
+            if (this.payoutReconciliationStatus == PayoutReconciliationStatus.MATCHED
+                    && this.payoutReconciliationStatus == result.status()) {
+                return; // 이미 확정된 동일한 report 재수집은 멱등 처리
+            }
+            throw new IllegalStateException("이미 지급된 정산의 대사 결과를 바꿀 수 없습니다: " + id);
+        }
+        this.payoutReconciliationStatus = result.status();
+        this.payoutReportReference = observedReference;
+        this.payoutReportCurrency = result.currency();
+        this.payoutReportAmount = result.actualAmount();
+        this.payoutReconciledAt = Instant.now();
+        this.payoutReconciliationReason = result.reason();
+    }
+
+    private static String instructionReference(LocalDate settlementDate, String currency, long sellerId) {
+        return "SETTLEMENT-%s-%s-%d".formatted(settlementDate, currency, sellerId);
     }
 }

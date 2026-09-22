@@ -16,11 +16,21 @@ public record SettlementView(
         int itemCount,
         SettlementStatus status,
         LocalDate payoutDate,
-        Instant paidOutAt) {
+        Instant paidOutAt,
+        String payoutInstructionReference,
+        PayoutReconciliationStatus payoutReconciliationStatus,
+        String payoutReportReference,
+        String payoutReportCurrency,
+        Long payoutReportAmount,
+        Instant payoutReconciledAt,
+        String payoutReconciliationReason) {
 
     public static SettlementView from(Settlement s) {
         return new SettlementView(s.getId(), s.getSettlementDate(), s.getGrossAmount(),
                 s.getFeeAmount(), s.getFeeVatAmount(), s.getNetAmount(), s.getItemCount(),
-                s.getStatus(), s.getPayoutDate(), s.getPaidOutAt());
+                s.getStatus(), s.getPayoutDate(), s.getPaidOutAt(),
+                s.getPayoutInstructionReference(), s.getPayoutReconciliationStatus(),
+                s.getPayoutReportReference(), s.getPayoutReportCurrency(), s.getPayoutReportAmount(),
+                s.getPayoutReconciledAt(), s.getPayoutReconciliationReason());
     }
 }

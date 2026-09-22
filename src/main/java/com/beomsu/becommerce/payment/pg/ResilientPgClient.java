@@ -7,11 +7,15 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +28,7 @@ import java.util.function.Supplier;
  *
  * <p>PG 장애가 우리 전체로 번지지 않게 한다. <b>다만 서킷만으로는 스레드 고갈을 막지 못한다</b> —
  * 서킷은 실패를 세므로 느리지만 성공하는 PG(브라운아웃)에서는 열리지 않는다. 그 구간의 자원 상한은
- * {@code payment.pg.max-concurrent-calls} 가 맡고, 기본값은 상한 없음이다(ADR-022).
+ * {@code payment.pg.max-concurrent-calls} 가 맡고, 운영 기본값은 40이다(ADR-022).
  *
  * <p>설계 원칙:
  * <ul>
@@ -56,10 +60,20 @@ public class ResilientPgClient implements PgClient {
      * 아래였다. 사가가 푼 것은 커넥션이고, 마르는 자리는 워커로 옮겨간 것이다.
      */
     private final Semaphore pgCallLimit;
+    private final Counter pgConcurrencyRejected;
+    private final Counter pgUnknownFallback;
+    private final Counter pgQueryRetries;
+    private final Counter pgQueryRetryExhausted;
+    private final Timer pgApprovalLatency;
 
     /** 상한 없이 감싼다. 테스트에서 장애 주입 더블을 감쌀 때 쓴다. */
     public ResilientPgClient(PgClient delegate) {
-        this(delegate, 0);
+        this(delegate, 0, new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
+    }
+
+    /** 테스트용 호출 상한 생성자. 운영에서는 {@link MeterRegistry}를 주입받는 생성자를 사용한다. */
+    public ResilientPgClient(PgClient delegate, int maxConcurrentCalls) {
+        this(delegate, maxConcurrentCalls, new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
     }
 
     /**
@@ -68,10 +82,34 @@ public class ResilientPgClient implements PgClient {
      */
     @Autowired
     public ResilientPgClient(@Qualifier("pgDelegate") PgClient delegate,
-                             @Value("${payment.pg.max-concurrent-calls:40}") int maxConcurrentCalls) {
+                             @Value("${payment.pg.max-concurrent-calls:40}") int maxConcurrentCalls,
+                             ObjectProvider<MeterRegistry> meterRegistryProvider) {
+        this(delegate, maxConcurrentCalls, meterRegistryProvider.getIfAvailable(
+                io.micrometer.core.instrument.simple.SimpleMeterRegistry::new));
+    }
+
+    /** 공통 초기화 경로. 테스트가 운영과 동일한 계측 구성을 주입할 때 사용한다. */
+    public ResilientPgClient(PgClient delegate, int maxConcurrentCalls, MeterRegistry meterRegistry) {
         this.delegate = delegate;
-        // 0 이하면 상한을 걸지 않는다. 기본값 40 의 근거는 application.yml 과 ADR-022 에 있다.
+        // 0 이하면 상한을 걸지 않는다. 운영 기본값 40의 근거는 application.yml과 ADR-022에 있다.
         this.pgCallLimit = maxConcurrentCalls > 0 ? new Semaphore(maxConcurrentCalls) : null;
+        this.pgConcurrencyRejected = Counter.builder("payment.pg.approval.rejected")
+                .tag("reason", "concurrency_limit")
+                .description("PG 동시 호출 상한으로 승인 전에 거절된 요청 수")
+                .register(meterRegistry);
+        this.pgUnknownFallback = Counter.builder("payment.pg.approval.unknown")
+                .description("PG 승인 결과를 알 수 없어 UNKNOWN으로 보존한 요청 수")
+                .register(meterRegistry);
+        this.pgQueryRetries = Counter.builder("payment.pg.query.retry")
+                .description("PG 상태 조회에서 실제로 실행된 추가 재시도 횟수")
+                .register(meterRegistry);
+        this.pgQueryRetryExhausted = Counter.builder("payment.pg.query.retry.exhausted")
+                .description("PG 상태 조회가 재시도 예산을 모두 소진한 횟수")
+                .register(meterRegistry);
+        this.pgApprovalLatency = Timer.builder("payment.pg.approval.latency")
+                .description("PG 승인 호출 시간")
+                .publishPercentiles(0.5, 0.95, 0.99)
+                .register(meterRegistry);
 
         CircuitBreakerConfig cbConfig = CircuitBreakerConfig.custom()
                 .slidingWindowType(CircuitBreakerConfig.SlidingWindowType.COUNT_BASED)
@@ -90,29 +128,43 @@ public class ResilientPgClient implements PgClient {
                 .ignoreExceptions(CallNotPermittedException.class)  // 서킷 오픈이면 재시도 무의미
                 .build();
         this.queryRetry = Retry.of("pg-query", retryConfig);
+        this.queryRetry.getEventPublisher()
+                .onRetry(event -> pgQueryRetries.increment())
+                .onError(event -> pgQueryRetryExhausted.increment());
     }
 
     @Override
     public PgApproveResult approve(PgApproveCommand command) {
+        Timer.Sample timer = Timer.start();
         // 상한에 걸리면 <b>확정 실패</b>로 돌린다. 미확정이 아니다.
         //
         // permit 을 못 얻으면 호출이 나가기 전에 끊기므로 요청이 PG 에 <b>닿지 않은 것이 보장된다.</b>
         // 그때 미확정으로 적으면 복구 배치가 조회할 대상 자체가 없는 유령 미확정이 생긴다.
         // 닿지 않았음이 보장될 때만 실패로 확정한다는 규칙은 ADR-020 의 failover 판정과 같다.
         if (pgCallLimit != null && !pgCallLimit.tryAcquire()) {
+            pgConcurrencyRejected.increment();
             log.warn("PG 동시 호출 상한 초과 — 승인 시도 없이 거절: {}", command.orderNo());
-            return PgApproveResult.failed("PG 동시 호출 상한 초과");
+            PgApproveResult result = PgApproveResult.failed("PG 동시 호출 상한 초과");
+            timer.stop(pgApprovalLatency);
+            return result;
         }
         try {
-            return circuitBreaker.executeSupplier(() -> delegate.approve(command));
+            PgApproveResult result = circuitBreaker.executeSupplier(() -> delegate.approve(command));
+            if (result.outcome() == PgOutcome.TIMEOUT) {
+                pgUnknownFallback.increment();
+            }
+            return result;
         } catch (CallNotPermittedException open) {
+            pgUnknownFallback.increment();
             log.warn("PG 서킷 오픈 — 승인 미확정 처리: {}", command.orderNo());
             return PgApproveResult.timeout("서킷 오픈: PG 장애로 승인 미확정");
         } catch (RuntimeException ex) {
+            pgUnknownFallback.increment();
             // 예외를 실패로 단정하지 않는다 — PG에서 처리됐을 수도 있다 → UNKNOWN
             log.warn("PG 승인 호출 예외 — 미확정 처리: {}", ex.getMessage());
             return PgApproveResult.timeout("PG 오류로 승인 미확정: " + ex.getMessage());
         } finally {
+            timer.stop(pgApprovalLatency);
             if (pgCallLimit != null) {
                 pgCallLimit.release();
             }

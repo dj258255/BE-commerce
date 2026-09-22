@@ -55,6 +55,7 @@ public class GlobalExceptionHandler {
                  "INVALID_SUBSCRIPTION_TRANSITION", "INVALID_DISPUTE_TRANSITION",
                  "INSUFFICIENT_BALANCE", "LIMIT_EXCEEDED", "WALLET_CONCURRENCY",
                  "IDEMPOTENT_REQUEST_PROCESSING", "EMAIL_ALREADY_EXISTS",
+                 "PAYOUT_RECONCILIATION_REQUIRED",
                  // 순서 위반은 오류가 아니라 설계된 거절이다(ADR-014 블라인드 리뷰)
                  "REVIEW_OUT_OF_ORDER", "PAYMENT_ALREADY_SETTLED",
                  // 동시 요청이 유니크 제약에 부딪힌 경우(위시리스트 동시 추가). 결과는 이미 의도한 대로다.

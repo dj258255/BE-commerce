@@ -73,6 +73,7 @@ public class IdempotencyService {
         Optional<IdempotencyRecord> existing =
                 repository.findByIdempotencyKeyAndApiPathAndHttpMethod(key, apiPath, httpMethod);
         if (existing.isPresent()) {
+            meterRegistry.counter("idempotency.existing.request").increment();
             return handleExisting(existing.get(), requestHash, responseType);
         }
 
@@ -86,6 +87,7 @@ public class IdempotencyService {
             IdempotencyRecord other = repository
                     .findByIdempotencyKeyAndApiPathAndHttpMethod(key, apiPath, httpMethod)
                     .orElseThrow(() -> IdempotencyException.processing(key));
+            meterRegistry.counter("idempotency.concurrent.race").increment();
             return handleExisting(other, requestHash, responseType);
         }
 
@@ -141,11 +143,14 @@ public class IdempotencyService {
 
     private <T> T handleExisting(IdempotencyRecord record, String requestHash, Class<T> responseType) {
         if (!record.matches(requestHash)) {
+            meterRegistry.counter("idempotency.conflict").increment();
             throw IdempotencyException.reused(record.getIdempotencyKey());   // 같은 키 + 다른 본문 → 422
         }
         if (!record.isDone()) {
+            meterRegistry.counter("idempotency.processing").increment();
             throw IdempotencyException.processing(record.getIdempotencyKey()); // 처리 중 → 409
         }
+        meterRegistry.counter("idempotency.replay").increment();
         return deserialize(record.getResponseBody(), responseType);            // 첫 응답 재반환
     }
 

@@ -49,6 +49,11 @@ class SettlementTest {
     @DisplayName("markPaidOut: CREATED → PAID_OUT 전이하고 paidOutAt 세팅")
     void markPaidOutTransitions() {
         Settlement settlement = Settlement.of(DATE, "KRW", 100_000, 2_700, 270, 2, PAYOUT, PLATFORM);
+        settlement.recordPayoutReconciliation(
+                new PayoutReconciliationEngine.Result(PayoutReconciliationStatus.MATCHED,
+                        settlement.getPayoutInstructionReference(), "KRW", settlement.getNetAmount(),
+                        settlement.getNetAmount(), 0, "match"),
+                settlement.getPayoutInstructionReference());
 
         settlement.markPaidOut();
 
@@ -60,6 +65,11 @@ class SettlementTest {
     @DisplayName("markPaidOut 멱등: 이미 PAID_OUT이면 상태·시각을 덮어쓰지 않는다")
     void markPaidOutIsIdempotent() {
         Settlement settlement = Settlement.of(DATE, "KRW", 100_000, 2_700, 270, 2, PAYOUT, PLATFORM);
+        settlement.recordPayoutReconciliation(
+                new PayoutReconciliationEngine.Result(PayoutReconciliationStatus.MATCHED,
+                        settlement.getPayoutInstructionReference(), "KRW", settlement.getNetAmount(),
+                        settlement.getNetAmount(), 0, "match"),
+                settlement.getPayoutInstructionReference());
         settlement.markPaidOut();
         Instant firstPaidOutAt = settlement.getPaidOutAt();
 
@@ -67,5 +77,15 @@ class SettlementTest {
 
         assertThat(settlement.getStatus()).isEqualTo(SettlementStatus.PAID_OUT);
         assertThat(settlement.getPaidOutAt()).isEqualTo(firstPaidOutAt); // 미변경
+    }
+
+    @Test
+    @DisplayName("대사가 MATCHED가 아니면 지급 확정할 수 없다")
+    void payoutRequiresMatchedReconciliation() {
+        Settlement settlement = Settlement.of(DATE, "KRW", 100_000, 2_700, 270, 2, PAYOUT, PLATFORM);
+
+        assertThatThrownBy(settlement::markPaidOut)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("MATCHED");
     }
 }

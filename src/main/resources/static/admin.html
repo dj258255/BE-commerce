@@ -241,12 +241,16 @@
   <!-- ══ 정산 ══ -->
   <section id="settle-sec">
     <h1>정산 · 지급</h1>
-    <div class="desc">구매확정(CONFIRMED) 항목을 일 단위 집계 — 수수료 2.7% + 수수료 VAT 10% → 지급액과 지급예정일(정산일+2영업일) 산출. 집계된 정산(CREATED)을 지급 확정(PAID_OUT)합니다.</div>
+    <div class="desc">구매확정(CONFIRMED) 항목을 일 단위 집계 — 수수료 2.7% + 수수료 VAT 10% → 지급액과 지급예정일(정산일+2영업일) 산출. 외부 지급 report가 reference·통화·posted 금액까지 맞을 때만 PAID_OUT으로 전이합니다.</div>
     <div class="panel">
       <div class="row">
         <button class="ghost" onclick="settleRun()">오늘 정산 실행</button>
         <button onclick="settleList()">정산 목록</button>
         <label>정산ID</label><input id="stlId" type="number" value="1" style="width:70px">
+        <label>지급 reference</label><input id="stlRef" placeholder="payoutInstructionReference" style="width:220px">
+        <label>통화</label><input id="stlCurrency" value="KRW" style="width:55px">
+        <label>금액</label><input id="stlAmount" type="number" placeholder="netAmount" style="width:110px">
+        <label><input id="stlPosted" type="checkbox"> posted</label>
         <button onclick="settlePayout()">지급 확정</button>
       </div>
       <div class="list" id="settle"></div>
@@ -797,7 +801,11 @@ async function settleRun(){
   settleList();
 }
 async function settlePayout(){
-  await api('POST','/api/v1/admin/settlements/'+$('stlId').value+'/payout');
+  await api('POST','/api/v1/admin/settlements/'+$('stlId').value+'/payout',{
+    payoutReference:$('stlRef').value.trim()||null,
+    currency:$('stlCurrency').value.trim(), amount:+$('stlAmount').value,
+    posted:$('stlPosted').checked
+  });
   settleList();
 }
 // ── 분쟁 (HMAC 웹훅) ──

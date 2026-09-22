@@ -87,6 +87,7 @@ class IdempotencyServiceTest {
         assertThat(calls.get()).isZero();                     // 실제 결제 재실행 없음
         assertThat(result.orderNo()).isEqualTo("o1");
         assertThat(result.paymentStatus()).isEqualTo(PaymentStatus.DONE);
+        assertThat(meterRegistry.counter("idempotency.replay").count()).isEqualTo(1.0);
     }
 
     @Test
@@ -101,6 +102,7 @@ class IdempotencyServiceTest {
                 .isInstanceOf(IdempotencyException.class)
                 .satisfies(e -> assertThat(((IdempotencyException) e).code())
                         .isEqualTo("IDEMPOTENT_REQUEST_PROCESSING"));
+        assertThat(meterRegistry.counter("idempotency.processing").count()).isEqualTo(1.0);
     }
 
     @Test
@@ -116,6 +118,7 @@ class IdempotencyServiceTest {
                 .isInstanceOf(IdempotencyException.class)
                 .satisfies(e -> assertThat(((IdempotencyException) e).code())
                         .isEqualTo("IDEMPOTENCY_KEY_REUSED"));
+        assertThat(meterRegistry.counter("idempotency.conflict").count()).isEqualTo(1.0);
     }
 
     @Test

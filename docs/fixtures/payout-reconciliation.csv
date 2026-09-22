@@ -1,0 +1,6 @@
+reference,currency,expected_amount,actual_amount,posted,expected_result
+payout-001,KRW,97300,97300,true,MATCHED
+payout-002,KRW,97300,97300,false,PENDING
+payout-003,KRW,97300,96800,true,AMOUNT_MISMATCH
+payout-004,KRW,97300,,false,UNMATCHED_SETTLEMENT
+,KRW,,97300,true,UNMATCHED_PAYOUT

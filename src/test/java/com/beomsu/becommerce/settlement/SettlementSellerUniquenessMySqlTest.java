@@ -33,8 +33,8 @@ class SettlementSellerUniquenessMySqlTest {
     private static final String INSERT = """
             INSERT INTO settlements
               (settlement_date, currency, seller_id, gross_amount, fee_amount, fee_vat_amount,
-               net_amount, item_count, status, payout_date, created_at)
-            VALUES (?, 'KRW', ?, 1000, 0, 0, 1000, 1, 'CREATED', ?, NOW())
+               net_amount, item_count, status, payout_date, payout_instruction_reference, created_at)
+            VALUES (?, 'KRW', ?, 1000, 0, 0, 1000, 1, 'CREATED', ?, ?, NOW())
             """;
 
     @Test
@@ -78,6 +78,7 @@ class SettlementSellerUniquenessMySqlTest {
             ps.setString(1, date);
             if (sellerId == null) ps.setNull(2, Types.BIGINT); else ps.setLong(2, sellerId);
             ps.setString(3, "2099-01-03");
+            ps.setString(4, "test-payout-" + (sellerId == null ? "null" : sellerId));
             ps.executeUpdate();
         }
     }

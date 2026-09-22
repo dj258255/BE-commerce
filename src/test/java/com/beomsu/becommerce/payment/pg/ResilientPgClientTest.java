@@ -1,6 +1,7 @@
 package com.beomsu.becommerce.payment.pg;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -94,12 +95,15 @@ class ResilientPgClientTest {
     void queryRetriesTransientFailure() {
         FlakyPgClient flaky = new FlakyPgClient();
         flaky.queryFailuresRemaining = 2;          // 두 번 실패 후 성공
-        ResilientPgClient client = new ResilientPgClient(flaky);
+        var registry = new SimpleMeterRegistry();
+        ResilientPgClient client = new ResilientPgClient(flaky, 0, registry);
 
         PgQueryResult result = client.query("pk");
 
         assertThat(result.isApproved()).isTrue();
         assertThat(flaky.queryCalls.get()).isEqualTo(3); // 2회 실패 + 1회 성공
+        assertThat(registry.counter("payment.pg.query.retry").count()).isEqualTo(2);
+        assertThat(registry.counter("payment.pg.query.retry.exhausted").count()).isZero();
     }
 
     @Test
@@ -107,12 +111,15 @@ class ResilientPgClientTest {
     void queryRetryIsBounded() {
         FlakyPgClient flaky = new FlakyPgClient();
         flaky.queryFailuresRemaining = 99;         // 계속 실패 (재시도로도 못 넘김)
-        ResilientPgClient client = new ResilientPgClient(flaky);
+        var registry = new SimpleMeterRegistry();
+        ResilientPgClient client = new ResilientPgClient(flaky, 0, registry);
 
         // 재시도가 무한 루프가 아니라 정해진 횟수만 시도하고 포기한다(복구 배치가 다음 주기에 다시 잡는다).
         assertThatThrownBy(() -> client.query("pk"))
                 .isInstanceOf(RuntimeException.class);
         assertThat(flaky.queryCalls.get()).isEqualTo(3); // maxAttempts=3 만큼만 시도
+        assertThat(registry.counter("payment.pg.query.retry").count()).isEqualTo(2);
+        assertThat(registry.counter("payment.pg.query.retry.exhausted").count()).isEqualTo(1);
     }
 
     @Test
@@ -166,6 +173,48 @@ class ResilientPgClientTest {
         // permit 이 반납되어 다음 호출은 정상으로 나간다.
         assertThat(client.approve(new PgApproveCommand("pk-3", "order-3", 10_000)).outcome())
                 .isEqualTo(PgOutcome.SUCCESS);
+    }
+
+    @Test
+    @DisplayName("PG 승인 결과를 운영 지표로 남긴다 — 상한 거절과 UNKNOWN을 구분")
+    void recordsOperationalMetrics() throws Exception {
+        FlakyPgClient flaky = new FlakyPgClient();
+        flaky.approveError = new RuntimeException("PG 오류");
+        var registry = new SimpleMeterRegistry();
+        ResilientPgClient client = new ResilientPgClient(flaky, 1, registry);
+
+        client.approve(new PgApproveCommand("pk-unknown", "order-unknown", 10_000));
+        assertThat(registry.counter("payment.pg.approval.unknown").count()).isEqualTo(1);
+        assertThat(registry.timer("payment.pg.approval.latency").count()).isEqualTo(1);
+
+        var held = new java.util.concurrent.CountDownLatch(1);
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        PgClient slow = new FlakyPgClient() {
+            @Override
+            public PgApproveResult approve(PgApproveCommand command) {
+                entered.countDown();
+                try {
+                    held.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return PgApproveResult.success("CARD");
+            }
+        };
+        var limitedRegistry = new SimpleMeterRegistry();
+        ResilientPgClient limited = new ResilientPgClient(slow, 1, limitedRegistry);
+        Thread holder = new Thread(() -> limited.approve(
+                new PgApproveCommand("pk-holder", "order-holder", 10_000)));
+        holder.start();
+        try {
+            entered.await();
+            limited.approve(new PgApproveCommand("pk-rejected", "order-rejected", 10_000));
+            assertThat(limitedRegistry.counter("payment.pg.approval.rejected", "reason", "concurrency_limit").count())
+                    .isEqualTo(1);
+        } finally {
+            held.countDown();
+            holder.join();
+        }
     }
 
     @Test
