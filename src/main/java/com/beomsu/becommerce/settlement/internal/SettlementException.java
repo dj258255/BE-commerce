@@ -14,4 +14,9 @@ public class SettlementException extends DomainException {
         return new SettlementException("SETTLEMENT_NOT_FOUND",
                 "정산을 찾을 수 없습니다: " + settlementId);
     }
+
+    static SettlementException payoutReconciliationRequired(long settlementId) {
+        return new SettlementException("PAYOUT_RECONCILIATION_REQUIRED",
+                "외부 지급 report가 MATCHED가 아니어서 지급을 확정할 수 없습니다: " + settlementId);
+    }
 }

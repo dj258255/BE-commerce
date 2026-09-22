@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.security.Principal;
 import java.time.LocalDate;
@@ -53,11 +54,13 @@ class SettlementAdminController {
     }
 
     @PostMapping("/{id}/payout")
-    SettlementView payout(@PathVariable Long id, Principal caller) {
+    SettlementView payout(@PathVariable Long id, @RequestBody PayoutConfirmationRequest request, Principal caller) {
         String who = caller != null ? caller.getName() : "unknown";
         audit.info("정산 지급 확정 요청 by={} settlementId={}", who, id);
-        SettlementView view = adminService.confirmPayout(id);
-        audit.info("정산 지급 확정 결과 by={} settlementId={} status={}", who, id, view.status());
+        SettlementView view = adminService.reconcileAndConfirmPayout(
+                id, request.payoutReference(), request.currency(), request.amount(), request.posted());
+        audit.info("정산 지급 확정 결과 by={} settlementId={} status={} reconciliation={}",
+                who, id, view.status(), view.payoutReconciliationStatus());
         return view;
     }
 

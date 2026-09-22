@@ -72,6 +72,7 @@ class SettlementAdminServiceTest {
     @DisplayName("confirmPayout: CREATED → PAID_OUT 전이하고 saveAndFlush로 명시 영속")
     void confirmPayoutTransitionsAndPersists() {
         Settlement s = Settlement.of(DATE, "KRW", 100_000, 2_700, 270, 3, PAYOUT, PLATFORM);
+        match(s);
         when(repository.findById(7L)).thenReturn(Optional.of(s));
         when(repository.saveAndFlush(s)).thenReturn(s);
 
@@ -94,6 +95,52 @@ class SettlementAdminServiceTest {
                 .satisfies(e -> assertThat(((SettlementException) e).code())
                         .isEqualTo("SETTLEMENT_NOT_FOUND"));
         verify(repository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("confirmPayout: 외부 대사 없이 수동 확정하지 않는다")
+    void confirmPayoutRequiresReconciliation() {
+        Settlement s = Settlement.of(DATE, "KRW", 100_000, 2_700, 270, 3, PAYOUT, PLATFORM);
+        when(repository.findById(7L)).thenReturn(Optional.of(s));
+
+        assertThatThrownBy(() -> service.confirmPayout(7L))
+                .isInstanceOf(SettlementException.class)
+                .satisfies(e -> assertThat(((SettlementException) e).code())
+                        .isEqualTo("PAYOUT_RECONCILIATION_REQUIRED"));
+        verify(repository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("reconcileAndConfirmPayout: pending은 기록하지만 PAID_OUT으로 전이하지 않는다")
+    void pendingPayoutIsRecordedWithoutPaidOut() {
+        Settlement s = Settlement.of(DATE, "KRW", 100_000, 2_700, 270, 3, PAYOUT, PLATFORM);
+        when(repository.findById(7L)).thenReturn(Optional.of(s));
+        when(repository.saveAndFlush(s)).thenReturn(s);
+
+        SettlementView view = service.reconcileAndConfirmPayout(
+                7L, s.getPayoutInstructionReference(), "KRW", s.getNetAmount(), false);
+
+        assertThat(view.status()).isEqualTo(SettlementStatus.CREATED);
+        assertThat(view.payoutReconciliationStatus()).isEqualTo(PayoutReconciliationStatus.PENDING);
+        assertThat(s.getPaidOutAt()).isNull();
+        verify(repository).saveAndFlush(s);
+    }
+
+    @Test
+    @DisplayName("reconcileAndConfirmPayout: exact posted report만 PAID_OUT으로 전이한다")
+    void matchedPayoutTransitions() {
+        Settlement s = Settlement.of(DATE, "KRW", 100_000, 2_700, 270, 3, PAYOUT, PLATFORM);
+        when(repository.findById(7L)).thenReturn(Optional.of(s));
+        when(repository.saveAndFlush(s)).thenReturn(s);
+
+        SettlementView view = service.reconcileAndConfirmPayout(
+                7L, s.getPayoutInstructionReference(), "KRW", s.getNetAmount(), true);
+
+        assertThat(view.status()).isEqualTo(SettlementStatus.PAID_OUT);
+        assertThat(view.payoutReconciliationStatus()).isEqualTo(PayoutReconciliationStatus.MATCHED);
+        assertThat(view.payoutReportReference()).isEqualTo(s.getPayoutInstructionReference());
+        assertThat(view.paidOutAt()).isNotNull();
+        verify(repository).saveAndFlush(s);
     }
 
     @Test
@@ -168,5 +215,13 @@ class SettlementAdminServiceTest {
         assertThat(view.carriedAmount()).isZero();
         assertThat(view.crossesMonth()).isFalse();
         assertThat(view.byConfirmedDate()).hasSize(1);
+    }
+
+    private static void match(Settlement settlement) {
+        settlement.recordPayoutReconciliation(
+                new PayoutReconciliationEngine.Result(PayoutReconciliationStatus.MATCHED,
+                        settlement.getPayoutInstructionReference(), settlement.getCurrency(),
+                        settlement.getNetAmount(), settlement.getNetAmount(), 0, "match"),
+                settlement.getPayoutInstructionReference());
     }
 }
