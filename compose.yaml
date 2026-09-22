@@ -62,7 +62,8 @@ services:
   # CDC — mysql binlog를 읽어 Kafka로 흘린다. cdc 프로필로만 기동한다(기본 up에는 포함되지 않음).
   #   docker compose --profile cdc up -d debezium
   debezium:
-    image: debezium/connect:2.7
+    # 태그는 2.7 처럼 줄여 쓸 수 없다 — Debezium 은 축약 태그를 내지 않는다(2.7.3.Final 형태만 있다).
+    image: debezium/connect:3.0.0.Final
     profiles: ["cdc"]
     ports:
       - "8083:8083"
