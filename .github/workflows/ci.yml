@@ -162,3 +162,20 @@ jobs:
           path: build/reports/tests/integrationTest
           if-no-files-found: ignore
           retention-days: 7
+
+  # Dockerfile이 썩지 않게 매 PR에서 이미지를 실제로 굽는다.
+  # 여기서 배포하지는 않는다 — 굽는 것과 띄우는 것은 다른 문제고, 띄우는 검증은 로컬 compose가 맡는다.
+  docker:
+    name: docker images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # .dockerignore가 없으면 컨텍스트에 personalization/data(29GB)가 딸려 들어가 빌드가 사실상 불가능하다.
+      # 그래서 <굽는 것 자체>가 그 파일의 회귀 테스트다.
+      - name: Build app image
+        run: docker build -t be-commerce:ci .
+
+      # 독립 Gradle 프로젝트라 이미지도 따로 굽는다(루트 bootJar에 포함되지 않는다).
+      - name: Build consumer-app image
+        run: docker build -f consumer-app/Dockerfile -t be-commerce-consumer:ci .
