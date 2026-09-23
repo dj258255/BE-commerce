@@ -230,13 +230,34 @@ docker compose --profile monitoring up -d prometheus grafana
 7. [결제 포트폴리오 초안](docs/30-결제-포트폴리오-초안.md)
 8. [결제 플랫폼 확장 계획](docs/32-결제-플랫폼-확장-계획.md)
 9. [작업 보드](docs/PROJECT-BOARD.md) — 목표·예상 시간·산출물·위험·검증 상태
-8. [ADR](docs/README.md#아키텍처-결정-기록)
+10. [ADR](docs/README.md#아키텍처-결정-기록)
 
 전체 문서는 목적별로 정리한 [문서 안내](docs/README.md)를 참고하세요.
 
+### 무엇을 어디서 확인하는가
+
+이 저장소는 **다른 사람이 현재 상태와 과거 판단을 복원할 수 있게** 만드는 것을 목표로 한다.
+알고 싶은 것마다 볼 곳을 하나로 정해 뒀다.
+
+| 알고 싶은 것 | 확인하는 곳 |
+|---|---|
+| 지금 어디까지 왔는가 | [`personalization/ROADMAP.md`](personalization/ROADMAP.md) · [`docs/ROADMAP-TRADEOFFS.md`](docs/ROADMAP-TRADEOFFS.md) |
+| 무엇을 만들기로 했는가 · 완료 조건 | GitHub Issue (배경 / 할 일 / 검증 / 하지 말 것) |
+| 어느 단위로 나눴는가 | GitHub Milestone (M0~M12) |
+| 무엇을 바꿨는가 · 왜 그렇게 골랐는가 | PR 본문과 [ADR 50편](docs/README.md#아키텍처-결정-기록) |
+| 실제로 무엇을 확인했는가 | [`docs/performance/`](docs/performance/README.md) · [`personalization/docs/runs/`](personalization/docs/runs) — 원자료와 재현 명령 |
+| 사용자에게 무엇이 나갔는가 | [`CHANGELOG.md`](CHANGELOG.md) |
+| 무엇을 **안 하기로** 했는가 | ADR 상태가 `기각`·`미결`인 편들, 각 로드맵의 "하지 않은 것" 절 |
+
+마지막 줄이 이 저장소에서 제일 중요하다. **ADR 50편 중 상당수가 "안 한다"로 끝난다** —
+검색 엔진([ADR-044](docs/adr/ADR-044-no-search-engine-yet.md)), 추천 모델([ADR-048](docs/adr/ADR-048-als-model-not-adopted.md)),
+생성 중 제약 차단([ADR-050](docs/adr/ADR-050-post-filter-over-constrained-generation.md)),
+멀티 PG failover([ADR-020](docs/adr/ADR-020-multi-pg-routing-off-by-default.md)) 모두 **재 보고 안 켰고,
+그 근거를 숫자로 남겼다.**
+
 ## 일정과 작업 방식
 
-첫 커밋은 2025년 10월 1일(`Phase 0: Spring Modulith 뼈대`)입니다. **2026년 9월 21일 기준** 저장소 전체 커밋은 422개이고 가장 최근 커밋도 같은 날입니다. 아래 표의 수치도 같은 시점에 센 값입니다(릴리스마다 다시 셉니다).
+첫 커밋은 2025년 10월 1일(`Phase 0: Spring Modulith 뼈대`)입니다. **2026년 9월 24일 기준** 저장소 전체 커밋은 471개이고 가장 최근 커밋도 같은 날입니다. 아래 표의 수치도 같은 시점에 센 값입니다(릴리스마다 다시 셉니다).
 
 | 기간 | 한 일 | 산출물 |
 |---|---|---|
@@ -245,11 +266,11 @@ docker compose --profile monitoring up -d prometheus grafana
 | 2026.03~06 | 월 14~16개 커밋으로 기능을 다듬고 리팩터(체크아웃 사가, 정산 집계, 회원·분쟁 모듈 등) | 안정화 |
 | 2026.07 | 문서와 코드의 불일치 정정, 실측 재확인 위주의 감사 | 문서 정합성 |
 | 2026.08 | AI 운영 자동화 실험(루브릭 설계, 블라인드 비교, 모델 비교) | rule-first 판단 기준 |
-| 2026.09 | GitHub 이슈와 PR로 작업 단위 전환, 이 달만 커밋 219개 | 이슈 62건, PR 123건 |
+| 2026.09 | GitHub 이슈와 PR로 작업 단위 전환, 이 달만 커밋 269개 | 이슈 73건, PR 155건 |
 
-설계 결정은 커밋 로그에 흩어지지 않게 ADR(Architecture Decision Record) 38편으로 따로 남겼습니다. `docs/adr/`에 있으며 트레이드오프가 있는 결정마다 배경과 대안, 대가를 한 편씩 적었습니다. 9월부터는 GitHub 이슈와 PR로 작업 단위가 뚜렷하게 남습니다. 이슈 62건과 PR 123건이 있고 두 번호는 같은 시퀀스를 공유해 최대 번호가 185까지 갑니다.
+설계 결정은 커밋 로그에 흩어지지 않게 ADR(Architecture Decision Record) 50편으로 따로 남겼습니다. `docs/adr/`에 있으며 트레이드오프가 있는 결정마다 배경과 대안, 대가를 한 편씩 적었습니다. 9월부터는 GitHub 이슈와 PR로 작업 단위가 뚜렷하게 남습니다. 이슈 73건과 PR 155건이 있고 두 번호는 같은 시퀀스를 공유해 최대 번호가 228까지 갑니다.
 
-프로젝트를 만든 배경과 트레이드오프 판단은 [블로그 소개 글](https://dj258255.github.io/IT-Oasis/blog/project/pay/pay-0-overview/)에 더 자세히 적었습니다.
+프로젝트를 만든 배경과 트레이드오프 판단은 [블로그 소개 글](https://dj258255.github.io/IT-Oasis/blog/project/be-commerce/be-commerce-0-overview/)에 더 자세히 적었습니다.
 
 ## 범위와 한계
 
