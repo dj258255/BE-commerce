@@ -36,6 +36,7 @@
 | 무엇 | 넘어야 했던 선 | 실측 | 결정 |
 |---|---|---|---|
 | **추천 모델 교체** | `repeat_last` MAP@12 **0.0234** (측정 전에 못 박음) | ALS 4구성 최고 **0.0076** — 인기(0.0087)보다도 낮다. alpha·factors 두 축으로 얻은 폭이 **15% 미만**인데 선까지는 207% | **안 넣는다** ([ADR-048](adr/ADR-048-als-model-not-adopted.md)) |
+| **GenPage 최소형으로 교체** | 같은 선 **0.023354** | 세 번 학습해 **0.020937**(선의 90%). ALS 의 2.8배지만 산 것을 빼면 −63%. 같은 홀드아웃으로 더 고르지 않고 멈췄다 | **서빙까지 붙이고 끈다** ([ADR-053](adr/ADR-053-genpage-mini-not-default.md)) |
 | **제약을 생성 중 차단** | 목록이 짧아지는 것을 막을 수 있는가 | 사후 필터가 **이미 100% 채우고** 있었다. 생성 중 차단은 서빙 중앙 62→**369ms**, coverage 100→**84%** | **기각** ([ADR-050](adr/ADR-050-post-filter-over-constrained-generation.md)) |
 | **전문 검색 엔진 도입** | 지연: 300ms 초과의 원인이 집계인가 · 품질: 오타·어형 nDCG@10 이 MySQL 최선보다 0.10 높은가 | 지연은 **포화**였다(패싯 사전 집계로 닫힘). 품질은 LIKE 0.071 · FULLTEXT 0.324 · Lucene 0.808 | 지연으로는 안 넣었고, **품질로 앱 안 Lucene 을 넣었다**. ES·OpenSearch 는 품질이 같아 운영 비용으로 뺐다 ([ADR-044](adr/ADR-044-no-search-engine-yet.md) → [ADR-051](adr/ADR-051-search-engine-by-quality.md)) |
 | **멀티 PG failover 켜기** | 가짜 PG 둘 사이의 전환이 failover 를 증명하는가 | 증명하지 못한다. **켤 조건 셋**을 대신 적었다 | **끈 채로 둔다** ([ADR-020](adr/ADR-020-multi-pg-routing-off-by-default.md)) |
