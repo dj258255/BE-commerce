@@ -37,8 +37,8 @@ tests:
       - series: 'compensation_exhausted_total'
         values: '0+1x30'
       # 대사 잔여가 남는다
-      - series: 'recon_pending_count'
-        values: '3x30'
+      - series: 'recon_pending_oldest_age_seconds'
+        values: '0+60x30'
       # 낙관적 락 재시도가 는다
       - series: 'stock_deduct_retry_total'
         values: '0+90x30'
@@ -97,5 +97,5 @@ tests:
               severity: warning
               domain: settlement
             exp_annotations:
-              description: "PENDING 대사 예외가 15분 넘게 남아 있습니다. 어드민에서 예외 큐를 검토·종결하세요."
+              description: "가장 오래된 PENDING 대사 예외가 15분 넘게 남아 있습니다. 어드민에서 예외 큐를 검토·종결하세요."
               summary: "대사 미해결(PENDING) 적체"

@@ -9,7 +9,8 @@ Actuator + Micrometer → Prometheus → Grafana.
 - `payment_unknown_oldest_age_seconds`: 가장 오래된 UNKNOWN(미확정) 결제의 경과 시간(초).
   미확정이 없으면 0. `PaymentSloMetrics` 게이지. **미확정 방치 SLO**의 소스.
 - `recon_pending_count`: 사람 확인이 필요한 PENDING(미해결) 대사 건수. `ReconciliationMetrics` 게이지.
-  **대사 적체 SLO**의 소스.
+- `recon_pending_oldest_age_seconds`: 가장 오래된 PENDING 대사 건의 경과 시간(초). 미해결이 없으면 0.
+  `ReconciliationMetrics` 게이지. **대사 적체 SLO**의 소스.
 - Spring Boot 기본: `http_server_requests_seconds_bucket`(p95/p99. 히스토그램 버킷을
   `management.metrics.distribution.percentiles-histogram.http.server.requests=true`로 켜야 노출된다.
   안 켜면 `_count/_sum/_max`만 나와 분위수 산출이 불가능하다), `hikaricp_connections_*`(풀 사용률),
@@ -57,7 +58,7 @@ prometheus는 `host.docker.internal:8080`을 스크레이프하므로 앱은 호
 | CompensationExhausted | 최근 10분 내 보상 재시도 소진 > 0 | critical |
 | UnknownPaymentAging | 미확정 결제 최고 경과 > 600초 (5m 지속) | critical |
 | DeadlockRetrySpike | 멱등키 데드락 재시도 > 10회/분 (5m 지속) | warning |
-| ReconPendingBacklog | 대사 PENDING > 0 (15m 지속) | warning |
+| ReconPendingBacklog | 대사 PENDING 최고 경과 > 900초 (5m 지속) | warning |
 
 > 성공률 알림은 트래픽이 없으면 분모가 0(0/0=NaN)이라 발화하지 않는다. 유휴 시 오탐이 없다.
 

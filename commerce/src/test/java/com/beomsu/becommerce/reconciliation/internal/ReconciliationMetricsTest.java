@@ -8,6 +8,12 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -56,5 +62,27 @@ class ReconciliationMetricsTest {
 
         assertThat(meterRegistry.get("recon.pending.count").gauge().value()).isEqualTo(3.0);
         assertThat(meterRegistry.get("recon.pending.unexplained.amount").gauge().value()).isEqualTo(13_000.0);
+    }
+
+    @Test
+    @DisplayName("PENDING이 없으면 최장 경과 시간은 0이다")
+    void oldestAgeZeroWhenNoPending() {
+        when(repository.findTopByStatusOrderByReconciledAtAsc(ReconStatus.PENDING)).thenReturn(Optional.empty());
+        new ReconciliationMetrics(meterRegistry, repository);
+
+        assertThat(meterRegistry.get("recon.pending.oldest.age.seconds").gauge().value()).isZero();
+    }
+
+    @Test
+    @DisplayName("건수가 한 건이어도 오래 묵었으면 경과 시간이 크다 — ReconPendingBacklog가 보는 값")
+    void exposesOldestPendingAge() {
+        ReconciliationResult oldest = ReconciliationResult.internalOnly(LocalDate.of(2026, 9, 22), "ORD-1", 10_000L);
+        ReflectionTestUtils.setField(oldest, "reconciledAt", Instant.now().minus(Duration.ofHours(2)));
+        when(repository.countByStatus(ReconStatus.PENDING)).thenReturn(1L);
+        when(repository.findTopByStatusOrderByReconciledAtAsc(ReconStatus.PENDING)).thenReturn(Optional.of(oldest));
+        new ReconciliationMetrics(meterRegistry, repository);
+
+        assertThat(meterRegistry.get("recon.pending.count").gauge().value()).isEqualTo(1.0);
+        assertThat(meterRegistry.get("recon.pending.oldest.age.seconds").gauge().value()).isBetween(7100.0, 7300.0);
     }
 }

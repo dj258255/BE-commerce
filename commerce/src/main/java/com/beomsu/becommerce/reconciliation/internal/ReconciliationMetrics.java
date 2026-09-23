@@ -9,9 +9,9 @@ import org.springframework.stereotype.Component;
 /**
  * 대사 SLO 게이지.
  *
- * <p>사람 확인이 필요한 PENDING 예외 큐의 적체를 노출한다. 이 값이 오래 0을 넘으면
- * Prometheus 알림(ReconPendingBacklog)이 뜬다. 게이지 supplier는 스크레이프마다
- * 단일 count 쿼리만 수행한다.
+ * <p>사람 확인이 필요한 PENDING 예외 큐의 적체를 노출한다. Prometheus 알림(ReconPendingBacklog)은
+ * 건수가 아니라 가장 오래된 건의 나이({@code recon.pending.oldest.age.seconds})에 걸린다.
+ * 게이지 supplier는 스크레이프마다 게이지당 단일 쿼리만 수행한다.
  */
 @Component
 public class ReconciliationMetrics {
