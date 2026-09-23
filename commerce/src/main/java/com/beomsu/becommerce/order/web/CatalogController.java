@@ -52,7 +52,7 @@ public class CatalogController {
             @RequestParam(required = false) String productType,
             @RequestParam(required = false) Long minPrice,
             @RequestParam(required = false) Long maxPrice,
-            @RequestParam(defaultValue = "newest") String sort,
+            @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return catalogQueryService.products(category, q, featured, colour, productType, minPrice, maxPrice,

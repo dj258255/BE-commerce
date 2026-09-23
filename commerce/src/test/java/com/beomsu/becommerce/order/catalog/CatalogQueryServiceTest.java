@@ -53,7 +53,8 @@ class CatalogQueryServiceTest {
         when(facetCache.get(anyString(), any()))
                 .thenAnswer(invocation -> ((java.util.function.Supplier<?>) invocation.getArgument(1)).get());
         service = new CatalogQueryService(productRepository, categoryRepository, stockRepository,
-                reviewRepository, facetCache);
+                reviewRepository, facetCache,
+                new com.beomsu.becommerce.order.catalog.search.LikeProductSearch(productRepository, false));
     }
 
     private static Product product(long id, String name, long price, String category, boolean featured) {
@@ -202,6 +203,29 @@ class CatalogQueryServiceTest {
         service.products(null, "  이어폰  ", null, null, null, null, null, "newest", 0, 20);
 
         verify(productRepository).findByNameContainingOrBrandContaining(eq("이어폰"), eq("이어폰"), any());
+    }
+
+    @Test
+    @DisplayName("관련도 엔진이면 정렬을 고르지 않은 검색은 엔진 순서를 지키며 DB 에서 상품을 채운다(#236)")
+    void relevanceEngineOrderIsKept() {
+        com.beomsu.becommerce.order.catalog.search.ProductSearch engine =
+                new com.beomsu.becommerce.order.catalog.search.ProductSearch() {
+                    public SearchPage search(String query, int page, int size) {
+                        return new SearchPage(List.of(3L, 1L, 99L), 3);
+                    }
+                    public String engine() { return "test"; }
+                    public boolean ranksByRelevance() { return true; }
+                };
+        CatalogQueryService relevance = new CatalogQueryService(productRepository, categoryRepository,
+                stockRepository, reviewRepository, facetCache, engine);
+        // DB 는 순서를 모른다 — 1, 3 순서로 돌려주고, 99 는 색인에만 있고 DB 에서 지워진 상품이다
+        when(productRepository.findAllById(any()))
+                .thenReturn(List.of(product(1, "하나", 1000, "digital", false), product(3, "셋", 3000, "digital", false)));
+
+        ProductPageView view = relevance.products(null, "셋", null, null, null, null, null, null, 0, 10);
+
+        assertThat(view.items()).extracting(ProductSummaryView::productId).containsExactly(3L, 1L);
+        verify(productRepository, org.mockito.Mockito.never()).findByNameContainingOrBrandContaining(anyString(), anyString(), any());
     }
 
     @Test
