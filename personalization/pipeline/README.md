@@ -13,7 +13,17 @@ python3 personalization/pipeline/normalize_amazon.py  # 정규화 + 품질 리�
 
 python3 personalization/pipeline/features_hm.py       # 시간 스플릿 + point-in-time 피처 + baseline + MAP@12
 python3 personalization/pipeline/check_no_leakage.py  # 누출 회귀 테스트 (실패 시 종료 코드 1)
+
+# ALS 학습·평가. implicit 이 필요해 venv 를 쓴다(`personalization/.venv`, .gitignore).
+personalization/.venv/bin/python personalization/pipeline/train_als.py           # 스윕 4구성, 약 21분
+personalization/.venv/bin/python personalization/pipeline/train_als.py f64-a10   # 하나만
+ALS_EXCLUDE_SEEN=1 personalization/.venv/bin/python personalization/pipeline/train_als.py f64-a10  # 대조
 ```
+
+`train_als.py` 는 **채점기를 따로 만들지 않는다** — `features_hm.py` 의 `split`·`map_at_k` 를 import 해
+쓴다. 새로 만들면 기준선과의 비교가 성립하지 않기 때문이다. 결과는
+[리포트](../docs/runs/hm-als-report.md)에 있고, **기준선을 못 넘어 모델을 넣지 않았다**
+([ADR-048](../../docs/adr/ADR-048-als-model-not-adopted.md)).
 
 데이터는 `personalization/data/`에 쌓이고 **커밋하지 않는다**(.gitignore). 리포트만 `personalization/docs/runs/`에 남는다.
 

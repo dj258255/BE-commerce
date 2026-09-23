@@ -121,6 +121,12 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-040](adr/ADR-040-generation-scope-and-budget.md) | 홈 페이지를 어떻게 만드는가 — 생성 범위는 비용을 사고, 품질은 재지 않았다 |
 | [ADR-041](adr/ADR-041-cache-compression-threshold.md) | 캐시 압축은 1KB부터 — 근거는 생겼고 적용할 자리는 아직 없다 |
 | [ADR-042](adr/ADR-042-home-composer-boundary.md) | 홈 컴포저를 별도 경계로 둔다 — 페이지는 추천의 합이 아니다 |
+| [ADR-043](adr/ADR-043-home-impression-log.md) | 홈 노출은 요청당 한 행으로 남긴다 — 관측을 도메인 이벤트에 태우지 않는다 |
+| [ADR-044](adr/ADR-044-no-search-engine-yet.md) | 검색 엔진을 지금 도입하지 않는다 — 패싯 사전 집계를 먼저 한다 |
+| [ADR-045](adr/ADR-045-real-popularity-and-refill.md) | 인기 신호를 실제 통계로 바꾸고, 되채우기를 켠다 — 신호를 바꾸면 화면이 짧아진다 |
+| [ADR-046](adr/ADR-046-synthetic-reviews.md) | 합성 리뷰를 쓰되, 집계하지 않는다 — 읽는 것이지 재는 것이 아니다 |
+| [ADR-047](adr/ADR-047-cdc-for-activity-not-outbox.md) | CDC 는 활동 로그에 쓰고, 아웃박스 릴레이는 그대로 폴링으로 둔다 |
+| [ADR-048](adr/ADR-048-als-model-not-adopted.md) | 학습한 ALS 모델을 넣지 않는다 — 기준선을 못 넘었다 |
 
 ## 보조 문서
 
