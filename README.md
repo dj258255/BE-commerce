@@ -12,18 +12,28 @@
 
 ## 핵심 결과
 
-| 문제 | 선택 | 검증 |
-| --- | --- | --- |
-| PG 응답이 불확실한 타임아웃 | 결제를 `UNKNOWN`으로 보존하고 조회·망취소로 확정 | Toxiproxy 네트워크 장애 주입 |
-| DB 저장과 이벤트 발행 사이의 유실 | Spring Modulith Event Publication Registry 기반 Outbox | 재발행·멱등 소비·DLQ 테스트 |
-| 재고·잔액의 동시 차감 | 조건부 `UPDATE`와 영향 행 수로 성공 여부 판정 | H2와 MySQL 8.4에서 세 전략 비교 |
-| 외부 호출을 포함한 긴 트랜잭션 | 예약 → PG 승인 → 확정/보상의 3단계 사가 | 중단 지점별 복구 시나리오 검증 |
-| 장부와 PG 기록의 불일치 | 복식부기 원장과 일 단위 대사, 취소 별도 행 | 차변=대변 불변식과 4분류 대사 테스트 |
-| 운영자의 분산된 조사 동선 | 10개 도메인의 이력을 주문 단위 타임라인으로 조립 | 조회 7회·목록 탐색 6회를 API 1회로 통합 |
-| 트래픽 급증 | 사용자별·전역 rate limit과 대기열 게이트 | 초과 요청 97.5% 차단, 성공 요청 p95 738ms → 52ms |
+**어려운 순서로 적었다.** 위쪽일수록 정답이 없고, 실험하지 않으면 고를 수 없었던 문제다.
+아래로 갈수록 기반 지식을 적용하면 답이 좁혀진다.
+
+| 문제 | 무엇이 충돌했나 | 고른 것과 그 대가 | 근거 |
+|---|---|---|---|
+| **느린 PG 앞에서 무엇을 먼저 버리나**<br>서킷은 실패를 세므로 **느리지만 성공하는 PG** 는 못 잡는다 | 결제 처리량 ↔ 무관한 요청의 지연 | 동시 호출 상한 40. 지연 3초에서 조회 p95 **7.31초 → 8ms**, 대가는 결제 거절 **73.3%**. 거절률은 `1 − 상한/(도착률×지연)` 으로 예측되고 **실측 오차 0.0%p** | [ADR-022](docs/adr/ADR-022-pg-brownout-resource-limits.md) · [성능 §14](docs/performance/README.md) |
+| **언제 서비스를 쪼갤 것인가**<br>흔히 드는 분리 근거 셋을 가설로 세워 각각 재현을 시도했다 | 팔기 쉬운 근거 ↔ 사실 | **셋 중 하나를 기각**(배치 경합은 풀이 포화되지 않아 미재현). 재현된 둘만 근거로 썼고, 배포 단위만 나눠 배포 중단 **270건 → 0건** | [ADR-029](docs/adr/ADR-029-deployment-unit-vs-service-boundary.md) · [성능 §15](docs/performance/README.md) |
+| **PG 응답이 불확실한 타임아웃**<br>성공도 실패도 아닌 상태를 무엇으로 적을 것인가 | 즉시 응답 ↔ 잘못 확정한 결제를 되돌리는 비용 | `UNKNOWN` 으로 보존하고 조회·복구로 확정. 복구 지연의 하한은 `MIN_AGE`, 상한은 `청크/주기` — **둘 다 식으로 예측되고 실측이 맞는다**(예측 t+106.5s / 실측 t+106s) | [성능 §14.5](docs/performance/README.md) |
+| **정산 분리 시 과거 데이터를 옮기나**<br>에스크로 홀드가 7일이라 전환 직전 7일치가 갈 곳을 잃는다 | 되돌릴 수 있음 ↔ 이중 쓰기 복잡도 | 미결 항목만 이관(C안). **예행에서만 나온 것 둘** — 스키마가 다르고, 이관이 전환보다 먼저여야 한다 | [ADR-024](docs/adr/ADR-024-settlement-extraction-data-cutover.md) |
+| **컨슈머가 실패하면 멈출 것인가 넘길 것인가** | 유실 0 ↔ head-of-line 블로킹 | DLT 격리. 대사가 최종 방어선이라 **격리 건은 유실이 아니라 검출 가능한 미처리**가 된다 | [ADR-030](docs/adr/ADR-030-dlt-replay-and-post-recovery-reconciliation.md) |
+| **추천 모델을 넣을 것인가**<br>넘어야 할 선을 **측정 전에** 못 박았다 | 모델을 넣었다는 사실 ↔ 실제로 더 나은가 | **안 넣는다.** ALS 최고 MAP@12 **0.0076** 으로 기준선 `repeat_last` 0.0234 의 3분의 1. 두 축을 열어도 폭이 15% 미만 | [ADR-048](docs/adr/ADR-048-als-model-not-adopted.md) |
+| **캐시 값이 커질 때 압축할 것인가** | 네트워크·메모리 ↔ CPU | 교차점 실측(**187B 손해 / 279B 이득**), 임계값은 **이득이 확실한 1KB**. 코덱은 실측이 통념을 뒤집어 SNAPPY | [ADR-041](docs/adr/ADR-041-cache-compression-threshold.md) |
+| **DB 저장과 이벤트 발행 사이의 유실** | 단순함 ↔ at-least-once 보장 | 커밋과 같은 트랜잭션에 남기는 Outbox. 재기동 **8초** 내 재발행 확인 | [성능 §17](docs/performance/README.md) |
+| **재고·잔액의 동시 차감** | 정확한 순서 ↔ 처리량 | 조건부 `UPDATE` + 영향 행 수 판정. 승인 성공률 **39.6% → 100%**. **H2 에서는 순위가 반대였다** | [ADR-004](docs/adr/ADR-004-stock-deduction-locking.md) · [성능 §1](docs/performance/README.md) |
+| **트래픽 급증** | 모두가 느려짐 ↔ 일부는 거절 | 사용자별·전역 rate limit. 초과 **97.5% 차단**, p95 738ms → 52ms | [성능 §7](docs/performance/README.md) |
+
+**위 다섯은 실험하지 않으면 고를 수 없었다.** 아래 다섯은 기반 지식으로 답이 좁혀지지만,
+그 지식이 **실제 결정에 쓰였는지**를 수치로 남겼다.
 
 수치는 로컬 단일 장비에서 측정한 결과이며, 실행 환경과 한계는
 [성능 리포트](docs/performance/README.md)에 함께 기록했습니다.
+**지금 무엇이 열려 있는지는 [트러블슈팅 기록](docs/TROUBLESHOOTING-LOG.md)에 있습니다.**
 
 ## 저장소 구조
 
@@ -241,6 +251,7 @@ docker compose --profile monitoring up -d prometheus grafana
 
 | 알고 싶은 것 | 확인하는 곳 |
 |---|---|
+| **지금 무엇이 열려 있는가** | [`docs/TROUBLESHOOTING-LOG.md`](docs/TROUBLESHOOTING-LOG.md) — 열린 것과 닫은 방식을 한 화면에 |
 | 지금 어디까지 왔는가 | [`personalization/ROADMAP.md`](personalization/ROADMAP.md) · [`docs/ROADMAP-TRADEOFFS.md`](docs/ROADMAP-TRADEOFFS.md) |
 | 무엇을 만들기로 했는가 · 완료 조건 | GitHub Issue (배경 / 할 일 / 검증 / 하지 말 것) |
 | 어느 단위로 나눴는가 | GitHub Milestone (M0~M12) |
