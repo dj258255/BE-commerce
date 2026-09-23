@@ -3,6 +3,7 @@ package com.beomsu.becommerce.recommendation.internal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -31,6 +32,8 @@ import java.util.function.LongPredicate;
  * <p>지연은 {@code Thread.sleep}이다. 실제 모델은 CPU를 태우지만 여기서 재는 것은 <b>대기</b>이므로
  * 재우는 편이 오히려 깨끗하다 — CPU를 태우면 이 장비의 코어 수가 변수가 된다.
  */
+// 모델 구현은 하나만 뜬다. 기본은 스텁이고 app.recommendation.model.kind=genpage 면 GenPageModelClient 다(ADR-053)
+@ConditionalOnProperty(name = "app.recommendation.model.kind", havingValue = "stub", matchIfMissing = true)
 @Component
 public class StubModelClient implements ModelClient {
 
