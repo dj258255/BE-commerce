@@ -7,6 +7,19 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — 작은 GenPage 모델을 붙인다(기본값 꺼짐) (#238)
+
+### 변경
+
+- `app.recommendation.model.kind=genpage` 로 켜면 추천 행과 홈 다음 쪽 행을 **모델이 생성한다**. 기본값은 `stub` 그대로다
+- 모델 서버(`personalization/serving/genpage_server.py`)가 느리거나 죽으면 추천은 인기로, 홈 다음 쪽은 규칙 행으로 물러선다
+- 모델 행은 `GENPAGE` 로 표시한다. 품절은 앱이 생성 뒤에 거른다
+
+### 왜 켜지 않았나
+
+MAP@12 0.020937 로 측정 전에 정한 선(0.023354, 마지막 구매 재추천)을 못 넘었다. ALS 의 2.8배다.
+[ADR-053](docs/adr/ADR-053-genpage-mini-not-default.md) · [실측](personalization/docs/runs/hm-genpage-report.md)
+
 ## Unreleased — 홈을 여러 쪽으로 나눠 만든다 (#237)
 
 ### 변경

@@ -1,0 +1,6 @@
+# GenPage 최소형 학습·서빙(#238). 파이프라인(.venv, Python 3.14)과 따로 둔다 — torch 휠이 3.12 에 있다.
+#   uv venv -p 3.12 .venv-genpage && VIRTUAL_ENV=.venv-genpage uv pip install -r personalization/serving/requirements.txt
+torch==2.14.0
+pandas
+pyarrow
+numpy
