@@ -287,6 +287,61 @@ groups:
           summary: "이상거래 심사 오탐률 {{ $value | printf \"%.0f\" }}% — 규칙이 정상 거래를 잡고 있음"
           description: "사람이 처리한 심사 열 건 중 일곱 건 이상이 정상이었습니다. 임계나 규칙을 조일 때가 된 것이고, 그대로 두면 심사 큐가 사람 시간만 씁니다."
 
+      # 13) 활동 반영이 멈춤 — 원인은 커넥터일 수도, 컨슈머일 수도, 브로커일 수도 있다.
+      #     CDC 로 전달하면 발행 보장의 근거가 아웃박스에서 binlog·커넥터 건강으로 옮겨간다.
+      #     커넥터가 죽어도, 컨슈머 빈이 빠져도, 브로커가 멈춰도 <b>셋 다 RUNNING·정상으로 보인다</b>
+      #     (실제로 둘을 겪었다 — MySQL 8.4 비호환으로 RUNNING 인 채 재시작만 돌던 커넥터, 그리고
+      #     컨슈머 빈이 없어 아무도 안 읽던 것). 그래서 <b>원인이 아니라 증상</b>을 잰다 —
+      #     *활동이 컨텍스트에 닿고 있는가*. 이건 전달 방식과 무관하게 성립한다(#215).
+      #
+      #     <b>개수가 아니라 나이다.</b> 밀리는 중과 멈춤은 개수로 구분되지 않는다(부하 중엔 정상적으로
+      #     밀린다). outbox_pending_oldest_age_seconds·payment_unknown_oldest_age_seconds 와 같은 결이다.
+      #
+      #     <b>임계값 60초의 근거.</b> E1b 실측에서 정상 lag p95 는 13~14ms 였다
+      #     (personalization/docs/runs/20260923-e1b-cdc-대-아웃박스/report.md — 아웃박스 14ms,
+      #     튜닝한 CDC 13ms). 60초는 그 4,000배 남짓이라 지터나 일시적 적체로는 절대 닿지 않는다.
+      #     낮게 잡아 빨리 알리되, 아래 트래픽 게이트로 오탐을 막는다.
+      #
+      #     <b>트래픽이 없을 때와 고장을 가른다.</b> 활동이 안 들어오면 나이는 정상적으로도 자란다 —
+      #     한가한 시간대에 울리면 안 된다. 그래서 <b>활동 쓰기가 실제로 들어오고 있다</b>는 조건을
+      #     함께 건다(최근 10분 초당 0.05건 = 20초에 1건 이상). 쓰기가 들어오는데 60초 넘게 반영이
+      #     없으면 그건 유휴가 아니라 파이프라인 정지다. 게이트의 지표는 Spring Boot 기본 웹 메트릭의
+      #     템플릿 uri 태그다.
+      #
+      #     <b>기동 직후는 울리지 않는다.</b> 나이 게이지는 한 번도 반영된 적이 없으면 <b>0</b>을
+      #     내보낸다(0 > 60 은 거짓). 첫 반영 전의 값은 "나이"로 의미가 없다. 대가는 아래에 적었다.
+      # 13-b) 기동 후 한 번도 반영하지 못한 상태 — 위 규칙의 사각지대를 메운다.
+      #     나이 게이지는 첫 반영 전에 0 을 내보내므로 `> 60` 이 거짓이다. 그래서 **나이가 아니라
+      #     반영이 일어났는가**를 본다. 이 구간이 위험한 이유는 실제로 겪었기 때문이다 — 컨슈머 빈이
+      #     조건 때문에 아예 안 만들어져 **기동부터 끝까지 한 건도 반영되지 않았고**, 커넥터는 정상,
+      #     앱 로그는 오류 0건이었다. 나이 규칙만 있으면 그 사고가 영원히 안 울린다.
+      #
+      #     같은 트래픽 게이트를 쓴다. 쓰기가 들어오는데 10분 동안 반영이 한 건도 없으면 정지다.
+      #     `for: 5m` 을 더해 배포 직후의 짧은 공백으로는 울지 않게 한다.
+      - alert: PersonalizationContextNeverApplied
+        expr: |
+          sum(increase(personalization_context_applied_total[10m])) == 0
+          and sum(rate(http_server_requests_seconds_count{uri="/api/v1/personalization/activity"}[10m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          domain: personalization
+        annotations:
+          summary: "활동 쓰기는 들어오는데 반영이 한 건도 없음"
+          description: "10분간 컨텍스트 반영이 0건인데 활동 쓰기는 들어오고 있습니다. 나이 게이지가 잡지 못하는 구간입니다(첫 반영 전에는 0을 내보냅니다). 컨슈머 빈이 조건 때문에 안 만들어진 경우가 여기 해당합니다 — 커넥터와 앱 로그가 모두 정상으로 보입니다(#215)."
+
+      - alert: PersonalizationContextApplyStalled
+        expr: |
+          personalization_context_last_applied_age_seconds > 60
+          and sum(rate(http_server_requests_seconds_count{uri="/api/v1/personalization/activity"}[10m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          domain: personalization
+        annotations:
+          summary: "활동이 컨텍스트에 반영되지 않고 있음"
+          description: "활동 쓰기는 들어오는데 마지막 반영이 60초를 넘었습니다. CDC 커넥터/binlog·컨슈머 빈·브로커를 확인하세요 — 셋 다 RUNNING 으로 보이면서 조용히 멈출 수 있습니다(#215). 기동 후 한 번도 반영하지 못한 상태는 나이 게이지가 0이라 이 규칙이 잡지 못합니다(지표가 0으로 노출되는지에 따라 별도 규칙이 필요)."
+
   # 고정 임계값이 못 보는 것 — <이 시간대에는 원래 이 정도였는가>.
   #
   # 위의 95% 는 하루 종일 같은 숫자다. 그런데 결제는 요일과 시간대로 모양이 크게 다르다.

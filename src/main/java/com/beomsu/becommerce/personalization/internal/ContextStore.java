@@ -176,7 +176,13 @@ public class ContextStore {
             // 스크립트는 항상 값을 돌려준다 — null 이면 저장소가 응답하지 않은 것이다.
             throw new IllegalStateException("컨텍스트 적용 결과가 비었다. userId=" + event.userId());
         }
-        return decode(merged);
+        OnlineContext context = decode(merged);
+
+        // 활동 반영이 살아 있다는 증거를 여기서만 남긴다. CDC 로 전달하면 커넥터·컨슈머·브로커 중
+        // 하나가 죽어도 겉으로는 조용하므로(#215), "반영이 멈췄다"를 잡을 유일한 지점이 apply 다.
+        metrics.contextApplied();
+
+        return context;
     }
 
     private Optional<OnlineContext> raw(long userId) {
