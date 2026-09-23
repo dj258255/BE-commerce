@@ -7,6 +7,19 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — 홈을 여러 쪽으로 나눠 만든다 (#237)
+
+### 변경
+
+- 홈 응답에 `page`·`nextCursor` 가 붙는다. `?cursor=` 로 다음 쪽을 받으면 **대분류별 인기 행**이 나온다
+- 다음 쪽은 앞 쪽에서 보여 준 상품을 다시 내지 않는다(커서가 들고 다닌다)
+- 1쪽을 본 뒤에 본 상품의 대분류가 다음 쪽 첫 행이 된다(`CATEGORY_POPULAR_SESSION`)
+- 인기 표에 거의 없는 대분류(아동복)는 그 대분류의 신상품으로 채운다
+
+### 왜
+
+[ADR-052](docs/adr/ADR-052-home-pagination-cursor.md) · [실측](docs/performance/home-pagination.md)
+
 ## Unreleased — 상품 검색을 앱 안 Lucene 으로 바꾼다 (#236)
 
 ### 변경
