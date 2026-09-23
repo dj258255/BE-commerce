@@ -17,7 +17,15 @@ package com.beomsu.becommerce.recommendation.internal;
  *   <li>{@link #AT_RESPONSE} — 응답을 내보내기 <b>직전에</b> 읽어서 걸러낸다. 개념상 가장 강하지만
  *       <b>모델 반환과 응답 사이에 다른 일이 없으면 전자와 같다</b> — 그 사실을 숨기지 않으려고
  *       둘을 나눠 두었다(측정이 같게 나오면 같다고 적는다)</li>
+ *   <li>{@link #DURING_GENERATION} — 생성 <b>중에</b> 막는다. 위 넷은 전부 <b>만든 뒤 걷어내므로
+ *       목록이 짧아지는데</b>, 이것만 짧아지지 않는다. 대가는 둘이다 — 건너뛴 후보마다 가용성을
+ *       더 읽고(위반율이 높을수록 비싸다), <b>모델이 제약을 받을 수 있어야 한다</b>
+ *       ({@link ModelClient#supportsConstrainedGeneration()}). 못 받는 구현이면 호출자가
+ *       {@link #AFTER_GENERATION}으로 <b>내려앉고 그 사실을 지표로 남긴다</b></li>
  * </ul>
+ *
+ * <p><b>앞의 넷과 마지막 하나는 축이 다르다.</b> 넷은 "언제 확인하는가"이고, 마지막은
+ * "어디서 막는가"다. 그래서 같은 enum에 두되 비교할 때 그 차이를 적는다.
  *
  * <p><b>"강하게"와 "정확하게"는 다르다.</b> 확인을 여러 번 해도 <b>마지막 확인과 응답 사이</b>는
  * 언제나 존재한다. 그 창을 0으로 만드는 방법은 확인을 늘리는 것이 아니라
@@ -29,7 +37,8 @@ public enum ConstraintPolicy {
     NONE,
     AT_GENERATION_START,
     AFTER_GENERATION,
-    AT_RESPONSE;
+    AT_RESPONSE,
+    DURING_GENERATION;
 
     /** 모델 호출 전에 스냅샷을 뜨는가. */
     public boolean snapshotsBeforeGeneration() {
@@ -44,5 +53,10 @@ public enum ConstraintPolicy {
     /** 확인을 하는가(= NONE이 아닌가). */
     public boolean checks() {
         return this != NONE;
+    }
+
+    /** 생성 중에 막는가 — 만든 뒤 걷어내는 것이 아니라. */
+    public boolean blocksDuringGeneration() {
+        return this == DURING_GENERATION;
     }
 }

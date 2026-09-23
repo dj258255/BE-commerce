@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.function.LongPredicate;
 
 /**
  * 실험용 모델 스텁 — <b>용량과 지연을 설정으로 고정한 모델 서버</b>.
@@ -82,7 +83,7 @@ public class StubModelClient implements ModelClient {
             if (effectiveLatencyMs > 0) {
                 Thread.sleep(effectiveLatencyMs);
             }
-            return rank(userId, recentItemIds);
+            return rank(userId, recentItemIds, ALLOW_ALL);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ModelBusyException("모델 추론 중 인터럽트됐다");
@@ -91,17 +92,23 @@ public class StubModelClient implements ModelClient {
         }
     }
 
+    /** 제약이 없을 때. 상수로 두어 기존 경로에 분기가 안 생기게 한다. */
+    private static final LongPredicate ALLOW_ALL = id -> true;
+
     /**
      * 결정적 순위 — 같은 입력이면 같은 출력이다(실험이 흔들리지 않아야 한다).
      * 최근 본 것을 앞에 두고, 모자라면 인기 상품으로 채운다(활동이 없는 사용자도 답이 나온다).
+     *
+     * <p>{@code allowed}가 거부한 후보는 <b>건너뛰고 다음으로 채운다</b>. 그래서 목록이 짧아지지
+     * 않는다 — 사후 필터와 갈리는 지점이 여기다. 대가는 <b>건너뛴 만큼 더 묻는 것</b>이다.
      */
-    private List<Long> rank(long userId, List<Long> recentItemIds) {
+    private List<Long> rank(long userId, List<Long> recentItemIds, LongPredicate allowed) {
         List<Long> ranked = new ArrayList<>(resultSize);
         for (Long itemId : recentItemIds) {
             if (ranked.size() >= resultSize) {
                 break;
             }
-            if (!ranked.contains(itemId)) {
+            if (!ranked.contains(itemId) && allowed.test(itemId)) {
                 ranked.add(itemId);
             }
         }
@@ -117,10 +124,46 @@ public class StubModelClient implements ModelClient {
         int offset = (int) Math.floorMod(userId, popular.size());
         for (int i = 0; ranked.size() < resultSize && i < popular.size(); i++) {
             Long candidate = popular.get((offset + i) % popular.size());
-            if (!ranked.contains(candidate)) {
+            if (!ranked.contains(candidate) && allowed.test(candidate)) {
                 ranked.add(candidate);
             }
         }
         return List.copyOf(ranked);
+    }
+
+    /**
+     * 이 스텁은 생성 중 제약을 <b>받을 수 있다</b>. 같은 프로세스 안에 있으니까다.
+     *
+     * <p><b>실제 모델 서버는 대개 못 한다</b> — 우리 재고를 알 이유가 없다. 그 차이가 이 실험이
+     * 재려는 결합도 비용이고, 그래서 이 값을 계약에 드러내 두었다.
+     */
+    @Override
+    public boolean supportsConstrainedGeneration() {
+        return true;
+    }
+
+    @Override
+    public List<Long> recommend(long userId, List<Long> recentItemIds, LongPredicate allowed) {
+        boolean acquired;
+        try {
+            acquired = capacity.tryAcquire(busyTimeoutMs, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ModelBusyException("모델 대기 중 인터럽트됐다");
+        }
+        if (!acquired) {
+            throw new ModelBusyException("모델 용량 대기 초과: " + busyTimeoutMs + "ms");
+        }
+        try {
+            if (effectiveLatencyMs > 0) {
+                Thread.sleep(effectiveLatencyMs);
+            }
+            return rank(userId, recentItemIds, allowed);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ModelBusyException("모델 추론 중 인터럽트됐다");
+        } finally {
+            capacity.release();
+        }
     }
 }

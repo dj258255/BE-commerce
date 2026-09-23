@@ -81,12 +81,15 @@ def build_rows(raw_dir):
             "changes": value(summary, "constraint_window_changes", "avg"),
             "ageMed": value(summary, "constraint_snapshot_age_ms", "med"),
             "soldOutMed": value(summary, "constraint_sold_out", "med"),
+            "itemsMed": value(summary, "recommend_item_count", "med"),
+            "fullList": rate_value(summary, "recommend_full_list"),
             "control": rate_value(summary, "constraint_control_ok"),
             "flips": value(summary, "constraint_flips", "count"),
             "iters": value(summary, "iterations", "count"),
             "dropped": value(summary, "dropped_iterations", "count"),
         })
-    order = {"NONE": 0, "AT_GENERATION_START": 1, "AFTER_GENERATION": 2, "AT_RESPONSE": 3}
+    order = {"NONE": 0, "AT_GENERATION_START": 1, "AFTER_GENERATION": 2, "AT_RESPONSE": 3,
+             "DURING_GENERATION": 4}
     rows.sort(key=lambda r: (order.get(r["policy"], 9), r["pool"], r["latency"], r["flip"]))
     return rows
 
@@ -100,13 +103,14 @@ def main():
         print("원자료가 없다", file=sys.stderr)
         return 1
 
-    print("| 정책 | 후보 집합 | 모델 지연 | 변화율 | **위반율** | 응답당 위반 | coverage | serving 중앙 | serving p95 | **확인 중앙** | 계기 중앙 | 확인이 뺀 개수 | 창 안 변경 | stale 창 중앙 | 품절 수 중앙 | 제어(K 유지) | 표본 | 부하 미달 |")
-    print("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+    print("| 정책 | 후보 집합 | 모델 지연 | 변화율 | **위반율** | 응답당 위반 | coverage | serving 중앙 | serving p95 | **확인 중앙** | 계기 중앙 | 확인이 뺀 개수 | **목록 길이 중앙** | **다 채운 비율** | 창 안 변경 | stale 창 중앙 | 품절 수 중앙 | 제어(K 유지) | 표본 | 부하 미달 |")
+    print("|---|---|" + "---:|" * 18)
     for r in rows:
         print(f"| `{r['policy']}` | {r['pool']} | {r['latency']}ms | {r['flip']}/s | **{pct(r['violation'])}** | "
               f"{num(r['violationsPer'])} | "
               f"{pct(r['coverage'])} | {num(r['servingMed'])}ms | {num(r['servingP95'])}ms | "
-              f"**{num(r['checkMed'])}ms** | {num(r['auditMed'])}ms | {num(r['filtered'])} | {num(r['changes'])} | "
+              f"**{num(r['checkMed'])}ms** | {num(r['auditMed'])}ms | {num(r['filtered'])} | "
+              f"**{num(r['itemsMed'], 1)}** | **{pct(r['fullList'])}** | {num(r['changes'])} | "
               f"{num(r['ageMed'])}ms | {num(r['soldOutMed'])}/{r['target']} | {pct(r['control'])} | "
               f"{num(r['iters'], 0)} | {num(r['dropped'], 0)} |")
     return 0

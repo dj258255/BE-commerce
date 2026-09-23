@@ -97,7 +97,7 @@ public class RecommendationService {
         // ④ 모델
         long modelStartedAt = System.nanoTime();
         try {
-            List<Long> items = modelClient.recommend(userId, recent);
+            List<Long> items = callModel(userId, recent);
             metrics.servedByModel();
             return finish(userId, items, RecommendationView.SOURCE_MODEL, null,
                     recent.size(), contextNanos, elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt);
@@ -115,6 +115,33 @@ public class RecommendationService {
         } finally {
             gate.release();
             metrics.modelCallTimer().record(Duration.ofNanos(System.nanoTime() - modelStartedAt));
+        }
+    }
+
+    /**
+     * 모델을 부른다. {@code DURING_GENERATION}이면 <b>제약을 넘겨</b> 생성 중에 막는다.
+     *
+     * <p><b>못 받는 구현이면 넘기지 않는다.</b> 넘기고 넘겼다고 믿는 것이 가장 나쁘다 — 위반이
+     * 조용히 나간다. 그래서 {@link ModelClient#supportsConstrainedGeneration()}을 보고,
+     * 못 하면 사후 필터로 <b>내려앉되 그 사실을 지표로 남긴다</b>. 조용한 강등은 강등이 아니라 사고다.
+     */
+    private List<Long> callModel(long userId, List<Long> recent) {
+        if (!constraintPolicy.blocksDuringGeneration()) {
+            return modelClient.recommend(userId, recent);
+        }
+        if (!modelClient.supportsConstrainedGeneration()) {
+            metrics.constrainedGenerationUnsupported();
+            return modelClient.recommend(userId, recent);
+        }
+        // 후보 하나를 물을 때마다 한 번 읽는다. 이 수가 곧 이 방식의 비용이고, 위반율에 비례해 는다.
+        java.util.concurrent.atomic.AtomicInteger asked = new java.util.concurrent.atomic.AtomicInteger();
+        try {
+            return modelClient.recommend(userId, recent, itemId -> {
+                asked.incrementAndGet();
+                return constraintChecker.isAvailable(itemId);
+            });
+        } finally {
+            metrics.constrainedGenerationLookups(asked.get());
         }
     }
 
@@ -156,6 +183,16 @@ public class RecommendationService {
                 used = second.snapshot();
                 finalItems = second.items();
                 filtered = first.removed() + second.removed();
+            }
+            case DURING_GENERATION -> {
+                // 생성 중에 막았어도 <b>출력을 한 번 더 본다.</b> 두 가지 이유다.
+                //   ① 모델이 제약을 못 받아 내려앉았을 수 있다 — 그러면 이 필터가 유일한 보호다
+                //   ② 받았더라도 지켰는지는 모델의 자기 보고다. 이 저장소는 모델 출력을 믿지 않는다
+                // 모델이 제대로 막았으면 여기서 0 개가 빠지고, 그 0 이 곧 검증이다.
+                ConstraintChecker.Filtered result = constraintChecker.filterNow(items);
+                used = result.snapshot();
+                finalItems = result.items();
+                filtered = result.removed();
             }
         }
 

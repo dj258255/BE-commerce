@@ -28,6 +28,8 @@ const FLIP_RATE = Number(__ENV.FLIP_RATE || 8);
 const FLIP_VUS = Number(__ENV.FLIP_VUS || 3);
 const VUS = Number(__ENV.VUS || 20);
 const DURATION = __ENV.DURATION || '60s';
+// 서버의 app.recommendation.result-size 와 같아야 한다. 다르면 "다 채웠는가" 판정이 틀어진다.
+const RESULT_SIZE = Number(__ENV.RESULT_SIZE || 12);
 const WARMUP_MS = Number(__ENV.WARMUP_MS || 15000);
 const SOLD_OUT_TARGET = Number(__ENV.SOLD_OUT_TARGET || 6);
 
@@ -43,6 +45,10 @@ const coverage = new Rate('recommend_coverage');
 const flips = new Counter('constraint_flips');
 const soldOut = new Trend('constraint_sold_out', true);      // 응답 시점의 품절 집합 크기
 const control = new Rate('constraint_control_ok');           // 그 크기가 K 로 유지됐는가
+// E4-b 의 핵심 지표. 사후 필터는 걸러낸 만큼 목록이 짧아지고, 생성 중 차단은 다음 후보로 메운다.
+// 위반율만 보면 둘이 같아 보이는데(둘 다 0%), 사용자가 보는 화면은 다르다.
+const itemCount = new Trend('recommend_item_count', true);
+const fullList = new Rate('recommend_full_list');            // 요청한 개수를 그대로 채웠는가
 
 export const options = {
   setupTimeout: '240s',
@@ -107,6 +113,9 @@ export function recommend(data) {
       checkMs.add(body.checkMs === null ? 0 : body.checkMs);
       auditedMs.add(body.auditMs);
       filteredTrend.add(body.filteredByConstraint || 0);
+      const n = (body.items || []).length;
+      itemCount.add(n);
+      fullList.add(n >= RESULT_SIZE);
       windowChanges.add(body.changesInWindow === null ? 0 : body.changesInWindow);
       snapshotAge.add(body.snapshotAgeMs === null ? -1 : body.snapshotAgeMs);
     }
