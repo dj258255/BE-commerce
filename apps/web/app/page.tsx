@@ -49,7 +49,7 @@ export default async function HomePage() {
             <code>{res.error}</code>
           </p>
           <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>
-            기동: <span className="mono">docker compose up -d</span> 후 <span className="mono">./gradlew bootRun</span>
+            기동: <span className="mono">docker compose up -d</span> 후 <span className="mono">./gradlew -p commerce bootRun</span>
           </p>
         </section>
       )}

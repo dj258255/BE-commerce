@@ -20,7 +20,7 @@ Closes #
 
 <!-- 실행한 명령과 확인한 결과. 응답 코드만이 아니라 상태 확정까지. -->
 
-- [ ] `./gradlew clean test` 통과
+- [ ] `./gradlew -p commerce clean test` 통과
 - [ ] (스키마 변경 시) Flyway 마이그레이션 + 실기동 validate 확인
 - [ ] (문서 변경 시) `ErdDocMatchesSchemaTest`·`ApiSpecErrorCodesTest` 대조 통과
 - [ ] (프론트 변경 시) 실제 API 호출로 화면 동작 확인

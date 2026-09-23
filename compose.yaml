@@ -161,7 +161,7 @@ services:
     profiles: ["app"]
     build:
       context: .
-      dockerfile: consumer-app/Dockerfile
+      dockerfile: commerce/consumer-app/Dockerfile
     environment:
       KAFKA_BOOTSTRAP: kafka:29092
     depends_on:

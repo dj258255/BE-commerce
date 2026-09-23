@@ -86,7 +86,7 @@ case "${1:-up}" in
       lsof -ti:8080 | xargs -r kill -9 2>/dev/null || true
       # 초안 고정은 모델을 부르므로 provider 를 켠 채로 띄운다. 템플릿 쪽은 항상 있다.
       APP_ASSIST_DRAFT_PROVIDER=${APP_ASSIST_DRAFT_PROVIDER:-ollama} \
-        nohup ./gradlew bootRun --args='--spring.profiles.active=local' > /tmp/pay-app.log 2>&1 &
+        nohup ./gradlew -p commerce bootRun --args='--spring.profiles.active=local' > /tmp/pay-app.log 2>&1 &
     fi
     ready=no
     for _ in $(seq 1 60); do
@@ -112,7 +112,7 @@ case "${1:-up}" in
     fi
 
     # 초안을 미리 고정한다. 블라인드 답은 안 채우므로 화면은 1단계부터 시작한다.
-    ./gradlew captureTest --tests '*BlindReviewSeedTest*' --rerun -q \
+    ./gradlew -p commerce captureTest --tests '*BlindReviewSeedTest*' --rerun -q \
       -Dseed.count="$COUNT" -Dseed.reviewer="${ADMIN_USER:-admin}" || \
       echo "  (초안 고정 실패 — 앱 로그를 본다. 리뷰는 그래도 되지만 건마다 30초 기다린다)"
 

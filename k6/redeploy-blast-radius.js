@@ -14,7 +14,7 @@ import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
  *
  * 전제: 실험 1과 동일(compose 기동, APP_RATELIMIT_ENABLED=false bootRun).
  * 재시작은 이 스크립트가 아니라 셸에서 수행한다:
- *   sleep 60 && kill <PID> && APP_RATELIMIT_ENABLED=false ./gradlew bootRun
+ *   sleep 60 && kill <PID> && APP_RATELIMIT_ENABLED=false ./gradlew -p commerce bootRun
  *
  * 판독: 실패 로그의 최초~최후 타임스탬프 = 다운타임 윈도. 재기동 직후 구간의
  * p95(워밍업 스파이크)는 Prometheus로 본다. graceful shutdown(20s 드레이닝)이

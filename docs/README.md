@@ -127,11 +127,12 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-046](adr/ADR-046-synthetic-reviews.md) | 합성 리뷰를 쓰되, 집계하지 않는다 — 읽는 것이지 재는 것이 아니다 |
 | [ADR-047](adr/ADR-047-cdc-for-activity-not-outbox.md) | CDC 는 활동 로그에 쓰고, 아웃박스 릴레이는 그대로 폴링으로 둔다 |
 | [ADR-048](adr/ADR-048-als-model-not-adopted.md) | 학습한 ALS 모델을 넣지 않는다 — 기준선을 못 넘었다 |
+| [ADR-049](adr/ADR-049-repo-layout-by-area.md) | 저장소를 영역으로 나누되, 같이 쓰는 것은 루트에 둔다 |
 
 ## 보조 문서
 
 - [관측성 구성](../monitoring/README.md): Prometheus·Grafana·Alertmanager 실행과 지표 정의
-- [Kafka 소비자 데모](../consumer-app/README.md): 프로세스 밖 이벤트 소비 예제
+- [Kafka 소비자 데모](../commerce/consumer-app/README.md): 프로세스 밖 이벤트 소비 예제
 - [FDS 학습기 대조](../tools/fds/README.md): Java 학습기와 scikit-learn 기준자 비교
 
 ## 문서 원칙

@@ -6,12 +6,12 @@ import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
  * 체크아웃 부하테스트 — 주문 생성 → 결제 승인 흐름을 실제 사용자 시나리오로 두들긴다.
  *
  * 전제:
- *   1. 앱 실행 (docker compose up 으로 MySQL/Redis 띄운 뒤 ./gradlew bootRun)
+ *   1. 앱 실행 (docker compose up 으로 MySQL/Redis 띄운 뒤 ./gradlew -p commerce bootRun)
  *   2. 상품/재고 시드: products(1, 'A', 10000), stock(1, 넉넉히)
  *   3. k6 run k6/checkout-load.js
  *
  * 성능 측정 시 rate limiter를 끄고 돌린다:
- *   APP_RATELIMIT_ENABLED=false ./gradlew bootRun
+ *   APP_RATELIMIT_ENABLED=false ./gradlew -p commerce bootRun
  * 이 스크립트는 데모 유저 1명이 주문→승인을 반복하므로, rate limiter(기본 on, per-user 5/s)에
  * 걸려 429가 섞이면 처리량·지연 측정이 왜곡된다. 순수 처리 성능을 보려면 rate limit을 끈다.
  * (반대로 spike-test는 rate limit을 켠 채 돌려 폭주의 몇 %를 429로 쳐내는지=shed를 측정한다.)

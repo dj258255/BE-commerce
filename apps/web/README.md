@@ -11,7 +11,7 @@ npm run dev                 # 3000
 ```
 
 - 개요: http://localhost:3000
-- 상점 카탈로그는 Spring API가 있어야 뜬다: `docker compose up -d` 후 리포 루트에서 `./gradlew bootRun`
+- 상점 카탈로그는 Spring API가 있어야 뜬다: `docker compose up -d` 후 리포 루트에서 `./gradlew -p commerce bootRun`
 - 개인화 화면은 백엔드가 아직 없어 **스텁**으로 돈다(아래 참고)
 
 ## 데이터 출처 (API_MODE)

@@ -11,10 +11,12 @@ WORKDIR /workspace
 
 COPY . .
 
-# 테스트는 CI가 돈다(./gradlew clean test). 여기서는 기동할 jar만 만든다.
+# 테스트는 CI가 돈다(./gradlew -p commerce clean test). 여기서는 기동할 jar만 만든다.
 # Gradle 캐시는 빌드 간에 마운트로 재사용한다 — 안 그러면 매 빌드가 의존성을 다시 받는다.
+#
+# 빌드 컨텍스트는 저장소 루트이고 Gradle 프로젝트 루트는 commerce/ 다. wrapper 는 루트에 있다.
 RUN --mount=type=cache,target=/root/.gradle \
-    ./gradlew --no-daemon bootJar -x test
+    ./gradlew --no-daemon -p commerce bootJar -x test
 
 # ── 실행 ─────────────────────────────────────────────────────────────────────
 FROM eclipse-temurin:21-jre AS runtime
@@ -26,7 +28,7 @@ RUN apt-get update \
  && useradd --system --uid 1001 appuser
 
 WORKDIR /app
-COPY --from=build /workspace/build/libs/*.jar /app/app.jar
+COPY --from=build /workspace/commerce/build/libs/*.jar /app/app.jar
 
 # root로 돌리지 않는다.
 USER appuser

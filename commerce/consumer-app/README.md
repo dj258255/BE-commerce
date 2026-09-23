@@ -4,7 +4,7 @@
 
 메인 BE-commerce 앱이 `@Externalized`로 Kafka에 내보내는 `payment.confirmed` / `payment.canceled`
 토픽을 구독하는 **별도 프로세스** 앱이다. 도메인 코드를 한 줄도 고치지 않고 다른 프로세스가
-결제 이벤트를 받는 것을 실증한다. [ADR-005](../docs/adr/ADR-005-event-externalization-kafka.md)의
+결제 이벤트를 받는 것을 실증한다. [ADR-005](../../docs/adr/ADR-005-event-externalization-kafka.md)의
 "프로세스 밖 소비자" 약속을 이행한 것이다.
 
 > 메인 빌드에 영향을 주지 않도록 **독립 Gradle 프로젝트**로 둔다
@@ -14,8 +14,8 @@
 
 ```bash
 docker compose up -d kafka mysql redis
-SPRING_PROFILES_ACTIVE=kafka ./gradlew bootRun            # 메인 앱(외부화 on)
-./gradlew -p consumer-app bootRun                          # 소비자 앱(별도 프로세스)
+SPRING_PROFILES_ACTIVE=kafka ./gradlew -p commerce bootRun            # 메인 앱(외부화 on)
+./gradlew -p commerce/consumer-app bootRun                          # 소비자 앱(별도 프로세스)
 ```
 
 결제 승인/취소가 일어나면 소비자 콘솔에 `[정산알림] 결제 완료 수신 orderNo=... amount=...`

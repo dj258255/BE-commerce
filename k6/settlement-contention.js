@@ -19,7 +19,7 @@ import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
  * 동시성이라, limiter를 끈 단일 유저 부하는 비현실적 모델이다). 실사용 트래픽 = 다수 사용자.
  *
  * 전제:
- *   1. docker compose up -d && APP_RATELIMIT_ENABLED=false ./gradlew bootRun
+ *   1. docker compose up -d && APP_RATELIMIT_ENABLED=false ./gradlew -p commerce bootRun
  *      (limiter는 배치 경합만 남기고 유입 제어 변수를 제거하기 위해 끈다)
  *   2. 시드: docker compose exec -T mysql mysql -ubecommerce -pbecommerce becommerce < k6/seed-settlement-contention.sql
  *   3. 상품/재고 시드: products(1), stock(1) — checkout-load.js와 동일 전제

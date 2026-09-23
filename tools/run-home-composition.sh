@@ -11,7 +11,7 @@
 # 심으면 "최근 본 상품" 행이 통째로 비고, 그러면 규칙이 아니라 **id 공간의 불일치**를 재게 된다.
 #
 # 사용:
-#   ./gradlew bootJar
+#   ./gradlew -p commerce bootJar
 #   bash tools/run-home-composition.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -32,11 +32,11 @@ MIN_ITEMS=${MIN_ITEMS:-3}
 MAX_PER_CATEGORY=${MAX_PER_CATEGORY:-3}
 PORT=${PORT:-18080}
 BASE="http://localhost:${PORT}"
-JAR=build/libs/be-commerce-0.0.1-SNAPSHOT.jar
+JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 JAVA="$(/usr/libexec/java_home -v 21)/bin/java"
 JQ() { python3 -c "import sys,json;d=json.load(sys.stdin);print($1)" 2>/dev/null || echo ""; }
 
-[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew bootJar 를 먼저 돌려라"; exit 1; }
+[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew -p commerce bootJar 를 먼저 돌려라"; exit 1; }
 
 APP=""
 cleanup() { [ -n "$APP" ] && kill "$APP" 2>/dev/null || true; APP=""; }

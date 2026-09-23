@@ -68,7 +68,7 @@ MySQL 8.4 InnoDB의 별도 `hotbench` 컨테이너에서 worker 8개가 worker�
 재현 명령:
 
 ```bash
-./gradlew integrationTest --no-daemon --console=plain \
+./gradlew -p commerce integrationTest --no-daemon --console=plain \
   --tests 'com.beomsu.becommerce.ledger.LedgerHotEntityContentionMySqlTest'
 ```
 

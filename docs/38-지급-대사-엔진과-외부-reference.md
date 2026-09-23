@@ -34,7 +34,7 @@
 
 ## 구현과 검증
 
-- 구현: `src/main/java/com/beomsu/becommerce/settlement/internal/PayoutReconciliationEngine.java`
+- 구현: `commerce/src/main/java/com/beomsu/becommerce/settlement/internal/PayoutReconciliationEngine.java`
 - 상태: `PayoutReconciliationStatus`
 - 검증: `PayoutReconciliationEngineTest`
 - 확인한 경우: exact match, pending, signed amount mismatch, reference 누락·중복, 양쪽 누락,

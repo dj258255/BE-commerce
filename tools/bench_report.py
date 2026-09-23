@@ -42,7 +42,7 @@ def main(run_dir):
         print(env_file.read_text(encoding='utf-8').rstrip())
         print("```\n")
         print("> 이 수치는 위 환경의 값이다. 다른 환경 수치와 직접 비교하지 말고,")
-        print("> 같은 스크립트(`./gradlew bench`)로 그 환경에서 다시 재라.\n")
+        print("> 같은 스크립트(`./gradlew -p commerce bench`)로 그 환경에서 다시 재라.\n")
 
     summaries = sorted(d.glob('*-summary.json'))
     if not summaries:

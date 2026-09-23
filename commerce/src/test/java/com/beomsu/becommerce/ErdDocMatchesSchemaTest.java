@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ErdDocMatchesSchemaTest {
 
-    private static final Path ERD = Path.of("docs/09-ERD-설계.md");
+    private static final Path ERD = RepoRoot.resolve("docs/09-ERD-설계.md");
     private static final Path MIGRATIONS = Path.of("src/main/resources/db/migration");
 
     /** 실물이 아님을 밝히는 표시. 이 중 하나가 같은 줄에 있으면 통과시킨다. */

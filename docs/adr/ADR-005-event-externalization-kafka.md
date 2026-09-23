@@ -45,4 +45,4 @@ public record PaymentCanceledEvent(String orderNo, Long paymentId, long cancelAm
 
 ## 실증
 
-- 프로세스 밖 소비자 실증: 별도 프로세스 앱 [`consumer-app/`](../../consumer-app/README.md)(독립 Gradle 프로젝트)이 `payment.confirmed`/`payment.canceled`를 구독한다. 도메인 코드는 무수정이다.
+- 프로세스 밖 소비자 실증: 별도 프로세스 앱 [`consumer-app/`](../../commerce/consumer-app/README.md)(독립 Gradle 프로젝트)이 `payment.confirmed`/`payment.canceled`를 구독한다. 도메인 코드는 무수정이다.

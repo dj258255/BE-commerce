@@ -41,8 +41,8 @@
 
 ```bash
 export JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home
-./gradlew clean test --console=plain          # 기본 스위트(chaos/integration 태그 제외)
-./gradlew -p consumer-app build               # 독립 프로젝트
+./gradlew -p commerce clean test --console=plain          # 기본 스위트(chaos/integration 태그 제외)
+./gradlew -p commerce/consumer-app build               # 독립 프로젝트
 ```
 
 - 문서와 코드가 갈라지면 테스트가 먼저 막는다 — `ErdDocMatchesSchemaTest`(스키마↔ERD),
@@ -52,12 +52,18 @@ export JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Cont
   읽어, 실행하기로 한 테스트가 실제로 돌았는지까지 확인한다.
 
   ```bash
-  ./gradlew test
-  python3 tools/check_skipped_tests.py build/test-results/test ci/allowed-skips.txt
+  ./gradlew -p commerce test
+  python3 tools/check_skipped_tests.py commerce/build/test-results/test ci/allowed-skips.txt
   ```
 
   의도적으로 건너뛰는 테스트는 `ci/allowed-skips.txt`에 **이유와 함께** 적는다.
   이유 없는 예외는 다음 사람이 못 지운다.
+- **깨진 링크는 아무도 안 잡는다.** 디렉터리를 옮기면 문서 링크는 조용히 404가 된다 —
+  빌드도 테스트도 안 본다. 그래서 검사로 고정한다.
+
+  ```bash
+  python3 tools/check_doc_links.py
+  ```
 - 실 인프라가 필요한 검증은 별도 태스크로 분리한다(`integrationTest`, `chaosTest`, `bench`).
 - 스키마를 바꾸면 Flyway 마이그레이션을 추가하고 `ddl-auto=validate`로 실기동을 확인한다.
 

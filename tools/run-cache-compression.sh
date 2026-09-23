@@ -10,7 +10,7 @@
 # 버티지 못한다(그 사실도 리포트에 적는다).
 #
 # 사용:
-#   ./gradlew bootJar
+#   ./gradlew -p commerce bootJar
 #   bash tools/run-cache-compression.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -26,10 +26,10 @@ COUNT=${COUNT:-500}
 THRESHOLD=${THRESHOLD:-0}          # 임계값 자체는 별도 실험이다 — 여기선 0(항상 압축)으로 코덱을 비교
 PORT=${PORT:-18080}
 BASE="http://localhost:${PORT}"
-JAR=build/libs/be-commerce-0.0.1-SNAPSHOT.jar
+JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 JAVA="$(/usr/libexec/java_home -v 21)/bin/java"
 
-[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew bootJar 를 먼저 돌려라"; exit 1; }
+[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew -p commerce bootJar 를 먼저 돌려라"; exit 1; }
 
 APP=""
 cleanup() { [ -n "$APP" ] && kill "$APP" 2>/dev/null || true; APP=""; }

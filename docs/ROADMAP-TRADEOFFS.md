@@ -53,9 +53,9 @@
 ### 지금 상태 (2026-09-19 확인)
 
 ```bash
-grep -rn "잔액" src/main/java/com/beomsu/becommerce/ledger/package-info.java
-grep -rn "SUM(" src/main/java/com/beomsu/becommerce/ledger/            # 없음
-grep -n "create table ledger_entries" -A 8 src/main/resources/db/migration/V1__init.sql
+grep -rn "잔액" commerce/src/main/java/com/beomsu/becommerce/ledger/package-info.java
+grep -rn "SUM(" commerce/src/main/java/com/beomsu/becommerce/ledger/            # 없음
+grep -n "create table ledger_entries" -A 8 commerce/src/main/resources/db/migration/V1__init.sql
 ```
 
 - `ledger/package-info.java` 가 **"잔액은 엔트리의 합으로 파생된다"** 고 이미 선언한다. 스냅샷 컬럼은 없다
@@ -106,7 +106,7 @@ grep -n "create table ledger_entries" -A 8 src/main/resources/db/migration/V1__i
 ### 지금 상태
 
 ```bash
-grep -rn "@Externalized" src/main/java --include=*.java | head
+grep -rn "@Externalized" commerce/src/main/java --include=*.java | head
 git show msa-extraction:contracts/src/main/java/com/beomsu/paycontracts/PayTopics.java
 ```
 
@@ -146,8 +146,8 @@ git show msa-extraction:contracts/src/main/java/com/beomsu/paycontracts/PayTopic
 ### 지금 상태
 
 ```bash
-grep -rn "groupingBy(SettlementItem::getSellerId)" src/main/java
-grep -n "read-chunk-size\|settlement-max-pages" src/main/resources/application.yml
+grep -rn "groupingBy(SettlementItem::getSellerId)" commerce/src/main/java
+grep -n "read-chunk-size\|settlement-max-pages" commerce/src/main/resources/application.yml
 ```
 
 - 정산 배치는 한 틱에 최대 `settlement-max-pages × read-chunk-size` 건을 읽고 **판매자별로 가른다**. 읽는 순서는 `id` 오름차순이다
@@ -192,7 +192,7 @@ grep -n "read-chunk-size\|settlement-max-pages" src/main/resources/application.y
 
 ```bash
 ls docs/26-*.md docs/27-*.md 2>/dev/null
-grep -rn "threshold\|임계" src/main/java/com/beomsu/becommerce/fraud/ | head
+grep -rn "threshold\|임계" commerce/src/main/java/com/beomsu/becommerce/fraud/ | head
 ```
 
 - 규칙별 오탐과 켤 조건이 [docs/26](26-FDS-규칙별-오탐.md)·[docs/27](27-FDS-모델-평가와-켤-조건.md) 에 있다. ML 점수는 **심사 큐 정렬에만** 쓰고 결제를 막지 않는다. **FDS 전용 ADR 은 아직 없다** — 이 항목의 산출물이 그 첫 ADR 이 된다
@@ -286,8 +286,8 @@ grep -rn "threshold\|임계" src/main/java/com/beomsu/becommerce/fraud/ | head
 ### 지금 상태부터 확인한다
 
 ```bash
-grep -n "republish-outstanding-events-on-restart" src/main/resources/application.yml
-grep -rn "@Externalized" src/main/java | head
+grep -n "republish-outstanding-events-on-restart" commerce/src/main/resources/application.yml
+grep -rn "@Externalized" commerce/src/main/java | head
 ```
 
 **이 자리는 이미 설계돼 있다.** 이벤트 발행이 Spring Modulith Event Publication Registry(= 트랜잭셔널 아웃박스)를 타므로, DB 커밋과 발행 기록이 **같은 트랜잭션**이다. 재기동 시 미완료 이벤트를 다시 발행하는 설정(`republish-outstanding-events-on-restart: true`)도 켜져 있다.

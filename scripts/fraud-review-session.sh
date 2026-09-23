@@ -116,7 +116,7 @@ case "${1:-up}" in
       # 모델은 켜고 화면은 템플릿 그대로 둔다. 이 둘을 붙이면 근거 모으는 순간 켜 버리는 셈이다.
       APP_ASSIST_FRAUD_REVIEW_MODEL_ENABLED=true \
       APP_ASSIST_FRAUD_REVIEW_PROVIDER=template \
-        nohup ./gradlew bootRun --args='--spring.profiles.active=local' > /tmp/pay-app.log 2>&1 &
+        nohup ./gradlew -p commerce bootRun --args='--spring.profiles.active=local' > /tmp/pay-app.log 2>&1 &
     fi
     ready=no
     for _ in $(seq 1 60); do

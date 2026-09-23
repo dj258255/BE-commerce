@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ApiSpecErrorCodesTest {
 
-    private static final Path SPEC = Path.of("docs/10-API-스펙.md");
+    private static final Path SPEC = RepoRoot.resolve("docs/10-API-스펙.md");
     private static final Path SRC = Path.of("src/main/java");
 
     /** 표의 {@code | 400 | `CODE` | 설명 |} 행에서 코드만 뽑는다. */

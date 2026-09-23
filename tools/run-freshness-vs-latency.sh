@@ -9,7 +9,7 @@
 #   WAIT_LIST="0 100" DURATION=30s bash tools/run-freshness-vs-latency.sh   # 좁혀서 빠르게
 #   TRANSPORTS="IN_PROCESS" DELAY_LIST="0 300" bash ...       # 한 축만
 #
-# 전제: docker compose up -d (mysql·redis·kafka) · ./gradlew bootJar
+# 전제: docker compose up -d (mysql·redis·kafka) · ./gradlew -p commerce bootJar
 #
 # 설계 요점(첫 시도에서 실패한 것들 — 다시 밟지 않도록 적어 둔다):
 #  ① 토픽을 **지우지 않는다.** 소비자가 구독 중인 토픽을 지우면 메타데이터가 깨져(WARN
@@ -50,11 +50,11 @@ CONNECT_URL=${CONNECT_URL:-http://localhost:8083}
 CONNECTOR_NAME=${CONNECTOR_NAME:-user-activity-cdc}
 CONNECTOR_JSON=${CONNECTOR_JSON:-cdc/register-user-activity-connector.json}
 CONNECT_WAIT_SECONDS=${CONNECT_WAIT_SECONDS:-120}
-JAR=build/libs/be-commerce-0.0.1-SNAPSHOT.jar
+JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 JAVA="$(/usr/libexec/java_home -v 21)/bin/java"
 
 command -v k6 >/dev/null || { echo "k6 가 없다"; exit 1; }
-[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew bootJar 를 먼저 돌려라"; exit 1; }
+[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew -p commerce bootJar 를 먼저 돌려라"; exit 1; }
 docker exec pay-kafka-1 true 2>/dev/null || { echo "kafka 컨테이너(pay-kafka-1)가 없다"; exit 1; }
 
 APP=""

@@ -75,7 +75,7 @@ budget만 보는 것보다 서킷 상태와 실제 delegate 호출량을 함께 
 - `docs/performance/runs/20260922-050740-brownout-lat300-rate2-rto500-lim1/`
 - `docs/performance/runs/20260922-050835-brownout-lat3000-rate2-rto500-lim1/`
 - `docs/performance/runs/20260922-050922-brownout-lat3000-rate2-rto500-lim0/`
-- `./gradlew experimentTest --no-daemon --console=plain`
+- `./gradlew -p commerce experimentTest --no-daemon --console=plain`
 
 세 실행은 모두 임시 `pay_brownout` 스키마를 사용했고 측정 후 스키마를 삭제했다. fake PG의 지연
 분포·오류 분포는 실제 PG p99를 대표하지 않으므로 retry budget의 최종 운영값은 아직 외부 계약

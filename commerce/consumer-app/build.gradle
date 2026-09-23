@@ -1,6 +1,6 @@
 // 의도적으로 **독립 Gradle 프로젝트**다 — 루트 settings.gradle에 include하지 않는다.
 // 메인 앱의 빌드/CI/테스트에 어떤 영향도 주지 않기 위한 결정이며,
-// 실행은 루트 wrapper로 `./gradlew -p consumer-app bootRun` 한다.
+// 실행은 루트 wrapper로 `./gradlew -p commerce/consumer-app bootRun` 한다.
 plugins {
     id 'java'
     id 'org.springframework.boot' version '3.4.2'          // 메인 프로젝트와 동일 버전

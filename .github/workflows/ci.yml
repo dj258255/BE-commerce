@@ -58,19 +58,24 @@ jobs:
       # 전체 테스트 = 단위·슬라이스 + Spring Modulith 경계 검증(ModularityTests).
       # Testcontainers/실 DB 없이 결정적으로 도는 스위트라 러너에 Docker가 필요 없다.
       - name: Run tests
-        run: ./gradlew clean test --console=plain
+        run: ./gradlew -p commerce clean test --console=plain
 
       # "테스트가 초록"이 아니라 "검증하기로 한 테스트가 실제로 돌았는가"를 본다.
       # 환경변수·키·아티팩트가 없으면 테스트는 조용히 skip되고 빌드는 성공한다 —
       # 그러면 검증하지 않은 기능이 초록불 아래로 나간다. 의도적 예외는 ci/allowed-skips.txt 에
       # 이유와 함께 적는다.
       - name: Check skipped tests (건너뛴 테스트는 통과가 아니다)
-        run: python3 tools/check_skipped_tests.py build/test-results/test ci/allowed-skips.txt
+        run: python3 tools/check_skipped_tests.py commerce/build/test-results/test ci/allowed-skips.txt
+
+      # 링크는 디렉터리를 옮기면 조용히 깨진다 — 빌드도 테스트도 안 잡고, 읽는 사람만 404를 만난다.
+      # commerce/ 재배치에서 실제로 깊이가 어긋난 링크가 나와 검사로 고정했다.
+      - name: Check doc links (깨진 링크는 조용하다)
+        run: python3 tools/check_doc_links.py
 
       # consumer-app은 별도 Gradle 프로젝트(독립 빌드)라 위 test에 포함되지 않는다.
       # Kafka 소비자가 깨진 채 머지되지 않도록 CI에서 함께 빌드·검증한다.
       - name: Build consumer-app (독립 프로젝트)
-        run: ./gradlew -p consumer-app build --console=plain
+        run: ./gradlew -p commerce/consumer-app build --console=plain
 
       # 실패해도 리포트는 남겨 원인 파악을 돕는다.
       - name: Upload test report
@@ -78,7 +83,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-report
-          path: build/reports/tests/test
+          path: commerce/build/reports/tests/test
           if-no-files-found: ignore
           retention-days: 7
 
@@ -147,19 +152,19 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Run integration tests (Testcontainers)
-        run: ./gradlew integrationTest --console=plain
+        run: ./gradlew -p commerce integrationTest --console=plain
 
       # 통합 테스트도 같은 기준으로 본다. 실제 PG 키가 없어 건너뛰는 계약 테스트는
       # ci/allowed-skips.txt 에 이유와 함께 등록돼 있다.
       - name: Check skipped tests (건너뛴 테스트는 통과가 아니다)
-        run: python3 tools/check_skipped_tests.py build/test-results/integrationTest ci/allowed-skips.txt
+        run: python3 tools/check_skipped_tests.py commerce/build/test-results/integrationTest ci/allowed-skips.txt
 
       - name: Upload integration report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: integration-report
-          path: build/reports/tests/integrationTest
+          path: commerce/build/reports/tests/integrationTest
           if-no-files-found: ignore
           retention-days: 7
 
@@ -178,4 +183,4 @@ jobs:
 
       # 독립 Gradle 프로젝트라 이미지도 따로 굽는다(루트 bootJar에 포함되지 않는다).
       - name: Build consumer-app image
-        run: docker build -f consumer-app/Dockerfile -t be-commerce-consumer:ci .
+        run: docker build -f commerce/consumer-app/Dockerfile -t be-commerce-consumer:ci .

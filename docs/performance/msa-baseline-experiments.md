@@ -137,17 +137,17 @@ VU별 독립 회원(가입 API로 30명 생성)으로 교정해 해결했다. �
 ```bash
 # 실험 1
 docker compose up -d && docker compose --profile monitoring up -d prometheus grafana
-APP_RATELIMIT_ENABLED=false ./gradlew bootRun          # Flyway 선실행 후
+APP_RATELIMIT_ENABLED=false ./gradlew -p commerce bootRun          # Flyway 선실행 후
 docker compose exec -T mysql mysql -ubecommerce -pbecommerce becommerce < k6/seed-settlement-contention.sql
 k6 run k6/settlement-contention.js
 
 # 실험 2 (어제 날짜 2만 건 시드 후, 스케줄러 켠 인스턴스 2개 동시 기동)
-./gradlew bootRun --args='--server.port=8081 --app.settlement.enabled=true --app.settlement.interval-ms=30000'
-./gradlew bootRun --args='--server.port=8082 --app.settlement.enabled=true --app.settlement.interval-ms=30000'
+./gradlew -p commerce bootRun --args='--server.port=8081 --app.settlement.enabled=true --app.settlement.interval-ms=30000'
+./gradlew -p commerce bootRun --args='--server.port=8082 --app.settlement.enabled=true --app.settlement.interval-ms=30000'
 
 # 실험 3 (부하 중 재시작. 별도 셸에서 60초 시점에 실행)
 k6 run k6/redeploy-blast-radius.js
-kill -TERM <앱 PID> && APP_RATELIMIT_ENABLED=false ./gradlew bootRun
+kill -TERM <앱 PID> && APP_RATELIMIT_ENABLED=false ./gradlew -p commerce bootRun
 ```
 
 실험 데이터 정리:

@@ -8,7 +8,7 @@
 # 전달 방식마다 두 대를 띄운다. KAFKA 는 두 인스턴스가 **같은 컨슈머 그룹**을 쓴다(실제 다중 인스턴스
 # 배포의 모습) — 파티션이 갈리고, 어느 쪽이 소비하든 컨텍스트는 하나다.
 #
-# 전제: docker compose up -d mysql redis kafka · ./gradlew bootJar
+# 전제: docker compose up -d mysql redis kafka · ./gradlew -p commerce bootJar
 # 사용: bash tools/check-multi-instance.sh
 set -euo pipefail
 
@@ -18,11 +18,11 @@ A_PORT=18080
 B_PORT=18081
 A="http://localhost:${A_PORT}"
 B="http://localhost:${B_PORT}"
-JAR=build/libs/be-commerce-0.0.1-SNAPSHOT.jar
+JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 JAVA="$(/usr/libexec/java_home -v 21)/bin/java"
 STAMP=$(date +%Y%m%d-%H%M%S)
 
-[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew bootJar 를 먼저 돌려라"; exit 1; }
+[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew -p commerce bootJar 를 먼저 돌려라"; exit 1; }
 
 PIDS=()
 cleanup() { for p in "${PIDS[@]:-}"; do kill "$p" 2>/dev/null || true; done; }

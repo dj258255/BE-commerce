@@ -1,6 +1,6 @@
 # 성능 리포트: 방법론과 실측
 
-## 재현 — `./gradlew bench`
+## 재현 — `./gradlew -p commerce bench`
 
 아래 수치들은 전부 **한 대의 맥북에서 손으로** 잰 값이다. 그래서 한 번 틀렸었다.
 9절의 용량 수치는 닫힌 루프로 재서 과소평가했고, 열린 루프로 다시 재서 뒤집었다.
@@ -18,9 +18,9 @@
 | 맥북 수치를 운영 근거로 사용 | 환경(CPU·코어·메모리·JVM·커밋)을 리포트에 박아 넣음 |
 
 ```bash
-./gradlew bench -Pprofile=smoke     # 배관 검증(1분)
-./gradlew bench                     # capacity
-./gradlew bench -Pprofile=all
+./gradlew -p commerce bench -Pprofile=smoke     # 배관 검증(1분)
+./gradlew -p commerce bench                     # capacity
+./gradlew -p commerce bench -Pprofile=all
 ```
 
 `smoke`는 성능을 재지 않는다. 본 측정이 20분 가까이 걸리는데 배관 하나가 어긋나 있으면
@@ -50,7 +50,7 @@ MySQL 8.4·InnoDB)가 낸다. 인메모리는 왕복이 사실상 공짜라 재�
 
 재현:
 ```bash
-JAVA_HOME=<jdk21> ./gradlew test --tests "com.beomsu.becommerce.order.StockLockComparisonMySqlTest"
+JAVA_HOME=<jdk21> ./gradlew -p commerce test --tests "com.beomsu.becommerce.order.StockLockComparisonMySqlTest"
 ```
 
 ## 2. 엔드투엔드 부하테스트 (k6)
@@ -63,7 +63,7 @@ JAVA_HOME=<jdk21> ./gradlew test --tests "com.beomsu.becommerce.order.StockLockC
 ```bash
 # 1) 인프라 + 앱
 docker compose up -d              # MySQL 8.4 + Redis 7.4
-./gradlew bootRun                 # (스키마·시드 준비 후)
+./gradlew -p commerce bootRun                 # (스키마·시드 준비 후)
 # 2) 부하
 k6 run k6/checkout-load.js
 ```
@@ -130,7 +130,7 @@ JWT Bearer**(로그인 시 BCrypt 1회, 이후 서명 검증만)로 교체하고
 
 재현:
 ```bash
-docker compose up -d && ./gradlew bootRun          # 스키마·시드 자동 준비(V1~V4)
+docker compose up -d && ./gradlew -p commerce bootRun          # 스키마·시드 자동 준비(V1~V4)
 USER_PASSWORD=user-local-only k6 run k6/checkout-load.js
 ```
 
@@ -166,8 +166,8 @@ resilience4j 데코레이터의 동작을 순수 단위로 못박는다(부팅·
 ### 실행법과 기본 스위트 제외 이유
 
 ```bash
-./gradlew test        # 기본: 카오스 제외(excludeTags 'chaos'), 컨테이너 안 뜸 — 빠르고 결정적
-./gradlew chaosTest   # 카오스만: 컨테이너 2개 + 부트 필요, 전용 환경에서 수동 실행
+./gradlew -p commerce test        # 기본: 카오스 제외(excludeTags 'chaos'), 컨테이너 안 뜸 — 빠르고 결정적
+./gradlew -p commerce chaosTest   # 카오스만: 컨테이너 2개 + 부트 필요, 전용 환경에서 수동 실행
 ```
 
 카오스 테스트는 컨테이너 2개 + 앱 부팅이 필요해 무겁고, 머신에 따라 부팅이 불안정하다. CI 기본
@@ -212,9 +212,9 @@ resilience4j 데코레이터의 동작을 순수 단위로 못박는다(부팅·
 
 재현:
 ```bash
-./gradlew bootRun --args='--app.ratelimit.enabled=false'   # 전
+./gradlew -p commerce bootRun --args='--app.ratelimit.enabled=false'   # 전
 USER_PASSWORD=user-local-only k6 run k6/spike-test.js
-./gradlew bootRun                                           # 후(기본 on)
+./gradlew -p commerce bootRun                                           # 후(기본 on)
 USER_PASSWORD=user-local-only k6 run k6/spike-test.js
 ```
 
@@ -257,7 +257,7 @@ password_hash_legacy_count   현재 알고리즘으로 안 옮겨진 해시 수
 
 재현:
 ```bash
-JAVA_HOME=<jdk21> ./gradlew test --tests "*PasswordEncoderBenchTest" -i
+JAVA_HOME=<jdk21> ./gradlew -p commerce test --tests "*PasswordEncoderBenchTest" -i
 ```
 
 상세 결정과 트레이드오프는 [ADR-009](../adr/ADR-009-password-hashing-and-migration-path.md).
@@ -340,11 +340,11 @@ per-user 층은 그와 별개로 한 사용자의 남용을 막는 역할을 그
 
 ```bash
 docker compose down -v && docker compose up -d mysql redis   # 실행마다 초기화 — 안 하면 비교 불가
-APP_RATELIMIT_ENABLED=false ./gradlew bootRun
+APP_RATELIMIT_ENABLED=false ./gradlew -p commerce bootRun
 VUS=200 ACCOUNTS=40 k6 run k6/spike-multi-account.js          # 대조군
 
 docker compose down -v && docker compose up -d mysql redis
-./gradlew bootRun                                             # 기본값 on
+./gradlew -p commerce bootRun                                             # 기본값 on
 VUS=200 ACCOUNTS=40 k6 run k6/spike-multi-account.js          # 실험군
 ```
 
@@ -549,7 +549,7 @@ p95가 2.2초였다가 140/s에서 287ms로 **내려갔다.**
 
 ```bash
 docker compose down -v && docker compose up -d mysql redis
-APP_RATELIMIT_ENABLED=false ./gradlew bootRun    # 제어를 켠 채 재면 "설정한 한도"를 잴 뿐이다
+APP_RATELIMIT_ENABLED=false ./gradlew -p commerce bootRun    # 제어를 켠 채 재면 "설정한 한도"를 잴 뿐이다
 k6 run k6/capacity-knee.js
 ```
 
@@ -626,7 +626,7 @@ grep "Slow query took" <로그>
 임계를 낮춰 눈으로 보고 싶으면:
 
 ```bash
-APP_SLOW_QUERY_MS=1 ./gradlew bootRun   # 1ms면 평범한 쿼리도 걸린다
+APP_SLOW_QUERY_MS=1 ./gradlew -p commerce bootRun   # 1ms면 평범한 쿼리도 걸린다
 ```
 
 ## 14. 느린 PG 앞에서 마르는 자원은 커넥션이 아니라 워커다 (실측 완료)
@@ -706,9 +706,9 @@ k6: `http_req_failed 0.00% (0/10174)`, `checks_failed 0/30`, `[FAIL]` 로그 0�
 ```bash
 docker compose up -d
 JAVA=/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home/bin/java
-$JAVA -jar build/libs/be-commerce-0.0.1-SNAPSHOT.jar --server.port=8080 --app.ratelimit.enabled=false   # API
-$JAVA -jar build/libs/be-commerce-0.0.1-SNAPSHOT.jar --server.port=8082 --app.ratelimit.enabled=false   # API 리플리카
-$JAVA -jar build/libs/be-commerce-0.0.1-SNAPSHOT.jar --server.port=8081 --spring.profiles.active=worker  # 워커
+$JAVA -jar commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar --server.port=8080 --app.ratelimit.enabled=false   # API
+$JAVA -jar commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar --server.port=8082 --app.ratelimit.enabled=false   # API 리플리카
+$JAVA -jar commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar --server.port=8081 --spring.profiles.active=worker  # 워커
 docker compose exec -T mysql mysql -ubecommerce -pbecommerce becommerce < k6/seed-settlement-scheduler-split.sql
 BASE_URL=http://localhost:8080 VUS=30 DURATION=3m k6 run k6/redeploy-blast-radius.js
 # 93초 지점에 워커만 재기동: kill <워커 PID> && (워커 재실행)

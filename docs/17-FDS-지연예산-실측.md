@@ -56,7 +56,7 @@ p50 1.19 ms   p95 1.53 ms   p99 1.92 ms   max 6.61 ms
 이 판정은 Redis velocity 카운터를 **카드·기기·IP 로 세 번** 왕복한다.
 그런데도 p99 가 2ms 아래다. 업계가 룰 엔진에 잡는 2~5ms 안에 든다.
 
-재현: `./gradlew integrationTest --tests '*FdsLatencyBudgetTest*'`
+재현: `./gradlew -p commerce integrationTest --tests '*FdsLatencyBudgetTest*'`
 
 ## 3. 잰 것 ② — 승인 경로 종단
 
