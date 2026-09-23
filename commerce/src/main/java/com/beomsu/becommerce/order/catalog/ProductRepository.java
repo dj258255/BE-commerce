@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 // 하위 패키지가 같은 모듈 안에서 참조하므로 public 이다. 모듈 밖 접근은 package-private 이 아니라
@@ -37,6 +38,21 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     /** 상품명·브랜드 부분 일치 검색. MySQL 기본 콜레이션이 대소문자를 무시해 IgnoreCase와 결과가 같다. */
     Page<Product> findByNameContainingOrBrandContaining(String keyword, String sameKeyword, Pageable pageable);
+
+    /**
+     * 필드를 넓힌 부분 일치 검색 — 상품명·브랜드·종류·설명(#236). 엔진과 <b>같은 필드</b>를 보게 해서
+     * "엔진이 이긴 폭"에서 "필드를 넓힌 효과"를 떼어 내려는 비교 대상이다. 앞에 %가 붙어 인덱스를 못 탄다.
+     */
+    @Query(value = "select p.productId from Product p where p.name like concat('%', :q, '%') "
+            + "or p.brand like concat('%', :q, '%') or p.productType like concat('%', :q, '%') "
+            + "or p.description like concat('%', :q, '%')",
+            countQuery = "select count(p) from Product p where p.name like concat('%', :q, '%') "
+                    + "or p.brand like concat('%', :q, '%') or p.productType like concat('%', :q, '%') "
+                    + "or p.description like concat('%', :q, '%')")
+    Page<Long> searchIdsAcrossFields(@Param("q") String q, Pageable pageable);
+
+    /** 검색 엔진이 고른 후보 안에서 사용자가 고른 정렬로 한 페이지를 자른다. */
+    Page<Product> findByProductIdIn(Collection<Long> productIds, Pageable pageable);
 
     /**
      * 색상 패싯 — 색상별 상품 수. <b>색상 필터를 뺀</b> 나머지 필터(카테고리·종류·가격·추천)만 적용한다.
