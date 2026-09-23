@@ -229,6 +229,16 @@ public class HomeComposer {
         order.removeIf(category -> cursor.usedRows().contains(rowId(category)));
 
         Map<String, String> names = catalog.topCategoryNames();
+
+        // 모델이 켜져 있으면 행을 모델이 생성한다(GenPage, #238). 빈 목록이면 아래 규칙 행으로 물러선다.
+        Set<String> usedCategories = new LinkedHashSet<>();
+        cursor.usedRows().stream().filter(r -> r.startsWith("cat:")).forEach(r -> usedCategories.add(r.substring(4)));
+        List<RecommendationFacts.GeneratedRow> generated =
+                recommendations.generatePageRows(recent, cursor.shown(), usedCategories, pageRows, itemCap);
+        if (!generated.isEmpty()) {
+            return composeGenerated(userId, cursor, generated, names, usedCategories, contextMs, startedAt);
+        }
+
         List<HomePageView.Row> rows = new ArrayList<>();
         List<Long> newlyShown = new ArrayList<>();
         List<String> tried = new ArrayList<>();
@@ -281,6 +291,66 @@ public class HomeComposer {
                 SOURCE_CATALOG, null, null,
                 new HomePageView.Latency(contextMs, 0, 0, elapsed(startedAt)),
                 rows, new HomePageView.AssemblyStats(popular.size(), 0, outOfStock, duplicates, 0, distinct.size()),
+                cursor.page(), next);
+        impressions.record(page);
+        return page;
+    }
+
+    /**
+     * 모델이 생성한 행으로 쪽을 만든다(#238). 모델은 중복·앞 쪽 상품·대분류 일치를 <b>생성 중에</b> 지켰고,
+     * 여기서는 모델이 모르는 <b>품절만 생성 뒤에</b> 거른다(ADR-050). 행은 {@code GENPAGE} 로 표시한다.
+     */
+    private HomePageView composeGenerated(long userId, HomeCursor cursor,
+                                          List<RecommendationFacts.GeneratedRow> generated,
+                                          Map<String, String> names, Set<String> usedCategories,
+                                          long contextMs, long startedAt) {
+        List<Long> all = generated.stream().flatMap(r -> r.itemIds().stream()).toList();
+        Map<Long, ProductCatalogFacts.ProductCardFacts> cards = new LinkedHashMap<>();
+        catalog.findAll(all).forEach(card -> cards.put(card.productId(), card));
+        List<HomePageView.Row> rows = new ArrayList<>();
+        List<Long> newlyShown = new ArrayList<>();
+        List<String> tried = new ArrayList<>();
+        int outOfStock = 0;
+        int duplicates = 0;
+        int unmatched = 0;
+        for (RecommendationFacts.GeneratedRow row : generated) {
+            tried.add(rowId(row.category()));
+            List<HomePageView.Item> items = new ArrayList<>();
+            int position = 0;
+            for (Long id : row.itemIds()) {
+                position++;
+                ProductCatalogFacts.ProductCardFacts card = cards.get(id);
+                if (card == null) {
+                    unmatched++;   // 모델 어휘에는 있는데 카탈로그에 없는 상품
+                    continue;
+                }
+                if (cursor.shown().contains(id) || newlyShown.contains(id)) {
+                    duplicates++;   // 모델 마스크가 맞으면 0 이다
+                    continue;
+                }
+                if (!card.inStock()) {
+                    outOfStock++;
+                    continue;
+                }
+                items.add(item(card, "모델 생성", position));
+                newlyShown.add(id);
+                if (items.size() >= itemCap) {
+                    break;
+                }
+            }
+            if (items.size() >= minItems) {
+                rows.add(new HomePageView.Row(rowId(row.category()),
+                        names.getOrDefault(row.category(), row.category()) + " 추천", "GENPAGE", List.copyOf(items)));
+            }
+        }
+        Set<String> remaining = new LinkedHashSet<>(names.keySet());
+        remaining.removeAll(usedCategories);
+        generated.forEach(r -> remaining.remove(r.category()));
+        String next = remaining.isEmpty() ? null : cursor.next(newlyShown, tried).encode();
+        HomePageView page = new HomePageView(String.valueOf(userId), Instant.now().toString(),
+                "GENPAGE", null, null,
+                new HomePageView.Latency(contextMs, 0, 0, elapsed(startedAt)),
+                rows, new HomePageView.AssemblyStats(all.size(), unmatched, outOfStock, duplicates, 0, rows.size()),
                 cursor.page(), next);
         impressions.record(page);
         return page;

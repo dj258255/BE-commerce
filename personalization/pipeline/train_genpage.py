@@ -45,7 +45,8 @@ MAXLEN = 50                 # 프롬프트 길이(최근 구매 50개)
 MIN_COUNT = 10              # 어휘: train 에서 10번 이상 팔린 상품
 MAX_USERS = 400_000         # 학습 사용자 표본
 DIM, LAYERS, HEADS = 64, 2, 2
-EPOCHS, BATCH, LAST_K, LR = 2, 128, 10, 1e-3
+EPOCHS = int(os.environ.get("GENPAGE_EPOCHS", "2"))
+BATCH, LAST_K, LR = 128, 10, 1e-3
 # 임베딩 초기 표준편차. PyTorch 기본(1.0)이면 가중치 공유 출력의 로짓이 커서 첫 손실이 균등 분포(ln 어휘 ≈ 11.3)보다
 # 높게 시작했다(16.8). 트랜스포머에서 흔히 쓰는 0.02 로 둔다 — 1차(1.0)와 2차(0.02) 결과를 둘 다 남긴다
 INIT_STD = float(os.environ.get("GENPAGE_INIT_STD", "0.02"))

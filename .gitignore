@@ -47,6 +47,7 @@ tools/fds/.venv/
 personalization/data/
 personalization/pipeline/.venv/
 personalization/.venv/
+.venv-genpage
 # 심볼릭 링크로 둘 때가 있다 — 슬래시 붙은 규칙은 링크를 못 막는다
 personalization/data
 personalization/.venv

@@ -593,6 +593,14 @@ app:
     #               격리는 이제 기본값이 아니라 **하네스의 선택**으로 지켜진다(ADR-042)
     item-pool: ${APP_RECOMMENDATION_ITEM_POOL:CATALOG}
     model:
+      # 모델 구현(ADR-053). stub(기본) | genpage — 작은 GenPage 모델 서버(personalization/serving/genpage_server.py).
+      # genpage 는 품질 선(MAP@12 0.023354)을 못 넘어 기본으로 켜지 않았다. 켜면 추천 행과 홈 다음 쪽 행을 모델이 만든다.
+      kind: ${APP_RECOMMENDATION_MODEL_KIND:stub}
+      genpage-url: ${APP_RECOMMENDATION_MODEL_GENPAGE_URL:http://localhost:8765}
+      # 모델 서버가 이보다 느리면 실패로 보고 물러선다(추천 행은 인기, 홈 다음 쪽은 규칙 행)
+      genpage-timeout: ${APP_RECOMMENDATION_MODEL_GENPAGE_TIMEOUT:300ms}
+      # 하이브리드 행 디코딩 — 행마다 앞 몇 개를 한 칸씩 생성하는가(0 = 한 번에, 8 = 전부 한 칸씩)
+      genpage-prefix: ${APP_RECOMMENDATION_MODEL_GENPAGE_PREFIX:2}
       # 실험용 스텁의 **모델 용량** — 동시 처리 수와 건당 지연으로 처리량이 고정된다.
       # 이 둘을 올리면 모델이 빨라지고, 내리면 같은 부하에서 더 먼저 무너진다(E3의 부하 축).
       concurrency: ${APP_RECOMMENDATION_MODEL_CONCURRENCY:4}

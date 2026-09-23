@@ -299,4 +299,43 @@ class HomeComposerTest {
         assertThat(row.items()).extracting(HomePageView.Item::itemId).startsWith("33", "32");
     }
 
+
+    @Test
+    @DisplayName("모델이 행을 생성하면 그 행을 쓰고 품절만 생성 뒤에 거른다 — GENPAGE 로 표시한다(#238)")
+    void generatedRowsAreUsedAndStockFilteredAfter() {
+        popularByCategory();
+        when(catalog.findAll(anyList())).thenAnswer(inv -> {
+            List<Long> want = inv.getArgument(0);
+            // 42 는 품절이다 — 모델은 재고를 모르므로 홈이 거른다
+            return want.stream().map(id -> card(id, id <= 6 ? "a" : id <= 12 ? "b" : id >= 40 ? "b" : "c", id != 42L)).toList();
+        });
+        when(recommendations.generatePageRows(anyList(), org.mockito.ArgumentMatchers.anyCollection(),
+                org.mockito.ArgumentMatchers.anyCollection(), anyInt(), anyInt()))
+                .thenReturn(List.of(new RecommendationFacts.GeneratedRow("b", List.of(41L, 42L, 43L, 44L))));
+        HomeComposer composer = composer(HomeComposer.Rules.FULL, 3, 1);
+        HomePageView first = composer.compose(USER);
+
+        HomePageView second = composer.compose(USER, HomeCursor.decode(first.nextCursor()));
+
+        assertThat(second.source()).isEqualTo("GENPAGE");
+        HomePageView.Row row = second.rows().get(0);
+        assertThat(row.strategy()).isEqualTo("GENPAGE");
+        assertThat(row.title()).isEqualTo("남성복 추천");
+        assertThat(row.items()).extracting(HomePageView.Item::itemId).containsExactly("41", "43", "44");
+        assertThat(second.stats().outOfStock()).isEqualTo(1);
+        assertThat(second.nextCursor()).isNotNull();   // a·c 가 남았다
+    }
+
+    @Test
+    @DisplayName("모델이 행을 못 만들면(빈 목록) 규칙 행으로 물러선다")
+    void emptyGenerationFallsBackToRules() {
+        popularByCategory();
+        HomeComposer composer = composer(HomeComposer.Rules.FULL, 3, 1);
+        HomePageView first = composer.compose(USER);
+
+        HomePageView second = composer.compose(USER, HomeCursor.decode(first.nextCursor()));
+
+        assertThat(second.rows()).extracting(HomePageView.Row::strategy).doesNotContain("GENPAGE");
+    }
+
 }

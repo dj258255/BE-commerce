@@ -1,10 +1,17 @@
 package com.beomsu.becommerce.recommendation;
 
+import com.beomsu.becommerce.recommendation.internal.GenPagePageClient;
 import com.beomsu.becommerce.recommendation.internal.ItemPoolSource;
 import com.beomsu.becommerce.recommendation.internal.RecommendationService;
 import com.beomsu.becommerce.recommendation.internal.RecommendationView;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -24,12 +31,50 @@ import java.util.List;
 @Service
 public class RecommendationFacts {
 
+    private static final Logger log = LoggerFactory.getLogger(RecommendationFacts.class);
+
     private final RecommendationService service;
     private final ItemPoolSource pool;
+    private final GenPagePageClient pageModel;
+    private final Counter pageOk;
+    private final Counter pageFailed;
 
-    RecommendationFacts(RecommendationService service, ItemPoolSource pool) {
+    RecommendationFacts(RecommendationService service, ItemPoolSource pool,
+                        ObjectProvider<GenPagePageClient> pageModel, MeterRegistry registry) {
         this.service = service;
         this.pool = pool;
+        this.pageModel = pageModel.getIfAvailable();
+        this.pageOk = Counter.builder("recommendation.genpage.page").tag("result", "ok").register(registry);
+        this.pageFailed = Counter.builder("recommendation.genpage.page").tag("result", "failed").register(registry);
+    }
+
+    /** 모델이 만든 행 하나 — 대분류와 그 안의 상품 id(모델의 순서). */
+    public record GeneratedRow(String category, List<Long> itemIds) {
+    }
+
+    /**
+     * 홈 다음 쪽의 행을 <b>모델이 생성한다</b>(GenPage, #238). 모델이 꺼져 있거나 실패하면 <b>빈 목록</b>이다 —
+     * 예외를 던지지 않는다. 홈은 빈 목록을 받으면 규칙 행(대분류 인기)으로 물러선다. 실패는 지표로 센다.
+     *
+     * @param history 최근 활동(최근 것부터)
+     * @param exclude 앞 쪽에서 보여 준 상품 — 모델이 생성 중에 막는다
+     * @param excludeCategories 앞 쪽에서 이미 행이 된 대분류
+     */
+    public List<GeneratedRow> generatePageRows(List<Long> history, Collection<Long> exclude,
+                                               Collection<String> excludeCategories, int rows, int itemsPerRow) {
+        if (pageModel == null) {
+            return List.of();
+        }
+        try {
+            List<GeneratedRow> out = pageModel.generate(history, exclude, excludeCategories, rows, itemsPerRow)
+                    .stream().map(r -> new GeneratedRow(r.category(), r.itemIds())).toList();
+            pageOk.increment();
+            return out;
+        } catch (RuntimeException e) {
+            pageFailed.increment();
+            log.warn("GenPage 행 생성 실패 → 규칙 행으로 물러선다: {}", e.toString());
+            return List.of();
+        }
     }
 
     /**
