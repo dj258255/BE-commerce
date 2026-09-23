@@ -32,7 +32,7 @@ import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
  *   - shed_global > 0 — 이게 0이면 위 두 지표가 녹색이어도 아무것도 증명하지 못한다.
  *
  * 전제:
- *   1. docker compose up -d && ./gradlew bootRun   (limiter는 켠 채로 — 이 실험의 대상이다)
+ *   1. docker compose up -d && ./gradlew -p commerce bootRun   (limiter는 켠 채로 — 이 실험의 대상이다)
  *   2. 상품/재고 시드: products(1), stock(1) — checkout-load.js와 동일
  *
  * 실행: k6 run k6/spike-multi-account.js

@@ -35,9 +35,9 @@ FraudCorpus ──► SequenceFeatures ──► build/fds/train.csv ──► t
 python3 -m venv tools/fds/.venv
 tools/fds/.venv/bin/pip install -r tools/fds/requirements.txt
 
-./gradlew test --tests '*FraudModelEvalTest.exportsFeatureMatrix'   # 피처 행렬 내보내기
+./gradlew -p commerce test --tests '*FraudModelEvalTest.exportsFeatureMatrix'   # 피처 행렬 내보내기
 tools/fds/.venv/bin/python tools/fds/train.py                       # sklearn 학습
-./gradlew test --tests '*FraudModelEvalTest.agreesWithSklearn'      # 대조
+./gradlew -p commerce test --tests '*FraudModelEvalTest.agreesWithSklearn'      # 대조
 ```
 
 `sklearn-model.json`이 없으면 대조 테스트는 **건너뛴다**(`Assumptions.assumeTrue`).

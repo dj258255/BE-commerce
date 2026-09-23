@@ -18,6 +18,6 @@
 
 ## 검증
 
-- `./gradlew test --tests '*ResilientPgClientTest'`
+- `./gradlew -p commerce test --tests '*ResilientPgClientTest'`
 - `k6 run -e RATE=... -e DURATION=... k6/pg-brownout.js`
 

@@ -2,7 +2,7 @@
 
 - 상태: 채택 (Accepted)
 - 날짜: 2026-07-07
-- 관련: [shared/crypto/FieldCipher](../../src/main/java/com/beomsu/becommerce/shared/crypto/FieldCipher.java), `AesGcmFieldCipher`, `EnvelopeFieldCipher`, `MasterKeyProvider`
+- 관련: [shared/crypto/FieldCipher](../../commerce/src/main/java/com/beomsu/becommerce/shared/crypto/FieldCipher.java), `AesGcmFieldCipher`, `EnvelopeFieldCipher`, `MasterKeyProvider`
 
 ## 맥락
 

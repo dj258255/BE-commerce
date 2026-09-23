@@ -109,7 +109,11 @@ tasks.named('test') {
     // ErdDocMatchesSchemaTest는 문서(.md)와 마이그레이션(.sql)을 읽는다. 이 둘을 태스크 입력으로
     // 선언하지 않으면, 문서만 고쳤을 때 Gradle이 up-to-date로 판단해 테스트를 <건너뛴다>.
     // 그러면 CI가 초록불인데 검사는 돌지 않은 상태가 된다 — 실제로 표시를 지워보고 발견했다.
-    inputs.dir('docs').withPropertyName('docs').withPathSensitivity(PathSensitivity.RELATIVE)
+    //
+    // docs/ 는 저장소 루트에 있다 — commerce 와 personalization 이 같이 쓰는 기록이라 어느 한쪽
+    // 안으로 넣지 않았다. 여기를 projectDir 기준으로 두면 Gradle 이 없는 디렉터리라고 실패한다.
+    inputs.dir(file("$projectDir/../docs")).withPropertyName('docs')
+            .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir('src/main/resources/db/migration').withPropertyName('migrations')
             .withPathSensitivity(PathSensitivity.RELATIVE)
 }
@@ -196,14 +200,16 @@ tasks.register('printRuntimeClasspath') {
 // 그래서 이 태스크가 막는 것은 느린 코드가 아니라 <잘못된 측정>이다 —
 // 회차마다 볼륨을 지우고, 띄운 PID 가 정말 포트를 잡았는지 확인하고, 환경을 리포트에 박는다.
 //
-//   ./gradlew bench                     # capacity(기본)
-//   ./gradlew bench -Pprofile=spike
-//   ./gradlew bench -Pprofile=all
+//   ./gradlew -p commerce bench                     # capacity(기본)
+//   ./gradlew -p commerce bench -Pprofile=spike
+//   ./gradlew -p commerce bench -Pprofile=all
 //
 // bootRun 을 직접 부르지 않고 스크립트에 위임하는 이유: 인프라 기동·헬스 대기·프로세스 검증·
 // k6 실행이 Gradle 밖 순서 제어라 태스크 그래프로 표현하면 오히려 흐름이 가려진다.
 tasks.register('bench', Exec) {
     description = '성능 실측을 재현 가능한 절차로 실행한다 (Docker·k6 필요)'
     group = 'verification'
-    commandLine 'bash', "${projectDir}/tools/bench.sh", (project.findProperty('profile') ?: 'capacity')
+    // tools/ 는 저장소 루트에 있다 — commerce 와 personalization 이 같이 쓰는 자산이라
+    // 어느 한쪽 안으로 넣지 않았다. 그래서 projectDir 이 아니라 그 위를 본다.
+    commandLine 'bash', "${projectDir.parentFile}/tools/bench.sh", (project.findProperty('profile') ?: 'capacity')
 }

@@ -9,7 +9,7 @@
 # 그 갈림이 "범위를 넓히면 무엇을 내주는가"의 답이다.
 #
 # 사용:
-#   ./gradlew bootJar
+#   ./gradlew -p commerce bootJar
 #   bash tools/run-generation-budget.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -28,7 +28,7 @@ ACCOUNTS=${ACCOUNTS:-8}
 MAX_VUS=${MAX_VUS:-200}
 PORT=${PORT:-18080}
 BASE="http://localhost:${PORT}"
-JAR=build/libs/be-commerce-0.0.1-SNAPSHOT.jar
+JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 JAVA="$(/usr/libexec/java_home -v 21)/bin/java"
 
 # 범위와 무관하게 고정하는 것들 — 리포트에 함께 적어야 수치를 읽을 수 있다.
@@ -42,7 +42,7 @@ ADMISSION_BUDGET_MS=${ADMISSION_BUDGET_MS:-100}
 BUSY_TIMEOUT_MS=${BUSY_TIMEOUT_MS:-400}
 CONSTRAINT_POLICY=${CONSTRAINT_POLICY:-AFTER_GENERATION}   # E4 의 기본값을 고정한다
 
-[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew bootJar 를 먼저 돌려라"; exit 1; }
+[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew -p commerce bootJar 를 먼저 돌려라"; exit 1; }
 command -v k6 >/dev/null || { echo "k6 가 없다"; exit 1; }
 
 APP=""

@@ -8,7 +8,7 @@
 #   bash tools/run-constraint-revalidation.sh
 #   POLICIES="NONE AFTER_GENERATION" FLIP_RATES="8" DURATION=30s bash ...
 #
-# 전제: docker compose up -d mysql redis · ./gradlew bootJar
+# 전제: docker compose up -d mysql redis · ./gradlew -p commerce bootJar
 #
 # 설계 요점:
 #  - 앱은 정책별로 재기동한다(정책이 프로퍼티라 기동 시 고정된다). 실험 계기도 함께 켠다.
@@ -42,11 +42,11 @@ SOLD_OUT_TARGET=${SOLD_OUT_TARGET:-6}
 PORT=${PORT:-18080}
 BASE="http://localhost:${PORT}"
 SETTLE_SECONDS=${SETTLE_SECONDS:-6}
-JAR=build/libs/be-commerce-0.0.1-SNAPSHOT.jar
+JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 JAVA="$(/usr/libexec/java_home -v 21)/bin/java"
 
 command -v k6 >/dev/null || { echo "k6 가 없다"; exit 1; }
-[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew bootJar 를 먼저 돌려라"; exit 1; }
+[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew -p commerce bootJar 를 먼저 돌려라"; exit 1; }
 
 APP=""
 cleanup() { [ -n "$APP" ] && kill "$APP" 2>/dev/null || true; APP=""; }

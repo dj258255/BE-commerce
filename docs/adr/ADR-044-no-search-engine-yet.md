@@ -3,7 +3,7 @@
 - 상태: **채택**
 - 날짜: 2026-09-21
 - 관련: `CatalogQueryService`, `CatalogController`,
-  [검색 베이스라인](31-검색-엔진-비교.md), [베이스라인 원자료](performance/runs/20260921-검색-베이스라인/), 이슈 #172
+  [검색 베이스라인](../31-검색-엔진-비교.md), 원자료 `docs/performance/runs/20260921-검색-베이스라인/`(`.gitignore` 대상이라 저장소에는 없다), 이슈 #172
 
 ## 맥락
 

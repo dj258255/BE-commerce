@@ -33,7 +33,7 @@
 - 예상: 2시간
 - 실제: 완료
 - 산출물: `ReconciliationResultRepository`, `ReconciliationMetrics`, 회귀 테스트
-- 검증: `ReconciliationMetricsTest`, 전체 `./gradlew test`
+- 검증: `ReconciliationMetricsTest`, 전체 `./gradlew -p commerce test`
 - 위험: 절대 차액은 회계상 손실액과 같은 의미가 아니므로 metric 이름에 `unexplained`를 포함
 
 ### PAY-034 — webhook replay와 DLQ 수렴
@@ -72,7 +72,7 @@
 
 #### 현재 결과
 
-- `./gradlew experimentTest`에서 200 요청·32 worker·항상 실패하는 조회 더블을 실행했다.
+- `./gradlew -p commerce experimentTest`에서 200 요청·32 worker·항상 실패하는 조회 더블을 실행했다.
 - delegate 호출은 32회, retry event 32회, exhausted 0회, 총 45ms였다. 공유 서킷이 OPEN되어
   재시도 폭증을 32개 delegate 호출에서 잘랐다.
 - 별도 k6 brownout에서는 limit=1일 때 read p95 16.20ms, limit 없음일 때 read p95 3.00초와

@@ -38,7 +38,7 @@ seed() {
 }
 
 start_app() {  # $1 = policy
-  $JAVA -Xmx1g -Xms256m -jar build/libs/be-commerce-0.0.1-SNAPSHOT.jar --server.port=8080 \
+  $JAVA -Xmx1g -Xms256m -jar commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar --server.port=8080 \
     --spring.docker.compose.enabled=false --app.ratelimit.enabled=false \
     --app.batch.settlement-max-pages=2 --app.batch.read-chunk-size=500 \
     --app.settlement.fairness-policy="$1" > "/tmp/fair-$1.log" 2>&1 &

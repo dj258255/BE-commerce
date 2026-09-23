@@ -13,7 +13,7 @@
 set -uo pipefail
 
 JAVA=/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home/bin/java
-JAR=build/libs/be-commerce-0.0.1-SNAPSHOT.jar
+JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 OUT=${OUT:-/tmp/outbox-republish}
 mkdir -p "$OUT"
 cd "$(dirname "$0")/.."

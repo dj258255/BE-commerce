@@ -23,7 +23,7 @@ import { Trend, Rate, Counter } from 'k6/metrics';
  *
  * <h3>실행</h3>
  * <pre>
- * ./gradlew bench -Pprofile=read      # 시드부터 리포트까지 한 번에
+ * ./gradlew -p commerce bench -Pprofile=read      # 시드부터 리포트까지 한 번에
  * </pre>
  *
  * <p>제어를 끄고 돌린다. 켜 두면 무릎이 아니라 <b>설정한 한도</b>를 재게 된다.

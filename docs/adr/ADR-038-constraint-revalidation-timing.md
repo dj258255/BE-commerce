@@ -2,7 +2,7 @@
 
 - 상태: **채택**
 - 날짜: 2026-09-21
-- 관련: `ConstraintChecker`, `ConstraintPolicy`, `CheckoutTx`, `personalization/docs/02-experiments.md` E4, [E4 리포트](personalization/docs/runs/20260921-e4-제약-재검증/report.md)
+- 관련: `ConstraintChecker`, `ConstraintPolicy`, `CheckoutTx`, `personalization/docs/02-experiments.md` E4, [E4 리포트](../../personalization/docs/runs/20260921-e4-제약-재검증/report.md)
 
 ## 맥락
 

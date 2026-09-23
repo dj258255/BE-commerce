@@ -20,10 +20,10 @@ DURATION=${DURATION:-30s}
 FACET_TTL=${FACET_TTL:-0s}
 PORT=${PORT:-18080}
 BASE="http://localhost:${PORT}"
-JAR=build/libs/be-commerce-0.0.1-SNAPSHOT.jar
+JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 JAVA="$(/usr/libexec/java_home -v 21)/bin/java"
 
-[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew bootJar 를 먼저 돌려라"; exit 1; }
+[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew -p commerce bootJar 를 먼저 돌려라"; exit 1; }
 command -v k6 >/dev/null || { echo "k6 가 없다"; exit 1; }
 
 ROWS=$(docker exec pay-mysql-1 mysql -N -ubecommerce -pbecommerce becommerce -e "select count(*) from products" 2>/dev/null || echo "?")

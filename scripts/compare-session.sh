@@ -40,7 +40,7 @@ case "${1:-up}" in
       docker exec pay-mysql-1 mysql -uroot -proot -e "select 1" >/dev/null 2>&1 && break
       sleep 3
     done
-    lsof -ti:8080 >/dev/null 2>&1 || (nohup ./gradlew bootRun --args='--spring.profiles.active=local' > /tmp/pay-app.log 2>&1 &)
+    lsof -ti:8080 >/dev/null 2>&1 || (nohup ./gradlew -p commerce bootRun --args='--spring.profiles.active=local' > /tmp/pay-app.log 2>&1 &)
     for _ in $(seq 1 60); do
       curl -s -m 2 localhost:8080/actuator/health 2>/dev/null | grep -q UP && break
       sleep 5
@@ -49,7 +49,7 @@ case "${1:-up}" in
     left=$(curl -s -m 5 -H "Authorization: Bearer $(token)" "$API/pending" \
            | python3 -c "import json,sys;print(json.load(sys.stdin).get('pending',0))" 2>/dev/null || echo 0)
     if [ "$left" = "0" ]; then
-      ./gradlew captureTest --tests '*NarrativeComparisonSeedTest*' --rerun -q
+      ./gradlew -p commerce captureTest --tests '*NarrativeComparisonSeedTest*' --rerun -q
       left=30
     fi
 

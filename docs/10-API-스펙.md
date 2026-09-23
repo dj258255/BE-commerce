@@ -581,7 +581,7 @@ sequenceDiagram
 > 순서에 관대한 병합([ADR-035](adr/ADR-035-order-tolerant-context-merge.md)) 뒤 세 전달 방식이
 > **같은 값을 만든다**(order 조건 100%). `IN_PROCESS`는 브로커가 필요 없고 e2e p95가 15ms로
 > `KAFKA`(31ms)보다 빠르며, 대기 정책 없이도 반영률 99.7%다(측정:
-> [E2-e 리포트](personalization/docs/runs/20260921-e2e-m2-잔여-재측정/report.md)).
+> [E2-e 리포트](../personalization/docs/runs/20260921-e2e-m2-잔여-재측정/report.md)).
 >
 > **`KAFKA`를 고르면 `kafka` 프로파일이 필요하다.** 브로커가 없으면 발행도 소비도 없어 컨텍스트가
 > 갱신되지 않는다(읽기는 `EMPTY`로 폴백). 프로세스 밖 소비자가 필요할 때 켠다 — 그때는 보통

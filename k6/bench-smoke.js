@@ -12,7 +12,7 @@ import { check } from 'k6';
  * 도착률이 5/s라 어떤 서버든 여유롭게 처리한다.
  *
  * <pre>
- * ./gradlew bench -Pprofile=smoke
+ * ./gradlew -p commerce bench -Pprofile=smoke
  * </pre>
  */
 

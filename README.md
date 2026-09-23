@@ -25,6 +25,30 @@
 수치는 로컬 단일 장비에서 측정한 결과이며, 실행 환경과 한계는
 [성능 리포트](docs/performance/README.md)에 함께 기록했습니다.
 
+## 저장소 구조
+
+최상위는 **영역**으로 나뉩니다. 결제 코어와 개인화가 나란히 서고, 둘이 같이 쓰는 것만 루트에 둡니다.
+
+| 경로 | 무엇 | 왜 여기에 |
+| --- | --- | --- |
+| `commerce/` | 주문·결제·정산 Java 앱 (Gradle 루트) | 이 저장소의 본체. 통째로 떼어낼 수 있게 물리적으로 묶었습니다 |
+| `commerce/consumer-app/` | 결제 DLT 재처리 소비자 (별도 Gradle 빌드) | commerce 의 DLT 를 읽습니다. commerce 를 떼면 같이 갑니다 |
+| `personalization/` | 개인화 파이프라인·실험 문서 | 다른 데이터·다른 언어(Python)·다른 배포 |
+| `apps/web/` | Next.js 프론트 | |
+| `docs/` | 설계·ADR·API·ERD | **양쪽의 기록이 한 곳에** 있습니다. ADR 은 두 영역을 오갑니다 |
+| `k6/` `tools/` `monitoring/` `cdc/` `ci/` `scripts/` | 실험·운영 자산 | 결제와 개인화가 **같이 씁니다**(예: `alert-rules.yml` 에 결제 규칙과 개인화 규칙이 함께 있습니다) |
+| `gradlew` `gradle/` `compose.yaml` | 공용 실행 기반 | |
+
+Gradle wrapper 는 루트에 하나입니다. 프로젝트 루트가 `commerce/` 이므로 실행은 이렇게 합니다.
+
+```bash
+./gradlew -p commerce test                  # 본체 테스트
+./gradlew -p commerce/consumer-app build    # 소비자 앱
+```
+
+`ops/` 같은 상위 묶음은 만들지 않았습니다 — `k6`·`tools`·`monitoring` 은 소유자가 한쪽이 아니라
+**둘 다**여서, 한 단계 더 감싸도 경계가 선명해지지 않고 링크만 깊어집니다.
+
 ## 아키텍처
 
 ![BE-commerce 아키텍처: 유입 계층, 결제 코어, Outbox, 후속 도메인과 운영 계층](docs/images/architecture.svg)
@@ -148,7 +172,7 @@
 
 ```bash
 docker compose up -d
-./gradlew bootRun
+./gradlew -p commerce bootRun
 ```
 
 로컬 데모 계정은 다음과 같습니다.
@@ -176,9 +200,9 @@ docker compose --profile monitoring up -d prometheus grafana
 ### 3. 테스트
 
 ```bash
-./gradlew test
-./gradlew integrationTest  # Docker의 MySQL 필요
-./gradlew chaosTest        # Docker의 Toxiproxy 필요
+./gradlew -p commerce test
+./gradlew -p commerce integrationTest  # Docker의 MySQL 필요
+./gradlew -p commerce chaosTest        # Docker의 Toxiproxy 필요
 ```
 
 기본 테스트에는 도메인 불변식, 상태 전이, 멱등성, 모듈 경계 검증이 포함됩니다. 통합·카오스 테스트는
@@ -187,9 +211,9 @@ docker compose --profile monitoring up -d prometheus grafana
 ### 4. 성능 실험
 
 ```bash
-./gradlew bench -Pprofile=smoke  # 측정 배관 확인
-./gradlew bench                  # 처리 용량과 병목 탐색
-./gradlew bench -Pprofile=spike  # 과부하 시 유입 제어 확인
+./gradlew -p commerce bench -Pprofile=smoke  # 측정 배관 확인
+./gradlew -p commerce bench                  # 처리 용량과 병목 탐색
+./gradlew -p commerce bench -Pprofile=spike  # 과부하 시 유입 제어 확인
 ```
 
 각 실행은 인프라 초기화, 앱 기동, k6 실행, 리포트 생성을 한 번에 수행하며 결과를

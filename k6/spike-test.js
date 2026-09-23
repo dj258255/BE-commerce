@@ -7,7 +7,7 @@ import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
  * 스파이크 테스트 — 폭주 트래픽에서 과부하 제어(429 shedding)가 성공 요청의 지연을 지키는지 본다.
  *
  * 두 번 돌려 비교한다:
- *   전: APP_RATELIMIT_ENABLED=false ./gradlew bootRun  →  k6 run k6/spike-test.js
+ *   전: APP_RATELIMIT_ENABLED=false ./gradlew -p commerce bootRun  →  k6 run k6/spike-test.js
  *       (유입 제어 없음 — 폭주가 그대로 DB/스레드로 흘러 5xx·지연 폭발 예상)
  *   후: APP_RATELIMIT_ENABLED=true(기본)               →  k6 run k6/spike-test.js
  *       (초과분을 바깥 층에서 429로 싸게 쳐내되, 통과한 요청의 p95가 유지되는지가 핵심)

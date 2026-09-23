@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.monitoring;
 
+import com.beomsu.becommerce.RepoRoot;
 import com.beomsu.becommerce.assist.incident.RuleFirstIncidentAnalyzer;
 import com.beomsu.becommerce.assist.narrative.TimelineNarrativeService;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
@@ -38,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("알림 지표 이름 계약 — 알림이 찾는 이름이 실제로 나오는지")
 class AlertMetricNameContractTest {
 
-    private static final Path RULES = Path.of("monitoring/alert-rules.yml");
+    private static final Path RULES = RepoRoot.resolve("monitoring/alert-rules.yml");
 
     /** 애플리케이션이 쓰는 카운터. 여기 적힌 것이 곧 노출되는 이름의 근거다. */
     private static final List<String> COUNTERS = List.of(

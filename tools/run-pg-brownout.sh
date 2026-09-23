@@ -4,7 +4,7 @@
 # 사용: tools/run-pg-brownout.sh <지연ms> [도착률/초] [지속] [읽기타임아웃ms]
 #   예: tools/run-pg-brownout.sh 3000 30 60s
 #
-# 전제: docker compose up -d mysql redis · ./gradlew bootJar
+# 전제: docker compose up -d mysql redis · ./gradlew -p commerce bootJar
 set -euo pipefail
 
 LAT=${1:?지연 ms 를 달라}
@@ -13,7 +13,7 @@ DUR=${3:-60s}
 RTO=${4:-5000}
 LIMIT=${5:-0}     # PG 동시 호출 상한. 0 이면 상한 없음(기본 동작)
 
-JAR=build/libs/be-commerce-0.0.1-SNAPSHOT.jar
+JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 # 기본 java 가 17 이면 21 로 빌드한 jar 가 안 뜬다. 8080 은 다른 것이 쓰고 있을 수 있어 비켜 둔다.
 JAVA="$(/usr/libexec/java_home -v 21)/bin/java"   # JAVA_HOME 이 17 로 잡혀 있어도 21 로 띄운다
 PORT=${PORT:-18080}

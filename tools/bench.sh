@@ -16,13 +16,13 @@
 #   - 측정 환경을 리포트에 박아 넣는다 — 맥북에서 잰 수치는 맥북 수치다
 #
 # 사용법:
-#   ./gradlew bench -Pprofile=smoke          # 배관 검증(1분) — 본 측정 전에 먼저
-#   ./gradlew bench                          # 기본 프로파일(capacity)
-#   ./gradlew bench -Pprofile=spike
-#   ./gradlew bench -Pprofile=all
+#   ./gradlew -p commerce bench -Pprofile=smoke          # 배관 검증(1분) — 본 측정 전에 먼저
+#   ./gradlew -p commerce bench                          # 기본 프로파일(capacity)
+#   ./gradlew -p commerce bench -Pprofile=spike
+#   ./gradlew -p commerce bench -Pprofile=all
 #
 # 로컬 Docker 가 불안정하거나 CI 가 서비스를 따로 제공하면 외부 인프라 모드를 쓴다:
-#   BENCH_INFRA=external BENCH_DB_PORT=3307 BENCH_ALLOW_DB_RESET=1 ./gradlew bench -Pprofile=smoke
+#   BENCH_INFRA=external BENCH_DB_PORT=3307 BENCH_ALLOW_DB_RESET=1 ./gradlew -p commerce bench -Pprofile=smoke
 #
 set -uo pipefail
 
@@ -191,7 +191,7 @@ run_one() {
       SPRING_DATASOURCE_USERNAME="$DB_USER" SPRING_DATASOURCE_PASSWORD="$DB_PASS" \
       SPRING_DATA_REDIS_HOST="$REDIS_HOST" SPRING_DATA_REDIS_PORT="$REDIS_PORT" \
       $extra_env \
-      ./gradlew bootRun --console=plain > "$RUN_DIR/$name-app.log" 2>&1 &
+      ./gradlew -p commerce bootRun --console=plain > "$RUN_DIR/$name-app.log" 2>&1 &
   local wrapper=$!
 
   local healthy=0

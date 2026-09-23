@@ -10,7 +10,7 @@
 # 부하 단계는 재기동 없이 바꾼다.
 #
 # 사용:
-#   ./gradlew bootJar
+#   ./gradlew -p commerce bootJar
 #   bash tools/run-inference-overload.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -28,7 +28,7 @@ ACCOUNTS=${ACCOUNTS:-8}       # 계정은 공유한다(순수 GET 이라 사용�
 MAX_VUS=${MAX_VUS:-200}       # 최악 지연에서 도착률을 채울 만큼 — 부족하면 dropped 가 0이 아니게 된다
 PORT=${PORT:-18080}
 BASE="http://localhost:${PORT}"
-JAR=build/libs/be-commerce-0.0.1-SNAPSHOT.jar
+JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 JAVA="$(/usr/libexec/java_home -v 21)/bin/java"
 
 # 모델 용량과 정책 파라미터 — 리포트에 함께 적어야 수치를 읽을 수 있다.
@@ -38,7 +38,7 @@ MAX_IN_FLIGHT=${MAX_IN_FLIGHT:-24}
 ADMISSION_BUDGET_MS=${ADMISSION_BUDGET_MS:-100}
 BUSY_TIMEOUT_MS=${BUSY_TIMEOUT_MS:-400}
 
-[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew bootJar 를 먼저 돌려라"; exit 1; }
+[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew -p commerce bootJar 를 먼저 돌려라"; exit 1; }
 command -v k6 >/dev/null || { echo "k6 가 없다"; exit 1; }
 
 APP=""

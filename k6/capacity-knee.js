@@ -26,7 +26,7 @@ import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
  * <h3>실행</h3>
  * <pre>
  * docker compose down -v && docker compose up -d mysql redis   # 매번 초기화 — 안 하면 회차 비교 불가
- * APP_RATELIMIT_ENABLED=false ./gradlew bootRun
+ * APP_RATELIMIT_ENABLED=false ./gradlew -p commerce bootRun
  * k6 run k6/capacity-knee.js
  * </pre>
  *

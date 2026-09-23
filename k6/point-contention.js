@@ -8,7 +8,7 @@ import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
  * 같은 계정 하나로 30VU가 동시에 주문→승인을 반복한다 — 모든 승인이 같은
  * point_accounts 행에 +1%를 적립하며 경합하는 최악 조건. 운영에선 per-user
  * rate limit(5/s)이 이 동시성을 가리므로, 반드시 limiter를 끄고 돌린다:
- *   APP_RATELIMIT_ENABLED=false ./gradlew bootRun
+ *   APP_RATELIMIT_ENABLED=false ./gradlew -p commerce bootRun
  *
  * 판독: confirm 2xx 체크 성공률. 낙관적 락(현행)에서는 버전 충돌로 대량
  * 실패하고, 원자 UPDATE 전환 후에는 0이어야 한다.

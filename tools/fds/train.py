@@ -4,7 +4,7 @@
 파이썬이 피처를 다시 구현하면 학습이 보는 값과 서빙이 보는 값이 갈리고, 그 어긋남은
 점수가 이상해질 때까지 안 보인다.
 
-    ./gradlew test --tests '*FraudModelEvalTest.exportsFeatureMatrix'
+    ./gradlew -p commerce test --tests '*FraudModelEvalTest.exportsFeatureMatrix'
     tools/fds/.venv/bin/python tools/fds/train.py
 
 산출물은 build/fds/sklearn-model.json 이다. 자바 테스트 agreesWithSklearn 이 그 파일을

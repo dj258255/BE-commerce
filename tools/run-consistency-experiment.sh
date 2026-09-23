@@ -14,7 +14,7 @@
 #   duplicate   같은 이벤트를 두 번 보냄                     → 기대: 일치(409가 막는다)
 #   redelivery  Kafka 토픽을 되감아 재소비시킴               → 기대: 일치(seq 게이트가 막는다)
 #
-# 전제: docker compose up -d mysql redis kafka · ./gradlew bootJar
+# 전제: docker compose up -d mysql redis kafka · ./gradlew -p commerce bootJar
 # 사용: bash tools/run-consistency-experiment.sh
 set -euo pipefail
 
@@ -31,11 +31,11 @@ LONG_USERS=${LONG_USERS:-5}
 LONG_EVENTS=${LONG_EVENTS:-30}
 PORT=${PORT:-18080}
 BASE="http://localhost:${PORT}"
-JAR=build/libs/be-commerce-0.0.1-SNAPSHOT.jar
+JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 JAVA="$(/usr/libexec/java_home -v 21)/bin/java"
 TOPIC=user.activity
 
-[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew bootJar 를 먼저 돌려라"; exit 1; }
+[ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew -p commerce bootJar 를 먼저 돌려라"; exit 1; }
 command -v redis-cli >/dev/null || { echo "redis-cli 가 없다"; exit 1; }
 
 APP=""

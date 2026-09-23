@@ -20,7 +20,7 @@ Actuator + Micrometer → Prometheus → Grafana.
 관측성 스택은 `monitoring` 프로필로만 기동한다(mysql/redis/kafka는 프로필 없이 기본 기동).
 
 ```bash
-./gradlew bootRun                                          # 앱 — 호스트 8080, /actuator/prometheus 노출
+./gradlew -p commerce bootRun                                          # 앱 — 호스트 8080, /actuator/prometheus 노출
 docker compose --profile monitoring up -d prometheus grafana
 ```
 

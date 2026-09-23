@@ -7,6 +7,42 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — 저장소를 영역으로 나눈다 (#142 · #144 / M9)
+
+### 변경
+
+- **Java 앱이 `commerce/` 로 들어갔다.** Gradle 프로젝트 루트가 거기이고 wrapper 는 루트에 그대로다 —
+  `./gradlew -p commerce test` 로 돈다. `consumer-app` 이 이미 `-p` 로 돌고 있던 것과 같은 방식이다
+- **`consumer-app` 은 `commerce/consumer-app` 으로** 따라갔다. 결제 DLT 를 읽는 것이라 commerce 를
+  떼면 같이 간다
+- **`docs/`·`monitoring/`·`k6/`·`tools/`·`cdc/` 는 루트에 남겼다.** 둘 다 쓰기 때문이다 —
+  `alert-rules.yml` 한 파일에 분쟁 마감 알림과 개인화 반영 지연 알림이 같이 있다
+- **`ops/` 로 묶지 않았다.** 소유자가 한쪽이 아니라 둘 다여서, 한 겹 더 감싸도 경계는 안 선명해지고
+  링크만 깊어진다
+- **깨진 링크 검사를 CI 에 넣었다**(`tools/check_doc_links.py`)
+
+### 왜 테스트가 경로를 직접 안 들고 있게 했나
+
+작업 디렉터리가 `commerce/` 로 바뀌어 `Path.of("docs/...")` 가 안 풀린다. `"../docs/..."` 로
+깊이를 박는 대신 **표식을 찾아 올라가는 `RepoRoot`** 를 뒀다 — 다음에 한 번 더 옮겨도 안 깨진다.
+못 찾으면 예외를 던진다. **빈 파일을 읽고 "검사할 것이 없어 통과" 하는 것이 가장 나쁜 실패**여서다.
+
+### 검증
+
+- `./gradlew -p commerce clean test` — **1,178건 통과**(실패 0 · 건너뜀 2, 둘 다 `ci/allowed-skips.txt` 등재)
+- `./gradlew -p commerce integrationTest` 통과 · `./gradlew -p commerce/consumer-app build` 통과
+- **두 이미지를 실제로 굽고 jar 가 들어갔는지 확인했다** — `docker build` 는 jar 경로가 틀려도
+  성공할 수 있어서, 이미지 안의 `/app/app.jar` 크기를 직접 봤다(108MB · 33MB)
+- `promtool check rules` 24건 · 억제 프로브 6건 → 4건
+- **깨진 링크 11건을 찾아 0건으로 만들었다.** 그중 8건은 이번 이동과 무관하게 **원래 깨져 있던 것**이다
+
+### 안 고친 것
+
+- **과거 실측 기록(`**/runs/`)의 명령과 로그는 그대로 뒀다.** 그때 실제로 친 명령이고 실제로 찍힌
+  로그다. 지금 경로로 고쳐 쓰면 없던 일을 있었던 것처럼 만드는 것이다
+  (일괄 치환이 한 번 건드려서 바이트 단위로 되돌렸다)
+- CHANGELOG 의 과거 절에 있는 `./gradlew test` 표기도 같은 이유로 그대로다
+
 ## Unreleased — 추천 모델을 학습해 보고 넣지 않았다 (#217 / M12)
 
 ### 변경
