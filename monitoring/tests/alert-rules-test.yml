@@ -134,3 +134,39 @@ tests:
       - eval_time: 20m
         alertname: DisputeDeadlineMissed
         exp_alerts: []
+
+  # ── 대사 예외 큐: 건수가 아니라 나이 ───────────────────────────────
+  # 사람이 제때 종결해도 새 불일치가 이어서 들어오면 큐는 한 번도 비지 않는다.
+  # 건수로 걸던 예전 식(recon_pending_count > 0 이 15분)은 이 상태에서 울렸다.
+  # 가장 오래된 건이 5분을 넘지 않으면 조용해야 한다.
+  - interval: 1m
+    input_series:
+      - series: 'recon_pending_count'
+        values: '3x40'
+      - series: 'recon_pending_oldest_age_seconds'
+        values: '0+60x4 0+60x4 0+60x4 0+60x4 0+60x4 0+60x4 0+60x4 0+60x4'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: ReconPendingBacklog
+        exp_alerts: []
+
+  # 반대 방향 — 한 건이라도 방치되면 울린다. 900초를 넘고 5분 지속.
+  - interval: 1m
+    input_series:
+      - series: 'recon_pending_count'
+        values: '1x40'
+      - series: 'recon_pending_oldest_age_seconds'
+        values: '0+60x40'
+    alert_rule_test:
+      - eval_time: 19m
+        alertname: ReconPendingBacklog
+        exp_alerts: []
+      - eval_time: 21m
+        alertname: ReconPendingBacklog
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              domain: settlement
+            exp_annotations:
+              summary: "대사 미해결(PENDING) 적체"
+              description: "가장 오래된 PENDING 대사 예외가 15분 넘게 남아 있습니다. 어드민에서 예외 큐를 검토·종결하세요."
