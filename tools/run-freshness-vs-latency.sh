@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # E1 실측 드라이버 — 신선도 vs 지연, 그리고 "브로커가 필요한가".
 #
-# 같은 활동 이벤트를 세 가지 전달 방식(KAFKA / IN_PROCESS / IN_REQUEST)으로 컨텍스트에 반영하고,
+# 같은 활동 이벤트를 네 가지 전달 방식(KAFKA / IN_PROCESS / IN_REQUEST / CDC)으로 컨텍스트에 반영하고,
 # 대기 정책(waitMs)을 바꿔가며 최신 반영률과 지연을 잰다.
 #
 # 사용:
@@ -20,6 +20,9 @@
 #  ③ 앱은 모든 전달 방식에서 kafka 프로파일로 띄운다. "발행은 항상 일어난다"가 상수가 되고
 #     변수는 "누가 적용하는가" 하나로 남는다.
 #  ④ 런마다 앱을 재기동한다 — consumer 지연이 프로퍼티라 재기동이 필요하다.
+#  ⑤ CDC 런은 커넥터가 떠 있어야 성립한다 — CDC 모드에서 앱은 발행하지 않으므로 커넥터가 없으면
+#     아무것도 안 흘러 반영률이 0 이 된다. 그리고 **CDC 가 아닌 런에는 커넥터가 없어야 한다** —
+#     남아 있으면 앱 발행과 CDC 가 같이 흘러 한 활동이 두 번 간다(#211).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -42,6 +45,11 @@ PORT=${PORT:-18080}
 SETTLE_SECONDS=${SETTLE_SECONDS:-6}     # 컨슈머 그룹 조인을 기다린다(k6 setup 이 그 위에 15초를 더 쓴다)
 TOPIC=user.activity
 PARTITIONS=${PARTITIONS:-3}
+# CDC 런용 — Connect REST 와 커넥터 설정 파일(cdc/register-user-activity-connector.json).
+CONNECT_URL=${CONNECT_URL:-http://localhost:8083}
+CONNECTOR_NAME=${CONNECTOR_NAME:-user-activity-cdc}
+CONNECTOR_JSON=${CONNECTOR_JSON:-cdc/register-user-activity-connector.json}
+CONNECT_WAIT_SECONDS=${CONNECT_WAIT_SECONDS:-120}
 JAR=build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 JAVA="$(/usr/libexec/java_home -v 21)/bin/java"
 
@@ -51,7 +59,9 @@ docker exec pay-kafka-1 true 2>/dev/null || { echo "kafka 컨테이너(pay-kafka
 
 APP=""
 cleanup() { [ -n "$APP" ] && kill "$APP" 2>/dev/null || true; APP=""; }
-trap cleanup EXIT
+# EXIT 에서는 앱과 함께 커넥터도 내린다 — 중간에 끊겨도 커넥터가 남지 않게(⑤). 커넥터가 없으면 무해하다.
+cleanup_all() { cleanup; unregister_connector; }
+trap cleanup_all EXIT
 
 echo "== E1 실측 시작"
 echo "== 출력: $OUT"
@@ -119,6 +129,67 @@ start_app() {
   echo "앱이 안 떴다 — $LOG"; return 1
 }
 
+# ── CDC 커넥터 헬퍼 ────────────────────────────────────────────────────────────
+# CDC 런에서만 쓴다. Connect 가 없으면 커넥터를 못 올리므로 그 런은 건너뛴다(반영률 0 을 "측정값"으로
+# 남기지 않기 위해서다).
+connect_up() {
+  # 이미 떠 있으면 그대로다(멱등).
+  docker compose -p pay --profile cdc up -d debezium >/dev/null 2>&1 || return 1
+  for _ in $(seq 1 "$CONNECT_WAIT_SECONDS"); do
+    if curl -sf "$CONNECT_URL/" >/dev/null 2>&1; then return 0; fi
+    sleep 1
+  done
+  return 1
+}
+
+# 이미 있으면 409 — 실패로 보지 않고 그대로 쓴다.
+register_connector() {
+  local code
+  code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
+      --data @"$CONNECTOR_JSON" "$CONNECT_URL/connectors" 2>/dev/null || echo 000)
+  case "$code" in
+    200|201) echo "  CDC: 커넥터 등록 ($code)"; return 0 ;;
+    409)     echo "  CDC: 커넥터가 이미 있다 ($code) — 그대로 쓴다"; return 0 ;;
+    *)       echo "  CDC: 커넥터 등록 실패 (HTTP $code)"; return 1 ;;
+  esac
+}
+
+# 커넥터 state 뿐 아니라 **모든 task** state 가 RUNNING 이어야 한다 — RUNNING 이어도 task 가 죽어 있을 수 있다.
+wait_connector_running() {
+  for _ in $(seq 1 "$CONNECT_WAIT_SECONDS"); do
+    if curl -sf "$CONNECT_URL/connectors/$CONNECTOR_NAME/status" 2>/dev/null | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+tasks = d.get("tasks") or []
+ok = d.get("connector", {}).get("state") == "RUNNING" and tasks \
+     and all(t.get("state") == "RUNNING" for t in tasks)
+sys.exit(0 if ok else 1)
+'; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+unregister_connector() {
+  # 실패해도 런을 죽이지 않는다(Connect 가 없으면 무해하게 실패한다).
+  curl -s -o /dev/null -X DELETE "$CONNECT_URL/connectors/$CONNECTOR_NAME" 2>/dev/null || true
+}
+
+# meta.txt 에 적을 커넥터 이미지 태그 — 어느 버전으로 쟀는지 나중에 알아야 한다.
+connector_image() {
+  local img
+  img=$(docker inspect --format '{{.Config.Image}}' pay-debezium-1 2>/dev/null || true)
+  if [ -z "$img" ]; then
+    img=$(grep -m1 -E '^[[:space:]]*image: debezium/' compose.yaml 2>/dev/null | awk '{print $2}' || true)
+  fi
+  if [ -n "$img" ]; then echo "$img"; else echo unknown; fi
+}
+
 run_one() {
   local transport=$1 delay=$2 wait=$3
   local dir="$RAW/${transport}-d${delay}-w${wait}"
@@ -128,6 +199,32 @@ run_one() {
   local group="pf-e1-${STAMP}-${transport}-d${delay}-w${wait}"
 
   echo "-- ${transport} · delay=${delay}ms · waitMs=${wait}"
+
+  # CDC 런은 커넥터가 떠 있어야 성립한다(⑤) — 앱은 CDC 모드에서 발행하지 않으므로, 커넥터가 없으면
+  # 아무것도 흐르지 않아 반영률이 0 이 된다. 커넥터를 못 올리면 그 런을 건너뛰고 이유를 남긴다.
+  if [ "$transport" = "CDC" ]; then
+    if ! connect_up; then
+      echo "  CDC: Connect($CONNECT_URL)가 ${CONNECT_WAIT_SECONDS}s 안에 응답하지 않는다 — 이 런을 건너뛴다"
+      { echo "skipped=connect_unreachable"; echo "connect_url=$CONNECT_URL"; } > "$dir/SKIPPED.txt"
+      return 0
+    fi
+    if ! register_connector; then
+      echo "  CDC: 커넥터를 등록하지 못했다 — 이 런을 건너뛴다"
+      echo "skipped=connector_registration_failed" > "$dir/SKIPPED.txt"
+      return 0
+    fi
+    if ! wait_connector_running; then
+      echo "  CDC: 커넥터가 RUNNING 이 되지 않았다 — 이 런을 건너뛴다"
+      echo "skipped=connector_not_running" > "$dir/SKIPPED.txt"
+      unregister_connector
+      return 0
+    fi
+    echo "  CDC: $CONNECTOR_NAME RUNNING (커넥터가 $TOPIC 로 흘린다)"
+  else
+    # CDC 가 아닌 런에는 커넥터가 없어야 한다(⑤) — 남아 있으면 앱 발행과 CDC 가 같이 흘러 두 번 간다.
+    unregister_connector
+  fi
+
   reset_context
   start_app "$transport" "$delay" "$group" || return 1
 
@@ -152,7 +249,19 @@ accounts=$ACCOUNTS
 context_keys_after=$(context_keys)
 EOF
 
+  # CDC 런이면 커넥터 이름과 이미지 태그를 남긴다 — 어느 버전으로 쟀는지 나중에 알아야 한다.
+  if [ "$transport" = "CDC" ]; then
+    cat >> "$dir/meta.txt" <<EOF
+connector=$CONNECTOR_NAME
+connector_image=$(connector_image)
+EOF
+  fi
+
   cleanup
+  # 런이 끝나면 커넥터를 내린다 — 다음 런이 다른 전달 방식이면 남아 있으면 안 된다(⑤). 실패해도 런은 산다.
+  if [ "$transport" = "CDC" ]; then
+    unregister_connector
+  fi
 }
 
 BASE="http://localhost:${PORT}"

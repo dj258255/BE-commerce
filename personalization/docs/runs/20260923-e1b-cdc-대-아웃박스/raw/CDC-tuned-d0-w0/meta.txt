@@ -1,0 +1,12 @@
+transport=CDC
+consumer_delay_ms=0
+wait_ms=0
+consumer_group=pf-e1-20260923-084202-CDC-d0-w0
+duration=40s
+warmup_ms=15000
+rate=8
+max_vus=15
+accounts=15
+context_keys_after=15
+connector=user-activity-cdc
+connector_image=debezium/connect:3.0.0.Final

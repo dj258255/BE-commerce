@@ -36,6 +36,9 @@
     "transforms.keyField.field": "userId",
     "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
     "transforms.route.regex": ".*",
-    "transforms.route.replacement": "user.activity"
+    "transforms.route.replacement": "user.activity",
+    "poll.interval.ms": "100",
+    "max.batch.size": "256",
+    "max.queue.size": "1024"
   }
 }
