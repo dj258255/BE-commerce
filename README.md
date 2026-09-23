@@ -241,6 +241,7 @@ docker compose --profile monitoring up -d prometheus grafana
 
 | 알고 싶은 것 | 확인하는 곳 |
 |---|---|
+| **지금 무엇이 열려 있는가** | [`docs/TROUBLESHOOTING-LOG.md`](docs/TROUBLESHOOTING-LOG.md) — 열린 것과 닫은 방식을 한 화면에 |
 | 지금 어디까지 왔는가 | [`personalization/ROADMAP.md`](personalization/ROADMAP.md) · [`docs/ROADMAP-TRADEOFFS.md`](docs/ROADMAP-TRADEOFFS.md) |
 | 무엇을 만들기로 했는가 · 완료 조건 | GitHub Issue (배경 / 할 일 / 검증 / 하지 말 것) |
 | 어느 단위로 나눴는가 | GitHub Milestone (M0~M12) |
