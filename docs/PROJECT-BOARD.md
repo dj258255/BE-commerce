@@ -1,4 +1,4 @@
-# pay 작업 보드
+# BE-commerce 작업 보드
 
 이 문서는 개인 프로젝트에서도 다른 사람이 현재 상태와 다음 의사결정을 복원할 수 있게 하는
 작업 보드다. GitHub Issue·PR·Milestone을 사용할 때도 이 표의 목적·완료 조건·예상 시간·위험을
@@ -20,7 +20,7 @@
 | M1 | UNKNOWN·웹훅·보상 수렴 | Done | 완료 | 복구 배치·웹훅 통합 테스트 |
 | M2 | PG 브라운아웃과 retry storm 기준선 | Done | 완료 | p95·connection wait·거절률·retry 횟수 리포트 |
 | M3 | 원장·대사·지급 정합성 지표 | Done (synthetic) | 완료 | pending 금액·oldest age·지급 대사 엔진·원장 검증 기록 |
-| M4 | replay·DLQ·복구 후 재대사 | Planned | 1~2일 | replay 정책·통합 시나리오·운영 기록 |
+| M4 | replay·DLQ·복구 후 재대사 | Done | 완료 | [ADR-030](adr/ADR-030-dlt-replay-and-post-recovery-reconciliation.md) — 복구 멱등화 + 복구 후 검증 |
 | M5 | 다통화·두 PG·실 지급 계약 | Blocked by external state | 별도 협의 | 계약 테스트·수수료/승인율 비교 |
 | M6 | pending/posted 대사와 hot entity | Done (local) | 완료 | 잠정 대사 엔진·잔액 조회 실측·lock wait 실험 |
 
