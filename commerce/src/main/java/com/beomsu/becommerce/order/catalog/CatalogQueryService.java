@@ -1,7 +1,10 @@
 package com.beomsu.becommerce.order.catalog;
 
 import com.beomsu.becommerce.order.internal.OrderException;
+import com.beomsu.becommerce.order.catalog.search.LikeProductSearch;
+import com.beomsu.becommerce.order.catalog.search.ProductSearch;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -13,6 +16,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -35,22 +39,28 @@ public class CatalogQueryService {
     /** 상세 응답에 싣는 리뷰 수 상한 — 응답이 무한히 커지지 않게 한다(#168). */
     private static final int REVIEW_LIMIT = 20;
 
+    /** 관련도 엔진 결과를 사용자 정렬로 다시 자를 때 쓰는 후보 수(#236). */
+    private static final int SORT_CANDIDATES = 500;
+
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final StockRepository stockRepository;
     private final ProductReviewRepository reviewRepository;
     private final FacetCache facetCache;
+    private final ProductSearch productSearch;
 
     public CatalogQueryService(ProductRepository productRepository,
                                CategoryRepository categoryRepository,
                                StockRepository stockRepository,
                                ProductReviewRepository reviewRepository,
-                               FacetCache facetCache) {
+                               FacetCache facetCache,
+                               ProductSearch productSearch) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.stockRepository = stockRepository;
         this.reviewRepository = reviewRepository;
         this.facetCache = facetCache;
+        this.productSearch = productSearch;
     }
 
     /**
@@ -115,17 +125,48 @@ public class CatalogQueryService {
     public ProductPageView products(String category, String q, Boolean featured,
                                     String colour, String productType,
                                     Long minPrice, Long maxPrice, String sort, int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), clampSize(size), sortOf(sort));
-        Page<Product> result;
         if (q != null && !q.isBlank()) {
-            String keyword = q.trim();
-            result = productRepository.findByNameContainingOrBrandContaining(keyword, keyword, pageable);
-        } else {
-            String[] axis = categoryAxis(category);
-            result = productRepository.search(axis[0], axis[1], blankToNull(colour),
-                    blankToNull(productType), minPrice, maxPrice, featured, pageable);
+            return search(q.trim(), sort, Math.max(page, 0), clampSize(size));
         }
+        Pageable pageable = PageRequest.of(Math.max(page, 0), clampSize(size), sortOf(sort));
+        String[] axis = categoryAxis(category);
+        Page<Product> result = productRepository.search(axis[0], axis[1], blankToNull(colour),
+                blankToNull(productType), minPrice, maxPrice, featured, pageable);
         return toPageView(result);
+    }
+
+    /**
+     * 검색어 경로(#236, ADR-051). 어느 구현이 답하든 <b>id 와 순서만</b> 받고 상품·재고는 DB 에서 채운다.
+     *
+     * <ul>
+     *   <li>정렬을 고르지 않았으면({@code null}·{@code relevance}) 검색 구현의 순서를 그대로 쓴다.
+     *       관련도 엔진이면 관련도순, LIKE 면 신상품순이다</li>
+     *   <li>정렬을 골랐으면 LIKE 는 일치하는 전체 안에서 정렬하고(지금까지의 동작), 관련도 엔진은 상위
+     *       {@value #SORT_CANDIDATES}개 후보 안에서 정렬한다 — "검색 결과 안에서 가격순"이다</li>
+     * </ul>
+     */
+    private ProductPageView search(String keyword, String sort, int page, int size) {
+        if (sort == null || sort.isBlank() || "relevance".equals(sort)) {
+            ProductSearch.SearchPage hits = productSearch.search(keyword, page, size);
+            return toPageView(hydrate(hits, PageRequest.of(page, size)));
+        }
+        Pageable pageable = PageRequest.of(page, size, sortOf(sort));
+        if (productSearch instanceof LikeProductSearch like) {
+            return toPageView(like.searchSorted(keyword, pageable));
+        }
+        List<Long> candidates = productSearch.search(keyword, 0, SORT_CANDIDATES).ids();
+        if (candidates.isEmpty()) {
+            return toPageView(Page.empty(pageable));
+        }
+        return toPageView(productRepository.findByProductIdIn(candidates, pageable));
+    }
+
+    /** 검색 결과 순서를 지키며 상품을 채운다. 색인에는 있는데 DB 에 없는 id(삭제된 상품)는 뺀다. */
+    private Page<Product> hydrate(ProductSearch.SearchPage hits, Pageable pageable) {
+        Map<Long, Product> byId = productRepository.findAllById(hits.ids()).stream()
+                .collect(Collectors.toMap(Product::getProductId, p -> p));
+        List<Product> ordered = hits.ids().stream().map(byId::get).filter(Objects::nonNull).toList();
+        return new PageImpl<>(ordered, pageable, hits.total());
     }
 
     /**

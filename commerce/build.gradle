@@ -59,6 +59,9 @@ dependencies {
     // 코덱별 교차점을 같은 하네스로 비교해야 하기 때문이다(E6).
     implementation 'org.lz4:lz4-java:1.8.0'
     implementation 'org.xerial.snappy:snappy-java:1.1.10.7'
+    // 앱 안 검색(ADR-051 비교 대상). ES 8.15 · OpenSearch 2.19 와 같은 Lucene 9 계열이라 점수 함수(BM25)가 같다
+    implementation 'org.apache.lucene:lucene-core:9.12.0'
+    implementation 'org.apache.lucene:lucene-analysis-common:9.12.0'
 
     // --- Observability ---
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
