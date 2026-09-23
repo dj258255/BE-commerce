@@ -46,5 +46,9 @@ tools/fds/.venv/
 # 개인화 데이터·파이프라인 산출물 (커밋 금지)
 personalization/data/
 personalization/pipeline/.venv/
+personalization/.venv/
+# 심볼릭 링크로 둘 때가 있다 — 슬래시 붙은 규칙은 링크를 못 막는다
+personalization/data
+personalization/.venv
 personalization/pipeline/__pycache__/
 __pycache__/
