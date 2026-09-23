@@ -6,6 +6,7 @@ import com.beomsu.becommerce.personalization.RecentActivityFacts;
 import com.beomsu.becommerce.recommendation.RecommendationFacts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -65,7 +66,23 @@ public class HomeComposer {
     private final int minItems;
     private final int maxPerCategory;
     private final int candidateDepth;
+    private final int pageRows;
 
+    /** 다음 쪽 카테고리 행이 후보로 쓰는 인기 표 깊이 — 인기 표 전체(200행)다. */
+    static final int POPULAR_DEPTH = 200;
+    static final String SOURCE_CATALOG = "CATALOG";
+
+    public HomeComposer(RecommendationFacts recommendations,
+                        ProductCatalogFacts catalog,
+                        RecentActivityFacts recentActivity,
+                        ImpressionRecorder impressions,
+                        Rules rules, int contextLimit, int rowCap, int itemCap, int minItems,
+                        int maxPerCategory, int refillDepth) {
+        this(recommendations, catalog, recentActivity, impressions, rules, contextLimit, rowCap, itemCap,
+                minItems, maxPerCategory, refillDepth, 3);
+    }
+
+    @Autowired
     public HomeComposer(RecommendationFacts recommendations,
                         ProductCatalogFacts catalog,
                         RecentActivityFacts recentActivity,
@@ -76,7 +93,8 @@ public class HomeComposer {
                         @Value("${app.home.item-cap:8}") int itemCap,
                         @Value("${app.home.min-items:3}") int minItems,
                         @Value("${app.home.max-per-category:3}") int maxPerCategory,
-                        @Value("${app.home.refill-depth:1}") int refillDepth) {
+                        @Value("${app.home.refill-depth:1}") int refillDepth,
+                        @Value("${app.home.page-rows:3}") int pageRows) {
         this.recommendations = recommendations;
         this.catalog = catalog;
         this.recentActivity = recentActivity;
@@ -90,6 +108,7 @@ public class HomeComposer {
         // 되채우기 깊이(#198①) — 1이면 행마다 항목 상한만큼만 후보를 받는다(규칙 도입 전과 같은 동작).
         // 2면 2배까지: 규칙이 버린 칸을 **더 깊은 후보**로 채운다. 그 대가는 관련도(평균 표시 순위)다.
         this.candidateDepth = Math.max(refillDepth, 1) * this.itemCap;
+        this.pageRows = Math.max(pageRows, 1);
         log.info("홈 조립 규칙={} 행상한={} 항목상한={} 최소항목={} 카테고리상한={} 후보깊이={}",
                 rules, this.rowCap, this.itemCap, this.minItems, this.maxPerCategory, this.candidateDepth);
     }
@@ -101,6 +120,17 @@ public class HomeComposer {
      * 이유는 추천이 그걸 입력으로 쓰기 때문이고, 카드를 한 번에 읽는 이유는 N+1을 피하기 위해서다.
      */
     public HomePageView compose(long userId) {
+        return compose(userId, HomeCursor.first());
+    }
+
+    /**
+     * 한 쪽을 조립한다(#237). 1쪽은 {@link #compose(long)} 과 같은 세 행이고, 2쪽부터는
+     * {@link #composeNext 대분류별 인기 행}이다.
+     */
+    public HomePageView compose(long userId, HomeCursor cursor) {
+        if (cursor.page() > 1) {
+            return composeNext(userId, cursor);
+        }
         long startedAt = System.nanoTime();
 
         long t0 = System.nanoTime();
@@ -140,9 +170,156 @@ public class HomeComposer {
         HomePageView page = new HomePageView(String.valueOf(userId), Instant.now().toString(),
                 assembly.source(), recommended.fallbackReason(), null,
                 new HomePageView.Latency(contextMs, recommended.modelMs(), recommended.checkMs(), totalMs),
-                assembly.rows(), assembly.stats());
+                assembly.rows(), assembly.stats(), 1, firstNextCursor(assembly.rows()));
         impressions.record(page);
         return page;
+    }
+
+    /** 1쪽이 보여 준 상품과 행을 담은 2쪽 커서. 1쪽 뒤에는 카테고리 행이 늘 남아 있으므로 비우지 않는다. */
+    private static String firstNextCursor(List<HomePageView.Row> rows) {
+        List<Long> shown = rows.stream().flatMap(r -> r.items().stream())
+                .map(i -> Long.parseLong(i.itemId())).toList();
+        return HomeCursor.first().next(shown, rows.stream().map(HomePageView.Row::id).toList()).encode();
+    }
+
+    /**
+     * 2쪽부터 — <b>대분류별 인기 행</b>(#237).
+     *
+     * <p>GenPage 가 다음 쪽을 만들 때 하는 일 둘을 그대로 한다.
+     * <ul>
+     *   <li><b>앞에서 보여 준 것을 입력에 넣는다</b> — 커서의 상품은 다시 넣지 않는다. 쪽을 넘겨도 같은 상품이
+     *       돌아오지 않는다</li>
+     *   <li><b>그 사이의 세션 활동을 반영한다</b> — 최근 활동을 <b>이 요청 시점에</b> 다시 읽어, 방금 본 상품의
+     *       대분류 행을 먼저 놓는다. 1쪽 이후 원피스를 봤다면 2쪽 첫 행이 여성복이다. 그 행은
+     *       {@code CATEGORY_POPULAR_SESSION} 으로 표시한다 — 세션이 순서를 바꿨는지 응답만 보고 알 수 있다</li>
+     * </ul>
+     *
+     * <p>한 대분류는 한 번만 행이 된다. 시도한 대분류는 행이 못 되더라도(항목이 {@code minItems} 미만) 커서에
+     * 남겨 다음 쪽에서 다시 시도하지 않는다. 시도할 대분류가 남지 않으면 {@code nextCursor} 가 {@code null} 이다.
+     */
+    private HomePageView composeNext(long userId, HomeCursor cursor) {
+        long startedAt = System.nanoTime();
+        long t0 = System.nanoTime();
+        List<Long> recent = recentActivity.recentItemIds(userId, contextLimit);
+        long contextMs = elapsed(t0);
+        List<Long> popular = recommendations.popularItemIds(POPULAR_DEPTH);
+
+        Set<Long> wanted = new LinkedHashSet<>(recent);
+        wanted.addAll(popular);
+        Map<Long, ProductCatalogFacts.ProductCardFacts> cards = new LinkedHashMap<>();
+        for (ProductCatalogFacts.ProductCardFacts card : catalog.findAll(List.copyOf(wanted))) {
+            cards.put(card.productId(), card);
+        }
+
+        // 세션이 고른 대분류(방금 본 것 순서) → 인기 표에 처음 나오는 순서로 나머지
+        Set<String> sessionCategories = new LinkedHashSet<>();
+        for (Long id : recent) {
+            ProductCatalogFacts.ProductCardFacts card = cards.get(id);
+            if (card != null && card.categoryCode() != null) {
+                sessionCategories.add(card.categoryCode());
+            }
+        }
+        Set<String> order = new LinkedHashSet<>(sessionCategories);
+        for (Long id : popular) {
+            ProductCatalogFacts.ProductCardFacts card = cards.get(id);
+            if (card != null && card.categoryCode() != null) {
+                order.add(card.categoryCode());
+            }
+        }
+        order.removeIf(category -> cursor.usedRows().contains(rowId(category)));
+
+        Map<String, String> names = catalog.topCategoryNames();
+        List<HomePageView.Row> rows = new ArrayList<>();
+        List<Long> newlyShown = new ArrayList<>();
+        List<String> tried = new ArrayList<>();
+        int duplicates = 0;
+        int outOfStock = 0;
+        Set<String> distinct = new LinkedHashSet<>();
+        for (String category : order) {
+            if (rows.size() >= pageRows) {
+                break;
+            }
+            tried.add(rowId(category));
+            List<HomePageView.Item> items = new ArrayList<>();
+            int position = 0;
+            for (Long id : popular) {
+                position++;
+                ProductCatalogFacts.ProductCardFacts card = cards.get(id);
+                if (card == null || !category.equals(card.categoryCode())) {
+                    continue;
+                }
+                if (cursor.shown().contains(id) || newlyShown.contains(id)) {
+                    duplicates++;   // 앞 쪽에서 이미 보여 준 상품 — 커서가 없었다면 다시 나갔다
+                    continue;
+                }
+                if (!card.inStock()) {
+                    outOfStock++;
+                    continue;
+                }
+                items.add(item(card, "대분류 인기", position));
+                if (items.size() >= itemCap) {
+                    break;
+                }
+            }
+            if (items.size() < itemCap) {
+                // 인기 표에 이 대분류가 모자라면 그 대분류의 신상품으로 채운다. 채우지 않으면 행이 안 서고,
+                // 사용자가 방금 본 대분류가 세션 신호였어도 조용히 사라진다(실측에서 아동복 6건이 그랬다).
+                fillFromCategory(category, items, cursor, newlyShown);
+            }
+            if (items.size() >= minItems) {
+                boolean fromSession = sessionCategories.contains(category);
+                rows.add(new HomePageView.Row(rowId(category), names.getOrDefault(category, category) + " 인기",
+                        fromSession ? "CATEGORY_POPULAR_SESSION" : "CATEGORY_POPULAR", List.copyOf(items)));
+                items.forEach(i -> newlyShown.add(Long.parseLong(i.itemId())));
+                distinct.add(category);
+            }
+        }
+
+        boolean more = order.size() > tried.size();
+        String next = more ? cursor.next(newlyShown, tried).encode() : null;
+        HomePageView page = new HomePageView(String.valueOf(userId), Instant.now().toString(),
+                SOURCE_CATALOG, null, null,
+                new HomePageView.Latency(contextMs, 0, 0, elapsed(startedAt)),
+                rows, new HomePageView.AssemblyStats(popular.size(), 0, outOfStock, duplicates, 0, distinct.size()),
+                cursor.page(), next);
+        impressions.record(page);
+        return page;
+    }
+
+    /**
+     * 대분류 신상품으로 행의 빈칸을 채운다. 앞 쪽에서 보여 준 것·이 쪽에서 이미 쓴 것·품절은 뺀다.
+     * 채운 수를 돌려준다 — 응답의 {@code reason} 이 "대분류 신상품"이라 인기와 구분된다.
+     */
+    private int fillFromCategory(String category, List<HomePageView.Item> items, HomeCursor cursor,
+                                 List<Long> newlyShown) {
+        Set<String> already = new LinkedHashSet<>();
+        items.forEach(i -> already.add(i.itemId()));
+        int before = items.size();
+        List<Long> newest = catalog.newestInCategory(category, itemCap * 3);
+        Map<Long, ProductCatalogFacts.ProductCardFacts> byId = new LinkedHashMap<>();
+        catalog.findAll(newest).forEach(card -> byId.put(card.productId(), card));
+        int position = 0;
+        for (Long id : newest) {   // findAll 은 순서를 지키지 않는다 — 신상품 순서는 id 목록이 쥔다
+            position++;
+            ProductCatalogFacts.ProductCardFacts card = byId.get(id);
+            if (card == null) {
+                continue;
+            }
+            if (items.size() >= itemCap) {
+                break;
+            }
+            if (cursor.shown().contains(id) || newlyShown.contains(id) || already.contains(String.valueOf(id))
+                    || !card.inStock()) {
+                continue;
+            }
+            items.add(item(card, "대분류 신상품", position));
+            already.add(String.valueOf(id));
+        }
+        return items.size() - before;
+    }
+
+    private static String rowId(String category) {
+        return "cat:" + category;
     }
 
     /**

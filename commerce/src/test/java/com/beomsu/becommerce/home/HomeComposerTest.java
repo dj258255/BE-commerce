@@ -205,4 +205,98 @@ class HomeComposerTest {
         assertThat(page.stats().unmatched()).isEqualTo(3);
         assertThat(page.rows()).extracting(HomePageView.Row::id).containsExactly("popular");
     }
+
+    // ---- 다음 쪽(#237) ----
+
+    private void popularByCategory() {
+        // 인기 표: a 대분류 1~6, b 7~12, c 13~18 (id 순서가 곧 인기 순위)
+        List<Long> ids = new java.util.ArrayList<>();
+        for (long id = 1; id <= 18; id++) {
+            ids.add(id);
+        }
+        when(recommendations.popularItemIds(anyInt())).thenAnswer(inv -> ids.subList(0, Math.min(inv.getArgument(0), ids.size())));
+        when(catalog.findAll(anyList())).thenAnswer(inv -> {
+            List<Long> want = inv.getArgument(0);
+            return want.stream().map(id -> card(id, id <= 6 ? "a" : id <= 12 ? "b" : "c", true)).toList();
+        });
+        when(catalog.topCategoryNames()).thenReturn(java.util.Map.of("a", "여성복", "b", "남성복", "c", "아동복"));
+        modelReturns(List.of());
+    }
+
+    private static List<Long> idsOf(HomePageView page) {
+        return page.rows().stream().flatMap(r -> r.items().stream()).map(i -> Long.parseLong(i.itemId())).toList();
+    }
+
+    @Test
+    @DisplayName("다음 쪽은 앞 쪽에서 보여 준 상품을 다시 내지 않는다 — 커서가 그것을 들고 온다")
+    void nextPageExcludesShown() {
+        popularByCategory();
+        HomeComposer composer = composer(HomeComposer.Rules.FULL, 3, 1);
+
+        HomePageView first = composer.compose(USER);
+        HomePageView second = composer.compose(USER, HomeCursor.decode(first.nextCursor()));
+
+        assertThat(first.page()).isEqualTo(1);
+        assertThat(second.page()).isEqualTo(2);
+        assertThat(idsOf(second)).isNotEmpty().doesNotContainAnyElementsOf(idsOf(first));
+        assertThat(second.stats().duplicates()).isPositive();   // 커서가 없었다면 다시 나갔을 상품 수
+    }
+
+    @Test
+    @DisplayName("1쪽 이후에 본 상품의 대분류가 2쪽 첫 행이 된다 — 세션 활동이 다음 쪽 순서를 바꾼다")
+    void sessionActivityLeadsNextPage() {
+        popularByCategory();
+        HomeComposer composer = composer(HomeComposer.Rules.FULL, 3, 1);
+        HomePageView first = composer.compose(USER);
+        // 1쪽을 본 뒤 c 대분류(아동복) 상품 하나를 봤다
+        when(recentActivity.recentItemIds(USER, 8)).thenReturn(List.of(15L));
+
+        HomePageView second = composer.compose(USER, HomeCursor.decode(first.nextCursor()));
+
+        assertThat(second.rows().get(0).id()).isEqualTo("cat:c");
+        assertThat(second.rows().get(0).strategy()).isEqualTo("CATEGORY_POPULAR_SESSION");
+        assertThat(second.rows().get(0).title()).isEqualTo("아동복 인기");
+    }
+
+    @Test
+    @DisplayName("시도할 대분류가 다 떨어지면 nextCursor 가 없다")
+    void endsWhenCategoriesRunOut() {
+        popularByCategory();
+        HomeComposer composer = new HomeComposer(recommendations, catalog, recentActivity, impressions,
+                HomeComposer.Rules.FULL, 8, 5, 8, 1, 3, 1, 2);
+        HomePageView page = composer.compose(USER);
+        int pages = 1;
+        while (page.nextCursor() != null && pages < 10) {
+            page = composer.compose(USER, HomeCursor.decode(page.nextCursor()));
+            pages++;
+        }
+        assertThat(page.nextCursor()).isNull();
+        assertThat(pages).isEqualTo(3);   // 1쪽 + 대분류 셋을 쪽당 2행으로 → 2쪽(a·b), 3쪽(c)
+    }
+
+
+    @Test
+    @DisplayName("인기 표에 없는 대분류를 봤어도 그 행이 선다 — 대분류 신상품으로 채운다(세션 신호가 조용히 버려지지 않는다)")
+    void thinCategoryIsFilledFromNewest() {
+        popularByCategory();
+        // d 대분류: 인기 표에 하나도 없다. 신상품 30~33 이 있다
+        when(catalog.newestInCategory(org.mockito.ArgumentMatchers.eq("d"), anyInt())).thenReturn(List.of(33L, 32L, 31L, 30L));
+        when(catalog.newestInCategory(org.mockito.ArgumentMatchers.argThat(c -> !"d".equals(c)), anyInt())).thenReturn(List.of());
+        when(catalog.findAll(anyList())).thenAnswer(inv -> {
+            List<Long> want = inv.getArgument(0);
+            return want.stream().map(id -> card(id, id >= 30 ? "d" : id <= 6 ? "a" : id <= 12 ? "b" : "c", true)).toList();
+        });
+        HomeComposer composer = composer(HomeComposer.Rules.FULL, 3, 1);
+        HomePageView first = composer.compose(USER);
+        when(recentActivity.recentItemIds(USER, 8)).thenReturn(List.of(30L));
+
+        HomePageView second = composer.compose(USER, HomeCursor.decode(first.nextCursor()));
+
+        HomePageView.Row row = second.rows().get(0);
+        assertThat(row.id()).isEqualTo("cat:d");
+        assertThat(row.strategy()).isEqualTo("CATEGORY_POPULAR_SESSION");
+        assertThat(row.items()).extracting(HomePageView.Item::reason).containsOnly("대분류 신상품");
+        assertThat(row.items()).extracting(HomePageView.Item::itemId).startsWith("33", "32");
+    }
+
 }

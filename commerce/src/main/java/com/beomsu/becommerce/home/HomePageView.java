@@ -11,6 +11,9 @@ import java.util.List;
  * <p><b>{@code stats} 를 더한 이유</b>: 조립이 무엇을 <b>버렸는지</b>를 응답이 밝힌다. 중복·품절·미매칭을
  * 조용히 지우면 "왜 이 화면인가"를 아무도 복원할 수 없다 — 이 저장소가 반복해서 지켜 온 규칙이다
  * (폴백을 숨기지 않기, 창을 응답에 밝히기와 같은 이유). 화면은 이 필드를 안 써도 된다.
+ *
+ * <p>{@code page} 는 1부터이고, {@code nextCursor} 는 다음 쪽을 받을 때 그대로 돌려줄 값이다. 더 만들 행이
+ * 없으면 {@code null} 이다(#237).
  */
 public record HomePageView(String userId,
                            String generatedAt,
@@ -19,7 +22,9 @@ public record HomePageView(String userId,
                            Long contextStalenessMs,
                            Latency latency,
                            List<Row> rows,
-                           AssemblyStats stats) {
+                           AssemblyStats stats,
+                           int page,
+                           String nextCursor) {
 
     /** 추천 결과가 어디서 왔는가. */
     public static final String SOURCE_MODEL = "MODEL";
