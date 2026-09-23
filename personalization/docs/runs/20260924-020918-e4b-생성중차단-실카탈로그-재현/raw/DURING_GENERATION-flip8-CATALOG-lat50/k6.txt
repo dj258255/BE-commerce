@@ -1,0 +1,448 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: k6/constraint-revalidation.js
+        output: -
+
+     scenarios: (100.00%) 2 scenarios, 23 max VUs, 1m17s max duration (incl. graceful stop):
+              * recommend: 30.00 iterations/s for 45s (maxVUs: 20, exec: recommend, gracefulStop: 5s)
+              * flip: 8.00 iterations/s for 45s (maxVUs: 3, exec: flip, startTime: 2s, gracefulStop: 30s)
+
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+Run         [ 100% ] setup()
+recommend   [   0% ]
+flip        [   0% ]
+
+running (0m58.0s), 01/23 VUs, 0 complete and 0 interrupted iterations
+recommend   [   0% ] 01/20 VUs  00.0s/45s  30.00 iters/s
+flip      • [   0% ] waiting    2.0s      
+
+running (0m59.0s), 03/23 VUs, 28 complete and 0 interrupted iterations
+recommend   [   2% ] 03/20 VUs  01.0s/45s  30.00 iters/s
+flip      • [   0% ] waiting    1.0s      
+
+running (1m00.0s), 04/23 VUs, 58 complete and 0 interrupted iterations
+recommend   [   4% ] 03/20 VUs  02.0s/45s  30.00 iters/s
+flip        [   0% ] 1/3 VUs    00.0s/45s  8.00 iters/s
+time="2026-09-24T02:16:46+09:00" level=warning msg="Insufficient VUs, reached 3 active VUs and cannot initialize more" executor=constant-arrival-rate scenario=flip
+
+running (1m01.0s), 13/23 VUs, 81 complete and 0 interrupted iterations
+recommend   [   7% ] 10/20 VUs  03.0s/45s  30.00 iters/s
+flip        [   2% ] 3/3 VUs    01.0s/45s  8.00 iters/s
+
+running (1m02.0s), 11/23 VUs, 114 complete and 0 interrupted iterations
+recommend   [   9% ] 08/20 VUs  04.0s/45s  30.00 iters/s
+flip        [   4% ] 3/3 VUs    02.0s/45s  8.00 iters/s
+
+running (1m03.0s), 13/23 VUs, 144 complete and 0 interrupted iterations
+recommend   [  11% ] 10/20 VUs  05.0s/45s  30.00 iters/s
+flip        [   7% ] 3/3 VUs    03.0s/45s  8.00 iters/s
+
+running (1m04.0s), 17/23 VUs, 172 complete and 0 interrupted iterations
+recommend   [  13% ] 14/20 VUs  06.0s/45s  30.00 iters/s
+flip        [   9% ] 3/3 VUs    04.0s/45s  8.00 iters/s
+
+running (1m05.0s), 19/23 VUs, 202 complete and 0 interrupted iterations
+recommend   [  16% ] 16/20 VUs  07.0s/45s  30.00 iters/s
+flip        [  11% ] 3/3 VUs    05.0s/45s  8.00 iters/s
+time="2026-09-24T02:16:51+09:00" level=warning msg="Insufficient VUs, reached 20 active VUs and cannot initialize more" executor=constant-arrival-rate scenario=recommend
+
+running (1m06.0s), 17/23 VUs, 232 complete and 0 interrupted iterations
+recommend   [  18% ] 14/20 VUs  08.0s/45s  30.00 iters/s
+flip        [  13% ] 3/3 VUs    06.0s/45s  8.00 iters/s
+
+running (1m07.0s), 17/23 VUs, 263 complete and 0 interrupted iterations
+recommend   [  20% ] 14/20 VUs  09.0s/45s  30.00 iters/s
+flip        [  16% ] 3/3 VUs    07.0s/45s  8.00 iters/s
+
+running (1m08.0s), 16/23 VUs, 296 complete and 0 interrupted iterations
+recommend   [  22% ] 13/20 VUs  10.0s/45s  30.00 iters/s
+flip        [  18% ] 3/3 VUs    08.0s/45s  8.00 iters/s
+
+running (1m09.0s), 18/23 VUs, 326 complete and 0 interrupted iterations
+recommend   [  24% ] 15/20 VUs  11.0s/45s  30.00 iters/s
+flip        [  20% ] 3/3 VUs    09.0s/45s  8.00 iters/s
+
+running (1m10.0s), 17/23 VUs, 358 complete and 0 interrupted iterations
+recommend   [  27% ] 14/20 VUs  12.0s/45s  30.00 iters/s
+flip        [  22% ] 3/3 VUs    10.0s/45s  8.00 iters/s
+
+running (1m11.0s), 21/23 VUs, 386 complete and 0 interrupted iterations
+recommend   [  29% ] 18/20 VUs  13.0s/45s  30.00 iters/s
+flip        [  24% ] 3/3 VUs    11.0s/45s  8.00 iters/s
+
+running (1m12.0s), 18/23 VUs, 421 complete and 0 interrupted iterations
+recommend   [  31% ] 15/20 VUs  14.0s/45s  30.00 iters/s
+flip        [  27% ] 3/3 VUs    12.0s/45s  8.00 iters/s
+
+running (1m13.0s), 15/23 VUs, 456 complete and 0 interrupted iterations
+recommend   [  33% ] 12/20 VUs  15.0s/45s  30.00 iters/s
+flip        [  29% ] 3/3 VUs    13.0s/45s  8.00 iters/s
+
+running (1m14.0s), 13/23 VUs, 489 complete and 0 interrupted iterations
+recommend   [  36% ] 10/20 VUs  16.0s/45s  30.00 iters/s
+flip        [  31% ] 3/3 VUs    14.0s/45s  8.00 iters/s
+
+running (1m15.0s), 15/23 VUs, 519 complete and 0 interrupted iterations
+recommend   [  38% ] 12/20 VUs  17.0s/45s  30.00 iters/s
+flip        [  33% ] 3/3 VUs    15.0s/45s  8.00 iters/s
+
+running (1m16.0s), 13/23 VUs, 553 complete and 0 interrupted iterations
+recommend   [  40% ] 10/20 VUs  18.0s/45s  30.00 iters/s
+flip        [  36% ] 3/3 VUs    16.0s/45s  8.00 iters/s
+
+running (1m17.0s), 16/23 VUs, 579 complete and 0 interrupted iterations
+recommend   [  42% ] 13/20 VUs  19.0s/45s  30.00 iters/s
+flip        [  38% ] 3/3 VUs    17.0s/45s  8.00 iters/s
+
+running (1m18.0s), 15/23 VUs, 605 complete and 0 interrupted iterations
+recommend   [  44% ] 12/20 VUs  20.0s/45s  30.00 iters/s
+flip        [  40% ] 3/3 VUs    18.0s/45s  8.00 iters/s
+
+running (1m19.0s), 13/23 VUs, 636 complete and 0 interrupted iterations
+recommend   [  47% ] 10/20 VUs  21.0s/45s  30.00 iters/s
+flip        [  42% ] 3/3 VUs    19.0s/45s  8.00 iters/s
+
+running (1m20.0s), 18/23 VUs, 662 complete and 0 interrupted iterations
+recommend   [  49% ] 15/20 VUs  22.0s/45s  30.00 iters/s
+flip        [  44% ] 3/3 VUs    20.0s/45s  8.00 iters/s
+
+running (1m21.0s), 19/23 VUs, 692 complete and 0 interrupted iterations
+recommend   [  51% ] 16/20 VUs  23.0s/45s  30.00 iters/s
+flip        [  47% ] 3/3 VUs    21.0s/45s  8.00 iters/s
+
+running (1m22.0s), 15/23 VUs, 728 complete and 0 interrupted iterations
+recommend   [  53% ] 12/20 VUs  24.0s/45s  30.00 iters/s
+flip        [  49% ] 3/3 VUs    22.0s/45s  8.00 iters/s
+
+running (1m23.0s), 20/23 VUs, 754 complete and 0 interrupted iterations
+recommend   [  56% ] 17/20 VUs  25.0s/45s  30.00 iters/s
+flip        [  51% ] 3/3 VUs    23.0s/45s  8.00 iters/s
+
+running (1m24.0s), 22/23 VUs, 784 complete and 0 interrupted iterations
+recommend   [  58% ] 19/20 VUs  26.0s/45s  30.00 iters/s
+flip        [  53% ] 3/3 VUs    24.0s/45s  8.00 iters/s
+
+running (1m25.0s), 18/23 VUs, 819 complete and 0 interrupted iterations
+recommend   [  60% ] 15/20 VUs  27.0s/45s  30.00 iters/s
+flip        [  56% ] 3/3 VUs    25.0s/45s  8.00 iters/s
+
+running (1m26.0s), 20/23 VUs, 848 complete and 0 interrupted iterations
+recommend   [  62% ] 17/20 VUs  28.0s/45s  30.00 iters/s
+flip        [  58% ] 3/3 VUs    26.0s/45s  8.00 iters/s
+
+running (1m27.0s), 18/23 VUs, 881 complete and 0 interrupted iterations
+recommend   [  64% ] 15/20 VUs  29.0s/45s  30.00 iters/s
+flip        [  60% ] 3/3 VUs    27.0s/45s  8.00 iters/s
+
+running (1m28.0s), 16/23 VUs, 914 complete and 0 interrupted iterations
+recommend   [  67% ] 13/20 VUs  30.0s/45s  30.00 iters/s
+flip        [  62% ] 3/3 VUs    28.0s/45s  8.00 iters/s
+
+running (1m29.0s), 18/23 VUs, 944 complete and 0 interrupted iterations
+recommend   [  69% ] 15/20 VUs  31.0s/45s  30.00 iters/s
+flip        [  64% ] 3/3 VUs    29.0s/45s  8.00 iters/s
+
+running (1m30.0s), 14/23 VUs, 980 complete and 0 interrupted iterations
+recommend   [  71% ] 11/20 VUs  32.0s/45s  30.00 iters/s
+flip        [  67% ] 3/3 VUs    30.0s/45s  8.00 iters/s
+
+running (1m31.0s), 12/23 VUs, 1013 complete and 0 interrupted iterations
+recommend   [  73% ] 09/20 VUs  33.0s/45s  30.00 iters/s
+flip        [  69% ] 3/3 VUs    31.0s/45s  8.00 iters/s
+
+running (1m32.0s), 14/23 VUs, 1043 complete and 0 interrupted iterations
+recommend   [  76% ] 11/20 VUs  34.0s/45s  30.00 iters/s
+flip        [  71% ] 3/3 VUs    32.0s/45s  8.00 iters/s
+
+running (1m33.0s), 16/23 VUs, 1073 complete and 0 interrupted iterations
+recommend   [  78% ] 13/20 VUs  35.0s/45s  30.00 iters/s
+flip        [  73% ] 3/3 VUs    33.0s/45s  8.00 iters/s
+
+running (1m34.0s), 18/23 VUs, 1102 complete and 0 interrupted iterations
+recommend   [  80% ] 15/20 VUs  36.0s/45s  30.00 iters/s
+flip        [  76% ] 3/3 VUs    34.0s/45s  8.00 iters/s
+
+running (1m35.0s), 21/23 VUs, 1131 complete and 0 interrupted iterations
+recommend   [  82% ] 18/20 VUs  37.0s/45s  30.00 iters/s
+flip        [  78% ] 3/3 VUs    35.0s/45s  8.00 iters/s
+
+running (1m36.0s), 21/23 VUs, 1160 complete and 0 interrupted iterations
+recommend   [  84% ] 18/20 VUs  38.0s/45s  30.00 iters/s
+flip        [  80% ] 3/3 VUs    36.0s/45s  8.00 iters/s
+
+running (1m37.0s), 18/23 VUs, 1193 complete and 0 interrupted iterations
+recommend   [  87% ] 15/20 VUs  39.0s/45s  30.00 iters/s
+flip        [  82% ] 3/3 VUs    37.0s/45s  8.00 iters/s
+
+running (1m38.0s), 18/23 VUs, 1225 complete and 0 interrupted iterations
+recommend   [  89% ] 15/20 VUs  40.0s/45s  30.00 iters/s
+flip        [  84% ] 3/3 VUs    38.0s/45s  8.00 iters/s
+
+running (1m39.0s), 23/23 VUs, 1249 complete and 0 interrupted iterations
+recommend   [  91% ] 20/20 VUs  41.0s/45s  30.00 iters/s
+flip        [  87% ] 3/3 VUs    39.0s/45s  8.00 iters/s
+
+running (1m40.0s), 15/23 VUs, 1288 complete and 0 interrupted iterations
+recommend   [  93% ] 12/20 VUs  42.0s/45s  30.00 iters/s
+flip        [  89% ] 3/3 VUs    40.0s/45s  8.00 iters/s
+
+running (1m41.0s), 13/23 VUs, 1321 complete and 0 interrupted iterations
+recommend   [  96% ] 10/20 VUs  43.0s/45s  30.00 iters/s
+flip        [  91% ] 3/3 VUs    41.0s/45s  8.00 iters/s
+
+running (1m42.0s), 19/23 VUs, 1347 complete and 0 interrupted iterations
+recommend   [  98% ] 16/20 VUs  44.0s/45s  30.00 iters/s
+flip        [  93% ] 3/3 VUs    42.0s/45s  8.00 iters/s
+
+running (1m43.0s), 18/23 VUs, 1379 complete and 0 interrupted iterations
+recommend ↓ [ 100% ] 15/20 VUs  45s        30.00 iters/s
+flip        [  96% ] 3/3 VUs    43.0s/45s  8.00 iters/s
+
+running (1m44.0s), 03/23 VUs, 1397 complete and 0 interrupted iterations
+recommend ✓ [ 100% ] 00/20 VUs  45s        30.00 iters/s
+flip        [  98% ] 3/3 VUs    44.0s/45s  8.00 iters/s
+
+running (1m45.0s), 03/23 VUs, 1399 complete and 0 interrupted iterations
+recommend ✓ [ 100% ] 00/20 VUs  45s  30.00 iters/s
+flip      ↓ [ 100% ] 3/3 VUs    45s  8.00 iters/s
+
+running (1m46.0s), 01/23 VUs, 1401 complete and 0 interrupted iterations
+recommend ✓ [ 100% ] 00/20 VUs  45s  30.00 iters/s
+flip      ↓ [ 100% ] 3/3 VUs    45s  8.00 iters/s
+
+[E4] policy=DURING_GENERATION  flipRate=8/s  soldOutTarget=6  violationRate=0.00%  violationsPerResp=0.00  coverage=84.45%  serving_med=437.00ms  serving_p95=634.00ms  check_med=5.00ms  check_p95=40.00ms  audit_med=5.00ms  filtered_avg=0.16  windowChanges_avg=0.02  snapshotAge_med=5.00ms  soldOut_med=6.00  controlOk=100.00%  flips=76  iters=1402  dropped=310
+
+running (1m46.2s), 00/23 VUs, 1402 complete and 0 interrupted iterations
+recommend ✓ [ 100% ] 00/20 VUs  45s  30.00 iters/s
+flip      ✓ [ 100% ] 0/3 VUs    45s  8.00 iters/s

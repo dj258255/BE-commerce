@@ -83,6 +83,26 @@ public class RecommendationMetrics {
         }
     }
 
+    /**
+     * 생성 중 차단이 가용성을 <b>몇 번 물었는가</b>. 이 방식의 비용이 여기로 나온다 —
+     * 사후 필터는 출력(12개)만 읽지만 이쪽은 건너뛴 후보마다 한 번씩 더 묻는다.
+     */
+    public void constrainedGenerationLookups(int lookups) {
+        if (lookups > 0) {
+            registry.counter("recommendation.constrained.lookups").increment(lookups);
+        }
+    }
+
+    /**
+     * 생성 중 차단을 시켰는데 <b>모델이 못 받아</b> 사후 필터로 내려앉은 횟수.
+     *
+     * <p>이 값이 0 이 아니면 정책이 이름과 다르게 동작하고 있다는 뜻이다. 조용한 강등을 막으려고
+     * 센다 — 못 받는 구현에 제약을 넘기고 넘겼다고 믿는 것이 가장 나쁘다.
+     */
+    public void constrainedGenerationUnsupported() {
+        registry.counter("recommendation.constrained.unsupported").increment();
+    }
+
     public Timer modelCallTimer() {
         return modelCall;
     }

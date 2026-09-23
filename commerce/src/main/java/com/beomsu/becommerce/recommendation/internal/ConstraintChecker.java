@@ -111,6 +111,16 @@ public class ConstraintChecker {
      * <p>이 호출은 정책과 무관하게 <b>모든 요청</b>에 붙으므로 정책 간 비교에서 상수다 — 다만
      * 절대 지연에는 더해지므로 응답이 <b>정책 경로 시간과 계기 시간을 나눠서</b> 보고한다.
      */
+    /**
+     * 후보 하나가 지금 팔 수 있는가 — <b>생성 중 차단</b>이 매 후보마다 부른다.
+     *
+     * <p>모르는 id는 {@link AvailabilitySource}의 규칙대로 <b>팔 수 없는 것</b>이다.
+     * 여기서 반대로 하면 생성 중 차단만 관대해져 정책 간 비교가 깨진다.
+     */
+    public boolean isAvailable(long itemId) {
+        return availability.unavailableAmong(List.of(itemId)).isEmpty();
+    }
+
     public Set<Long> auditViolations(List<Long> finalItems) {
         return availability.unavailableAmong(finalItems);
     }

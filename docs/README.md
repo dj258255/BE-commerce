@@ -128,6 +128,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-047](adr/ADR-047-cdc-for-activity-not-outbox.md) | CDC 는 활동 로그에 쓰고, 아웃박스 릴레이는 그대로 폴링으로 둔다 |
 | [ADR-048](adr/ADR-048-als-model-not-adopted.md) | 학습한 ALS 모델을 넣지 않는다 — 기준선을 못 넘었다 |
 | [ADR-049](adr/ADR-049-repo-layout-by-area.md) | 저장소를 영역으로 나누되, 같이 쓰는 것은 루트에 둔다 |
+| [ADR-050](adr/ADR-050-post-filter-over-constrained-generation.md) | 제약은 생성 뒤에 거른다 — 생성 중 차단은 이득이 안 나왔고 대가는 6배였다 |
 
 ## 보조 문서
 

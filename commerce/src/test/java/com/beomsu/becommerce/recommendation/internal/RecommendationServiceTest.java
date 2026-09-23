@@ -288,4 +288,107 @@ class RecommendationServiceTest {
         assertThat(view.items()).containsExactly(1_000_001L);
         assertThat(view.filteredByConstraint()).isEqualTo(1);
     }
+
+    // ── 생성 중 차단 (E4-b) ──────────────────────────────────────────────
+
+    /** 제약을 받을 수 있는 모델. 거부된 후보를 건너뛰며 채우므로 목록이 짧아지지 않는다. */
+    private static final class ConstrainedFake implements ModelClient {
+        private final List<Long> candidates;
+        private final int resultSize;
+        int asked;
+
+        ConstrainedFake(List<Long> candidates, int resultSize) {
+            this.candidates = candidates;
+            this.resultSize = resultSize;
+        }
+
+        @Override
+        public List<Long> recommend(long userId, List<Long> recentItemIds) {
+            return candidates.stream().limit(resultSize).toList();
+        }
+
+        @Override
+        public boolean supportsConstrainedGeneration() {
+            return true;
+        }
+
+        @Override
+        public List<Long> recommend(long userId, List<Long> recentItemIds, java.util.function.LongPredicate allowed) {
+            List<Long> out = new java.util.ArrayList<>(resultSize);
+            for (Long id : candidates) {
+                if (out.size() >= resultSize) {
+                    break;
+                }
+                asked++;
+                if (allowed.test(id)) {
+                    out.add(id);
+                }
+            }
+            return List.copyOf(out);
+        }
+    }
+
+    private RecommendationService serviceWith(ModelClient client, ConstraintPolicy constraint) {
+        OverloadGate gate = new OverloadGate(OverloadPolicy.ADMISSION, 24, 100, 4, 50, RESULT_SIZE,
+                GenerationScope.RANKING, 4, 15);
+        RecommendationMetrics metrics = new RecommendationMetrics(registry, gate);
+        return new RecommendationService(recentActivity, client, gate,
+                new ConstraintChecker(availability), metrics, constraint, GenerationScope.RANKING, 20);
+    }
+
+    private double plainCounter(String name) {
+        var c = registry.find(name).counter();
+        return c == null ? 0.0 : c.count();
+    }
+
+    @Test
+    @DisplayName("생성 중 차단은 목록을 짧게 만들지 않는다 — 사후 필터는 짧아진다")
+    void blockingDuringGenerationKeepsTheListFull() {
+        when(recentActivity.recentItemIds(USER, 20)).thenReturn(List.of());
+        // 앞 둘이 품절이다. 사후 필터는 그만큼 잃고, 생성 중 차단은 다음 후보로 메운다.
+        availability.consume(1_000_001L);
+        availability.consume(1_000_002L);
+        List<Long> candidates = List.of(1_000_001L, 1_000_002L, 1_000_003L, 1_000_004L, 1_000_005L);
+
+        RecommendationView after = serviceWith(new ConstrainedFake(candidates, 3),
+                ConstraintPolicy.AFTER_GENERATION).recommend(USER);
+        RecommendationView during = serviceWith(new ConstrainedFake(candidates, 3),
+                ConstraintPolicy.DURING_GENERATION).recommend(USER);
+
+        // 사후 필터: 3개를 받아 2개를 잃는다.
+        assertThat(after.items()).containsExactly(1_000_003L);
+        assertThat(after.filteredByConstraint()).isEqualTo(2);
+
+        // 생성 중 차단: 같은 3칸을 채운다. 위반은 양쪽 다 0이다.
+        assertThat(during.items()).containsExactly(1_000_003L, 1_000_004L, 1_000_005L);
+        assertThat(during.violations()).isZero();
+        assertThat(after.violations()).isZero();
+    }
+
+    @Test
+    @DisplayName("생성 중 차단의 대가는 조회 수다 — 건너뛴 후보만큼 더 묻는다")
+    void blockingDuringGenerationAsksMore() {
+        when(recentActivity.recentItemIds(USER, 20)).thenReturn(List.of());
+        availability.consume(1_000_001L);
+        availability.consume(1_000_002L);
+        List<Long> candidates = List.of(1_000_001L, 1_000_002L, 1_000_003L, 1_000_004L, 1_000_005L);
+
+        serviceWith(new ConstrainedFake(candidates, 3), ConstraintPolicy.DURING_GENERATION).recommend(USER);
+
+        // 3칸을 채우려고 5개를 물었다(품절 2개를 건너뛰었다).
+        assertThat(plainCounter("recommendation.constrained.lookups")).isEqualTo(5.0);
+    }
+
+    @Test
+    @DisplayName("모델이 제약을 못 받으면 사후 필터로 내려앉고 그 사실이 지표로 남는다 — 조용한 강등은 사고다")
+    void unsupportedModelFallsBackAndIsCounted() {
+        modelConsumesDuringGeneration();   // mock 모델은 supportsConstrainedGeneration()=false 다
+
+        RecommendationView view = serviceWith(modelClient, ConstraintPolicy.DURING_GENERATION).recommend(USER);
+
+        assertThat(plainCounter("recommendation.constrained.unsupported")).isEqualTo(1.0);
+        // 내려앉았어도 위반은 안 나간다 — 사후 필터가 받아 준다.
+        assertThat(view.items()).doesNotContain(FLIPPED);
+        assertThat(view.violations()).isZero();
+    }
 }
