@@ -1,10 +1,14 @@
 package com.beomsu.becommerce.home.web;
 
 import com.beomsu.becommerce.home.HomeComposer;
+import com.beomsu.becommerce.home.HomeCursor;
 import com.beomsu.becommerce.home.HomePageView;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
 
@@ -39,9 +43,16 @@ public class HomeController {
      * 5xx 로 답하면 상점 첫 화면이 통째로 실패로 보이는데, 실제로는 보여줄 상품이 있다.
      */
     @GetMapping
-    public HomePageView homepage(Principal principal) {
+    public HomePageView homepage(Principal principal, @RequestParam(required = false) String cursor) {
+        HomeCursor parsed;
+        try {
+            parsed = HomeCursor.decode(cursor);
+        } catch (IllegalArgumentException e) {
+            // 커서는 우리가 준 값을 그대로 돌려받는 것이다. 모양이 틀리면 고쳐 쓴 것이라 400 이다.
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
         // userId 는 **인증 principal** 에서 얻는다(개인화·추천·주문과 같은 규칙). 경로나 질의로 받으면
         // 남의 홈을 만들 수 있다 — 홈은 그 사용자의 활동으로 조립되므로 그게 곧 정보 노출이다.
-        return composer.compose(Long.parseLong(principal.getName()));
+        return composer.compose(Long.parseLong(principal.getName()), parsed);
     }
 }

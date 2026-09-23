@@ -3,10 +3,14 @@ package com.beomsu.becommerce.order;
 import com.beomsu.becommerce.order.catalog.CatalogQueryService;
 import com.beomsu.becommerce.order.catalog.Product;
 import com.beomsu.becommerce.order.catalog.ProductRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -86,6 +90,30 @@ public class ProductCatalogFacts {
                         product.getCategoryCode(),
                         inStock.contains(product.getProductId())))
                 .toList();
+    }
+
+    /**
+     * 한 대분류의 최신 상품 id — 홈 다음 쪽이 <b>인기 표에 거의 없는 대분류</b>의 행을 채울 때 쓴다(#237).
+     * 인기 표(200행)에 아동복이 0개라, 사용자가 아동복을 봐도 그 행을 만들 재료가 없어 세션 신호가 조용히
+     * 버려지던 것을 막는다. 순서는 목록 기본값(신상품순)과 같다.
+     */
+    @Transactional(readOnly = true)
+    public List<Long> newestInCategory(String categoryCode, int limit) {
+        return productRepository.search(categoryCode, null, null, null, null, null, null,
+                        PageRequest.of(0, Math.max(limit, 1),
+                                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("productId"))))
+                .map(Product::getProductId).getContent();
+    }
+
+    /**
+     * 대분류 코드 → 이름. 홈의 다음 쪽이 "여성복 인기" 같은 행 제목을 붙일 때 쓴다(#237).
+     * 중분류는 넣지 않는다 — 카드가 대분류 코드만 들고 있다.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, String> topCategoryNames() {
+        Map<String, String> names = new LinkedHashMap<>();
+        catalogQueryService.categories().forEach(c -> names.put(c.code(), c.name()));
+        return names;
     }
 
     /**
