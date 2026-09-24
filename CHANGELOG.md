@@ -18,6 +18,16 @@
 
 [ADR-064](docs/adr/ADR-064-engine-tie-break.md) · [실측](docs/performance/es-os-ranking-diff.md)
 
+## Unreleased — 검색 쪽을 넘기는 동안 결과가 덜 흔들린다 (#258)
+
+### 변경
+
+- 검색 결과에서 점수가 같은 상품은 상품 id 순이다. 색인 갱신(가격·재고)으로 동점 순서가 바뀌어 쪽 사이에 상품이 빠지거나 두 번 나오던 것을 줄였다
+- 결과 상품의 가격이 바뀌는 동안 3쪽을 넘길 때 누락 888 → 9, 중복 88 → 0(쿼리 50개)
+
+### 왜
+
+[ADR-062](docs/adr/ADR-062-search-tie-break-by-id.md) · [실측](docs/performance/search-paging-churn.md)
 ## Unreleased — 추천 A/B 실험을 돌릴 수 있다 (#256)
 
 ### 변경
