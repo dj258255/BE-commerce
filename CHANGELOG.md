@@ -7,6 +7,17 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — 검색어 고치기를 설정으로 켤 수 있다(기본 꺼짐) (#260)
+
+### 변경
+
+- `app.catalog.search.rewrite.enabled=true` 면 한국어 색상 라벨은 색상 필터로, 중분류 라벨은 원문 이름으로, 미국식 말(pants 등 9개)에는 영국식을 더해 검색한다
+- 기본은 꺼져 있다. 한국어 검색어의 0건이 10~12% 남아 기준(5%)을 못 넘었다
+
+### 왜
+
+[ADR-063](docs/adr/ADR-063-query-rewrite-not-default.md) · [실측](docs/performance/query-rewrite.md)
+
 ## Unreleased — 검색 쪽을 넘기는 동안 결과가 덜 흔들린다 (#258)
 
 ### 변경
