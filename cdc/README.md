@@ -176,3 +176,34 @@ ObjectMapper(Spring 기본)로 읽는데, Jackson 은 `Instant` 의 **숫자를 
   측정에는 영향이 없다.
 - **키 표현**: 스칼라 정수 `userId` 라 JsonConverter 로 `999002` 처럼(따옴표 없이) 직렬화된다. 앱도 같은
   `userId` 를 키로 쓰므로 한 사용자가 두 경로에서 같은 파티션으로 간다.
+
+---
+
+# 카탈로그 커넥터 — `products`·`stock` → `catalog.change` (#246)
+
+검색 색인의 반영 지연을 줄이려고 둔다([ADR-056](../docs/adr/ADR-056-search-index-freshness-by-cdc.md)).
+소비자는 앱 안의 `LuceneChangeListener`(Lucene, 인스턴스마다)와 `EngineIndexer`(ES·OpenSearch, 하나)다.
+
+- 설정: [`register-catalog-connector.json`](./register-catalog-connector.json)
+- 앱: `app.catalog.search.cdc.enabled=true`(기본) + kafka 프로파일
+
+```bash
+# 토픽을 먼저 만든다. 없는 토픽을 구독하면 앱이 파티션을 늦게(메타데이터 갱신 주기만큼) 받는다
+docker compose -p pay exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+  --create --if-not-exists --topic catalog.change --partitions 3 --replication-factor 1
+curl -sS -X POST -H 'Content-Type: application/json' \
+  --data @cdc/register-catalog-connector.json http://localhost:8083/connectors
+```
+
+## 사용자 활동 커넥터와 다른 점
+
+| | `user-activity-cdc` | `catalog-cdc` |
+|---|---|---|
+| 표 | `user_activities` 하나 | `products`, `stock` 둘 |
+| 값 | 컨슈머가 이벤트로 바인딩한다(이름·시각 변환) | **쓰지 않는다.** 키(`product_id`)만 쓰고 DB 를 다시 읽는다 |
+| 삭제 | 없다(append-only) → `drop` | 상품이 지워질 수 있다 → `rewrite`(키가 남아야 지운 것을 안다) |
+| `database.server.id` | 184054 | 184055(커넥터끼리도 겹치면 안 된다) |
+| `snapshot.mode` | `schema_only` | `no_data`(3.0 의 새 이름). 기존 10만 행을 흘리지 않는다. 기동 색인이 DB 전체를 읽는다 |
+
+값을 쓰지 않는 이유: stock 이벤트에는 상품 필드가 없고, 두 표의 이벤트가 순서를 바꿔 오거나 두 번 올 수 있다.
+id 로 지금 DB 를 읽으면 셋 다 신경 쓸 필요가 없다. 대가는 변경마다 DB 조회 한 번이다(Lucene 은 인스턴스마다).

@@ -15,7 +15,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 
 /**
@@ -94,17 +93,17 @@ public final class LuceneScaleBenchmark {
     private static Map<String, Object> matches(Iterable<LuceneProductSearch.Doc> docs, JsonNode queries) throws IOException {
         Map<String, Object> out = new LinkedHashMap<>();
         try (LuceneProductSearch lucene = new LuceneProductSearch(docs)) {
-            IndexSearcher searcher = lucene.searcher();
             for (JsonNode q : queries) {
                 String text = q.get("q").asText();
                 Query query = lucene.toQuery(text);
-                List<Long> ids = new ArrayList<>();
-                if (query != null) {
+                List<Long> ids = query == null ? List.of() : lucene.search(searcher -> {
+                    List<Long> all = new ArrayList<>();
                     var top = searcher.search(query, Math.max(1, searcher.count(query)));
                     for (var sd : top.scoreDocs) {
-                        ids.add(searcher.storedFields().document(sd.doc).getField("id").numericValue().longValue());
+                        all.add(searcher.storedFields().document(sd.doc).getField("id").numericValue().longValue());
                     }
-                }
+                    return all;
+                });
                 out.put(text, ids);
             }
         }

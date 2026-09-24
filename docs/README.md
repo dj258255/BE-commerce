@@ -135,6 +135,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-053](adr/ADR-053-genpage-mini-not-default.md) | 작은 GenPage 모델을 서빙까지 붙이고, 기본값으로는 켜지 않는다 |
 | [ADR-054](adr/ADR-054-genpage-validation-tuning.md) | GenPage 를 검증 기간으로 다시 튜닝했고, 결론은 그대로다 |
 | [ADR-055](adr/ADR-055-search-filters-in-engine-and-scale-limit.md) | 필터·패싯은 검색 엔진 안에서 건다 — 앱 안 Lucene 의 전환점은 300만 건이다 |
+| [ADR-056](adr/ADR-056-search-index-freshness-by-cdc.md) | 검색 색인은 CDC 로 반영한다 — 엔진은 앱 안 Lucene 을 유지한다 |
 
 ## 보조 문서
 
