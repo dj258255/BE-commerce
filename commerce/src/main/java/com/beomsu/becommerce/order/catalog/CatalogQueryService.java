@@ -93,6 +93,16 @@ public class CatalogQueryService {
      * <p>대분류의 상품 수는 {@code category_code}로 한 번에 세도 **중분류 합과 같다** — 중분류가
      * 대분류를 빠짐없이 나누기 때문이다(모든 상품에 중분류가 있다). 그래서 자식을 더하지 않는다.
      */
+    /**
+     * 대분류 코드 → 이름, 노출 순서대로(#284). <b>상품 수를 세지 않는다.</b> 홈 2쪽이 행 제목을 붙일 때 요청마다 부르는데,
+     * {@link #categories()} 로 받으면 대분류마다 count 가 돌아(5개 합 약 19ms) 2쪽 용량을 깎았다.
+     */
+    public java.util.Map<String, String> topCategoryNames() {
+        java.util.Map<String, String> names = new java.util.LinkedHashMap<>();
+        categoryRepository.findByParentCodeIsNullOrderBySortOrderAsc().forEach(c -> names.put(c.getCode(), c.getName()));
+        return names;
+    }
+
     public List<CategoryView> categories() {
         return categoryRepository.findByParentCodeIsNullOrderBySortOrderAsc().stream()
                 .map(this::view)
