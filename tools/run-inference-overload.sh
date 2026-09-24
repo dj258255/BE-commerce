@@ -58,6 +58,7 @@ start_app() {
   local policy=$1 log=$2
   cleanup
   wait_port_free
+  # 모델 서버 주소는 MODEL_URL 로 바꾼다(#316) — v2 서버(8766)는 run-v2-overload.sh 가 준다.
   # 레이트리밋을 끈다 — 부하 실험의 변수는 정책이지 IP 제한이 아니다(한 장비에서 전부 같은 IP 다).
   APP_RATELIMIT_ENABLED=false \
   APP_RECOMMENDATION_POLICY="$policy" \
@@ -69,6 +70,7 @@ start_app() {
   APP_RECOMMENDATION_MODEL_STUB_LATENCY_MS="${STUB_LATENCY_MS:-$MODEL_LATENCY_MS}" \
   APP_RECOMMENDATION_MODEL_BUSY_TIMEOUT_MS="$BUSY_TIMEOUT_MS" \
   APP_RECOMMENDATION_MODEL_KIND="${MODEL_KIND:-stub}" \
+  APP_RECOMMENDATION_MODEL_GENPAGE_URL="${MODEL_URL:-http://localhost:8765}" \
   "$JAVA" -jar "$JAR" \
     --spring.docker.compose.enabled=false \
     --server.port="$PORT" > "$log" 2>&1 &
