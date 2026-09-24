@@ -66,6 +66,19 @@ public class RecommendationFacts {
         this.pageBusy = Counter.builder("recommendation.genpage.page").tag("result", "busy").register(registry);
     }
 
+    /** 사용자의 실험 배정. 실험이 꺼져 있으면 둘 다 null 이다. */
+    public record Experiment(String experiment, String variant) {
+    }
+
+    /**
+     * 이 사용자의 실험 배정(#294). 홈 2쪽도 변형에 따라 다르므로(#270) 2쪽 노출에도 변형을 적어야 A/B 분석이 2쪽의 클릭 · 구매를
+     * 귀속할 수 있다. 1쪽과 같은 규칙으로 배정하므로 같은 사용자는 같은 변형이다.
+     */
+    public Experiment experimentOf(long userId) {
+        var assignment = service.assignmentFor(userId);
+        return assignment.active() ? new Experiment(assignment.experiment(), assignment.variant()) : new Experiment(null, null);
+    }
+
     /** 모델이 만든 행 하나 — 대분류와 그 안의 상품 id(모델의 순서). */
     public record GeneratedRow(String category, List<Long> itemIds) {
     }

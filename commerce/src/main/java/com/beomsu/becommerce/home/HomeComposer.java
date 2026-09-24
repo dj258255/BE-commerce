@@ -239,8 +239,10 @@ public class HomeComposer {
         cursor.usedRows().stream().filter(r -> r.startsWith("cat:")).forEach(r -> usedCategories.add(r.substring(4)));
         List<RecommendationFacts.GeneratedRow> generated =
                 recommendations.generatePageRows(userId, recent, cursor.shown(), usedCategories, pageRows, itemCap);
+        // 2쪽도 변형에 따라 다르다(#270) — 노출에 변형을 적어야 A/B 분석이 2쪽의 클릭 · 구매를 귀속한다(#294)
+        RecommendationFacts.Experiment experiment = recommendations.experimentOf(userId);
         if (!generated.isEmpty()) {
-            return composeGenerated(userId, cursor, generated, names, usedCategories, contextMs, startedAt);
+            return composeGenerated(userId, cursor, generated, names, usedCategories, contextMs, startedAt, experiment);
         }
 
         List<HomePageView.Row> rows = new ArrayList<>();
@@ -295,7 +297,7 @@ public class HomeComposer {
                 SOURCE_CATALOG, null, null,
                 new HomePageView.Latency(contextMs, 0, 0, elapsed(startedAt)),
                 rows, new HomePageView.AssemblyStats(popular.size(), 0, outOfStock, duplicates, 0, distinct.size()),
-                cursor.page(), next);
+                cursor.page(), next, experiment.experiment(), experiment.variant());
         impressions.record(page);
         return page;
     }
@@ -307,7 +309,7 @@ public class HomeComposer {
     private HomePageView composeGenerated(long userId, HomeCursor cursor,
                                           List<RecommendationFacts.GeneratedRow> generated,
                                           Map<String, String> names, Set<String> usedCategories,
-                                          long contextMs, long startedAt) {
+                                          long contextMs, long startedAt, RecommendationFacts.Experiment experiment) {
         List<Long> all = generated.stream().flatMap(r -> r.itemIds().stream()).toList();
         Map<Long, ProductCatalogFacts.ProductCardFacts> cards = new LinkedHashMap<>();
         catalog.findAll(all).forEach(card -> cards.put(card.productId(), card));
@@ -355,7 +357,7 @@ public class HomeComposer {
                 "GENPAGE", null, null,
                 new HomePageView.Latency(contextMs, 0, 0, elapsed(startedAt)),
                 rows, new HomePageView.AssemblyStats(all.size(), unmatched, outOfStock, duplicates, 0, rows.size()),
-                cursor.page(), next);
+                cursor.page(), next, experiment.experiment(), experiment.variant());
         impressions.record(page);
         return page;
     }

@@ -134,6 +134,11 @@ public class RecommendationService {
         return history(userId);
     }
 
+    /** 이 사용자의 실험 배정(#294). 홈 2쪽 노출에도 1쪽과 같은 변형을 적으려고 내준다. 배정 규칙은 추천 행과 같다. */
+    public ExperimentAssigner.Assignment assignmentFor(long userId) {
+        return assignment(userId);
+    }
+
     /**
      * 홈 다음 쪽이 모델에 넣을 구매 이력(#270). 이 사용자의 모델 입력이 구매일 때만(설정이 {@code purchases} 이거나
      * 실험군) 목록을 내고, 아니면 {@code null} 이다. 추천 행과 같은 규칙으로 고른다 — 한 사용자의 두 경로가 다른

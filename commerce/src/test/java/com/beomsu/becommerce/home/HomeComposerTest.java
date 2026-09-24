@@ -41,6 +41,7 @@ class HomeComposerTest {
         impressions = mock(ImpressionRecorder.class);
         when(recentActivity.recentItemIds(USER, 8)).thenReturn(List.of());
         when(recommendations.popularItemIds(anyInt())).thenReturn(List.of());
+        when(recommendations.experimentOf(USER)).thenReturn(new RecommendationFacts.Experiment(null, null));
     }
 
     private HomeComposer composer(HomeComposer.Rules rules, int maxPerCategory, int minItems) {
@@ -324,6 +325,28 @@ class HomeComposerTest {
         assertThat(row.items()).extracting(HomePageView.Item::itemId).containsExactly("41", "43", "44");
         assertThat(second.stats().outOfStock()).isEqualTo(1);
         assertThat(second.nextCursor()).isNotNull();   // a·c 가 남았다
+    }
+
+    @Test
+    @DisplayName("2쪽 응답에도 그 사용자의 실험 변형이 실린다 — 규칙 행 · 모델 행 모두(#294)")
+    void nextPageCarriesExperiment() {
+        popularByCategory();
+        when(recommendations.experimentOf(USER)).thenReturn(new RecommendationFacts.Experiment("rec-history", "treatment"));
+        HomeComposer composer = composer(HomeComposer.Rules.FULL, 3, 1);
+        HomePageView first = composer.compose(USER);
+
+        HomePageView ruleRows = composer.compose(USER, HomeCursor.decode(first.nextCursor()));
+        assertThat(ruleRows.experiment()).isEqualTo("rec-history");
+        assertThat(ruleRows.variant()).isEqualTo("treatment");
+
+        when(recommendations.generatePageRows(org.mockito.ArgumentMatchers.anyLong(), anyList(), org.mockito.ArgumentMatchers.anyCollection(),
+                org.mockito.ArgumentMatchers.anyCollection(), anyInt(), anyInt()))
+                .thenReturn(List.of(new RecommendationFacts.GeneratedRow("b", List.of(41L, 43L, 44L))));
+        HomePageView generated = composer.compose(USER, HomeCursor.decode(first.nextCursor()));
+        assertThat(generated.source()).isEqualTo("GENPAGE");
+        assertThat(generated.variant()).isEqualTo("treatment");
+        verify(impressions, org.mockito.Mockito.atLeastOnce()).record(org.mockito.ArgumentMatchers.argThat(
+                page -> page.page() == 2 && "treatment".equals(page.variant())));
     }
 
     @Test
