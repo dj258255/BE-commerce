@@ -6,6 +6,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.flywaydb.core.Flyway;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MySQLContainer;
@@ -17,7 +18,9 @@ import org.testcontainers.utility.DockerImageName;
  * <p>예전에는 테스트 클래스마다 {@code @Container static} 으로 새 컨테이너를 띄웠다. CI 한 번에 MySQL 이 25번 떴고
  * 기동만 약 520초였다. 컨테이너는 나눠 쓰되 격리는 지금과 같게 둔다.
  * <ul>
- *   <li>MySQL — 테스트 클래스마다 <b>새 데이터베이스</b>를 만든다({@link #freshDatabase}). Flyway 는 빈 DB 에서 돈다</li>
+ *   <li>MySQL — 테스트 클래스마다 <b>새 데이터베이스</b>를 준다. 스프링 테스트는 마이그레이션된 템플릿의 복사본을 받는다
+ *       ({@link #migratedDatabase}, #280) — 클래스마다 Flyway 가 68개를 처음부터 돌던 것(번마다 약 10초)을 없앴다.
+ *       마이그레이션 자체를 보는 테스트는 빈 DB 를 받는다({@link #freshDatabase})</li>
  *   <li>Redis — 클래스가 시작할 때 비운다({@link #flushRedis})</li>
  * </ul>
  *
@@ -49,6 +52,29 @@ public final class SharedContainers {
         }
     }
 
+    /** 마이그레이션을 한 번만 돈 템플릿. 스프링 테스트의 새 DB 는 이것을 복사한다. */
+    private static final class TemplateHolder {
+        // 상수로 두면 컴파일러가 값을 박아 넣어 이 클래스의 초기화(템플릿 생성)가 돌지 않는다 — 실제로 그렇게 빈 DB 를 복사했다
+        private static final String NAME = String.valueOf("migrated_template");
+
+        static String name() {
+            return NAME;
+        }
+
+        static {
+            MySQLContainer<?> mysql = mysql();
+            String root = rootUrl(mysql);
+            try (Connection c = DriverManager.getConnection(root, "root", PASSWORD); Statement s = c.createStatement()) {
+                s.execute("CREATE DATABASE `" + NAME + "`");
+            } catch (SQLException e) {
+                throw new IllegalStateException("템플릿 DB 를 만들지 못했다", e);
+            }
+            // 앱과 같은 설정(spring.flyway: 기본 위치 · baseline-on-migrate)
+            Flyway.configure().dataSource(root + NAME, "root", PASSWORD)
+                    .locations("classpath:db/migration").baselineOnMigrate(true).load().migrate();
+        }
+    }
+
     private static final class RedisHolder {
         static final GenericContainer<?> REDIS =
                 new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
@@ -72,17 +98,56 @@ public final class SharedContainers {
      * 테스트 사용자(becommerce)에게 그 DB 의 모든 권한을 준다.
      */
     public static String freshDatabase(String prefix) {
-        MySQLContainer<?> mysql = mysql();
-        String name = (prefix.replaceAll("[^A-Za-z0-9]", "_") + "_" + SEQ.incrementAndGet()).toLowerCase(Locale.ROOT);
-        String root = "jdbc:mysql://" + mysql.getHost() + ":" + mysql.getMappedPort(3306) + "/";
+        String name = newName(prefix);
+        createDatabase(name);
+        return rootUrl(mysql()) + name;
+    }
+
+    /**
+     * 마이그레이션이 끝난 새 데이터베이스(#280). 템플릿을 컨테이너 안에서 {@code mysqldump | mysql} 로 복사한다 —
+     * 외래 키 · AUTO_INCREMENT · 시드 데이터 · {@code flyway_schema_history} 가 그대로 옮겨져 앱의 Flyway 는 검증만 한다.
+     */
+    public static String migratedDatabase(String prefix) {
+        String template = TemplateHolder.name();
+        String name = newName(prefix);
+        createDatabase(name);
+        String auth = "-uroot -p" + PASSWORD;
+        // pipefail: 덤프가 실패해도 뒤의 mysql 이 성공하면 빈 DB 가 조용히 만들어진다
+        exec("set -o pipefail; mysqldump " + auth + " --no-tablespaces --single-transaction --skip-comments " + template
+                + " | mysql " + auth + " " + name, "템플릿을 복사하지 못했다: " + name);
+        return rootUrl(mysql()) + name;
+    }
+
+    private static String newName(String prefix) {
+        return (prefix.replaceAll("[^A-Za-z0-9]", "_") + "_" + SEQ.incrementAndGet()).toLowerCase(Locale.ROOT);
+    }
+
+    private static String rootUrl(MySQLContainer<?> mysql) {
+        return "jdbc:mysql://" + mysql.getHost() + ":" + mysql.getMappedPort(3306) + "/";
+    }
+
+    private static void createDatabase(String name) {
         // MySQLContainer 는 사용자가 root 가 아니면 root 비밀번호를 같은 값으로 둔다
-        try (Connection c = DriverManager.getConnection(root, "root", PASSWORD); Statement s = c.createStatement()) {
+        try (Connection c = DriverManager.getConnection(rootUrl(mysql()), "root", PASSWORD); Statement s = c.createStatement()) {
             s.execute("CREATE DATABASE `" + name + "`");
             s.execute("GRANT ALL PRIVILEGES ON `" + name + "`.* TO '" + USER + "'@'%'");
         } catch (SQLException e) {
             throw new IllegalStateException("테스트 DB 를 만들지 못했다: " + name, e);
         }
-        return root + name;
+    }
+
+    private static void exec(String shell, String failure) {
+        try {
+            var result = mysql().execInContainer("sh", "-c", shell);
+            if (result.getExitCode() != 0) {
+                throw new IllegalStateException(failure + " — " + result.getStderr());
+            }
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(failure, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(failure, e);
+        }
     }
 
     /** 클래스 시작 때 부른다. 예전에는 클래스마다 새 Redis 컨테이너였으니 빈 상태로 시작하는 것이 같은 조건이다. */
@@ -101,11 +166,11 @@ public final class SharedContainers {
     }
 
     /**
-     * 스프링 통합 테스트의 공통 속성: 새 DB · 빈 Redis · Kafka 끔. 클래스의 {@code @DynamicPropertySource} 에서 부른다.
+     * 스프링 통합 테스트의 공통 속성: 마이그레이션된 새 DB · 빈 Redis · Kafka 끔. 클래스의 {@code @DynamicPropertySource} 에서 부른다.
      * DB 는 여기서 한 번 만든다 — URL 공급자 안에서 만들면 부를 때마다 새 DB 가 생긴다.
      */
     public static void register(DynamicPropertyRegistry registry, String prefix) {
-        String url = freshDatabase(prefix) + "?serverTimezone=UTC&characterEncoding=UTF-8";
+        String url = migratedDatabase(prefix) + "?serverTimezone=UTC&characterEncoding=UTF-8";
         flushRedis();
         registry.add("spring.datasource.url", () -> url);
         registry.add("spring.datasource.username", () -> USER);
