@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 대신 쓰기가 느려지므로, 그 대가는 {@link com.beomsu.becommerce.order.IndexWriteCostMySqlTest} 와 같은
  * 방식으로 따로 잰다.
  */
-@Tag("integration")
+@Tag("measurement")   // 수치를 재는 측정이다 — PR 마다가 아니라 매일 돈다(#274)
 class LedgerBalanceReadCostMySqlTest {
 
     /**

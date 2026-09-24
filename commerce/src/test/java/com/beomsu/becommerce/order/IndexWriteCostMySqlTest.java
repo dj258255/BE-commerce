@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>{@code orders} 에 같은 행을 넣되 인덱스 유무만 바꾼다. 걸린 인덱스는 실제로 추가한 두 개
  * ({@code (user_id, id)}, {@code (status, expires_at)}) 다.
  */
-@Tag("integration")
+@Tag("measurement")   // 수치를 재는 측정이다 — PR 마다가 아니라 매일 돈다(#274)
 class IndexWriteCostMySqlTest {
 
     private static final int ROWS = 100_000;
