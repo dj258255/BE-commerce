@@ -24,6 +24,42 @@ class RecommendationFactsGenPageTest {
         return new RecommendationFacts(mock(RecommendationService.class), mock(ItemPoolSource.class), provider, registry);
     }
 
+    @SuppressWarnings("unchecked")
+    private static RecommendationFacts facts(RecommendationService service, String pageHistory) {
+        ObjectProvider<GenPagePageClient> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(mock(GenPagePageClient.class));
+        return new RecommendationFacts(service, mock(ItemPoolSource.class), provider, new SimpleMeterRegistry(), pageHistory);
+    }
+
+    @Test
+    @DisplayName("추천이 구매 이력을 쓰지 않는 사용자면 다음 쪽도 지금처럼 세션을 넣는다(#270)")
+    void activityUsersKeepSession() {
+        RecommendationService service = mock(RecommendationService.class);
+        when(service.purchaseHistoryForModel(7L)).thenReturn(null);
+
+        assertThat(facts(service, "purchases").pageHistory(7L, List.of(1L, 2L))).containsExactly(1L, 2L);
+    }
+
+    @Test
+    @DisplayName("구매 이력을 쓰는 사용자면 다음 쪽도 구매를 넣는다 — 학습과 같은 입력(#270)")
+    void purchaseUsersGetPurchases() {
+        RecommendationService service = mock(RecommendationService.class);
+        when(service.purchaseHistoryForModel(7L)).thenReturn(List.of(10L, 11L));
+
+        assertThat(facts(service, "purchases").pageHistory(7L, List.of(1L, 2L))).containsExactly(10L, 11L);
+    }
+
+    @Test
+    @DisplayName("session-then-purchases 면 세션을 가장 최근 토큰으로 앞에 붙인다 — 세션이 비면 구매만(#270)")
+    void sessionThenPurchases() {
+        RecommendationService service = mock(RecommendationService.class);
+        when(service.purchaseHistoryForModel(7L)).thenReturn(List.of(10L, 11L));
+        RecommendationFacts facts = facts(service, "session-then-purchases");
+
+        assertThat(facts.pageHistory(7L, List.of(1L, 2L))).containsExactly(1L, 2L, 10L, 11L);
+        assertThat(facts.pageHistory(7L, List.of())).containsExactly(10L, 11L);
+    }
+
     @Test
     @DisplayName("모델이 꺼져 있으면 빈 목록이다 — 홈은 규칙 행을 쓴다")
     void disabledIsEmpty() {

@@ -309,7 +309,7 @@ class HomeComposerTest {
             // 42 는 품절이다 — 모델은 재고를 모르므로 홈이 거른다
             return want.stream().map(id -> card(id, id <= 6 ? "a" : id <= 12 ? "b" : id >= 40 ? "b" : "c", id != 42L)).toList();
         });
-        when(recommendations.generatePageRows(anyList(), org.mockito.ArgumentMatchers.anyCollection(),
+        when(recommendations.generatePageRows(org.mockito.ArgumentMatchers.anyLong(), anyList(), org.mockito.ArgumentMatchers.anyCollection(),
                 org.mockito.ArgumentMatchers.anyCollection(), anyInt(), anyInt()))
                 .thenReturn(List.of(new RecommendationFacts.GeneratedRow("b", List.of(41L, 42L, 43L, 44L))));
         HomeComposer composer = composer(HomeComposer.Rules.FULL, 3, 1);
