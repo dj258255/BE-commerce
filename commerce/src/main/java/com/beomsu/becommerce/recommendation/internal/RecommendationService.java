@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.recommendation.internal;
 
+import com.beomsu.becommerce.order.PurchaseHistoryFacts;
 import com.beomsu.becommerce.personalization.RecentActivityFacts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +52,30 @@ public class RecommendationService {
     private final ConstraintPolicy constraintPolicy;
     private final GenerationScope generationScope;
     private final int contextLimit;
+    private final PurchaseHistoryFacts purchases;
+    private final String historySource;
+    private final boolean repeatFirst;
+    private final int purchaseLimit;
+    private final int resultSize;
 
+    /** 테스트와 예전 설정용: 활동 이력을 넣고 혼합하지 않는다. */
+    public RecommendationService(RecentActivityFacts recentActivity,
+                                 ModelClient modelClient,
+                                 OverloadGate gate,
+                                 ConstraintChecker constraintChecker,
+                                 RecommendationMetrics metrics,
+                                 ConstraintPolicy constraintPolicy,
+                                 GenerationScope generationScope,
+                                 int contextLimit) {
+        this(recentActivity, modelClient, gate, constraintChecker, metrics, constraintPolicy, generationScope, contextLimit,
+                null, HISTORY_ACTIVITY, false, 100, 12);
+    }
+
+    /**
+     * @param historySource {@code activity}(온라인 컨텍스트의 조회·클릭) 또는 {@code purchases}(결제 완료 주문, #254)
+     * @param repeatFirst   최근 산 것을 중복 없이 먼저 두고 빈칸을 모델로 채운다. {@code purchases} 일 때만 뜻이 있다
+     */
+    @org.springframework.beans.factory.annotation.Autowired
     public RecommendationService(RecentActivityFacts recentActivity,
                                  ModelClient modelClient,
                                  OverloadGate gate,
@@ -59,7 +83,20 @@ public class RecommendationService {
                                  RecommendationMetrics metrics,
                                  @Value("${app.recommendation.constraint-policy:NONE}") ConstraintPolicy constraintPolicy,
                                  @Value("${app.recommendation.generation.scope:RANKING}") GenerationScope generationScope,
-                                 @Value("${app.recommendation.context-limit:20}") int contextLimit) {
+                                 @Value("${app.recommendation.context-limit:20}") int contextLimit,
+                                 PurchaseHistoryFacts purchases,
+                                 @Value("${app.recommendation.history-source:activity}") String historySource,
+                                 @Value("${app.recommendation.repeat-first:false}") boolean repeatFirst,
+                                 @Value("${app.recommendation.purchase-history-limit:100}") int purchaseLimit,
+                                 @Value("${app.recommendation.result-size:12}") int resultSize) {
+        this.purchases = purchases;
+        this.historySource = HISTORY_PURCHASES.equals(historySource) && purchases != null ? HISTORY_PURCHASES : HISTORY_ACTIVITY;
+        this.repeatFirst = repeatFirst && HISTORY_PURCHASES.equals(this.historySource);
+        if (repeatFirst && !this.repeatFirst) {
+            log.warn("repeat-first 는 history-source=purchases 에서만 뜻이 있다 — 끈다");
+        }
+        this.purchaseLimit = Math.max(purchaseLimit, 1);
+        this.resultSize = Math.max(resultSize, 1);
         this.recentActivity = recentActivity;
         this.modelClient = modelClient;
         this.gate = gate;
@@ -68,7 +105,39 @@ public class RecommendationService {
         this.constraintPolicy = constraintPolicy;
         this.generationScope = generationScope;
         this.contextLimit = Math.max(contextLimit, 1);
-        log.info("제약 확인 정책={} 생성 범위={} (E4·E5)", constraintPolicy, generationScope);
+        log.info("제약 확인 정책={} 생성 범위={} (E4·E5) 이력={} 재구매 우선={}", constraintPolicy, generationScope,
+                this.historySource, this.repeatFirst);
+    }
+
+    static final String HISTORY_ACTIVITY = "activity";
+    static final String HISTORY_PURCHASES = "purchases";
+
+    private List<Long> history(long userId) {
+        if (HISTORY_PURCHASES.equals(historySource)) {
+            return purchases.recentPurchasedProductIds(userId, purchaseLimit);
+        }
+        return recentActivity.recentItemIds(userId, contextLimit);
+    }
+
+    /**
+     * 재구매 우선 혼합(#254). 최근 산 것을 중복 없이 먼저 두고 빈칸을 모델 결과로 채운다. 오프라인의
+     * {@code hybrid_repeat_then_model}(train_genpage.py)과 같은 규칙이다 — 서빙에서도 같은 값이 나오는지 재려는 것이다.
+     */
+    static List<Long> repeatThenModel(List<Long> purchasesNewestFirst, List<Long> model, int k) {
+        java.util.LinkedHashSet<Long> out = new java.util.LinkedHashSet<>();
+        for (Long p : purchasesNewestFirst) {
+            if (out.size() >= k) {
+                break;
+            }
+            out.add(p);
+        }
+        for (Long m : model) {
+            if (out.size() >= k) {
+                break;
+            }
+            out.add(m);
+        }
+        return List.copyOf(out);
     }
 
     public RecommendationView recommend(long userId) {
@@ -84,7 +153,7 @@ public class RecommendationService {
         // ② 활동 읽기 — 모델을 기다리기 전에 한다. 여기서 실패하면 빈 목록으로 온다(개인화가 약해질 뿐).
         // E5 의 구간 계기: 이 시간이 예산의 "컨텍스트" 몫이다.
         long contextStartedAt = System.nanoTime();
-        List<Long> recent = recentActivity.recentItemIds(userId, contextLimit);
+        List<Long> recent = history(userId);
         long contextNanos = System.nanoTime() - contextStartedAt;
 
         // ③ 문 — 정책이 거절하면 모델을 아예 부르지 않는다.
@@ -98,6 +167,9 @@ public class RecommendationService {
         long modelStartedAt = System.nanoTime();
         try {
             List<Long> items = callModel(userId, recent);
+            if (repeatFirst) {
+                items = repeatThenModel(recent, items, resultSize);
+            }
             metrics.servedByModel();
             return finish(userId, items, RecommendationView.SOURCE_MODEL, null,
                     recent.size(), contextNanos, elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt);
