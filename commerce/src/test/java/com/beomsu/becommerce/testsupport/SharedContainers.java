@@ -22,7 +22,8 @@ import org.testcontainers.utility.DockerImageName;
  * </ul>
  *
  * <p>{@code @Testcontainers} · {@code @Container} 와 섞지 않는다. 그 확장은 클래스가 끝나면 컨테이너를 멈춘다.
- * 여기 컨테이너는 Ryuk 이 JVM 이 끝날 때 치운다. 테스트는 한 JVM 안에서 차례로 돈다고 가정한다
+ * 여기 컨테이너는 JVM 이 끝날 때 멈춘다. Ryuk 에만 맡기지 않는다 — 로컬 Docker Desktop 에서 Ryuk 이 뜨지 못해
+ * 실행마다 MySQL · Redis 가 남았다(종료 훅이 대신 치운다). 테스트는 한 JVM 안에서 차례로 돈다고 가정한다
  * (Gradle 이 여러 JVM 으로 나눠 돌리면 JVM 마다 따로 띄운다).
  */
 public final class SharedContainers {
@@ -44,6 +45,7 @@ public final class SharedContainers {
 
         static {
             MYSQL.start();
+            Runtime.getRuntime().addShutdownHook(new Thread(MYSQL::stop, "shared-mysql-stop"));
         }
     }
 
@@ -53,6 +55,7 @@ public final class SharedContainers {
 
         static {
             REDIS.start();
+            Runtime.getRuntime().addShutdownHook(new Thread(REDIS::stop, "shared-redis-stop"));
         }
     }
 
