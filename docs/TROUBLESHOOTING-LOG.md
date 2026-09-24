@@ -19,10 +19,9 @@
 | 4 | **FDS 임계값의 숫자** | 차지백 라벨이 없다. 설계와 비용 파라미터만 정했다 | **데이터**: 지연 라벨([ADR-028](adr/ADR-028-fds-threshold-with-delayed-labels.md)) |
 | 5 | **추천 품질의 온라인 판정** | 오프라인 지표는 게이트이고 최종 판정은 A/B 다. **실험 기반은 만들었다**(배정·노출·귀속·분석, 합성 사용자로 검증 — [ADR-061](adr/ADR-061-ab-assignment-and-attribution.md)). **다음에 돌릴 것**: 재구매 우선 혼합 대 지금([ADR-060](adr/ADR-060-genpage-serves-purchases.md)). `APP_RECOMMENDATION_MODEL_KIND=genpage` · `APP_EXPERIMENT_REC_HISTORY_ENABLED=true` 로 켜면 실험군은 추천 행과 홈 다음 쪽 모두 구매 이력을 넣는다(#270). 분석은 `tools/ab_analysis.py`. 판정 기준(지표·기간·표본)은 켜기 전에 이슈에 적는다 — 합성 검증에서 변형당 500명의 구매 차이 구간이 ±2.8%p 였다 | **데이터**: 실사용자 |
 | 7 | **캐시 압축을 켜는 것** | 임계값·코덱은 정했는데 **적용할 캐시가 없다**. 컨텍스트 캐시는 Lua 가 값을 읽어 병합해 압축하면 깨진다 | 구조 — [ADR-041](adr/ADR-041-cache-compression-threshold.md)·[ADR-035](adr/ADR-035-order-tolerant-context-merge.md) |
-| 9 | **홈 2쪽 앱 경로의 용량** | 이 머신에서 모델 없이 규칙 행만 만들어도 2쪽이 30/s 는 받고 60/s 에서 무너졌다(p95 3.7초). 규칙 행(폴백)이 GenPage 행보다 비싸다(30/s p95 164.7 대 91.0ms). 커넥션 풀 대기 초과가 로그에 있었지만 원인은 안 봤다([#271 리포트](../personalization/docs/runs/20260924-overload-real-model/report.md)) | 구조 — 원인 분석부터 |
 
 **1~5 는 외부 계약이나 실사용자가 필요하다.** 지금 적으면 거짓이 되므로 열어 둔다.
-7 은 구조를 먼저 바꿔야 한다. 9 는 외부 없이 풀 수 있고 아직 원인을 보지 않았다. 6(셰딩 우선순위)·8(`poll.interval.ms` 비용)은 닫았다([ADR-058](adr/ADR-058-shed-browse-before-webhook.md) · [ADR-059](adr/ADR-059-cdc-poll-and-health.md)).
+7 은 구조를 먼저 바꿔야 한다. 9(홈 2쪽 앱 용량)는 닫았다 — 요청마다 돌던 count 쿼리였다([#284 리포트](../personalization/docs/runs/20260925-page2-capacity/report.md), 초당 30 → 120건). 6(셰딩 우선순위)·8(`poll.interval.ms` 비용)은 닫았다([ADR-058](adr/ADR-058-shed-browse-before-webhook.md) · [ADR-059](adr/ADR-059-cdc-poll-and-health.md)).
 
 ---
 
