@@ -255,12 +255,12 @@ docker compose --profile monitoring up -d prometheus grafana
 | 지금 어디까지 왔는가 | [`personalization/ROADMAP.md`](personalization/ROADMAP.md) · [`docs/ROADMAP-TRADEOFFS.md`](docs/ROADMAP-TRADEOFFS.md) |
 | 무엇을 만들기로 했는가 · 완료 조건 | GitHub Issue (배경 / 할 일 / 검증 / 하지 말 것) |
 | 어느 단위로 나눴는가 | GitHub Milestone (M0~M12) |
-| 무엇을 바꿨는가 · 왜 그렇게 골랐는가 | PR 본문과 [ADR 66편](docs/README.md#아키텍처-결정-기록) |
+| 무엇을 바꿨는가 · 왜 그렇게 골랐는가 | PR 본문과 [ADR 67편](docs/README.md#아키텍처-결정-기록) |
 | 실제로 무엇을 확인했는가 | [`docs/performance/`](docs/performance/README.md) · [`personalization/docs/runs/`](personalization/docs/runs) — 원자료와 재현 명령 |
 | 사용자에게 무엇이 나갔는가 | [`CHANGELOG.md`](CHANGELOG.md) |
 | 무엇을 **안 하기로** 했는가 | ADR 상태가 `기각`·`미결`인 편들, 각 로드맵의 "하지 않은 것" 절 |
 
-마지막 줄이 이 저장소에서 제일 중요하다. **ADR 66편 중 상당수가 "안 한다"로 끝난다** —
+마지막 줄이 이 저장소에서 제일 중요하다. **ADR 67편 중 상당수가 "안 한다"로 끝난다** —
 검색 엔진([ADR-044](docs/adr/ADR-044-no-search-engine-yet.md)), 추천 모델([ADR-048](docs/adr/ADR-048-als-model-not-adopted.md)),
 생성 중 제약 차단([ADR-050](docs/adr/ADR-050-post-filter-over-constrained-generation.md)),
 멀티 PG failover([ADR-020](docs/adr/ADR-020-multi-pg-routing-off-by-default.md)) 모두 **재 보고 안 켰고,

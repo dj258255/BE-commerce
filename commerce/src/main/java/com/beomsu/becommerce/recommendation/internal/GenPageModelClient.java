@@ -5,10 +5,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
@@ -32,35 +31,35 @@ public class GenPageModelClient implements ModelClient {
     private static final Logger log = LoggerFactory.getLogger(GenPageModelClient.class);
 
     private final RestClient client;
-    private final Semaphore capacity;
+    private final GenPageCapacity capacity;
     private final long busyTimeoutMs;
     private final int resultSize;
 
+    /** 테스트용: 자기 자리를 따로 가진다. */
+    public GenPageModelClient(String url, Duration timeout, int concurrency, long busyTimeoutMs, int resultSize) {
+        this(url, timeout, new GenPageCapacity(concurrency), busyTimeoutMs, resultSize);
+    }
+
+    /** 자리는 홈 다음 쪽({@link GenPagePageClient})과 같이 쓴다(#271). */
+    @Autowired
     public GenPageModelClient(@Value("${app.recommendation.model.genpage-url:http://localhost:8765}") String url,
                               @Value("${app.recommendation.model.genpage-timeout:300ms}") Duration timeout,
-                              @Value("${app.recommendation.model.concurrency:4}") int concurrency,
+                              GenPageCapacity capacity,
                               @Value("${app.recommendation.model.busy-timeout-ms:400}") long busyTimeoutMs,
                               @Value("${app.recommendation.result-size:12}") int resultSize) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout((int) timeout.toMillis());
         factory.setReadTimeout((int) timeout.toMillis());
         this.client = RestClient.builder().baseUrl(url).requestFactory(factory).build();
-        this.capacity = new Semaphore(Math.max(concurrency, 1), true);
+        this.capacity = capacity;
         this.busyTimeoutMs = Math.max(busyTimeoutMs, 1);
         this.resultSize = Math.max(resultSize, 1);
-        log.info("GenPage 모델 클라이언트 {} · 제한 시간 {} · 용량 {}동시", url, timeout, Math.max(concurrency, 1));
+        log.info("GenPage 모델 클라이언트 {} · 제한 시간 {}", url, timeout);
     }
 
     @Override
     public List<Long> recommend(long userId, List<Long> recentItemIds) {
-        boolean acquired;
-        try {
-            acquired = capacity.tryAcquire(busyTimeoutMs, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new ModelBusyException("모델 대기 중 인터럽트됐다");
-        }
-        if (!acquired) {
+        if (!capacity.tryAcquire(busyTimeoutMs)) {
             throw new ModelBusyException("모델 용량 대기 초과: " + busyTimeoutMs + "ms");
         }
         try {

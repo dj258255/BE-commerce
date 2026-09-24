@@ -2,6 +2,7 @@ package com.beomsu.becommerce.recommendation;
 
 import com.beomsu.becommerce.recommendation.internal.GenPagePageClient;
 import com.beomsu.becommerce.recommendation.internal.ItemPoolSource;
+import com.beomsu.becommerce.recommendation.internal.ModelBusyException;
 import com.beomsu.becommerce.recommendation.internal.RecommendationService;
 import com.beomsu.becommerce.recommendation.internal.RecommendationView;
 import io.micrometer.core.instrument.Counter;
@@ -40,6 +41,7 @@ public class RecommendationFacts {
     private final GenPagePageClient pageModel;
     private final Counter pageOk;
     private final Counter pageFailed;
+    private final Counter pageBusy;
     private final boolean pageSessionFirst;
 
     /** 홈 다음 쪽의 모델 입력(#270). 구매만 넣거나, 세션의 조회·클릭을 앞에 붙인다. */
@@ -61,6 +63,7 @@ public class RecommendationFacts {
         this.pageModel = pageModel.getIfAvailable();
         this.pageOk = Counter.builder("recommendation.genpage.page").tag("result", "ok").register(registry);
         this.pageFailed = Counter.builder("recommendation.genpage.page").tag("result", "failed").register(registry);
+        this.pageBusy = Counter.builder("recommendation.genpage.page").tag("result", "busy").register(registry);
     }
 
     /** 모델이 만든 행 하나 — 대분류와 그 안의 상품 id(모델의 순서). */
@@ -117,6 +120,10 @@ public class RecommendationFacts {
                     .stream().map(r -> new GeneratedRow(r.category(), r.itemIds())).toList();
             pageOk.increment();
             return out;
+        } catch (ModelBusyException e) {
+            // 모델 자리가 없었다(#271) — 실패가 아니라 부하 정책이 고른 결과다. 로그를 남기지 않고 센다
+            pageBusy.increment();
+            return List.of();
         } catch (RuntimeException e) {
             pageFailed.increment();
             log.warn("GenPage 행 생성 실패 → 규칙 행으로 물러선다: {}", e.toString());

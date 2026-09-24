@@ -1,6 +1,7 @@
 package com.beomsu.becommerce.recommendation.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -70,5 +71,36 @@ class GenPageClientWireTest {
         assertThat(contentLength.get()).isNotNull();
         assertThat(transferEncoding.get()).isNull();
         assertThat(body.get().path("exclude").toString()).isEqualTo("[9]");
+    }
+
+    @Test
+    @DisplayName("2쪽은 추천 행과 자리를 같이 쓰고, 자리가 없으면 서버를 부르지 않고 포기한다(#271)")
+    void pageGivesUpWithoutFreeCapacity() throws Exception {
+        GenPageCapacity capacity = new GenPageCapacity(1);
+        GenPagePageClient client = new GenPagePageClient(start("{\"rows\":[],\"violations\":0}"), Duration.ofSeconds(2), 2,
+                capacity, "shared");
+        assertThat(capacity.tryAcquire(0)).isTrue();          // 추천 행이 자리를 쥐고 있다
+
+        assertThatThrownBy(() -> client.generate(List.of(5L), List.of(), List.of(), 3, 8))
+                .isInstanceOf(ModelBusyException.class);
+        assertThat(body.get()).isNull();                      // 서버까지 가지 않았다
+
+        capacity.release();
+        client.generate(List.of(5L), List.of(), List.of(), 3, 8);
+        assertThat(body.get()).isNotNull();
+        assertThat(capacity.tryAcquire(0)).isTrue();          // 끝나면 자리를 돌려준다
+    }
+
+    @Test
+    @DisplayName("page-capacity=none 이면 자리 없이 부른다 — #271 이전 동작")
+    void pageWithoutCapacityIgnoresPermits() throws Exception {
+        GenPageCapacity capacity = new GenPageCapacity(1);
+        GenPagePageClient client = new GenPagePageClient(start("{\"rows\":[],\"violations\":0}"), Duration.ofSeconds(2), 2,
+                capacity, "none");
+        assertThat(capacity.tryAcquire(0)).isTrue();
+
+        client.generate(List.of(5L), List.of(), List.of(), 3, 8);
+
+        assertThat(body.get()).isNotNull();
     }
 }

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
@@ -30,19 +31,49 @@ public class GenPagePageClient {
 
     private final RestClient client;
     private final int prefix;
+    /** 추천 행과 같이 쓰는 자리(#271). null 이면 자리 없이 부른다(#271 이전의 동작, 비교 측정용). */
+    private final GenPageCapacity capacity;
 
+    /** 테스트용: 자리 없이 부른다. */
+    public GenPagePageClient(String url, Duration timeout, int prefix) {
+        this(url, timeout, prefix, null, "none");
+    }
+
+    /**
+     * @param pageCapacity {@code shared}(기본) 면 추천 행과 같은 자리를 쓰고, 자리가 없으면 <b>기다리지 않고</b> 포기한다 — 홈은 규칙 행으로
+     *                     물러선다. 2쪽은 규칙 행이라는 대안이 있으니 줄을 설 이유가 없다. {@code none} 은 자리 없이 부른다
+     */
+    @Autowired
     public GenPagePageClient(@Value("${app.recommendation.model.genpage-url:http://localhost:8765}") String url,
                              @Value("${app.recommendation.model.genpage-timeout:300ms}") Duration timeout,
-                             @Value("${app.recommendation.model.genpage-prefix:2}") int prefix) {
+                             @Value("${app.recommendation.model.genpage-prefix:2}") int prefix,
+                             GenPageCapacity capacity,
+                             @Value("${app.recommendation.model.page-capacity:shared}") String pageCapacity) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout((int) timeout.toMillis());
         factory.setReadTimeout((int) timeout.toMillis());
         this.client = RestClient.builder().baseUrl(url).requestFactory(factory).build();
         this.prefix = Math.max(prefix, 0);
+        this.capacity = "none".equals(pageCapacity) ? null : capacity;
     }
 
     public List<Row> generate(List<Long> history, Collection<Long> exclude, Collection<String> excludeCategories,
                               int rows, int itemsPerRow) {
+        if (capacity == null) {
+            return call(history, exclude, excludeCategories, rows, itemsPerRow);
+        }
+        if (!capacity.tryAcquire(0)) {
+            throw new ModelBusyException("모델 자리가 없다 — 2쪽은 규칙 행으로 간다");
+        }
+        try {
+            return call(history, exclude, excludeCategories, rows, itemsPerRow);
+        } finally {
+            capacity.release();
+        }
+    }
+
+    private List<Row> call(List<Long> history, Collection<Long> exclude, Collection<String> excludeCategories,
+                           int rows, int itemsPerRow) {
         JsonNode body = client.post().uri("/page").contentType(MediaType.APPLICATION_JSON)
                 .body(ModelRequestBody.of(Map.of("history", history, "exclude", exclude, "exclude_categories", excludeCategories,
                         "rows", rows, "items_per_row", itemsPerRow, "prefix", prefix)))

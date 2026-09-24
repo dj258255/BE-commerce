@@ -76,4 +76,17 @@ class RecommendationFactsGenPageTest {
         assertThat(facts(client, registry).generatePageRows(List.of(1L), List.of(), List.of(), 3, 8)).isEmpty();
         assertThat(registry.get("recommendation.genpage.page").tag("result", "failed").counter().count()).isEqualTo(1.0);
     }
+
+    @Test
+    @DisplayName("모델 자리가 없으면 빈 목록을 주고 실패가 아닌 busy 로 센다(#271)")
+    void busyIsEmptyAndCountedSeparately() {
+        GenPagePageClient client = mock(GenPagePageClient.class);
+        when(client.generate(any(), any(), any(), anyInt(), anyInt()))
+                .thenThrow(new com.beomsu.becommerce.recommendation.internal.ModelBusyException("자리 없음"));
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+
+        assertThat(facts(client, registry).generatePageRows(List.of(1L), List.of(), List.of(), 3, 8)).isEmpty();
+        assertThat(registry.get("recommendation.genpage.page").tag("result", "busy").counter().count()).isEqualTo(1.0);
+        assertThat(registry.get("recommendation.genpage.page").tag("result", "failed").counter().count()).isZero();
+    }
 }

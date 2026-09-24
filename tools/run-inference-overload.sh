@@ -68,6 +68,7 @@ start_app() {
   APP_RECOMMENDATION_MODEL_LATENCY_MS="$MODEL_LATENCY_MS" \
   APP_RECOMMENDATION_MODEL_STUB_LATENCY_MS="${STUB_LATENCY_MS:-$MODEL_LATENCY_MS}" \
   APP_RECOMMENDATION_MODEL_BUSY_TIMEOUT_MS="$BUSY_TIMEOUT_MS" \
+  APP_RECOMMENDATION_MODEL_KIND="${MODEL_KIND:-stub}" \
   "$JAVA" -jar "$JAR" \
     --spring.docker.compose.enabled=false \
     --server.port="$PORT" > "$log" 2>&1 &
@@ -92,6 +93,13 @@ for policy in $POLICIES; do
 
   for rate in $RATES; do
     echo "   $policy @ ${rate} req/s"
+    # 홈 2쪽 부하를 같이 건다(#271). 게이트를 거치지 않는 /page 호출이 모델 서버를 나눠 쓸 때를 본다
+    PAGE_PID=""
+    if [ -n "${PAGE_RATE:-}" ]; then
+      BASE_URL="$BASE" RATE="$PAGE_RATE" DURATION="$DURATION" WARMUP_MS="$WARMUP_MS" \
+        k6 run k6/home-next-page-load.js > "$RAW/$policy/k6-page-${rate}.txt" 2>&1 &
+      PAGE_PID=$!
+    fi
     # shellcheck disable=SC2086
     POLICY="$policy" BASE_URL="$BASE" RATE="$rate" DURATION="$DURATION" WARMUP_MS="$WARMUP_MS" \
       ACCOUNTS="$ACCOUNTS" MAX_VUS="$MAX_VUS" \
@@ -99,6 +107,10 @@ for policy in $POLICIES; do
         --summary-export "$RAW/$policy/summary-${rate}.json" \
         > "$RAW/$policy/k6-${rate}.txt" 2>&1 || true
     grep '^\[E3\]' "$RAW/$policy/k6-${rate}.txt" | tee -a "$RAW/summary.txt" || true
+    if [ -n "$PAGE_PID" ]; then
+      wait "$PAGE_PID" || true
+      grep '^\[PAGE\]' "$RAW/$policy/k6-page-${rate}.txt" | tee -a "$RAW/summary.txt" || true
+    fi
   done
   cleanup
 done
