@@ -546,6 +546,9 @@ app:
       cdc:
         enabled: ${APP_CATALOG_SEARCH_CDC_ENABLED:true}
         topic: ${APP_CATALOG_SEARCH_CDC_TOPIC:catalog.change}
+      # 검색어 고치기(#260, ADR-063). 한국어 라벨 → 필터·원문 이름, 미국식 → 영국식. 한국어 0건이 10~12% 남아 기본은 끈다.
+      rewrite:
+        enabled: ${APP_CATALOG_SEARCH_REWRITE_ENABLED:false}
       # 변경 반영을 켰을 때 Lucene 검색기를 다시 여는 주기. 바뀐 문서가 검색에 보이기까지의 하한이다.
       lucene-nrt-refresh: ${APP_CATALOG_SEARCH_LUCENE_NRT_REFRESH:1s}
   # 홈 컴포저(M7) — 여러 출처를 **한 화면으로 조립**한다. 추천 코어는 행 하나의 재료다.
