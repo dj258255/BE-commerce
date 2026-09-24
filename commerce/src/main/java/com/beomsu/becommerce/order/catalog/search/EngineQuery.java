@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.order.catalog.search;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,11 @@ final class EngineQuery {
      * 자리로 내렸다. 필드는 best_fields(필드별 점수 중 최댓값), 오타 허용은 {@code AUTO}(3~5자 1글자, 6자 이상 2글자).
      */
     static Map<String, Object> searchBody(String query, int from, int size) {
+        return Map.of("from", from, "size", size, "_source", false, "track_total_hits", true, "query", textQuery(query));
+    }
+
+    /** 정확 일치 절(3배)과 오타 허용 절을 bool should 로 묶은 텍스트 질의. */
+    static Map<String, Object> textQuery(String query) {
         List<String> fields = FIELDS.entrySet().stream()
                 .map(e -> e.getValue() == 1.0f ? e.getKey() : e.getKey() + "^" + e.getValue().intValue())
                 .toList();
@@ -45,12 +51,56 @@ final class EngineQuery {
                 "query", query, "fields", fields, "type", "best_fields", "boost", EXACT_BOOST));
         Map<String, Object> fuzzy = Map.of("multi_match", Map.of(
                 "query", query, "fields", fields, "type", "best_fields", "fuzziness", "AUTO"));
-        return Map.of(
-                "from", from,
-                "size", size,
-                "_source", false,
-                "track_total_hits", true,
-                "query", Map.of("bool", Map.of("should", List.of(exact, fuzzy))));
+        return Map.of("bool", Map.of("should", List.of(exact, fuzzy)));
+    }
+
+    /** 검색어 + 필터(#244). 필터는 점수에 끼지 않는 filter 절이다. */
+    static Map<String, Object> filteredBody(String query, SearchFilters filters, int from, int size) {
+        return Map.of("from", from, "size", size, "_source", false, "track_total_hits", true,
+                "query", Map.of("bool", Map.of("must", List.of(textQuery(query)), "filter", filterClauses(filters))));
+    }
+
+    /**
+     * 패싯(#244). 검색어로 일치 집합을 잡고, 축마다 <b>자기 축을 뺀</b> 필터를 filter 집계로 건다 — DB 패싯과 같은 의미다.
+     * 결과 행은 필요 없으므로 size 0.
+     */
+    static Map<String, Object> facetsBody(String query, SearchFilters filters) {
+        Map<String, Object> colour = Map.of(
+                "filter", Map.of("bool", Map.of("filter", filterClauses(filters.withoutColour()))),
+                "aggs", Map.of("v", Map.of("terms", Map.of("field", "colour_code", "size", 100))));
+        Map<String, Object> type = Map.of(
+                "filter", Map.of("bool", Map.of("filter", filterClauses(filters.withoutProductType()))),
+                "aggs", Map.of("v", Map.of("terms", Map.of("field", "product_type_kw", "size", 500))));
+        return Map.of("size", 0, "track_total_hits", true, "query", textQuery(query),
+                "aggs", Map.of("colour", colour, "type", type));
+    }
+
+    static List<Map<String, Object>> filterClauses(SearchFilters f) {
+        List<Map<String, Object>> clauses = new ArrayList<>();
+        term(clauses, "category_code", f.categoryCode());
+        term(clauses, "subcategory_code", f.subcategoryCode());
+        term(clauses, "colour_code", f.colourCode());
+        term(clauses, "product_type_kw", f.productType());
+        if (f.minPrice() != null || f.maxPrice() != null) {
+            Map<String, Object> range = new LinkedHashMap<>();
+            if (f.minPrice() != null) {
+                range.put("gte", f.minPrice());
+            }
+            if (f.maxPrice() != null) {
+                range.put("lte", f.maxPrice());
+            }
+            clauses.add(Map.of("range", Map.of("price", range)));
+        }
+        if (f.inStockOnly()) {
+            clauses.add(Map.of("term", Map.of("in_stock", true)));
+        }
+        return clauses;
+    }
+
+    private static void term(List<Map<String, Object>> clauses, String field, String value) {
+        if (value != null) {
+            clauses.add(Map.of("term", Map.of(field, value)));
+        }
     }
 
     /** ES 의 fuzziness AUTO 와 같은 규칙. 0~2자 0, 3~5자 1, 6자 이상 2. */

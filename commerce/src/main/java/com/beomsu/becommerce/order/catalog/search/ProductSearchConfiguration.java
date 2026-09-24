@@ -1,6 +1,7 @@
 package com.beomsu.becommerce.order.catalog.search;
 
 import com.beomsu.becommerce.order.catalog.ProductRepository;
+import com.beomsu.becommerce.order.catalog.StockRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import org.slf4j.Logger;
@@ -29,29 +30,40 @@ public class ProductSearchConfiguration {
                                 @Value("${app.catalog.search.index:products}") String index,
                                 @Value("${app.catalog.search.timeout:300ms}") Duration timeout,
                                 @Value("${app.catalog.search.lucene-refresh:10m}") Duration luceneRefresh,
+                                @Value("${app.catalog.search.filters-in-engine:true}") boolean filtersInEngine,
                                 ProductRepository products,
+                                StockRepository stock,
                                 NamedParameterJdbcTemplate jdbc,
                                 MeterRegistry registry) {
         LikeProductSearch likeFields = new LikeProductSearch(products, true);
+        CandidateFiltering candidates = new CandidateFiltering(products, stock);
         ProductSearch chosen = switch (engine) {
             case "like" -> new LikeProductSearch(products, false);
             case "like-fields" -> likeFields;
             case "fulltext" -> new FallbackProductSearch(new FulltextProductSearch(jdbc), likeFields, registry);
-            case "lucene" -> new FallbackProductSearch(lucene(jdbc, luceneRefresh, registry), likeFields, registry);
+            case "lucene" -> new FallbackProductSearch(lucene(jdbc, luceneRefresh, registry), likeFields, candidates, registry);
             case "elasticsearch", "opensearch" -> new FallbackProductSearch(
-                    new HttpEngineProductSearch(restClient(engineUrl, timeout), index, engine), likeFields, registry);
+                    new HttpEngineProductSearch(restClient(engineUrl, timeout), index, engine), likeFields, candidates,
+                    registry);
             default -> throw new IllegalStateException("모르는 검색 엔진: " + engine
                     + " (like · like-fields · fulltext · lucene · elasticsearch · opensearch)");
         };
-        log.info("상품 검색 엔진={}", chosen.engine());
+        if (!filtersInEngine && chosen.filtersInEngine()) {
+            // 실측용: 같은 엔진에서 필터·패싯만 후보 자르기로 돌린다(#244)
+            chosen = new CandidatesOnly(chosen);
+        }
+        log.info("상품 검색 엔진={} 필터·패싯={}", chosen.engine(), chosen.filtersInEngine() ? "엔진 안" : "후보 자르기");
         return chosen;
     }
 
     /** 기동 때 카탈로그 전체를 읽어 메모리 색인을 만들고, 주기마다 새로 만들어 갈아 끼운다. */
     private static RefreshingLuceneSearch lucene(NamedParameterJdbcTemplate jdbc, Duration refresh, MeterRegistry registry) {
         return new RefreshingLuceneSearch(() -> jdbc.getJdbcTemplate().query(
-                "SELECT product_id, name, product_type, description FROM products",
-                (rs, i) -> new LuceneProductSearch.Doc(rs.getLong(1), rs.getString(2), rs.getString(3), rs.getString(4))),
+                "SELECT p.product_id, p.name, p.product_type, p.description, p.category_code, p.subcategory_code, "
+                        + "p.colour_code, p.price, COALESCE(s.quantity, 1) > 0 "
+                        + "FROM products p LEFT JOIN stock s ON s.product_id = p.product_id",
+                (rs, i) -> new LuceneProductSearch.Doc(rs.getLong(1), rs.getString(2), rs.getString(3), rs.getString(4),
+                        rs.getString(5), rs.getString(6), rs.getString(7), rs.getLong(8), rs.getBoolean(9))),
                 refresh, registry);
     }
 

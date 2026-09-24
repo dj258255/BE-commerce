@@ -1,8 +1,11 @@
 package com.beomsu.becommerce.order.catalog;
 
 import com.beomsu.becommerce.order.internal.OrderException;
+import com.beomsu.becommerce.order.catalog.search.CandidateFiltering;
 import com.beomsu.becommerce.order.catalog.search.LikeProductSearch;
 import com.beomsu.becommerce.order.catalog.search.ProductSearch;
+import com.beomsu.becommerce.order.catalog.search.SearchFacets;
+import com.beomsu.becommerce.order.catalog.search.SearchFilters;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -48,6 +51,8 @@ public class CatalogQueryService {
     private final ProductReviewRepository reviewRepository;
     private final FacetCache facetCache;
     private final ProductSearch productSearch;
+    private final CandidateFiltering candidateFiltering;
+    private volatile Map<String, String> colourNames;
 
     public CatalogQueryService(ProductRepository productRepository,
                                CategoryRepository categoryRepository,
@@ -61,6 +66,7 @@ public class CatalogQueryService {
         this.reviewRepository = reviewRepository;
         this.facetCache = facetCache;
         this.productSearch = productSearch;
+        this.candidateFiltering = new CandidateFiltering(productRepository, stockRepository);
     }
 
     /**
@@ -125,8 +131,19 @@ public class CatalogQueryService {
     public ProductPageView products(String category, String q, Boolean featured,
                                     String colour, String productType,
                                     Long minPrice, Long maxPrice, String sort, int page, int size) {
+        return products(category, q, featured, colour, productType, minPrice, maxPrice, null, sort, page, size);
+    }
+
+    /**
+     * {@code inStock} 이 true 면 재고 있는 상품만. 검색어가 있으면 <b>필터와 함께</b> 건다(#244) — 전에는 검색어가
+     * 다른 필터를 모두 무시했다. 추천(featured)은 검색 필터가 아니다.
+     */
+    public ProductPageView products(String category, String q, Boolean featured,
+                                    String colour, String productType,
+                                    Long minPrice, Long maxPrice, Boolean inStock, String sort, int page, int size) {
         if (q != null && !q.isBlank()) {
-            return search(q.trim(), sort, Math.max(page, 0), clampSize(size));
+            return search(q.trim(), searchFilters(category, colour, productType, minPrice, maxPrice, inStock),
+                    sort, Math.max(page, 0), clampSize(size));
         }
         Pageable pageable = PageRequest.of(Math.max(page, 0), clampSize(size), sortOf(sort));
         String[] axis = categoryAxis(category);
@@ -145,21 +162,96 @@ public class CatalogQueryService {
      *       {@value #SORT_CANDIDATES}개 후보 안에서 정렬한다 — "검색 결과 안에서 가격순"이다</li>
      * </ul>
      */
-    private ProductPageView search(String keyword, String sort, int page, int size) {
+    private ProductPageView search(String keyword, SearchFilters filters, String sort, int page, int size) {
         if (sort == null || sort.isBlank() || "relevance".equals(sort)) {
-            ProductSearch.SearchPage hits = productSearch.search(keyword, page, size);
+            ProductSearch.SearchPage hits;
+            if (productSearch.filtersInEngine()) {
+                hits = productSearch.searchFiltered(keyword, filters, page, size);
+            } else if (filters.isEmpty()) {
+                hits = productSearch.search(keyword, page, size);
+            } else {
+                hits = candidateFiltering.filter(productSearch, keyword, filters, page, size);
+            }
             return toPageView(hydrate(hits, PageRequest.of(page, size)));
         }
         Pageable pageable = PageRequest.of(page, size, sortOf(sort));
-        if (productSearch instanceof LikeProductSearch like) {
+        if (productSearch instanceof LikeProductSearch like && filters.isEmpty()) {
             return toPageView(like.searchSorted(keyword, pageable));
         }
-        List<Long> candidates = productSearch.search(keyword, 0, SORT_CANDIDATES).ids();
+        List<Long> candidates = productSearch.filtersInEngine()
+                ? productSearch.searchFiltered(keyword, filters, 0, SORT_CANDIDATES).ids()
+                : candidateFiltering.filter(productSearch, keyword, filters, 0, SORT_CANDIDATES).ids();
         if (candidates.isEmpty()) {
             return toPageView(Page.empty(pageable));
         }
         return toPageView(productRepository.findByProductIdIn(candidates, pageable));
     }
+
+    /** 목록 필터 인자를 검색 필터로 옮긴다. 카테고리는 대분류·중분류를 가린다. */
+    private SearchFilters searchFilters(String category, String colour, String productType,
+                                        Long minPrice, Long maxPrice, Boolean inStock) {
+        String[] axis = categoryAxis(category);
+        return new SearchFilters(axis[0], axis[1], blankToNull(colour), blankToNull(productType),
+                minPrice, maxPrice, Boolean.TRUE.equals(inStock));
+    }
+
+    /**
+     * 검색어가 있는 패싯(#244). 엔진이 필터를 처리하면 엔진이 일치 집합 전체를 세고, 아니면 상위 후보 안에서 센다.
+     * 색상 이름은 DB 의 코드→이름 표로 붙인다.
+     */
+    public FacetView facets(String q, String category, String colour, String productType,
+                            Long minPrice, Long maxPrice, Boolean inStock) {
+        if (q == null || q.isBlank()) {
+            return facets(category, null, colour, productType, minPrice, maxPrice);
+        }
+        SearchFilters filters = searchFilters(category, colour, productType, minPrice, maxPrice, inStock);
+        SearchFacets counts = productSearch.filtersInEngine()
+                ? productSearch.facets(q.trim(), filters)
+                : candidateFiltering.facets(productSearch, q.trim(), filters);
+        Map<String, String> names = colourNames();
+        return new FacetView(facetList(counts.colours(), names), facetList(counts.productTypes(), Map.of()));
+    }
+
+    private static List<FacetCount> facetList(Map<String, Long> counts, Map<String, String> names) {
+        return counts.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .map(e -> (FacetCount) new SearchFacetCount(e.getKey(), names.getOrDefault(e.getKey(), e.getKey()), e.getValue()))
+                .toList();
+    }
+
+    /** 색상 코드 → 이름. 20종이라 한 번 읽어 둔다. */
+    private Map<String, String> colourNames() {
+        Map<String, String> cached = colourNames;
+        if (cached == null) {
+            cached = productRepository.colourFacet(null, null, null, null, null, null).stream()
+                    .collect(Collectors.toMap(FacetCount::getCode, FacetCount::getName, (x, y) -> x));
+            colourNames = cached;
+        }
+        return cached;
+    }
+
+    /**
+     * 검색 패싯의 한 값. 컴포넌트 이름을 {@code getCode} 로 지으면 JSON 키도 {@code getCode} 가 되어 DB 패싯
+     * ({@code code})과 응답 모양이 갈린다 — 실측 하네스가 잡았다(#244). 그래서 이름은 {@code code} 로 두고 게터를 따로 단다.
+     */
+    record SearchFacetCount(String code, String name, long count) implements FacetCount {
+
+        @Override
+        public String getCode() {
+            return code;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public long getCount() {
+            return count;
+        }
+    }
+
 
     /** 검색 결과 순서를 지키며 상품을 채운다. 색인에는 있는데 DB 에 없는 id(삭제된 상품)는 뺀다. */
     private Page<Product> hydrate(ProductSearch.SearchPage hits, Pageable pageable) {

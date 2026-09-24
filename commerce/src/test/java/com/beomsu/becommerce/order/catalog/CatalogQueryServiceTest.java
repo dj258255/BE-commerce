@@ -229,8 +229,8 @@ class CatalogQueryServiceTest {
     }
 
     @Test
-    @DisplayName("검색어가 있으면 다른 모든 필터보다 우선한다 — search(...)는 불리지 않는다")
-    void searchTakesPrecedence() {
+    @DisplayName("검색어가 있으면 필터를 검색 결과에 함께 건다 — 목록 질의(search)는 쓰지 않는다(#244, 전에는 필터를 무시했다)")
+    void searchAppliesFiltersToSearchResults() {
         when(productRepository.findByNameContainingOrBrandContaining(anyString(), anyString(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 

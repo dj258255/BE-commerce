@@ -1,10 +1,16 @@
 {
-  "settings": { "number_of_shards": 1, "number_of_replicas": 0 },
+  "settings": { "number_of_shards": 1, "number_of_replicas": 0, "refresh_interval": "1s" },
   "mappings": {
     "properties": {
-      "name":         { "type": "text", "analyzer": "english" },
-      "product_type": { "type": "text", "analyzer": "english" },
-      "description":  { "type": "text", "analyzer": "english" }
+      "name":             { "type": "text", "analyzer": "english" },
+      "product_type":     { "type": "text", "analyzer": "english" },
+      "description":      { "type": "text", "analyzer": "english" },
+      "product_type_kw":  { "type": "keyword" },
+      "category_code":    { "type": "keyword" },
+      "subcategory_code": { "type": "keyword" },
+      "colour_code":      { "type": "keyword" },
+      "price":            { "type": "long" },
+      "in_stock":         { "type": "boolean" }
     }
   }
 }
