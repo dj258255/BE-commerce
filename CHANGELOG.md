@@ -17,6 +17,18 @@
 ### 왜
 
 [ADR-062](docs/adr/ADR-062-search-tie-break-by-id.md) · [실측](docs/performance/search-paging-churn.md)
+## Unreleased — 추천 A/B 실험을 돌릴 수 있다 (#256)
+
+### 변경
+
+- `app.experiments.rec-history.enabled=true` 면 사용자를 대조·실험군에 고정 배정한다(해시, 저장하지 않음). 실험군은 구매 이력 + 재구매 우선
+- 홈 1쪽 응답과 노출 기록에 `experiment` · `variant` 가 실린다(V68)
+- `tools/ab_analysis.py` 가 노출된 상품에 한해 클릭·구매를 변형에 귀속하고 SRM · 차이 구간을 낸다
+- 기본은 꺼져 있다
+
+### 왜
+
+[ADR-061](docs/adr/ADR-061-ab-assignment-and-attribution.md) · [검증](personalization/docs/runs/20260924-ab-e2e/report.md)
 
 ## Unreleased — GenPage 가 구매 이력을 읽고, 이력을 실제로 받는다 (#254)
 

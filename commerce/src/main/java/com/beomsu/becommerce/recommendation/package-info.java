@@ -33,6 +33,6 @@
  * 재고를 바꾸는 것(실험 계기) 모두 order 가 소유한다. 판단과 대가는 ADR-039.
  */
 @org.springframework.modulith.ApplicationModule(
-        allowedDependencies = { "shared", "personalization", "order" }
+        allowedDependencies = { "shared", "personalization", "order", "experiment" }
 )
 package com.beomsu.becommerce.recommendation;

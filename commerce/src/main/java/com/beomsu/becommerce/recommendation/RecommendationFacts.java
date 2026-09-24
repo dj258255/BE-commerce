@@ -87,14 +87,21 @@ public class RecommendationFacts {
      * 화면이 "관련도 0.91"처럼 보이지만 그 숫자의 근거가 없다. 홈은 순위를 그대로 쓴다.
      */
     public record Recommended(List<Long> itemIds, String source, String fallbackReason,
-                              long modelMs, long checkMs, String generationScope) {
+                              long modelMs, long checkMs, String generationScope,
+                              String experiment, String variant) {
+
+        /** 실험이 없을 때(#256 이전 호출부). */
+        public Recommended(List<Long> itemIds, String source, String fallbackReason,
+                           long modelMs, long checkMs, String generationScope) {
+            this(itemIds, source, fallbackReason, modelMs, checkMs, generationScope, null, null);
+        }
     }
 
     /** 이 사용자에게 내줄 추천. 모델이 실패해도 <b>예외를 던지지 않는다</b>(폴백이 온다). */
     public Recommended recommend(long userId) {
         RecommendationView view = service.recommend(userId);
         return new Recommended(view.items(), view.source(), view.fallbackReason(),
-                view.modelMs(), view.checkMs(), view.generationScope());
+                view.modelMs(), view.checkMs(), view.generationScope(), view.experiment(), view.variant());
     }
 
     /**

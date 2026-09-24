@@ -140,6 +140,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-058](adr/ADR-058-shed-browse-before-webhook.md) | 자원이 마르면 조회를 먼저 돌려보낸다 — 웹훅은 PG 상한만으로는 지켜지지 않았다 |
 | [ADR-059](adr/ADR-059-cdc-poll-and-health.md) | CDC 는 poll 100ms 를 유지하고, 떠 있는지와 흐르는지를 따로 감시한다 |
 | [ADR-060](adr/ADR-060-genpage-serves-purchases.md) | GenPage 추천 행은 구매 이력으로 서빙하고, 재구매 우선 혼합을 A/B 후보로 둔다 |
+| [ADR-061](adr/ADR-061-ab-assignment-and-attribution.md) | A/B 배정은 해시로 고정하고, 노출은 홈 기록에 얹고, 귀속은 노출된 상품으로 한정한다 |
 | [ADR-062](adr/ADR-062-search-tie-break-by-id.md) | 검색 동점은 상품 id 로 끊는다 — 기준(0)은 못 넘었지만 흔들림을 99% 줄였다 |
 
 ## 보조 문서

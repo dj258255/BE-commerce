@@ -73,6 +73,13 @@ public class HomeImpression {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    /** A/B 실험과 변형(#256). 실험이 없으면 null. 분석이 노출을 변형별로 나누는 근거다. */
+    @Column(length = 40)
+    private String experiment;
+
+    @Column(length = 20)
+    private String variant;
+
     private HomeImpression(long userId, String source, String fallbackReason, Long contextStalenessMs,
                            long totalMs, long modelMs, long constraintMs, int rowCount, int itemCount,
                            String itemIds, String stats, Instant createdAt) {
@@ -107,7 +114,13 @@ public class HomeImpression {
                 stats == null ? null : "candidates=%d,duplicates=%d,outOfStock=%d,cappedOut=%d,unmatched=%d"
                         .formatted(stats.candidates(), stats.duplicates(), stats.outOfStock(),
                                 stats.cappedOut(), stats.unmatched()),
-                Instant.now());
+                Instant.now()).withExperiment(page.experiment(), page.variant());
+    }
+
+    private HomeImpression withExperiment(String experiment, String variant) {
+        this.experiment = experiment;
+        this.variant = variant;
+        return this;
     }
 
     /** 화면 순서대로 편 목록 — 행 순서가 노출 순서다. */
