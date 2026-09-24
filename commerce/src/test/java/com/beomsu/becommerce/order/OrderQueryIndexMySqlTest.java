@@ -32,9 +32,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 뒤를 재므로 <b>디스크 I/O가 아니라 스캔한 행 수 자체의 비용</b>이다. 즉 이 수치는 낙관적인
  * 쪽이고, 콜드 상태의 실제 격차는 더 크다.
  *
- * <p>기본 스위트에서 제외한다(Docker 필요). {@code ./gradlew integrationTest}로 실행.
+ * <p>기본 스위트에서 제외한다(Docker 필요). {@code ./gradlew measurementTest}로 실행(#288).
  */
-@Tag("integration")
+@Tag("measurement")   // 30만 행을 채워 인덱스 효과를 재는 실험 — 매일 돈다(#288). 인덱스 존재는 SchemaIndexAuditMySqlTest 가 PR 마다 지킨다
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class OrderQueryIndexMySqlTest {
 
