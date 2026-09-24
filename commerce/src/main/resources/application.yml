@@ -361,6 +361,9 @@ app:
   recovery:
     enabled: ${APP_RECOVERY_ENABLED:false}
     interval-ms: 60000
+    # 읽는 순서(#248, ADR-057). 확정 못 한 건(PG 진행 중·조회 실패)이 청크만큼 앞자리에 쌓이면 unordered·oldest 는
+    # 뒤를 5분 동안 한 건도 못 풀었고, backoff(다음 시도를 1·2·4·8분 뒤로, 상한 10분)는 막힘 없을 때의 1.2배로 풀었다.
+    policy: ${APP_RECOVERY_POLICY:backoff}
   # 멈춘 체크아웃 사가 복구 스케줄러(ADR-007) → CheckoutRecoveryService.recoverStuckCheckouts().
   # 예약(Phase1) 후 확정(Phase3) 전에 크래시로 PAYMENT_IN_PROGRESS로 멈춘 주문을 PG 조회로 완결/롤백.
   checkout:
@@ -416,6 +419,13 @@ app:
     health:
       connect-url: ${APP_CDC_HEALTH_CONNECT_URL:}
       interval: ${APP_CDC_HEALTH_INTERVAL:30s}
+  # 조회 셰딩(#250, ADR-058). 진행 중인 조회가 문턱에 닿으면 새 조회를 503 으로 돌려보낸다. 웹훅·결제는 돌려보내지 않는다.
+  # 조회가 DB 커넥션(20)을 다 쥐면 웹훅이 그 줄에 서서 10초 규약을 넘긴다(PG 5초 · 조회 200/s 에서 15.6%, 켜면 0%).
+  # 조회 용량을 재는 벤치마크는 이 값을 false 로 두고 잰다(tools/bench.sh 등).
+  web:
+    browse-shed:
+      enabled: ${APP_WEB_BROWSE_SHED_ENABLED:true}
+      max-in-flight: ${APP_WEB_BROWSE_SHED_MAX_IN_FLIGHT:16}   # 커넥션 20 중 4 를 결제·웹훅 몫으로 남긴다
   ratelimit:
     enabled: ${APP_RATELIMIT_ENABLED:true}       # k6 전/후 비교용 스위치 — false면 필터가 전부 통과
     per-user-per-sec: ${APP_RATELIMIT_PER_USER:5}   # 사용자당 초당 허용(스크립트·이중클릭 억제)

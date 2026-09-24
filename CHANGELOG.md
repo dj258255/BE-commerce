@@ -20,6 +20,29 @@
 
 [ADR-059](docs/adr/ADR-059-cdc-poll-and-health.md) · [실측](docs/performance/cdc-cost-and-health.md)
 
+## Unreleased — 조회가 몰리면 조회를 먼저 돌려보낸다 (#250)
+
+### 변경
+
+- 진행 중인 조회(`GET /api/v1/products**` · `/home**` · `/categories**`)가 16개면 새 조회는 503 + `Retry-After: 1` 을 받는다
+- 웹훅·결제·주문은 돌려보내지 않는다. 조회가 몰려도 웹훅이 토스 10초 규약 안에 답한다(PG 5초 · 조회 200/s 에서 15.6% → 0%)
+- 끄려면 `APP_WEB_BROWSE_SHED_ENABLED=false`
+
+### 왜
+
+[ADR-058](docs/adr/ADR-058-shed-browse-before-webhook.md) · [실측](docs/performance/webhook-priority.md)
+
+## Unreleased — 미확정 복구가 확정 못 한 건에 막히지 않는다 (#248)
+
+### 변경
+
+- PG 가 "진행 중"이라고 답하거나 조회가 실패한 미확정 결제는 다음 시도를 1·2·4·8분 뒤(상한 10분)로 미룬다(`app.recovery.policy=backoff`, 기본값)
+- 그런 건이 청크만큼 쌓여도 뒤의 미확정이 계속 풀린다. 전에는 5분 동안 한 건도 못 푼 경우를 재현했다
+- `payments` 에 `recovery_attempts`·`recovery_next_at` 컬럼을 더했다(V67)
+
+### 왜
+
+[ADR-057](docs/adr/ADR-057-recovery-backoff-over-order.md) · [실측](docs/performance/recovery-order.md)
 ## Unreleased — 상품 변경이 검색에 1초 남짓 만에 반영된다 (#246)
 
 ### 변경
