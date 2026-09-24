@@ -410,6 +410,12 @@ app:
   # API 유입 제어(rate limit) — "감당 못 할 요청은 바깥 층에서 싸게 거절한다(429)".
   # 대상: POST /api/v1/orders, POST /api/v1/payments/confirm (RateLimitFilter, 시큐리티 체인 내
   # Bearer 인증 뒤). 고정 윈도우(1초) INCR — 경계 순간 최대 2배 통과는 단순성의 대가로 수용.
+  # CDC 감시(#252). Connect REST 주소를 주면(kafka 프로파일일 때) 커넥터 상태와 하트비트 나이를 지표로 낸다.
+  # 비어 있으면 감시가 뜨지 않는다. 알림 규칙은 monitoring/alert-rules.yml 의 cdc 그룹.
+  cdc:
+    health:
+      connect-url: ${APP_CDC_HEALTH_CONNECT_URL:}
+      interval: ${APP_CDC_HEALTH_INTERVAL:30s}
   ratelimit:
     enabled: ${APP_RATELIMIT_ENABLED:true}       # k6 전/후 비교용 스위치 — false면 필터가 전부 통과
     per-user-per-sec: ${APP_RATELIMIT_PER_USER:5}   # 사용자당 초당 허용(스크립트·이중클릭 억제)
