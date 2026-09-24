@@ -1,0 +1,38 @@
+{
+ "model": {
+  "name": "model",
+  "map": 0.023295074054032385,
+  "sources": {
+   "MODEL": 5000
+  },
+  "p95_ms": 20.067667006514966,
+  "context_items_median": 41
+ },
+ "hybrid": {
+  "name": "hybrid",
+  "map": 0.026373134989349272,
+  "sources": {
+   "MODEL": 5000
+  },
+  "p95_ms": 20.421374996658415,
+  "context_items_median": 41
+ },
+ "before-fix-model": {
+  "name": "model",
+  "map": 0.0005039814814814814,
+  "sources": {
+   "MODEL": 5000
+  },
+  "p95_ms": 20.6891669658944,
+  "context_items_median": 41
+ },
+ "before-fix-hybrid": {
+  "name": "hybrid",
+  "map": 0.0258234160138803,
+  "sources": {
+   "MODEL": 5000
+  },
+  "p95_ms": 23.1311249663122,
+  "context_items_median": 41
+ }
+}

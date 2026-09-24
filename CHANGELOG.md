@@ -7,6 +7,19 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — GenPage 가 구매 이력을 읽고, 이력을 실제로 받는다 (#254)
+
+### 변경
+
+- `app.recommendation.history-source=purchases` 면 추천 모델에 결제 완료 주문의 상품(최근 것부터)을 넣는다. 기본값은 `activity` 그대로
+- `app.recommendation.repeat-first=true` 면 최근 산 것을 먼저 두고 빈칸을 모델로 채운다(구매 이력일 때만)
+- **고친 결함**: 앱이 GenPage 모델 서버로 보낸 요청 본문이 서버에서 빈 것으로 읽혔다. 모델이 모든 사용자를 이력 없는 사용자로 생성하고 있었다
+- 모델 서버는 `history` 가 없는 요청을 400 으로 거절한다
+
+### 왜
+
+[ADR-060](docs/adr/ADR-060-genpage-serves-purchases.md) · [리포트](personalization/docs/runs/hm-genpage-report.md)
+
 ## Unreleased — 조회가 몰리면 조회를 먼저 돌려보낸다 (#250)
 
 ### 변경

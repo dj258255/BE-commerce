@@ -1,0 +1,11 @@
+{
+ "users": 30,
+ "page2_p50": 98.47527052625082,
+ "page2_p95": 121.25320796621963,
+ "strategies": {
+  "GENPAGE": 90
+ },
+ "duplicates": 0,
+ "category_mismatch": 0,
+ "items": 720
+}
