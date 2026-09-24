@@ -18,6 +18,16 @@
 ### 왜
 
 [ADR-065](docs/adr/ADR-065-admission-by-observed-throughput.md) · [실측](personalization/docs/runs/20260924-overload-sensitivity/report.md)
+## Unreleased — ES·OpenSearch 검색 순서가 색인 절차에 흔들리지 않는다 (#262)
+
+### 변경
+
+- ES·OpenSearch 검색 본문을 점수 내림차순 · 상품 id 오름차순으로 정렬한다. 색인 문서에 `product_id` 를 넣는다
+- 이미 만든 ES·OpenSearch 색인은 다시 만들어야 적용된다(`tools/search/search_index.py`)
+
+### 왜
+
+[ADR-064](docs/adr/ADR-064-engine-tie-break.md) · [실측](docs/performance/es-os-ranking-diff.md)
 ## Unreleased — 검색어 고치기를 설정으로 켤 수 있다(기본 꺼짐) (#260)
 
 ### 변경

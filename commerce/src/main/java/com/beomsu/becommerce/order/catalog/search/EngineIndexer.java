@@ -112,6 +112,7 @@ class EngineIndexer {
     /** {@code tools/search/products-index.json} 의 매핑과 같은 필드. */
     static Map<String, Object> document(LuceneProductSearch.Doc d) {
         Map<String, Object> m = new LinkedHashMap<>();
+        m.put("product_id", d.productId());                      // 동점 정렬 키(#262)
         m.put("name", d.name());
         m.put("product_type", d.productType());
         m.put("description", d.description());
