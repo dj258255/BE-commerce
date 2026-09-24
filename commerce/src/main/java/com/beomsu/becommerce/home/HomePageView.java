@@ -24,7 +24,15 @@ public record HomePageView(String userId,
                            List<Row> rows,
                            AssemblyStats stats,
                            int page,
-                           String nextCursor) {
+                           String nextCursor,
+                           String experiment,
+                           String variant) {
+
+    /** 실험 표시 없이(#256 이전 모양). 2쪽부터는 추천 행이 없어 실험을 적지 않는다. */
+    public HomePageView(String userId, String generatedAt, String source, String fallbackReason, Long contextStalenessMs,
+                        Latency latency, List<Row> rows, AssemblyStats stats, int page, String nextCursor) {
+        this(userId, generatedAt, source, fallbackReason, contextStalenessMs, latency, rows, stats, page, nextCursor, null, null);
+    }
 
     /** 추천 결과가 어디서 왔는가. */
     public static final String SOURCE_MODEL = "MODEL";

@@ -49,7 +49,9 @@ public record RecommendationView(long userId,
                                  Long snapshotAgeMs,
                                  Long changesInWindow,
                                  int violations,
-                                 long auditMs) {
+                                 long auditMs,
+                                 String experiment,
+                                 String variant) {
 
     /** 모델이 만들었다. */
     public static final String SOURCE_MODEL = "MODEL";

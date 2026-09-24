@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.recommendation.internal;
 
+import com.beomsu.becommerce.experiment.ExperimentAssigner;
 import com.beomsu.becommerce.order.PurchaseHistoryFacts;
 import com.beomsu.becommerce.personalization.RecentActivityFacts;
 import org.slf4j.Logger;
@@ -57,6 +58,13 @@ public class RecommendationService {
     private final boolean repeatFirst;
     private final int purchaseLimit;
     private final int resultSize;
+    private final ExperimentAssigner experiments;
+
+    /**
+     * A/B 실험 이름(#256). 켜면 실험군은 구매 이력 + 재구매 우선(ADR-060), 대조군은 위 설정 그대로다.
+     * 설정은 {@code app.experiments.rec-history.*}.
+     */
+    static final String EXPERIMENT = "rec-history";
 
     /** 테스트와 예전 설정용: 활동 이력을 넣고 혼합하지 않는다. */
     public RecommendationService(RecentActivityFacts recentActivity,
@@ -68,7 +76,7 @@ public class RecommendationService {
                                  GenerationScope generationScope,
                                  int contextLimit) {
         this(recentActivity, modelClient, gate, constraintChecker, metrics, constraintPolicy, generationScope, contextLimit,
-                null, HISTORY_ACTIVITY, false, 100, 12);
+                null, HISTORY_ACTIVITY, false, 100, 12, null);
     }
 
     /**
@@ -88,7 +96,9 @@ public class RecommendationService {
                                  @Value("${app.recommendation.history-source:activity}") String historySource,
                                  @Value("${app.recommendation.repeat-first:false}") boolean repeatFirst,
                                  @Value("${app.recommendation.purchase-history-limit:100}") int purchaseLimit,
-                                 @Value("${app.recommendation.result-size:12}") int resultSize) {
+                                 @Value("${app.recommendation.result-size:12}") int resultSize,
+                                 ExperimentAssigner experiments) {
+        this.experiments = experiments;
         this.purchases = purchases;
         this.historySource = HISTORY_PURCHASES.equals(historySource) && purchases != null ? HISTORY_PURCHASES : HISTORY_ACTIVITY;
         this.repeatFirst = repeatFirst && HISTORY_PURCHASES.equals(this.historySource);
@@ -111,6 +121,22 @@ public class RecommendationService {
 
     static final String HISTORY_ACTIVITY = "activity";
     static final String HISTORY_PURCHASES = "purchases";
+
+    private ExperimentAssigner.Assignment assignment(long userId) {
+        return experiments == null ? new ExperimentAssigner.Assignment(EXPERIMENT, null) : experiments.assign(EXPERIMENT, userId);
+    }
+
+    /** 실험군이면 구매 이력, 아니면 설정값. 실험군의 설정은 코드에 고정한다 — 변형이 무엇인지가 설정마다 달라지면 결과를 못 읽는다. */
+    private List<Long> history(long userId, ExperimentAssigner.Assignment assignment) {
+        if (assignment.treatment() && purchases != null) {
+            return purchases.recentPurchasedProductIds(userId, purchaseLimit);
+        }
+        return history(userId);
+    }
+
+    private boolean repeatFirst(ExperimentAssigner.Assignment assignment) {
+        return assignment.treatment() ? purchases != null : repeatFirst;
+    }
 
     private List<Long> history(long userId) {
         if (HISTORY_PURCHASES.equals(historySource)) {
@@ -153,37 +179,38 @@ public class RecommendationService {
         // ② 활동 읽기 — 모델을 기다리기 전에 한다. 여기서 실패하면 빈 목록으로 온다(개인화가 약해질 뿐).
         // E5 의 구간 계기: 이 시간이 예산의 "컨텍스트" 몫이다.
         long contextStartedAt = System.nanoTime();
-        List<Long> recent = history(userId);
+        ExperimentAssigner.Assignment assignment = assignment(userId);
+        List<Long> recent = history(userId, assignment);
         long contextNanos = System.nanoTime() - contextStartedAt;
 
         // ③ 문 — 정책이 거절하면 모델을 아예 부르지 않는다.
         if (!gate.admit()) {
             metrics.fallback("rejected");
             return finish(userId, ItemPool.POPULAR, RecommendationView.SOURCE_FALLBACK, "REJECTED",
-                    recent.size(), contextNanos, 0L, snapshot, preCheckNanos, startedAt);
+                    recent.size(), contextNanos, 0L, snapshot, preCheckNanos, startedAt, assignment);
         }
 
         // ④ 모델
         long modelStartedAt = System.nanoTime();
         try {
             List<Long> items = callModel(userId, recent);
-            if (repeatFirst) {
+            if (repeatFirst(assignment)) {
                 items = repeatThenModel(recent, items, resultSize);
             }
             metrics.servedByModel();
             return finish(userId, items, RecommendationView.SOURCE_MODEL, null,
-                    recent.size(), contextNanos, elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt);
+                    recent.size(), contextNanos, elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt, assignment);
         } catch (ModelBusyException e) {
             // 기다리다 지쳤다 — 모델이 죽은 게 아니라 우리가 못 기다린 것이다.
             metrics.fallback("timeout");
             log.debug("모델 용량 대기 초과 — 폴백한다. userId={}", userId);
             return finish(userId, ItemPool.POPULAR, RecommendationView.SOURCE_FALLBACK, "TIMEOUT",
-                    recent.size(), contextNanos, elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt);
+                    recent.size(), contextNanos, elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt, assignment);
         } catch (RuntimeException e) {
             metrics.fallback("failed");
             log.warn("모델 호출 실패 — 폴백한다. userId={} cause={}", userId, e.toString());
             return finish(userId, ItemPool.POPULAR, RecommendationView.SOURCE_FALLBACK, "FAILED",
-                    recent.size(), contextNanos, elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt);
+                    recent.size(), contextNanos, elapsedMs(modelStartedAt), snapshot, preCheckNanos, startedAt, assignment);
         } finally {
             gate.release();
             metrics.modelCallTimer().record(Duration.ofNanos(System.nanoTime() - modelStartedAt));
@@ -226,7 +253,8 @@ public class RecommendationService {
     private RecommendationView finish(long userId, List<Long> items, String source, String reason,
                                       int contextItems, long contextNanos, long modelMs,
                                       ConstraintChecker.Snapshot beforeGeneration, long preCheckNanos,
-                                      long startedAt) {
+                                      long startedAt,
+                                      ExperimentAssigner.Assignment assignment) {
         ConstraintChecker.Snapshot used = beforeGeneration;
         int filtered = 0;
         List<Long> finalItems = items;
@@ -289,7 +317,7 @@ public class RecommendationService {
                 checkMs, generationScope.name(), constraintPolicy.name(), filtered,
                 used == null ? null : constraintChecker.ageMs(used),
                 used == null ? null : constraintChecker.changesSince(used),
-                violations.size(), auditMs);
+                violations.size(), auditMs, assignment.experiment(), assignment.variant());
     }
 
     /** 어떤 시점부터 흐른 시간(ms). 인자는 시작 시각이다. */

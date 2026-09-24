@@ -29,7 +29,7 @@ class PurchaseHistoryRecommendationTest {
         OverloadGate gate = new OverloadGate(OverloadPolicy.BOUNDED, 24, 100, 4, 50, resultSize, GenerationScope.RANKING, 4, 15);
         return new RecommendationService(activity, model, gate, new ConstraintChecker(new SyntheticAvailability()),
                 new RecommendationMetrics(new SimpleMeterRegistry(), gate), ConstraintPolicy.NONE, GenerationScope.RANKING,
-                20, purchases, source, repeatFirst, 100, resultSize);
+                20, purchases, source, repeatFirst, 100, resultSize, null);
     }
 
     @Test

@@ -680,6 +680,13 @@ app:
       # E4 실험 계기(가용성 소진 엔드포인트)를 켠다. **기본 off** — 켜져 있으면 요청으로
       # 상품 가용성이 바뀌므로 실험 밖에서는 열지 않는다(빈이 아예 안 만들어져 경로가 404다).
       enabled: ${APP_RECOMMENDATION_EXPERIMENT_ENABLED:false}
+  # A/B 실험(#256). 배정은 SHA-256(솔트:사용자 id) 로 고정한다(저장하지 않는다). 새 실험은 새 솔트로 시작한다.
+  #   rec-history: 실험군 = 구매 이력 + 재구매 우선(ADR-060), 대조군 = 위 recommendation 설정 그대로
+  experiments:
+    rec-history:
+      enabled: ${APP_EXPERIMENT_REC_HISTORY_ENABLED:false}
+      salt: ${APP_EXPERIMENT_REC_HISTORY_SALT:rec-history-1}
+      treatment-percent: ${APP_EXPERIMENT_REC_HISTORY_TREATMENT_PERCENT:50}
   # 에스크로(자금 보류) — 결제금을 구매확정 전까지 HELD로 잡아둔다.
   escrow:
     # 자동 구매확정까지의 보류 기간(일). 이 기간 무응답이면 자동 릴리스 대상이 된다.
