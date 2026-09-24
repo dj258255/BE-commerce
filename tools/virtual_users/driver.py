@@ -4,7 +4,7 @@
     $PY tools/virtual_users/driver.py prepare OUT N              # 페르소나 N 명(H&M 홀드아웃 표본 seed 7)
     $PY tools/virtual_users/driver.py signup  OUT APP_URL        # 페르소나마다 회원 가입
     $PY tools/virtual_users/driver.py seed    OUT                # 과거 구매 최근 100건을 그 회원의 결제 완료 주문으로 심는다
-    $PY tools/virtual_users/driver.py run     OUT NAME APP_URL [rule|ollama] [세션 수]
+    $PY tools/virtual_users/driver.py run     OUT NAME APP_URL [rule|ollama-score|ollama] [세션 수]
     $PY tools/virtual_users/driver.py summary OUT NAME
     $PY tools/virtual_users/driver.py cleanup                    # 심은 주문을 지운다
 
