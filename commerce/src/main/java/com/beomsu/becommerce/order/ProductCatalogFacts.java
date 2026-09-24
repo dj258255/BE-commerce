@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.Optional;
@@ -99,10 +98,9 @@ public class ProductCatalogFacts {
      */
     @Transactional(readOnly = true)
     public List<Long> newestInCategory(String categoryCode, int limit) {
-        return productRepository.search(categoryCode, null, null, null, null, null, null,
-                        PageRequest.of(0, Math.max(limit, 1),
-                                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("productId"))))
-                .map(Product::getProductId).getContent();
+        // 개수를 세지 않는 조회(#284). 예전에는 목록 검색(Page)을 재사용해 대분류 전체 count 가 같이 돌았다
+        return productRepository.findIdsByCategoryCode(categoryCode, PageRequest.of(0, Math.max(limit, 1),
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("productId"))));
     }
 
     /**
@@ -111,9 +109,7 @@ public class ProductCatalogFacts {
      */
     @Transactional(readOnly = true)
     public Map<String, String> topCategoryNames() {
-        Map<String, String> names = new LinkedHashMap<>();
-        catalogQueryService.categories().forEach(c -> names.put(c.code(), c.name()));
-        return names;
+        return catalogQueryService.topCategoryNames();   // 상품 수는 세지 않는다(#284)
     }
 
     /**

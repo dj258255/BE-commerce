@@ -36,6 +36,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                          @Param("featured") Boolean featured,
                          Pageable pageable);
 
+    /**
+     * 대분류의 상품 id 한 쪽(#284). 목록 반환이라 <b>전체 개수를 세지 않는다</b> — {@link #search} 는 {@code Page} 라
+     * count 가 같이 돌고, 홈 2쪽의 신상품 채우기는 그 개수를 쓰지 않는다. 정렬은 {@code Pageable} 로 받는다.
+     */
+    @Query("select p.productId from Product p where p.categoryCode = :categoryCode")
+    List<Long> findIdsByCategoryCode(@Param("categoryCode") String categoryCode, Pageable pageable);
+
     /** 상품명·브랜드 부분 일치 검색. MySQL 기본 콜레이션이 대소문자를 무시해 IgnoreCase와 결과가 같다. */
     Page<Product> findByNameContainingOrBrandContaining(String keyword, String sameKeyword, Pageable pageable);
 

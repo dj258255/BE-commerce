@@ -73,6 +73,18 @@ class CatalogQueryServiceTest {
     }
 
     @Test
+    @DisplayName("대분류 이름만: 노출 순서를 지키고 상품 수는 세지 않는다 — 홈 2쪽이 요청마다 부른다(#284)")
+    void topCategoryNamesDoNotCount() {
+        when(categoryRepository.findByParentCodeIsNullOrderBySortOrderAsc()).thenReturn(List.of(
+                Category.of("digital", "디지털", "", 1),
+                Category.of("food", "식품", "", 2)));
+
+        assertThat(service.topCategoryNames()).containsExactly(
+                java.util.Map.entry("digital", "디지털"), java.util.Map.entry("food", "식품"));
+        org.mockito.Mockito.verify(productRepository, org.mockito.Mockito.never()).countByCategoryCode(anyString());
+    }
+
+    @Test
     @DisplayName("카테고리 목록: 대분류만, 노출 순서를 유지하고 상품 수를 함께 센다")
     void categoriesIncludeProductCounts() {
         when(categoryRepository.findByParentCodeIsNullOrderBySortOrderAsc()).thenReturn(List.of(
