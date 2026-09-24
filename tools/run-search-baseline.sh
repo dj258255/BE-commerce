@@ -47,7 +47,8 @@ wait_port_free() {
 echo "== #172 검색 베이스라인 시작 (동시성: $VUS_LIST, ${DURATION}씩, 패싯 캐시 TTL=$FACET_TTL)"
 echo "== 출력: $OUT"
 wait_port_free
-APP_RATELIMIT_ENABLED=false APP_CATALOG_FACETS_CACHE_TTL="$FACET_TTL" "$JAVA" -jar "$JAR" \
+# 조회 셰딩(#250)은 끈다 — 이 스크립트는 셰딩 없는 경로의 지연을 잰다
+APP_WEB_BROWSE_SHED_ENABLED=false APP_RATELIMIT_ENABLED=false APP_CATALOG_FACETS_CACHE_TTL="$FACET_TTL" "$JAVA" -jar "$JAR" \
   --spring.docker.compose.enabled=false --server.port="$PORT" > "$RAW/app.log" 2>&1 &
 APP=$!
 for _ in $(seq 1 120); do
