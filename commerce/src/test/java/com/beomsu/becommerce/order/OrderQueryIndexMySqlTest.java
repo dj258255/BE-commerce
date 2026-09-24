@@ -1,9 +1,9 @@
 package com.beomsu.becommerce.order;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.*;
-import org.testcontainers.containers.MySQLContainer;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -48,21 +48,19 @@ class OrderQueryIndexMySqlTest {
             "SELECT id, order_no, status, total_amount, currency, created_at " +
             "FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 50";
 
-    private static MySQLContainer<?> mysql;
+    private static String jdbcUrl;
     private static HikariDataSource ds;
     private static double beforeMedian;
 
     @BeforeAll
     static void startDb() throws SQLException {
-        mysql = new MySQLContainer<>("mysql:8.4")
-                .withDatabaseName("querytest")
-                .withCommand("--innodb-buffer-pool-size=536870912", "--max-connections=100");
-        mysql.start();
+        // 공용 MySQL(#276)에 새 DB. 버퍼 풀 512MB 는 공용 컨테이너가 준다(max-connections 는 100 대신 400)
+        jdbcUrl = SharedContainers.freshDatabase("querytest");
 
         HikariConfig cfg = new HikariConfig();
-        cfg.setJdbcUrl(mysql.getJdbcUrl());
-        cfg.setUsername(mysql.getUsername());
-        cfg.setPassword(mysql.getPassword());
+        cfg.setJdbcUrl(jdbcUrl);
+        cfg.setUsername(SharedContainers.username());
+        cfg.setPassword(SharedContainers.password());
         cfg.setMaximumPoolSize(4);
         ds = new HikariDataSource(cfg);
 
@@ -118,7 +116,6 @@ class OrderQueryIndexMySqlTest {
     @AfterAll
     static void stopDb() {
         if (ds != null) ds.close();
-        if (mysql != null) mysql.stop();
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.order.catalog;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -10,11 +11,6 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,29 +28,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>합성 리뷰가 실데이터처럼 집계되지 않는지는 {@link ReviewSyntheticGuardTest} 가 구조로 막는다.
  */
 @Tag("integration")
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DisplayName("카탈로그 공개 표면 — 리뷰는 합성임을 밝히고, 없는 상품은 404 다")
 class CatalogApiIntegrationTest {
 
-    @Container
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse("mysql:8.4"))
-            .withDatabaseName("becommerce")
-            .withUsername("becommerce")
-            .withPassword("becommerce");
-
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
-
     @DynamicPropertySource
     static void datasourceAndRedis(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> MYSQL.getJdbcUrl() + "?serverTimezone=UTC&characterEncoding=UTF-8");
-        registry.add("spring.datasource.username", MYSQL::getUsername);
-        registry.add("spring.datasource.password", MYSQL::getPassword);
-        registry.add("spring.data.redis.host", REDIS::getHost);
-        registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379).toString());
-        registry.add("spring.kafka.bootstrap-servers", () -> "");
+        SharedContainers.register(registry, "CatalogApi");
     }
 
     @Autowired

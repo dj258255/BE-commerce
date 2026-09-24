@@ -1,8 +1,8 @@
 package com.beomsu.becommerce.order;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
-import org.testcontainers.containers.MySQLContainer;
 
 import java.sql.*;
 import java.util.*;
@@ -48,14 +48,14 @@ class SchemaIndexAuditMySqlTest {
     @Test
     @DisplayName("조회 조건 컬럼이 인덱스 선두에 있는지 실 스키마에 묻는다")
     void audit() throws Exception {
-        try (MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4").withDatabaseName("audit")) {
-            mysql.start();
-            Flyway.configure().dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
+        {
+            String url = SharedContainers.freshDatabase("audit");   // 공용 MySQL(#276)에 새 DB
+            Flyway.configure().dataSource(url, SharedContainers.username(), SharedContainers.password())
                     .locations("classpath:db/migration").load().migrate();
 
             Map<String, Set<String>> firstCols = new HashMap<>();
             Set<String> tables = new HashSet<>();
-            try (Connection c = mysql.createConnection("");
+            try (Connection c = java.sql.DriverManager.getConnection(url, SharedContainers.username(), SharedContainers.password());
                  Statement s = c.createStatement();
                  ResultSet rs = s.executeQuery(
                          "SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.STATISTICS " +

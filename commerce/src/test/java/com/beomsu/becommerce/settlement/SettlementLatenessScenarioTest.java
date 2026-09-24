@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.settlement;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.beomsu.becommerce.settlement.internal.SettlementService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -9,11 +10,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -37,7 +33,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ul>
  */
 @Tag("integration")
-@Testcontainers
 @SpringBootTest(properties = {
         // 틱당 상한을 작게 잡아 <상한이 걸리는 날>을 짧은 시나리오로 재현한다.
         "app.batch.read-chunk-size=50",
@@ -53,23 +48,9 @@ class SettlementLatenessScenarioTest {
     private static final long PLATFORM = 1L;
     private static final LocalDate DAY0 = LocalDate.of(2026, 7, 27);
 
-    @Container
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse("mysql:8.4"))
-            .withDatabaseName("becommerce").withUsername("becommerce").withPassword("becommerce");
-
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
-
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry props) {
-        props.add("spring.datasource.url",
-                () -> MYSQL.getJdbcUrl() + "?serverTimezone=UTC&characterEncoding=UTF-8");
-        props.add("spring.datasource.username", MYSQL::getUsername);
-        props.add("spring.datasource.password", MYSQL::getPassword);
-        props.add("spring.data.redis.host", REDIS::getHost);
-        props.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379).toString());
-        props.add("spring.kafka.bootstrap-servers", () -> "");
+        SharedContainers.register(props, "SettlementLatenessScenario");
     }
 
     @Autowired

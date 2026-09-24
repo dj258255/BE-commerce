@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.wishlist;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,11 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,30 +36,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * CI는 {@code ./gradlew integrationTest}로 돌린다.
  */
 @Tag("integration")
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DisplayName("위시리스트 통합 — 실 MySQL에 확정되고, 유니크 제약이 멱등을 지킨다")
 class WishlistIntegrationTest {
 
-    @Container
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse("mysql:8.4"))
-            .withDatabaseName("becommerce")
-            .withUsername("becommerce")
-            .withPassword("becommerce");
-
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
-
     @DynamicPropertySource
     static void datasourceAndRedis(DynamicPropertyRegistry registry) {
-        String url = MYSQL.getJdbcUrl() + "?serverTimezone=UTC&characterEncoding=UTF-8";
-        registry.add("spring.datasource.url", () -> url);
-        registry.add("spring.datasource.username", MYSQL::getUsername);
-        registry.add("spring.datasource.password", MYSQL::getPassword);
-        registry.add("spring.data.redis.host", REDIS::getHost);
-        registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379).toString());
-        registry.add("spring.kafka.bootstrap-servers", () -> "");
+        SharedContainers.register(registry, "Wishlist");
     }
 
     /** V2 시드의 레거시 상품 — V55가 4~36을 은퇴시켰지만 1~3은 부하·통합 테스트가 써서 남겼다. */

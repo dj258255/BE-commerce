@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.member;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -10,11 +11,6 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,28 +23,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 긴 해시를 넘긴다.
  */
 @Tag("integration")
-@Testcontainers
 @SpringBootTest
 @DisplayName("이관 실패가 로그인을 막지 않는다 — 실 MySQL")
 class MemberPasswordUpgradeFailureIntegrationTest {
 
-    @Container
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse("mysql:8.4"))
-            .withDatabaseName("becommerce").withUsername("becommerce").withPassword("becommerce");
-
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
-
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry props) {
-        props.add("spring.datasource.url",
-                () -> MYSQL.getJdbcUrl() + "?serverTimezone=UTC&characterEncoding=UTF-8");
-        props.add("spring.datasource.username", MYSQL::getUsername);
-        props.add("spring.datasource.password", MYSQL::getPassword);
-        props.add("spring.data.redis.host", REDIS::getHost);
-        props.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379).toString());
-        props.add("spring.kafka.bootstrap-servers", () -> "");
+        SharedContainers.register(props, "MemberPasswordUpgradeFailure");
     }
 
     @Autowired

@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.monitoring;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.beomsu.becommerce.dispute.internal.Dispute;
 import com.beomsu.becommerce.dispute.internal.DisputeRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -10,11 +11,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -39,7 +35,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 카운터 알림은 시계열이 있어야 해서 이 방법으로 못 잰다 — 그건 한계로 남긴다.
  */
 @Tag("integration")
-@Testcontainers
 @SpringBootTest
 @DisplayName("알림 발화 통합 — 기한 지난 이의제기에 조건이 참이 되는지")
 class DisputeDeadlineAlertFiresIntegrationTest {
@@ -47,23 +42,9 @@ class DisputeDeadlineAlertFiresIntegrationTest {
     /** {@code monitoring/alert-rules.yml} 의 {@code DisputeDeadlineApproaching} 임계. */
     private static final long APPROACHING_SECONDS = 172_800;   // 48시간
 
-    @Container
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse("mysql:8.4"))
-            .withDatabaseName("becommerce").withUsername("becommerce").withPassword("becommerce");
-
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
-
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry props) {
-        props.add("spring.datasource.url",
-                () -> MYSQL.getJdbcUrl() + "?serverTimezone=UTC&characterEncoding=UTF-8");
-        props.add("spring.datasource.username", MYSQL::getUsername);
-        props.add("spring.datasource.password", MYSQL::getPassword);
-        props.add("spring.data.redis.host", REDIS::getHost);
-        props.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379).toString());
-        props.add("spring.kafka.bootstrap-servers", () -> "");
+        SharedContainers.register(props, "DisputeDeadlineAlertFires");
     }
 
     @Autowired

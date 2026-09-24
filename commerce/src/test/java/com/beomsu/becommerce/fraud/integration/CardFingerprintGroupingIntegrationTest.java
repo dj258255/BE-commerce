@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.fraud.integration;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.beomsu.becommerce.fraud.model.CardTransaction;
 import com.beomsu.becommerce.fraud.model.CardTransactionRepository;
 import com.beomsu.becommerce.payment.pg.CardFingerprint;
@@ -12,11 +13,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -38,30 +34,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>여기서 재는 것은 <b>묶임뿐이다.</b> 탐지 성적이 좋아지는지는 이 테스트가 답하지 않는다.
  */
 @Tag("integration")
-@Testcontainers
 @SpringBootTest
 @DisplayName("카드 지문 — 결제 여러 건이 한 카드의 창으로 묶이는지")
 class CardFingerprintGroupingIntegrationTest {
 
-    @Container
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse("mysql:8.4"))
-            .withDatabaseName("becommerce")
-            .withUsername("becommerce")
-            .withPassword("becommerce");
-
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
-
     @DynamicPropertySource
     static void datasourceAndRedis(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url",
-                () -> MYSQL.getJdbcUrl() + "?serverTimezone=UTC&characterEncoding=UTF-8");
-        registry.add("spring.datasource.username", MYSQL::getUsername);
-        registry.add("spring.datasource.password", MYSQL::getPassword);
-        registry.add("spring.data.redis.host", REDIS::getHost);
-        registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379).toString());
-        registry.add("spring.kafka.bootstrap-servers", () -> "");
+        SharedContainers.register(registry, "CardFingerprintGrouping");
     }
 
     @Autowired

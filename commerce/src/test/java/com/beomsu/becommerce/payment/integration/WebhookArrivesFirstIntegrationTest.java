@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.payment.integration;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.beomsu.becommerce.payment.webhook.WebhookSignatureVerifier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -16,11 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.time.Instant;
 import java.util.Map;
@@ -42,7 +38,6 @@ import static org.awaitility.Awaitility.await;
  * 서명·수신 경로·트랜잭션 경계는 실제 그대로 태운다. 이 차이는 한계로 남긴다.
  */
 @Tag("integration")
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 // 이 클래스는 app.webhook.pending-retry.enabled=true 로 스케줄러를 켠다.
 // 컨텍스트가 캐시된 채 남으면 컨테이너가 내려간 뒤에도 5초마다 죽은 DB 를 두드려
@@ -53,23 +48,9 @@ class WebhookArrivesFirstIntegrationTest {
 
     private static final String SECRET = "local-webhook-secret-please-override-32b";
 
-    @Container
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse("mysql:8.4"))
-            .withDatabaseName("becommerce").withUsername("becommerce").withPassword("becommerce");
-
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
-
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url",
-                () -> MYSQL.getJdbcUrl() + "?serverTimezone=UTC&characterEncoding=UTF-8");
-        registry.add("spring.datasource.username", MYSQL::getUsername);
-        registry.add("spring.datasource.password", MYSQL::getPassword);
-        registry.add("spring.data.redis.host", REDIS::getHost);
-        registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379).toString());
-        registry.add("spring.kafka.bootstrap-servers", () -> "");
+        SharedContainers.register(registry, "WebhookArrivesFirst");
         registry.add("payment.webhook.secret", () -> SECRET);
         // 이 테스트의 대상 — 보류 재처리 스케줄러를 켠다. 간격을 줄여 기다리는 시간을 짧게 한다.
         registry.add("app.webhook.pending-retry.enabled", () -> "true");

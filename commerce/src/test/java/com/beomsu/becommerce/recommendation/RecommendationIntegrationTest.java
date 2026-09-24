@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.recommendation;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.beomsu.becommerce.order.StockAvailabilityFacts;
 import com.beomsu.becommerce.recommendation.internal.ItemPool;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -16,11 +17,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
 import java.util.Map;
@@ -45,29 +41,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <b>기본 설정으로 뜬 앱</b>이 정상이라는 것까지만 본다.
  */
 @Tag("integration")
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DisplayName("추천 표면 통합 — 실험 계기는 닫혀 있고 제약 정책은 응답에 드러난다")
 class RecommendationIntegrationTest {
 
-    @Container
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse("mysql:8.4"))
-            .withDatabaseName("becommerce")
-            .withUsername("becommerce")
-            .withPassword("becommerce");
-
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
-
     @DynamicPropertySource
     static void datasourceAndRedis(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> MYSQL.getJdbcUrl() + "?serverTimezone=UTC&characterEncoding=UTF-8");
-        registry.add("spring.datasource.username", MYSQL::getUsername);
-        registry.add("spring.datasource.password", MYSQL::getPassword);
-        registry.add("spring.data.redis.host", REDIS::getHost);
-        registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379).toString());
-        registry.add("spring.kafka.bootstrap-servers", () -> "");
+        SharedContainers.register(registry, "Recommendation");
     }
 
     @Autowired

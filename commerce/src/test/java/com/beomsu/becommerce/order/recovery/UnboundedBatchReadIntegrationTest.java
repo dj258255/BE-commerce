@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.order.recovery;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.beomsu.becommerce.order.internal.OrderRepository;
 import com.beomsu.becommerce.order.internal.OrderStatus;
 import org.junit.jupiter.api.DisplayName;
@@ -10,11 +11,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import org.springframework.data.domain.PageRequest;
 
@@ -34,7 +30,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 고친 뒤에는 상한까지만 읽어야 한다.
  */
 @Tag("integration")
-@Testcontainers
 @SpringBootTest
 @DisplayName("배치 조회 상한 — 밀린 물량을 한 번에 다 읽지 않는가")
 class UnboundedBatchReadIntegrationTest {
@@ -45,23 +40,9 @@ class UnboundedBatchReadIntegrationTest {
     /** 한 번에 읽을 상한. 실제 기본값(500)보다 작게 잡아 <b>상한이 실제로 걸리는지</b> 본다. */
     private static final int CHUNK = 100;
 
-    @Container
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse("mysql:8.4"))
-            .withDatabaseName("becommerce").withUsername("becommerce").withPassword("becommerce");
-
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
-
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry props) {
-        props.add("spring.datasource.url",
-                () -> MYSQL.getJdbcUrl() + "?serverTimezone=UTC&characterEncoding=UTF-8");
-        props.add("spring.datasource.username", MYSQL::getUsername);
-        props.add("spring.datasource.password", MYSQL::getPassword);
-        props.add("spring.data.redis.host", REDIS::getHost);
-        props.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379).toString());
-        props.add("spring.kafka.bootstrap-servers", () -> "");
+        SharedContainers.register(props, "UnboundedBatchRead");
     }
 
     @Autowired

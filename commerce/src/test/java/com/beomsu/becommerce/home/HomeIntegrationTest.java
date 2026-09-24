@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.home;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.beomsu.becommerce.home.internal.ImpressionCleanupScheduler;
 import org.junit.jupiter.api.DisplayName;
@@ -16,11 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.util.Map;
 
@@ -40,29 +36,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 그래도 <b>경로가 살아 있는가</b>는 여기서 확인된다 — 조립 규칙의 효과는 실측 리포트가 맡는다.
  */
 @Tag("integration")
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DisplayName("홈 표면 통합 — 본인만 조립되고, 모델이 죽어도 200 이며, 버린 것을 밝힌다")
 class HomeIntegrationTest {
 
-    @Container
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse("mysql:8.4"))
-            .withDatabaseName("becommerce")
-            .withUsername("becommerce")
-            .withPassword("becommerce");
-
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
-
     @DynamicPropertySource
     static void datasourceAndRedis(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> MYSQL.getJdbcUrl() + "?serverTimezone=UTC&characterEncoding=UTF-8");
-        registry.add("spring.datasource.username", MYSQL::getUsername);
-        registry.add("spring.datasource.password", MYSQL::getPassword);
-        registry.add("spring.data.redis.host", REDIS::getHost);
-        registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379).toString());
-        registry.add("spring.kafka.bootstrap-servers", () -> "");
+        SharedContainers.register(registry, "Home");
         // 컨텍스트가 요청 안에서 갱신돼야 홈이 "최근 본 상품"을 볼 수 있다(결정적이다).
         registry.add("app.personalization.transport", () -> "IN_REQUEST");
     }

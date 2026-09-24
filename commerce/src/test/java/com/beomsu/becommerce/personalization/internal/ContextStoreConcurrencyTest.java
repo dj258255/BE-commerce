@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.personalization.internal;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.beomsu.becommerce.personalization.UserActivityEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -13,9 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -44,15 +42,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * (E2가 항목 유실로 관측). Lua로 옮기면 높은 seq가 쓰인 뒤에는 낮은 seq가 거절되므로 덮이지 않는다.
  */
 @Tag("integration")
-@Testcontainers
 class ContextStoreConcurrencyTest {
 
     private static final long USER = 1L;
     private static final int MAX_ITEMS = 200;
 
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
+    static final GenericContainer<?> REDIS = SharedContainers.redis();   // 공용 Redis(#276)
+
+    static {
+        SharedContainers.flushRedis();   // 예전에는 클래스마다 새 Redis 였다 — 빈 상태로 시작한다
+    }
 
     private LettuceConnectionFactory factory;
     private StringRedisTemplate redis;

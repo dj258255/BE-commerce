@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.seller;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.beomsu.becommerce.seller.screening.*;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.*;
@@ -10,7 +11,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MySQLContainer;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -32,15 +32,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 class SellerScreeningEndToEndMySqlTest {
 
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4").withDatabaseName("screening");
-
-    static { MYSQL.start(); }
-
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", MYSQL::getJdbcUrl);
-        r.add("spring.datasource.username", MYSQL::getUsername);
-        r.add("spring.datasource.password", MYSQL::getPassword);
+        SharedContainers.register(r, "SellerScreeningEndToEnd");
         r.add("spring.jpa.hibernate.ddl-auto", () -> "none");
     }
 
