@@ -7,6 +7,18 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — 조회가 몰리면 조회를 먼저 돌려보낸다 (#250)
+
+### 변경
+
+- 진행 중인 조회(`GET /api/v1/products**` · `/home**` · `/categories**`)가 16개면 새 조회는 503 + `Retry-After: 1` 을 받는다
+- 웹훅·결제·주문은 돌려보내지 않는다. 조회가 몰려도 웹훅이 토스 10초 규약 안에 답한다(PG 5초 · 조회 200/s 에서 15.6% → 0%)
+- 끄려면 `APP_WEB_BROWSE_SHED_ENABLED=false`
+
+### 왜
+
+[ADR-058](docs/adr/ADR-058-shed-browse-before-webhook.md) · [실측](docs/performance/webhook-priority.md)
+
 ## Unreleased — 미확정 복구가 확정 못 한 건에 막히지 않는다 (#248)
 
 ### 변경

@@ -186,7 +186,8 @@ run_one() {
   sleep 1
 
   log "[$name] 앱 기동 (ratelimit=$ratelimit)"
-  env APP_RATELIMIT_ENABLED="$ratelimit" SPRING_DOCKER_COMPOSE_ENABLED=false \
+  # 조회 셰딩(#250)은 끈다 — 이 벤치는 셰딩 없는 용량을 잰다. 켠 용량은 run-webhook-under-browse.sh 가 잰다
+  env APP_WEB_BROWSE_SHED_ENABLED=false APP_RATELIMIT_ENABLED="$ratelimit" SPRING_DOCKER_COMPOSE_ENABLED=false \
       SPRING_DATASOURCE_URL="jdbc:mysql://$DB_HOST:$DB_PORT/$DB_NAME?serverTimezone=UTC&characterEncoding=UTF-8&allowPublicKeyRetrieval=true&useSSL=false" \
       SPRING_DATASOURCE_USERNAME="$DB_USER" SPRING_DATASOURCE_PASSWORD="$DB_PASS" \
       SPRING_DATA_REDIS_HOST="$REDIS_HOST" SPRING_DATA_REDIS_PORT="$REDIS_PORT" \

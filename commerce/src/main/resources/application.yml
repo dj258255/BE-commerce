@@ -413,6 +413,13 @@ app:
   # API 유입 제어(rate limit) — "감당 못 할 요청은 바깥 층에서 싸게 거절한다(429)".
   # 대상: POST /api/v1/orders, POST /api/v1/payments/confirm (RateLimitFilter, 시큐리티 체인 내
   # Bearer 인증 뒤). 고정 윈도우(1초) INCR — 경계 순간 최대 2배 통과는 단순성의 대가로 수용.
+  # 조회 셰딩(#250, ADR-058). 진행 중인 조회가 문턱에 닿으면 새 조회를 503 으로 돌려보낸다. 웹훅·결제는 돌려보내지 않는다.
+  # 조회가 DB 커넥션(20)을 다 쥐면 웹훅이 그 줄에 서서 10초 규약을 넘긴다(PG 5초 · 조회 200/s 에서 15.6%, 켜면 0%).
+  # 조회 용량을 재는 벤치마크는 이 값을 false 로 두고 잰다(tools/bench.sh 등).
+  web:
+    browse-shed:
+      enabled: ${APP_WEB_BROWSE_SHED_ENABLED:true}
+      max-in-flight: ${APP_WEB_BROWSE_SHED_MAX_IN_FLIGHT:16}   # 커넥션 20 중 4 를 결제·웹훅 몫으로 남긴다
   ratelimit:
     enabled: ${APP_RATELIMIT_ENABLED:true}       # k6 전/후 비교용 스위치 — false면 필터가 전부 통과
     per-user-per-sec: ${APP_RATELIMIT_PER_USER:5}   # 사용자당 초당 허용(스크립트·이중클릭 억제)
