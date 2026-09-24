@@ -2,7 +2,7 @@
 
 `ADMISSION` 의 p95 는 예산을 그대로 따라가고 coverage 는 예산과 무관했다. 그런데 게이트가 모델 지연을 절반으로 잘못 알면 예산 100ms 에서 p95 가
 315ms 가 됐다. 최근 2초의 처리량으로 대기를 추정하게 바꾸자 193ms 로 돌아왔고, 제대로 알 때의 값도 거의 그대로였다. 판정 기준은
-[이슈 #264](https://github.com/dj258255/BE-commerce/issues/264)에 **측정 전에** 적었다. 결정은 [ADR-065](../../../docs/adr/ADR-065-admission-by-observed-throughput.md).
+[이슈 #264](https://github.com/dj258255/BE-commerce/issues/264)에 **측정 전에** 적었다. 결정은 [ADR-065](../../../../docs/adr/ADR-065-admission-by-observed-throughput.md).
 
 ADR-037 의 대가에 "정책 파라미터 민감도를 모른다"와 "`ADMISSION` 은 모델 용량을 안다고 가정한다"가 있었다. 코드를 보니 스텁 모델과 게이트가
 **같은 설정(`model.latency-ms`)을 읽어서**, E3 에서 게이트는 늘 진짜 지연을 알았다. 그 가정은 시험된 적이 없었다.
