@@ -1,0 +1,55 @@
+{
+ "experiment": "rec-history",
+ "since": "2026-09-24 10:33:38.225465",
+ "per_variant": {
+  "control": {
+   "users": 505,
+   "impressions": 1515,
+   "click_users": 99,
+   "purchase_users": 27,
+   "attributed_clicks": 99,
+   "attributed_purchases": 27
+  },
+  "treatment": {
+   "users": 495,
+   "impressions": 1485,
+   "click_users": 96,
+   "purchase_users": 18,
+   "attributed_clicks": 96,
+   "attributed_purchases": 18
+  }
+ },
+ "srm": {
+  "chi2": 0.1,
+  "p": 0.7518296340458492
+ },
+ "sticky_conflicts": 0,
+ "click_user_rate": {
+  "treatment": 0.19393939393939394,
+  "control": 0.19603960396039605,
+  "diff": -0.002100210021002108,
+  "ci95": [
+   -0.051214037438601936,
+   0.04701361739659772
+  ],
+  "p": 0.9332075081375968
+ },
+ "purchase_user_rate": {
+  "treatment": 0.03636363636363636,
+  "control": 0.053465346534653464,
+  "diff": -0.017101710171017102,
+  "ci95": [
+   -0.042732188970322466,
+   0.008528768628288264
+  ],
+  "p": 0.19212886530408024
+ },
+ "unattributed": {
+  "clicks": 216,
+  "purchases": 29
+ },
+ "windows": {
+  "click_minutes": 30.0,
+  "purchase_hours": 24.0
+ }
+}

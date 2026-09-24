@@ -170,7 +170,8 @@ public class HomeComposer {
         HomePageView page = new HomePageView(String.valueOf(userId), Instant.now().toString(),
                 assembly.source(), recommended.fallbackReason(), null,
                 new HomePageView.Latency(contextMs, recommended.modelMs(), recommended.checkMs(), totalMs),
-                assembly.rows(), assembly.stats(), 1, firstNextCursor(assembly.rows()));
+                assembly.rows(), assembly.stats(), 1, firstNextCursor(assembly.rows()),
+                recommended.experiment(), recommended.variant());
         impressions.record(page);
         return page;
     }

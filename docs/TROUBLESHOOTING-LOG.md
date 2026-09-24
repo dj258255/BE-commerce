@@ -4,7 +4,7 @@
 결정의 이유는 [ADR](adr/), 실측 원자료는 [`performance/`](performance/README.md)·
 [`personalization/docs/runs/`](../personalization/docs/runs)에 있고, 이 파일은 **그 둘로 가는 색인**이다.
 
-> **왜 따로 두는가.** ADR 60편은 결정 단위라 "지금 뭐가 남았는지" 가 안 보이고,
+> **왜 따로 두는가.** ADR 61편은 결정 단위라 "지금 뭐가 남았는지" 가 안 보이고,
 > 이슈는 닫히면 목록에서 사라진다. **읽는 사람이 현재 상태를 한 화면에서 복원**할 수 있어야 한다.
 
 ---
@@ -17,7 +17,7 @@
 | 2 | **PCI 책임분계** | 연동 방식(리다이렉트/iframe/직접)에 따라 SAQ 유형이 갈리는데 계약이 없다 | **외부**: 가맹점 계약·SAQ. 적으면 거짓이 된다([ADR-019](adr/ADR-019-pci-scope-by-not-touching-cards.md)) |
 | 3 | **두 개 이상 실 PG failover** | 실계약 PG 가 하나뿐이라 가짜 둘 사이를 오가는 것은 증명이 아니다 | **외부**: 두 번째 PG 계약([ADR-020](adr/ADR-020-multi-pg-routing-off-by-default.md)) |
 | 4 | **FDS 임계값의 숫자** | 차지백 라벨이 없다. 설계와 비용 파라미터만 정했다 | **데이터**: 지연 라벨([ADR-028](adr/ADR-028-fds-threshold-with-delayed-labels.md)) |
-| 5 | **추천 품질의 온라인 판정** | 오프라인 지표는 게이트이고 최종 판정은 A/B 다 | **데이터**: 실사용자 |
+| 5 | **추천 품질의 온라인 판정** | 오프라인 지표는 게이트이고 최종 판정은 A/B 다. **실험 기반은 만들었다**(배정·노출·귀속·분석, 합성 사용자로 검증 — [ADR-061](adr/ADR-061-ab-assignment-and-attribution.md)) | **데이터**: 실사용자 |
 | 7 | **캐시 압축을 켜는 것** | 임계값·코덱은 정했는데 **적용할 캐시가 없다**. 컨텍스트 캐시는 Lua 가 값을 읽어 병합해 압축하면 깨진다 | 구조 — [ADR-041](adr/ADR-041-cache-compression-threshold.md)·[ADR-035](adr/ADR-035-order-tolerant-context-merge.md) |
 
 **1~5 는 외부 계약이나 실사용자가 필요하다.** 지금 적으면 거짓이 되므로 열어 둔다.
@@ -95,7 +95,7 @@
 | 알고 싶은 것 | 확인하는 곳 |
 |---|---|
 | 지금 무엇이 열려 있는가 | **이 문서의 「열린 것」** |
-| 왜 그렇게 정했는가 | [ADR](adr/) 60편 — 상태가 `채택`·`기각`·`미결` 중 하나 |
+| 왜 그렇게 정했는가 | [ADR](adr/) 61편 — 상태가 `채택`·`기각`·`미결` 중 하나 |
 | 실제로 무엇을 확인했는가 | [`performance/`](performance/README.md) · [`../personalization/docs/runs/`](../personalization/docs/runs) — 원자료와 재현 명령 |
 | 언제 끝날 것으로 봤는가 | 이슈·PR 본문의 「작업 상태」(예상 시간 · 실제 시간 · 불확실성) |
 | 사용자에게 무엇이 나갔는가 | [`../CHANGELOG.md`](../CHANGELOG.md) |
