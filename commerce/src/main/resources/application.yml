@@ -608,13 +608,17 @@ app:
     popularity-window: ${APP_RECOMMENDATION_POPULARITY_WINDOW:recent_7d}
     # UNBOUNDED | BOUNDED | ADMISSION
     #   UNBOUNDED — 아무도 거절하지 않는다. 모델은 살아 있는데 API가 죽는다(스레드가 줄에 갇힌다)
-    #   BOUNDED   — max-in-flight를 넘으면 **기다리지 않고** 포기한다(기본)
-    #   ADMISSION — 대기 예상을 Little의 법칙으로 재서 예산을 넘으면 줄에 서지 않는다
-    policy: ${APP_RECOMMENDATION_POLICY:BOUNDED}
+    #   BOUNDED   — max-in-flight를 넘으면 **기다리지 않고** 포기한다
+    #   ADMISSION — 대기 예상을 Little의 법칙으로 재서 예산을 넘으면 줄에 서지 않는다(기본)
+    # ADR-037 이 ADMISSION 을 기본으로 정했는데 이 값은 BOUNDED 로 남아 있었다. #264 에서 맞췄다(ADR-065)
+    policy: ${APP_RECOMMENDATION_POLICY:ADMISSION}
     # BOUNDED의 줄 길이 상한. 모델 동시성(4)에 여유를 더한 값 — 큐가 아니라 **여유**다.
     max-in-flight: ${APP_RECOMMENDATION_MAX_IN_FLIGHT:24}
     # ADMISSION이 허용하는 대기 예산(ms). SLO의 지연 몫과 맞춘다.
     admission-budget-ms: ${APP_RECOMMENDATION_ADMISSION_BUDGET_MS:100}
+    # ADMISSION 이 대기를 어떻게 추정하나(#264). CONFIGURED = 설정한 모델 지연·동시성, OBSERVED = 최근 2초 처리량.
+    # 모델의 실제 지연이 설정의 두 배일 때 CONFIGURED 는 p95 315ms(예산 100 + 지연 100 의 1.6배), OBSERVED 는 193ms 였다.
+    admission-estimate: ${APP_RECOMMENDATION_ADMISSION_ESTIMATE:OBSERVED}
     # 모델에 넣을 최근 활동 수.
     context-limit: ${APP_RECOMMENDATION_CONTEXT_LIMIT:20}
     result-size: ${APP_RECOMMENDATION_RESULT_SIZE:12}

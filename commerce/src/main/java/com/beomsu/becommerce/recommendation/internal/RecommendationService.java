@@ -194,6 +194,7 @@ public class RecommendationService {
         long modelStartedAt = System.nanoTime();
         try {
             List<Long> items = callModel(userId, recent);
+            gate.completed();                               // 처리량 관측(#264). 대기 초과·실패는 모델을 쓰지 못했으니 세지 않는다
             if (repeatFirst(assignment)) {
                 items = repeatThenModel(recent, items, resultSize);
             }

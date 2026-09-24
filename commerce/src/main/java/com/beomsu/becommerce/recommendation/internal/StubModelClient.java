@@ -49,7 +49,9 @@ public class StubModelClient implements ModelClient {
     private final ItemPoolSource pool;
 
     public StubModelClient(@Value("${app.recommendation.model.concurrency:4}") int concurrency,
-                           @Value("${app.recommendation.model.latency-ms:50}") long latencyMs,
+                           // 스텁의 실제 지연. 비우면 게이트가 믿는 지연(latency-ms)과 같다. 둘을 떼어 놓아야
+                           // 게이트가 모델 용량을 잘못 알 때를 잴 수 있다(#264)
+                           @Value("${app.recommendation.model.stub-latency-ms:${app.recommendation.model.latency-ms:50}}") long latencyMs,
                            @Value("${app.recommendation.model.busy-timeout-ms:400}") long busyTimeoutMs,
                            @Value("${app.recommendation.result-size:12}") int resultSize,
                            @Value("${app.recommendation.generation.scope:RANKING}") GenerationScope scope,
