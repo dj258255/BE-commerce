@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>그래서 두 경우를 갈라 잰다. 흔한 값을 찾을 때(50%)와 드문 값을 찾을 때(0.1%)다.
  * 인덱스를 거는 판단이 컬럼의 성질이 아니라 <b>조회가 무엇을 찾는지</b>에 달렸음을 확인한다.
  */
-@Tag("integration")
+@Tag("measurement")   // 30만 행을 채워 인덱스 효과를 재는 실험 — 매일 돈다(#288). 인덱스 존재는 SchemaIndexAuditMySqlTest 가 PR 마다 지킨다
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class StatusIndexSelectivityMySqlTest {
 
