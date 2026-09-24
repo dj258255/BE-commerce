@@ -7,6 +7,19 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — 검색어와 필터·패싯을 함께 건다 (#244)
+
+### 변경
+
+- 검색어가 있을 때도 `category`·`colour`·`productType`·`minPrice`·`maxPrice`·`inStock` 필터가 적용된다. 전에는 무시됐다
+- `/api/v1/products/facets` 가 `q` 를 받는다. 검색 결과의 색상·종류 개수가 나온다
+- `/api/v1/products` 에 `inStock` 필터를 더했다
+- 필터·패싯은 검색 엔진 안에서 센다. 엔진이 실패하면 상위 500개를 DB 에서 거르는 쪽으로 물러선다(개수가 모자랄 수 있다)
+
+### 왜
+
+[ADR-055](docs/adr/ADR-055-search-filters-in-engine-and-scale-limit.md) · [실측](docs/performance/search-filters-scale.md)
+
 ## Unreleased — GenPage 를 검증 기간으로 다시 튜닝했다 (#242)
 
 ### 변경

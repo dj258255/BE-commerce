@@ -130,6 +130,11 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-048](adr/ADR-048-als-model-not-adopted.md) | 학습한 ALS 모델을 넣지 않는다 — 기준선을 못 넘었다 |
 | [ADR-049](adr/ADR-049-repo-layout-by-area.md) | 저장소를 영역으로 나누되, 같이 쓰는 것은 루트에 둔다 |
 | [ADR-050](adr/ADR-050-post-filter-over-constrained-generation.md) | 제약은 생성 뒤에 거른다 — 생성 중 차단은 이득이 안 나왔고 대가는 6배였다 |
+| [ADR-051](adr/ADR-051-search-engine-by-quality.md) | 검색은 앱 안 Lucene 으로 한다 — 품질 축을 재니 MySQL 이 못 따라왔다 |
+| [ADR-052](adr/ADR-052-home-pagination-cursor.md) | 홈 다음 쪽은 커서가 보여 준 것을 들고 다니고, 순서는 요청 시점의 세션이 정한다 |
+| [ADR-053](adr/ADR-053-genpage-mini-not-default.md) | 작은 GenPage 모델을 서빙까지 붙이고, 기본값으로는 켜지 않는다 |
+| [ADR-054](adr/ADR-054-genpage-validation-tuning.md) | GenPage 를 검증 기간으로 다시 튜닝했고, 결론은 그대로다 |
+| [ADR-055](adr/ADR-055-search-filters-in-engine-and-scale-limit.md) | 필터·패싯은 검색 엔진 안에서 건다 — 앱 안 Lucene 의 전환점은 300만 건이다 |
 
 ## 보조 문서
 
