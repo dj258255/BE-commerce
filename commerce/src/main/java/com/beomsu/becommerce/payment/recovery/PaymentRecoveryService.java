@@ -41,6 +41,9 @@ public class PaymentRecoveryService {
     /** 이 시간 이상 UNKNOWN으로 머문 결제만 복구 대상 — 진행 중인 정상 요청과 겹치지 않게 한다. */
     private static final Duration MIN_AGE = Duration.ofMinutes(1);
 
+    /** backoff 정책에서 다음 시도를 미루는 상한. 이보다 오래 묻지 않으면 PG 가 확정한 뒤에도 우리가 늦게 안다. */
+    static final Duration BACKOFF_CAP = Duration.ofMinutes(10);
+
     private final PaymentRepository paymentRepository;
     private final PgClient pgClient;
     private final ApplicationEventPublisher events;
@@ -48,21 +51,48 @@ public class PaymentRecoveryService {
     /** UNKNOWN 결제를 스캔해 확정한다. 반환값은 처리한 건수. */
     @Transactional
     public int recoverUnknownPayments() {
-        Instant threshold = Instant.now().minus(MIN_AGE);
-        List<Payment> targets = paymentRepository
-                .findByStatusAndRequestedAtBefore(PaymentStatus.UNKNOWN, threshold, chunk());
+        Instant now = Instant.now();
+        Instant threshold = now.minus(MIN_AGE);
+        List<Payment> targets = switch (policy) {
+            case "oldest" -> paymentRepository.findByStatusAndRequestedAtBeforeOrderByRequestedAtAsc(
+                    PaymentStatus.UNKNOWN, threshold, chunk());
+            case "backoff" -> paymentRepository.findRecoverableUnknown(threshold, now, chunk());
+            default -> paymentRepository.findByStatusAndRequestedAtBefore(PaymentStatus.UNKNOWN, threshold, chunk());
+        };
 
         int recovered = 0;
         for (Payment payment : targets) {
             try {
-                resolve(payment);
-                recovered++;
+                if (resolve(payment)) {
+                    recovered++;
+                } else {
+                    deferred(payment, now);
+                }
             } catch (Exception e) {
                 // 한 건 실패가 배치 전체를 멈추지 않게 한다. 다음 주기에 다시 시도된다.
                 log.warn("결제 복구 실패 paymentId={} : {}", payment.getId(), e.getMessage());
+                deferred(payment, now);
             }
         }
         return recovered;
+    }
+
+    /**
+     * 확정하지 못한 건을 남긴다. {@code backoff} 면 다음 시도를 1·2·4·8분 뒤(상한 {@link #BACKOFF_CAP})로 민다 —
+     * 그래야 앞자리가 비어 뒤의 건이 청크에 들어온다(#248). 다른 정책은 횟수만 남긴다.
+     */
+    private void deferred(Payment payment, Instant now) {
+        try {
+            Instant next = null;
+            if ("backoff".equals(policy)) {
+                long minutes = Math.min(1L << Math.min(payment.getRecoveryAttempts(), 10), BACKOFF_CAP.toMinutes());
+                next = now.plus(Duration.ofMinutes(minutes));
+            }
+            payment.recordRecoveryAttempt(next);
+            paymentRepository.saveAndFlush(payment);
+        } catch (Exception e) {
+            log.warn("복구 시도 기록 실패 paymentId={} : {}", payment.getId(), e.getMessage());
+        }
     }
 
     /**
@@ -98,7 +128,8 @@ public class PaymentRecoveryService {
         resolve(payment);
     }
 
-    private void resolve(Payment payment) {
+    /** @return 확정했으면 true, PG 가 아직 진행 중이라 미뤘으면 false */
+    private boolean resolve(Payment payment) {
         // 승인한 PG에 물어야 한다. 다른 PG는 없는 거래라고 답하고, 그것을 "승인 안 됨"으로
         // 읽으면 살아 있는 결제를 실패로 확정한다
         PgQueryResult pg = pgClient.query(payment.getPaymentKey(), payment.getPgProvider());
@@ -123,8 +154,12 @@ public class PaymentRecoveryService {
             }
             // PG가 아직 진행 중이라고 답하면 확정하지 않는다. 여기서 실패로 단정하면
             // 승인이 곧 끝날 결제를 우리만 실패로 기록하는 사고가 된다 → 다음 주기에 다시 묻는다
-            case IN_PROGRESS -> log.info("복구 보류: PG 진행 중 orderNo={}", payment.getOrderNo());
+            case IN_PROGRESS -> {
+                log.info("복구 보류: PG 진행 중 orderNo={}", payment.getOrderNo());
+                return false;
+            }
         }
+        return true;
     }
 
     /**
@@ -136,6 +171,13 @@ public class PaymentRecoveryService {
      */
     @org.springframework.beans.factory.annotation.Value("${app.batch.read-chunk-size:500}")
     private int readChunkSize = 500;
+
+    /**
+     * 읽는 순서(#248). {@code unordered}(정렬 없음) · {@code oldest}(오래된 순 명시) · {@code backoff}(확정 못 한 건은 다음
+     * 시도를 미루고, 때가 된 것 중 오래된 순). 필드 기본값을 두는 이유는 {@link #readChunkSize} 와 같다.
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.recovery.policy:backoff}")
+    private String policy = "backoff";
 
     /**
      * <b>설정이 0 이나 음수여도 배치를 죽이지 않는다.</b> 잘못된 설정 하나로 돈을 다루는

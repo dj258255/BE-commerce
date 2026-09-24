@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
@@ -20,8 +21,17 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     @Query("select min(p.requestedAt) from Payment p where p.status = com.beomsu.becommerce.payment.PaymentStatus.UNKNOWN")
     Optional<Instant> findOldestUnknownRequestedAt();
 
-    /** 복구 배치용: 특정 상태로 일정 시각 이전부터 머문 결제(미확정 방치 건). */
+    /** 복구 배치용: 특정 상태로 일정 시각 이전부터 머문 결제(미확정 방치 건). 정렬을 걸지 않는다({@code unordered}). */
     List<Payment> findByStatusAndRequestedAtBefore(PaymentStatus status, Instant threshold, Pageable page);
+
+    /** 복구 배치 {@code oldest}: 같은 조건에 오래된 순을 명시한다(#248). */
+    List<Payment> findByStatusAndRequestedAtBeforeOrderByRequestedAtAsc(PaymentStatus status, Instant threshold, Pageable page);
+
+    /** 복구 배치 {@code backoff}: 다시 물어볼 때가 된 것만, 오래된 순(#248). */
+    @Query("select p from Payment p where p.status = com.beomsu.becommerce.payment.PaymentStatus.UNKNOWN"
+            + " and p.requestedAt < :threshold and (p.recoveryNextAt is null or p.recoveryNextAt <= :now)"
+            + " order by p.requestedAt")
+    List<Payment> findRecoverableUnknown(@Param("threshold") Instant threshold, @Param("now") Instant now, Pageable page);
 
     /** 어드민 관측용 — 상태별 결제 페이지(운영이 UNKNOWN 미확정 건을 조회). 전건 로딩 방지 위해 페이지 단위. */
     Page<Payment> findByStatus(PaymentStatus status, Pageable pageable);

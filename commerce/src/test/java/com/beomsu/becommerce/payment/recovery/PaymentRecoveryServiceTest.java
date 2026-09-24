@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
@@ -43,8 +44,10 @@ class PaymentRecoveryServiceTest {
         Payment p = Payment.initiate("order-1", Money.krw(10_000));
         p.startApproval(paymentKey);
         p.markUnknown("PG 응답 타임아웃");
+        when(repository.findRecoverableUnknown(any(Instant.class), any(Instant.class), any(Pageable.class)))
+                .thenReturn(List.of(p));                        // 기본 정책 backoff 의 쿼리(#248)
         when(repository.findByStatusAndRequestedAtBefore(eq(PaymentStatus.UNKNOWN), any(Instant.class), any(Pageable.class)))
-                .thenReturn(List.of(p));
+                .thenReturn(List.of(p));                        // unordered 로 바꾼 테스트용
         return p;
     }
 
@@ -87,5 +90,63 @@ class PaymentRecoveryServiceTest {
 
         assertThat(p.getStatus()).isEqualTo(PaymentStatus.CANCELED);
         verify(repository).saveAndFlush(p); // 복구 상태 전이 명시 영속
+    }
+
+    // --- 확정 못 한 건과 읽는 순서(#248) ---
+
+    @Test
+    @DisplayName("PG 가 진행 중이면 확정하지 않고, 복구 건수에 세지 않으며, 시도 횟수만 남긴다")
+    void inProgressIsDeferredNotCounted() {
+        ReflectionTestUtils.setField(service, "policy", "unordered");
+        Payment p = unknownPayment("pk-9");
+        when(pg.query("pk-9", "TOSS_PAYMENTS")).thenReturn(new PgQueryResult(PgPaymentStatus.IN_PROGRESS, null));
+
+        int recovered = service.recoverUnknownPayments();
+
+        assertThat(recovered).isZero();
+        assertThat(p.getStatus()).isEqualTo(PaymentStatus.UNKNOWN);
+        assertThat(p.getRecoveryAttempts()).isEqualTo(1);
+        assertThat(p.getRecoveryNextAt()).isNull();          // unordered 는 미루지 않는다
+        verify(repository).saveAndFlush(p);
+    }
+
+    @Test
+    @DisplayName("backoff: 확정 못 한 건은 1·2·4·8분 뒤로 밀고 10분에서 멈춘다. 조회 실패도 같다")
+    void backoffPushesNextAttempt() {
+        ReflectionTestUtils.setField(service, "policy", "backoff");
+        Payment p = Payment.initiate("order-1", Money.krw(10_000));
+        p.startApproval("pk-10");
+        p.markUnknown("PG 응답 타임아웃");
+        when(repository.findRecoverableUnknown(any(Instant.class), any(Instant.class), any(Pageable.class)))
+                .thenReturn(List.of(p));
+        when(pg.query("pk-10", "TOSS_PAYMENTS")).thenReturn(new PgQueryResult(PgPaymentStatus.IN_PROGRESS, null));
+
+        long[] expectedMinutes = {1, 2, 4, 8, 10, 10};
+        for (long minutes : expectedMinutes) {
+            Instant before = Instant.now();
+            service.recoverUnknownPayments();
+            assertThat(p.getRecoveryNextAt()).isBetween(before.plusSeconds(minutes * 60 - 1),
+                    Instant.now().plusSeconds(minutes * 60 + 1));
+        }
+        assertThat(p.getRecoveryAttempts()).isEqualTo(expectedMinutes.length);
+
+        when(pg.query("pk-10", "TOSS_PAYMENTS")).thenThrow(new IllegalStateException("PG 조회 타임아웃"));
+        service.recoverUnknownPayments();
+        assertThat(p.getRecoveryAttempts()).isEqualTo(expectedMinutes.length + 1);
+        verify(repository, never()).findByStatusAndRequestedAtBefore(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("oldest 는 오래된 순을 명시한 쿼리를 쓴다")
+    void oldestUsesOrderedQuery() {
+        ReflectionTestUtils.setField(service, "policy", "oldest");
+        when(repository.findByStatusAndRequestedAtBeforeOrderByRequestedAtAsc(eq(PaymentStatus.UNKNOWN), any(Instant.class),
+                any(Pageable.class))).thenReturn(List.of());
+
+        service.recoverUnknownPayments();
+
+        verify(repository).findByStatusAndRequestedAtBeforeOrderByRequestedAtAsc(eq(PaymentStatus.UNKNOWN), any(Instant.class),
+                any(Pageable.class));
+        verify(repository, never()).findByStatusAndRequestedAtBefore(any(), any(), any());
     }
 }
