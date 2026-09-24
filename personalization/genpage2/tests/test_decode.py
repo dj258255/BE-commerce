@@ -94,6 +94,21 @@ class DecodeTest(unittest.TestCase):
                                         exclude_items={"A", "B", "D", "E"}, n_rows=2)
         self.assertEqual(rows, [])
 
+    def test_allowed_items_mask_products_and_row_eligibility(self):
+        rows, violations = self.decoder.generate(
+            self.context, self.content, history_articles=[], allowed_items={"A", "B", "C"},
+            n_rows=2, items_per_row=3,
+        )
+        self.assertEqual(violations, 0)
+        self.assertEqual([row.row_token for row in rows], [4])
+        self.assertEqual(set(rows[0].items), {"A", "B", "C"})
+        # B 행에는 카탈로그상 세 상품이 있지만 후보에는 두 개뿐이다.
+        rows, _ = self.decoder.generate(
+            self.context, self.content, history_articles=[], pinned={0: 5},
+            allowed_items={"A", "B", "C", "D", "E"}, n_rows=1, items_per_row=3,
+        )
+        self.assertEqual(rows, [])
+
     def test_hybrid_bulk_uses_last_prefix_distribution(self):
         rows, _ = self.decoder.generate(self.context, self.content, history_articles=[], pinned={0: 4},
                                         n_rows=1, items_per_row=3, prefix=1)
@@ -115,6 +130,17 @@ class DecodeTest(unittest.TestCase):
         second = self.decoder.generate(**examples[0], **kwargs, temperature=0.8,
                                        generator=torch.Generator().manual_seed(77))
         self.assertEqual(first, second)
+
+    def test_batch_equals_single_with_per_example_allowed_and_pinned(self):
+        examples = [
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": [],
+             "pinned": {0: 4}, "allowed_items": {"A", "B", "C"}},
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": [],
+             "pinned": {0: 5}, "allowed_items": {"D", "E", "F"}},
+        ]
+        kwargs = {"n_rows": 1, "items_per_row": 3, "prefix": 1}
+        self.assertEqual(self.decoder.generate_batch(examples, **kwargs),
+                         [self.decoder.generate(**example, **kwargs) for example in examples])
 
     def test_truncate_keeps_prefix_page_and_whole_events(self):
         tokens = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]

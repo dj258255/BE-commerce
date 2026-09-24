@@ -12,6 +12,7 @@ from typing import Any, Iterable
 import numpy as np
 import pandas as pd
 
+from .candidates import build_candidates
 from .config import ITEMS_PER_ROW, MAX_ROWS, SEED, data_dir, out_dir, request_of
 from .context import LEVELS
 from .decode import GeneratedRow, PageDecoder
@@ -24,6 +25,34 @@ def _as_articles(value: Any) -> list[str]:
     if isinstance(value, str):
         return [value]
     return [str(v).zfill(10) if str(v).isdigit() else str(v) for v in value]
+
+
+def parse_candidates(value: str | tuple[int, int] | list[int] | None) -> tuple[int, int] | None:
+    """Parse the ``N,M`` CLI form without accepting ambiguous candidate sets."""
+    if value is None:
+        return None
+    if isinstance(value, (tuple, list)) and len(value) == 2:
+        top_n, per_section_m = value
+    elif isinstance(value, str):
+        parts = value.split(",")
+        if len(parts) != 2:
+            raise ValueError("--candidates 는 N,M 형식이어야 합니다")
+        top_n, per_section_m = parts
+    else:
+        raise ValueError("--candidates 는 N,M 형식이어야 합니다")
+    try:
+        result = int(top_n), int(per_section_m)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("--candidates 의 N 과 M 은 정수여야 합니다") from exc
+    if min(result) < 0:
+        raise ValueError("--candidates 의 N 과 M 은 0 이상이어야 합니다")
+    return result
+
+
+def _repeat_pin(history: list[str], vocab: Any) -> dict[int, int] | None:
+    """어휘 이력이 세 개 이상일 때만 첫 행을 다시 사기로 고정한다."""
+    items = {vocab.item(article) for article in history if vocab.item(article) is not None}
+    return {0: vocab.id("ROW_REPEAT")} if len(items) >= 3 else None
 
 
 def repeat_last_pages(meta: pd.DataFrame, k: int = 12) -> dict[str, list[str]]:
@@ -188,6 +217,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     base = Path(args.data_dir) if args.data_dir else data_dir()
     meta, archive = _load_examples(base, args.mode, args.limit)
     request = request_of(args.mode)
+    pin_repeat = bool(getattr(args, "pin_repeat", False))
+    candidate_config = parse_candidates(getattr(args, "candidates", None))
+    candidates_by_customer: dict[str, set[str]] | None = None
     started = time.perf_counter()
     results: dict[str, Any] = {}
 
@@ -221,6 +253,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             raise ValueError("모델 평가에는 --ckpt 가 필요합니다")
         mode_dir = base / "hm" / "model" / "genpage2" / args.mode
         decoder, vocab, content, content_rows, device = _load_decoder(mode_dir, Path(args.ckpt), args.device)
+        if candidate_config is not None:
+            top_n, per_section_m = candidate_config
+            candidates_by_customer = build_candidates(meta, tx, request, top_n=top_n,
+                                                       per_section_m=per_section_m, vocab=vocab)
         pages: dict[str, list[GeneratedRow]] = {}
         violations: dict[str, int] = {}
         generated_at = time.perf_counter()
@@ -230,8 +266,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             examples = []
             for index, row in part:
                 ctx_tokens, ctx_content = _context_at(archive, int(index))
+                history = _as_articles(row.history)
                 examples.append({"ctx_tokens": ctx_tokens, "ctx_content": ctx_content,
-                                 "history_articles": _as_articles(row.history)})
+                                 "history_articles": history,
+                                 "pinned": _repeat_pin(history, vocab) if pin_repeat else None,
+                                 "allowed_items": (candidates_by_customer[str(row.customer_id)]
+                                                   if candidates_by_customer is not None else None)})
             decoded = decoder.generate_batch(examples, n_rows=MAX_ROWS, items_per_row=ITEMS_PER_ROW, prefix=2)
             for (_, row), (page, bad) in zip(part, decoded):
                 customer = str(row.customer_id)
@@ -240,8 +280,23 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                                             violations=violations, elapsed=time.perf_counter() - generated_at, device=device)
 
     elapsed = time.perf_counter() - started
-    return {"mode": args.mode, "ckpt": str(args.ckpt) if args.ckpt else None,
-            "args": vars(args), "elapsed_seconds": elapsed, "results": results}
+    report_args = dict(vars(args))
+    # 옵션을 끄면 종전 결과 JSON의 모양까지 유지한다.
+    if not pin_repeat:
+        report_args.pop("pin_repeat", None)
+    if candidate_config is None:
+        report_args.pop("candidates", None)
+    report = {"mode": args.mode, "ckpt": str(args.ckpt) if args.ckpt else None,
+              "args": report_args, "elapsed_seconds": elapsed, "results": results}
+    if pin_repeat or candidate_config is not None:
+        report["options"] = {
+            "pin_repeat": pin_repeat,
+            "candidates": (list(candidate_config) if candidate_config is not None else None),
+        }
+    if candidates_by_customer is not None:
+        report["candidates_mean"] = (sum(len(items) for items in candidates_by_customer.values()) / len(meta)
+                                     if len(meta) else 0.0)
+    return report
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -254,10 +309,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--batch", type=int, default=256)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--baselines-only", action="store_true")
+    parser.add_argument("--pin-repeat", action="store_true")
+    parser.add_argument("--candidates", metavar="N,M")
     args = parser.parse_args(argv)
     report = run(args)
     base = Path(args.data_dir) if args.data_dir else data_dir()
     name = Path(args.ckpt).name if args.ckpt else "baselines"
+    candidate_config = parse_candidates(args.candidates)
+    if args.pin_repeat:
+        name += "__pin"
+    if candidate_config is not None:
+        name += f"__cand{candidate_config[0]}-{candidate_config[1]}"
     destination = Path(args.out) if args.out else out_dir() / args.mode / "eval" / f"{name}.json"
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(report, ensure_ascii=False, indent=2, default=float), encoding="utf-8")

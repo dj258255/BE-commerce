@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from genpage2.decode import GeneratedRow
-from genpage2.evaluate import _load_decoder, evaluate_pages, map_at_12, repeat_last_pages, run
+from genpage2.evaluate import _load_decoder, _repeat_pin, evaluate_pages, map_at_12, repeat_last_pages, run
 
 
 class FakeVocab:
@@ -20,6 +20,9 @@ class FakeVocab:
 
     def row_of(self, article):
         return {"A": 3, "B": 3, "C": 4}[article]
+
+    def item(self, article):
+        return {"A": 10, "B": 11, "C": 12}.get(article)
 
 
 class EvaluateTest(unittest.TestCase):
@@ -69,6 +72,46 @@ class EvaluateTest(unittest.TestCase):
         self.assertIsNotNone(report["results"]["popular_last_week"]["map_at_12_has_vocab_history"])
         self.assertIsNone(report["results"]["repeat_last"]["ms_per_page"])
         self.assertIsNone(report["results"]["popular_last_week"]["ms_per_page"])
+
+    def test_repeat_pin_requires_three_distinct_vocab_history_items(self):
+        vocab = FakeVocab()
+        self.assertEqual(_repeat_pin(["A", "B", "C", "A"], vocab), {0: 2})
+        self.assertIsNone(_repeat_pin(["A", "B", "not-in-vocab"], vocab))
+
+    def test_run_passes_per_customer_pin_and_candidates_to_decoder(self):
+        meta = self.meta.copy()
+        meta.at[0, "history"] = ["A", "B", "C", "A"]
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            mode = base / "hm" / "model" / "genpage2" / "validate"
+            mode.mkdir(parents=True)
+            meta.to_parquet(mode / "eval_meta.parquet")
+            np.savez(mode / "eval.npz", ctx_tokens=np.array([1, 1]), ctx_content=np.array([-1, -1]),
+                     ctx_offsets=np.array([0, 1, 2]))
+            normal = base / "hm" / "normalized"
+            normal.mkdir(parents=True)
+            pd.DataFrame({"t_dat": ["2020-09-08", "2020-09-10"], "article_id": ["B", "C"]}).to_parquet(
+                normal / "transactions.parquet"
+            )
+            decoder = MagicMock()
+            captured = []
+
+            def generate_batch(examples, **_kwargs):
+                captured.extend(examples)
+                return [([GeneratedRow(3, ["A"])], 0) for _ in examples]
+
+            decoder.generate_batch.side_effect = generate_batch
+            with patch("genpage2.evaluate._load_decoder", return_value=(
+                decoder, FakeVocab(), np.array([[1.0, 0.0]]), {"A": 0}, "cpu",
+            )):
+                report = run(argparse.Namespace(
+                    mode="validate", ckpt="checkpoint", limit=None, data_dir=str(base), out=None,
+                    batch=256, device="cpu", baselines_only=False, pin_repeat=True, candidates="1,1",
+                ))
+        self.assertEqual(captured[0]["pinned"], {0: 2})
+        self.assertIn("B", captured[0]["allowed_items"])
+        self.assertEqual(report["options"], {"pin_repeat": True, "candidates": [1, 1]})
+        self.assertGreater(report["candidates_mean"], 0)
 
     def test_map_denominator_includes_missing_wrong_and_large_truth(self):
         meta = pd.DataFrame({
