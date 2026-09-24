@@ -7,6 +7,17 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — GenPage 를 검증 기간으로 다시 튜닝했다 (#242)
+
+### 변경
+
+- 학습 스크립트에 검증 모드(`GENPAGE_MODE=validate`)와 최종 모드(`final`)를 넣었다. 검증 주로 고르고 홀드아웃은 한 번만 본다
+- 저장된 GenPage 모델을 최종 설정(차원 64 · 6에폭)으로 바꿨다. **기본값은 여전히 꺼져 있다** — 홀드아웃 0.020930 으로 선(0.023354)을 못 넘었다
+
+### 왜
+
+[ADR-054](docs/adr/ADR-054-genpage-validation-tuning.md) · [리포트](personalization/docs/runs/hm-genpage-report.md)
+
 ## Unreleased — 작은 GenPage 모델을 붙인다(기본값 꺼짐) (#238)
 
 ### 변경
