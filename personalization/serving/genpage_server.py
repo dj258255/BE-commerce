@@ -141,9 +141,27 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         self._send(200 if self.path == "/health" else 404, {"status": "UP", "vocab": len(ENGINE.items)})
 
+    def _body(self):
+        """본문을 읽는다. chunked 도 푼다(#254) — 예전에는 Content-Length 만 읽어 chunked 본문을 빈 것으로 봤다."""
+        if "chunked" in self.headers.get("Transfer-Encoding", "").lower():
+            data = b""
+            while True:
+                size = int(self.rfile.readline().strip().split(b";")[0] or b"0", 16)
+                if size == 0:
+                    self.rfile.readline()
+                    break
+                data += self.rfile.read(size)
+                self.rfile.readline()
+            return data
+        return self.rfile.read(int(self.headers.get("Content-Length", 0)))
+
     def do_POST(self):
-        req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+        req = json.loads(self._body() or b"{}")
         started = time.perf_counter()
+        if self.path in ("/recommend", "/page") and "history" not in req:
+            # 이력 키가 없으면 본문을 못 읽은 것이다. 빈 이력으로 조용히 생성하지 않는다
+            self._send(400, {"error": "history 가 없다 — 본문을 읽지 못했을 수 있다"})
+            return
         if self.path == "/recommend":
             items = ENGINE.recommend(req.get("history", []), int(req.get("k", 12)))
             self._send(200, {"items": items, "ms": (time.perf_counter() - started) * 1000})
