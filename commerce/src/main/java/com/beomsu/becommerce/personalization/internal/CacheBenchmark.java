@@ -53,7 +53,8 @@ public class CacheBenchmark {
                          double getP50, double getP95, double getP99,
                          double compressP50, double decompressP50,
                          double appCpuMs, Long redisUsedMemoryBytes, Long redisMemoryDeltaBytes,
-                         long roundTrips) {
+                         long roundTrips,
+                         int threads, double totalP95, double totalP99, double cpuPerOpUs) {
 
         /** 저장량 / 원본량. 1 미만이면 실제로 줄었다는 뜻이다(base64 팽창 포함). */
         public double ratio() {
@@ -68,6 +69,94 @@ public class CacheBenchmark {
      * 채움 필드로 맞추고, <b>실제 바이트를 함께 보고한다</b>(요청한 크기와 다를 수 있다).
      */
     public Result run(int requestedBytes, int count) {
+        return run(requestedBytes, count, 1);
+    }
+
+    /**
+     * {@code threads} 개 스레드가 동시에 각자 {@code count} 개를 넣고 읽는다(#266). 한 스레드로 잰 E6 은 압축끼리 CPU 를 다투는
+     * 상황을 보지 못했다. 연결은 앱과 같은 {@code StringRedisTemplate}(공유 연결)을 쓴다.
+     *
+     * <p>CPU 는 스레드마다 잰 CPU 시간의 합이다. 지연은 모든 스레드의 연산을 모아 백분위를 낸다.
+     */
+    public Result run(int requestedBytes, int count, int threads) {
+        int n = Math.max(threads, 1);
+        if (n == 1) {
+            return runSingle(requestedBytes, count, 1);
+        }
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(n);
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        List<java.util.concurrent.Future<Result>> futures = new ArrayList<>();
+        Long memoryBefore = usedMemoryBytes();
+        try {
+            for (int t = 0; t < n; t++) {
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    return runSingle(requestedBytes, count, n);
+                }));
+            }
+            start.countDown();
+            List<Result> parts = new ArrayList<>();
+            for (java.util.concurrent.Future<Result> f : futures) {
+                parts.add(f.get());
+            }
+            return merge(parts, n, memoryBefore);
+        } catch (Exception e) {
+            throw new IllegalStateException("동시 벤치 실패", e);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    /** 스레드별 결과를 합친다. 백분위는 스레드별 원자료를 다시 모아 낸다(스레드 p95 의 평균이 아니다). */
+    private Result merge(List<Result> parts, int threads, Long memoryBefore) {
+        List<long[]> sets = new ArrayList<>();
+        List<long[]> gets = new ArrayList<>();
+        List<long[]> totals = new ArrayList<>();
+        List<long[]> comps = new ArrayList<>();
+        List<long[]> decomps = new ArrayList<>();
+        long rawTotal = 0;
+        long storedTotal = 0;
+        double cpuMs = 0;
+        int ops = 0;
+        for (Result r : parts) {
+            Raw raw = lastRaw.remove(r);
+            sets.add(raw.set);
+            gets.add(raw.get);
+            totals.add(raw.total);
+            comps.add(raw.compress);
+            decomps.add(raw.decompress);
+            rawTotal += r.rawBytesTotal();
+            storedTotal += r.storedBytesTotal();
+            cpuMs += r.appCpuMs();
+            ops += r.count();
+        }
+        Result first = parts.get(0);
+        long[] set = concat(sets);
+        long[] get = concat(gets);
+        long[] total = concat(totals);
+        return new Result(first.codec(), first.thresholdBytes(), first.rawBytes(), ops, rawTotal, storedTotal,
+                pct(set, 50), pct(set, 95), pct(set, 99), pct(get, 50), pct(get, 95), pct(get, 99),
+                pct(concat(comps), 50), pct(concat(decomps), 50), cpuMs, usedMemoryBytes(), null, ops,
+                threads, pct(total, 95), pct(total, 99), cpuMs * 1000.0 / ops);
+    }
+
+    private static long[] concat(List<long[]> arrays) {
+        long[] out = new long[arrays.stream().mapToInt(a -> a.length).sum()];
+        int k = 0;
+        for (long[] a : arrays) {
+            System.arraycopy(a, 0, out, k, a.length);
+            k += a.length;
+        }
+        return out;
+    }
+
+    /** 스레드별 원자료. 합칠 때 백분위를 다시 내려고 결과 객체와 짝지어 둔다. */
+    private record Raw(long[] set, long[] get, long[] total, long[] compress, long[] decompress) {
+    }
+
+    private final java.util.Map<Result, Raw> lastRaw = java.util.Collections.synchronizedMap(new java.util.IdentityHashMap<>());
+
+    private Result runSingle(int requestedBytes, int count, int threads) {
         int size = Math.max(requestedBytes, 64);
         int total = Math.max(count, 1);
         String runId = UUID.randomUUID().toString().substring(0, 8);
@@ -77,6 +166,7 @@ public class CacheBenchmark {
         long[] get = new long[total];
         long[] compress = new long[total];
         long[] decompress = new long[total];
+        long[] whole = new long[total];
         long storedTotal = 0;
         List<String> keys = new ArrayList<>(total);
 
@@ -104,6 +194,7 @@ public class CacheBenchmark {
             set[i] = c2 - c1;
             get[i] = c3 - c2;
             decompress[i] = c4 - c3;
+            whole[i] = c4 - c0;
             storedTotal += CacheValueCompressor.storedBytes(stored);
         }
 
@@ -122,7 +213,10 @@ public class CacheBenchmark {
                 (cpuAfter - cpuBefore) / 1_000_000.0,
                 memoryAfter,
                 (memoryAfter == null || memoryBefore == null) ? null : memoryAfter - memoryBefore,
-                total);
+                total, threads, pct(whole, 95), pct(whole, 99), (cpuAfter - cpuBefore) / 1000.0 / total);
+        if (threads > 1) {
+            lastRaw.put(result, new Raw(set, get, whole, compress, decompress));    // merge 가 꺼내 간다
+        }
 
         log.info("E6 벤치 — 코덱={} 요청크기={}B 실제={}B 저장/원본={} 배 set p50={}ms get p50={}ms",
                 result.codec(), requestedBytes, result.rawBytes(), String.format("%.3f", result.ratio()),

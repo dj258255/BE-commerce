@@ -38,8 +38,9 @@ public class CacheExperimentController {
      */
     @PostMapping("/bench")
     public Map<String, Object> bench(@RequestParam(name = "sizeBytes", defaultValue = "10240") int sizeBytes,
-                                     @RequestParam(name = "count", defaultValue = "1000") int count) {
-        CacheBenchmark.Result r = benchmark.run(sizeBytes, count);
+                                     @RequestParam(name = "count", defaultValue = "1000") int count,
+                                     @RequestParam(name = "threads", defaultValue = "1") int threads) {
+        CacheBenchmark.Result r = benchmark.run(sizeBytes, count, Math.min(Math.max(threads, 1), 64));
         return Map.ofEntries(
                 Map.entry("codec", r.codec()),
                 Map.entry("thresholdBytes", r.thresholdBytes()),
@@ -59,6 +60,10 @@ public class CacheExperimentController {
                 Map.entry("decompressP50", r.decompressP50()),
                 Map.entry("appCpuMs", r.appCpuMs()),
                 Map.entry("redisUsedMemoryBytes", r.redisUsedMemoryBytes() == null ? -1 : r.redisUsedMemoryBytes()),
-                Map.entry("redisMemoryDeltaBytes", r.redisMemoryDeltaBytes() == null ? -1 : r.redisMemoryDeltaBytes()));
+                Map.entry("redisMemoryDeltaBytes", r.redisMemoryDeltaBytes() == null ? -1 : r.redisMemoryDeltaBytes()),
+                Map.entry("threads", r.threads()),
+                Map.entry("totalP95", r.totalP95()),
+                Map.entry("totalP99", r.totalP99()),
+                Map.entry("cpuPerOpUs", r.cpuPerOpUs()));
     }
 }
