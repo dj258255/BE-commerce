@@ -2,7 +2,9 @@ package com.beomsu.becommerce.order.catalog.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
@@ -37,6 +39,49 @@ public class HttpEngineProductSearch implements ProductSearch {
         if (body == null) {
             throw new IllegalStateException(engine + " 응답 본문이 비었다");
         }
+        List<Long> ids = new ArrayList<>();
+        for (JsonNode hit : body.path("hits").path("hits")) {
+            ids.add(Long.parseLong(hit.path("_id").asText()));
+        }
+        return new SearchPage(ids, body.path("hits").path("total").path("value").asLong());
+    }
+
+    @Override
+    public boolean filtersInEngine() {
+        return true;
+    }
+
+    @Override
+    public SearchPage searchFiltered(String query, SearchFilters filters, int page, int size) {
+        return hits(post(EngineQuery.filteredBody(query, filters, page * size, size)));
+    }
+
+    @Override
+    public SearchFacets facets(String query, SearchFilters filters) {
+        JsonNode aggs = post(EngineQuery.facetsBody(query, filters)).path("aggregations");
+        return new SearchFacets(buckets(aggs.path("colour").path("v")), buckets(aggs.path("type").path("v")));
+    }
+
+    private static Map<String, Long> buckets(JsonNode terms) {
+        Map<String, Long> out = new LinkedHashMap<>();
+        terms.path("buckets").forEach(b -> out.put(b.path("key").asText(), b.path("doc_count").asLong()));
+        return out;
+    }
+
+    private JsonNode post(Map<String, Object> body) {
+        JsonNode node = client.post()
+                .uri("/{index}/_search", index)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(JsonNode.class);
+        if (node == null) {
+            throw new IllegalStateException(engine + " 응답 본문이 비었다");
+        }
+        return node;
+    }
+
+    private static SearchPage hits(JsonNode body) {
         List<Long> ids = new ArrayList<>();
         for (JsonNode hit : body.path("hits").path("hits")) {
             ids.add(Long.parseLong(hit.path("_id").asText()));

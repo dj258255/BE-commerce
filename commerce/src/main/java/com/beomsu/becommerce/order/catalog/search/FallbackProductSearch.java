@@ -20,11 +20,19 @@ public class FallbackProductSearch implements ProductSearch {
 
     private final ProductSearch primary;
     private final ProductSearch fallback;
+    private final CandidateFiltering candidates;
     private final Counter fallbacks;
 
     public FallbackProductSearch(ProductSearch primary, ProductSearch fallback, MeterRegistry registry) {
+        this(primary, fallback, null, registry);
+    }
+
+    /** {@code candidates} 가 있으면 엔진 안 필터·패싯이 실패할 때 후보 자르기(DB)로 물러선다(#244). */
+    public FallbackProductSearch(ProductSearch primary, ProductSearch fallback, CandidateFiltering candidates,
+                                 MeterRegistry registry) {
         this.primary = primary;
         this.fallback = fallback;
+        this.candidates = candidates;
         this.fallbacks = Counter.builder("catalog.search.fallback")
                 .description("검색 엔진이 실패해 DB 검색으로 물러선 횟수")
                 .tag("engine", primary.engine())
@@ -48,6 +56,33 @@ public class FallbackProductSearch implements ProductSearch {
     @Override
     public SearchPage search(String query, int page, int size) {
         return answer(query, page, size).page();
+    }
+
+    @Override
+    public boolean filtersInEngine() {
+        return primary.filtersInEngine() && candidates != null;
+    }
+
+    @Override
+    public SearchPage searchFiltered(String query, SearchFilters filters, int page, int size) {
+        try {
+            return primary.searchFiltered(query, filters, page, size);
+        } catch (RuntimeException e) {
+            fallbacks.increment();
+            log.warn("검색 엔진 {} 필터 검색 실패 → 후보 자르기로 물러선다: {}", primary.engine(), e.toString());
+            return candidates.filter(fallback, query, filters, page, size);
+        }
+    }
+
+    @Override
+    public SearchFacets facets(String query, SearchFilters filters) {
+        try {
+            return primary.facets(query, filters);
+        } catch (RuntimeException e) {
+            fallbacks.increment();
+            log.warn("검색 엔진 {} 패싯 실패 → 후보 자르기로 물러선다: {}", primary.engine(), e.toString());
+            return candidates.facets(fallback, query, filters);
+        }
     }
 
     @Override

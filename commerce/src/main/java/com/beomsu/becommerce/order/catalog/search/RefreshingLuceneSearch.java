@@ -79,6 +79,21 @@ public class RefreshingLuceneSearch implements ProductSearch, AutoCloseable {
     }
 
     @Override
+    public boolean filtersInEngine() {
+        return true;
+    }
+
+    @Override
+    public SearchPage searchFiltered(String query, SearchFilters filters, int page, int size) {
+        return current.get().searchFiltered(query, filters, page, size);
+    }
+
+    @Override
+    public SearchFacets facets(String query, SearchFilters filters) {
+        return current.get().facets(query, filters);
+    }
+
+    @Override
     public String engine() {
         return "lucene";
     }

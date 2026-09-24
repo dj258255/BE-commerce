@@ -52,11 +52,12 @@ public class CatalogController {
             @RequestParam(required = false) String productType,
             @RequestParam(required = false) Long minPrice,
             @RequestParam(required = false) Long maxPrice,
+            @RequestParam(required = false) Boolean inStock,
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return catalogQueryService.products(category, q, featured, colour, productType, minPrice, maxPrice,
-                sort, page, size);
+                inStock, sort, page, size);
     }
 
     /**
@@ -64,15 +65,21 @@ public class CatalogController {
      *
      * <p>각 패싯은 자기 축을 뺀 나머지 필터만 적용한다(색상 패싯은 색상 없이, 종류 패싯은 종류 없이).
      * 그래야 한 값을 고른 상태에서도 다른 값의 개수가 보인다. {@code /products}와 같은 필터를 받는다.
+     * 검색어({@code q})가 있으면 그 검색 결과의 패싯이다(#244).
      */
     @GetMapping("/products/facets")
     public FacetView facets(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Boolean inStock,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Boolean featured,
             @RequestParam(required = false) String colour,
             @RequestParam(required = false) String productType,
             @RequestParam(required = false) Long minPrice,
             @RequestParam(required = false) Long maxPrice) {
+        if (q != null && !q.isBlank()) {
+            return catalogQueryService.facets(q, category, colour, productType, minPrice, maxPrice, inStock);
+        }
         return catalogQueryService.facets(category, featured, colour, productType, minPrice, maxPrice);
     }
 
