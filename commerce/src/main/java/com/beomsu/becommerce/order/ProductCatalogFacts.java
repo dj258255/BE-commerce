@@ -92,6 +92,26 @@ public class ProductCatalogFacts {
     }
 
     /**
+     * <b>지금 품절인 상품 id</b> — 홈의 {@code PRE} 재고 확인(#317)이 모델 호출 <b>전에</b> 후보에서
+     * 빼려고 쓴다. id 묶음이 아니라 조건 질의라 {@code limit} 이 필요하다.
+     *
+     * <p>화면용 규칙(fail-open)을 따른다 — 재고 행이 없는 상품은 품절이 아니다(카드의 {@code inStock} 과 같다).
+     */
+    @Transactional(readOnly = true)
+    public Set<Long> soldOutProductIds(int limit) {
+        return catalogQueryService.soldOutProductIds(limit);
+    }
+
+    /**
+     * 주어진 id 중 <b>지금 재고가 있는 것</b>만 — 홈의 {@code POST_FINAL}(#317)이 응답 직전에 한 번 더
+     * 확인할 때 쓴다. {@link #findAll} 과 같은 규칙(fail-open)이라 조립 때의 판정과 방향이 갈리지 않는다.
+     */
+    @Transactional(readOnly = true)
+    public Set<Long> idsInStock(Collection<Long> productIds) {
+        return catalogQueryService.idsInStock(productIds);
+    }
+
+    /**
      * 한 대분류의 최신 상품 id — 홈 다음 쪽이 <b>인기 표에 거의 없는 대분류</b>의 행을 채울 때 쓴다(#237).
      * 인기 표(200행)에 아동복이 0개라, 사용자가 아동복을 봐도 그 행을 만들 재료가 없어 세션 신호가 조용히
      * 버려지던 것을 막는다. 순서는 목록 기본값(신상품순)과 같다.

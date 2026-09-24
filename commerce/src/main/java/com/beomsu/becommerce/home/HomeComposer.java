@@ -4,12 +4,17 @@ import com.beomsu.becommerce.home.internal.ImpressionRecorder;
 import com.beomsu.becommerce.order.ProductCatalogFacts;
 import com.beomsu.becommerce.personalization.RecentActivityFacts;
 import com.beomsu.becommerce.recommendation.RecommendationFacts;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -54,6 +59,35 @@ public class HomeComposer {
         FULL
     }
 
+    /**
+     * 재고 확인 방식(X3, #317) — 모델이 만든 행을 <b>언제</b> 재고로 거르는가.
+     *
+     * <p>모델은 재고를 모른다(교체 가능한 의존성이고, 재고는 order 의 소유다 — ADR-039 · ADR-050).
+     * 그래서 재고는 호출자가 거른다. <b>거르는 시점이 방식</b>이고, 각 방식은 응답 시점 정확도를 사는
+     * 대신 조회 횟수와 지연을 낸다. 그 대가는 요청마다 {@code stats}(stockLookups · stockLookupMs ·
+     * stockRemoved)와 방식별 메트릭({@code home.stock.*})으로 남는다.
+     */
+    public enum StockCheck {
+        /** 거르지 않는다 — 모델이 준 상품을 그대로 조립한다. <b>기준선</b>이다. */
+        NONE,
+        /** 생성 뒤 조립할 때 거른다(기본, ADR-050). 카드 조회에 실린 재고를 쓰므로 별도 조회가 없다. */
+        POST,
+        /**
+         * 모델 호출 <b>전에</b> 품절 id 를 모아 요청의 {@code exclude} 에 더한다. 조립에서는 거르지 않는다.
+         *
+         * <p>조회는 요청마다 {@code SELECT product_id FROM stock WHERE quantity = 0} 한 번이고, 결과 수에
+         * 상한을 둔다({@link #SOLD_OUT_SCAN_LIMIT}). 전체 품절 목록을 <b>캐시하는 대안</b>은 재고 변경을
+         * 통보받아 무효화해야 하고(무효화 지점이 하나 더 생긴다) 그 대가는 여기서 지지 않는다 — 대신
+         * <b>품절 상품이 적다</b>는 가정 위에 선다(상한을 넘으면 뒤는 못 뺀다).
+         */
+        PRE,
+        /** {@link #POST} + 응답 직전에 응답에 담긴 상품의 재고를 한 번 더 조회해 0 이면 뺀다. */
+        POST_FINAL
+    }
+
+    /** 품절 id 사전 조회(PRE)의 결과 상한 — 품절이 많아지면 요청마다 그만큼 더 읽는다. */
+    static final int SOLD_OUT_SCAN_LIMIT = 2_000;
+
     private final RecommendationFacts recommendations;
     private final ProductCatalogFacts catalog;
     private final RecentActivityFacts recentActivity;
@@ -67,6 +101,11 @@ public class HomeComposer {
     private final int maxPerCategory;
     private final int candidateDepth;
     private final int pageRows;
+    private final StockCheck stockCheck;
+    /** 재고 확인 한 번의 시간 — 방식별로 태그를 가른다. count 가 곧 조회 횟수다. */
+    private final Timer stockLookupTimer;
+    /** 재고 때문에 뺀 항목 수 — 방식별. */
+    private final Counter stockRemovedCounter;
 
     /** 다음 쪽 카테고리 행이 후보로 쓰는 인기 표 깊이 — 인기 표 전체(200행)다. */
     static final int POPULAR_DEPTH = 200;
@@ -82,6 +121,28 @@ public class HomeComposer {
                 minItems, maxPerCategory, refillDepth, 3);
     }
 
+    /** 기존 12인자 모양(1쪽까지) — 재고 확인 방식은 기본 POST 다. */
+    public HomeComposer(RecommendationFacts recommendations,
+                        ProductCatalogFacts catalog,
+                        RecentActivityFacts recentActivity,
+                        ImpressionRecorder impressions,
+                        Rules rules, int contextLimit, int rowCap, int itemCap, int minItems,
+                        int maxPerCategory, int refillDepth, int pageRows) {
+        this(recommendations, catalog, recentActivity, impressions, rules, contextLimit, rowCap, itemCap,
+                minItems, maxPerCategory, refillDepth, pageRows, StockCheck.POST, new SimpleMeterRegistry());
+    }
+
+    /** 재고 확인 방식까지 고르는 조립(X3, #317 — 테스트 · 실험용). 지표는 인스턴스마다 따로 등록한다. */
+    public HomeComposer(RecommendationFacts recommendations,
+                        ProductCatalogFacts catalog,
+                        RecentActivityFacts recentActivity,
+                        ImpressionRecorder impressions,
+                        Rules rules, int contextLimit, int rowCap, int itemCap, int minItems,
+                        int maxPerCategory, int refillDepth, int pageRows, StockCheck stockCheck) {
+        this(recommendations, catalog, recentActivity, impressions, rules, contextLimit, rowCap, itemCap,
+                minItems, maxPerCategory, refillDepth, pageRows, stockCheck, new SimpleMeterRegistry());
+    }
+
     @Autowired
     public HomeComposer(RecommendationFacts recommendations,
                         ProductCatalogFacts catalog,
@@ -94,7 +155,9 @@ public class HomeComposer {
                         @Value("${app.home.min-items:3}") int minItems,
                         @Value("${app.home.max-per-category:3}") int maxPerCategory,
                         @Value("${app.home.refill-depth:1}") int refillDepth,
-                        @Value("${app.home.page-rows:3}") int pageRows) {
+                        @Value("${app.home.page-rows:3}") int pageRows,
+                        @Value("${app.recommendation.stock-check:POST}") StockCheck stockCheck,
+                        MeterRegistry registry) {
         this.recommendations = recommendations;
         this.catalog = catalog;
         this.recentActivity = recentActivity;
@@ -109,8 +172,17 @@ public class HomeComposer {
         // 2면 2배까지: 규칙이 버린 칸을 **더 깊은 후보**로 채운다. 그 대가는 관련도(평균 표시 순위)다.
         this.candidateDepth = Math.max(refillDepth, 1) * this.itemCap;
         this.pageRows = Math.max(pageRows, 1);
-        log.info("홈 조립 규칙={} 행상한={} 항목상한={} 최소항목={} 카테고리상한={} 후보깊이={}",
-                rules, this.rowCap, this.itemCap, this.minItems, this.maxPerCategory, this.candidateDepth);
+        this.stockCheck = stockCheck;
+        this.stockLookupTimer = Timer.builder("home.stock.lookup")
+                .description("재고 확인 조회 — 방식별 횟수(count)와 시간")
+                .tag("mode", stockCheck.name())
+                .register(registry);
+        this.stockRemovedCounter = Counter.builder("home.stock.removed")
+                .description("재고 때문에 뺀 항목 수 — 방식별")
+                .tag("mode", stockCheck.name())
+                .register(registry);
+        log.info("홈 조립 규칙={} 행상한={} 항목상한={} 최소항목={} 카테고리상한={} 후보깊이={} 재고확인={}",
+                rules, this.rowCap, this.itemCap, this.minItems, this.maxPerCategory, this.candidateDepth, stockCheck);
     }
 
     /**
@@ -237,12 +309,28 @@ public class HomeComposer {
         // 모델이 켜져 있으면 행을 모델이 생성한다(GenPage, #238). 빈 목록이면 아래 규칙 행으로 물러선다.
         Set<String> usedCategories = new LinkedHashSet<>();
         cursor.usedRows().stream().filter(r -> r.startsWith("cat:")).forEach(r -> usedCategories.add(r.substring(4)));
+        // 재고 확인 방식(X3, #317) — 모델 호출 **전에** 품절을 빼는 것은 PRE 뿐이다. PRE 는 그 뒤 조립에서
+        // 거르지 않으므로(모델이 이미 안 준 것을 다시 볼 이유가 없다) 조회를 한 번만 쓴다.
+        Set<Long> exclude = new LinkedHashSet<>(cursor.shown());
+        int stockLookups = 0;
+        long stockLookupMs = 0;
+        int stockRemoved = 0;
+        if (stockCheck == StockCheck.PRE) {
+            long t1 = System.nanoTime();
+            Set<Long> soldOut = catalog.soldOutProductIds(SOLD_OUT_SCAN_LIMIT);
+            stockLookupMs = elapsed(t1);
+            stockLookups = 1;
+            stockRemoved = soldOut.size();
+            exclude.addAll(soldOut);
+            recordStockLookupMs(stockLookupMs);
+        }
         List<RecommendationFacts.GeneratedRow> generated =
-                recommendations.generatePageRows(userId, recent, cursor.shown(), usedCategories, pageRows, itemCap);
+                recommendations.generatePageRows(userId, recent, exclude, usedCategories, pageRows, itemCap);
         // 2쪽도 변형에 따라 다르다(#270) — 노출에 변형을 적어야 A/B 분석이 2쪽의 클릭 · 구매를 귀속한다(#294)
         RecommendationFacts.Experiment experiment = recommendations.experimentOf(userId);
         if (!generated.isEmpty()) {
-            return composeGenerated(userId, cursor, generated, names, usedCategories, contextMs, startedAt, experiment);
+            return composeGenerated(userId, cursor, generated, names, usedCategories, contextMs, startedAt, experiment,
+                    stockLookups, stockLookupMs, stockRemoved);
         }
 
         List<HomePageView.Row> rows = new ArrayList<>();
@@ -296,23 +384,37 @@ public class HomeComposer {
         HomePageView page = new HomePageView(String.valueOf(userId), Instant.now().toString(),
                 SOURCE_CATALOG, null, null,
                 new HomePageView.Latency(contextMs, 0, 0, elapsed(startedAt)),
-                rows, new HomePageView.AssemblyStats(popular.size(), 0, outOfStock, duplicates, 0, distinct.size()),
+                rows, new HomePageView.AssemblyStats(popular.size(), 0, outOfStock, duplicates, 0, distinct.size(),
+                        stockLookups, stockLookupMs, stockRemoved),
                 cursor.page(), next, experiment.experiment(), experiment.variant());
+        // 규칙 행 경로도 PRE 의 사전 조회 대가는 밝힌다(모델이 행을 못 만들어 물러선 경우).
+        recordStockRemoved(stockRemoved);
         impressions.record(page);
         return page;
     }
 
     /**
      * 모델이 생성한 행으로 쪽을 만든다(#238). 모델은 중복·앞 쪽 상품·대분류 일치를 <b>생성 중에</b> 지켰고,
-     * 여기서는 모델이 모르는 <b>품절만 생성 뒤에</b> 거른다(ADR-050). 행은 {@code GENPAGE} 로 표시한다.
+     * 여기서는 모델이 모르는 <b>품절</b>을 재고 확인 방식(X3, #317)에 따라 거른다(ADR-050). 행은
+     * {@code GENPAGE} 로 표시한다.
+     *
+     * <p><b>네 방식</b>: {@code NONE} 은 거르지 않고, {@code POST} 는 여기서(조립할 때), {@code PRE} 는
+     * 이미 모델 호출 전에 걸렀으므로 여기서는 거르지 않는다. {@code POST_FINAL} 은 여기서 거른 뒤
+     * <b>응답 직전에</b> 한 번 더 본다 — 조립과 응답 사이의 창에서 품절된 것을 잡는다.
      */
     private HomePageView composeGenerated(long userId, HomeCursor cursor,
                                           List<RecommendationFacts.GeneratedRow> generated,
                                           Map<String, String> names, Set<String> usedCategories,
-                                          long contextMs, long startedAt, RecommendationFacts.Experiment experiment) {
+                                          long contextMs, long startedAt, RecommendationFacts.Experiment experiment,
+                                          int stockLookups, long stockLookupMs, int stockRemoved) {
+        int lookups = stockLookups;
+        long lookupMs = stockLookupMs;
+        int removed = stockRemoved;
         List<Long> all = generated.stream().flatMap(r -> r.itemIds().stream()).toList();
         Map<Long, ProductCatalogFacts.ProductCardFacts> cards = new LinkedHashMap<>();
         catalog.findAll(all).forEach(card -> cards.put(card.productId(), card));
+        // NONE 은 재고를 보지 않고, PRE 는 생성 전에 이미 걸렀다 — 둘 다 조립에서 거르지 않는다.
+        boolean filterStock = stockCheck == StockCheck.POST || stockCheck == StockCheck.POST_FINAL;
         List<HomePageView.Row> rows = new ArrayList<>();
         List<Long> newlyShown = new ArrayList<>();
         List<String> tried = new ArrayList<>();
@@ -334,7 +436,7 @@ public class HomeComposer {
                     duplicates++;   // 모델 마스크가 맞으면 0 이다
                     continue;
                 }
-                if (!card.inStock()) {
+                if (filterStock && !card.inStock()) {
                     outOfStock++;
                     continue;
                 }
@@ -349,14 +451,55 @@ public class HomeComposer {
                         names.getOrDefault(row.category(), row.category()) + " 추천", "GENPAGE", List.copyOf(items)));
             }
         }
+        if (filterStock) {
+            removed += outOfStock;   // 조립에서 뺀 것도 그 방식이 뺀 것이다
+        }
+
+        // POST_FINAL — 응답을 돌려주기 직전에 응답에 담긴 상품의 재고를 **한 번 더** 조회한다(#317).
+        // 조립(카탈로그 읽기)과 응답 사이에 품절된 것을 잡는다. 조회 한 번이 그 정확도의 값이고,
+        // 그 사이에 최소 항목 수 밑으로 내려간 행은 서지 않는다(빈 행을 내보내지 않는다).
+        if (stockCheck == StockCheck.POST_FINAL && !rows.isEmpty()) {
+            List<Long> shownIds = rows.stream().flatMap(r -> r.items().stream())
+                    .map(i -> Long.parseLong(i.itemId())).toList();
+            long t1 = System.nanoTime();
+            Set<Long> stillInStock = catalog.idsInStock(shownIds);
+            long ms = elapsed(t1);
+            lookups++;
+            lookupMs += ms;
+            int[] dropped = {0};
+            List<HomePageView.Row> kept = new ArrayList<>();
+            for (HomePageView.Row row : rows) {
+                List<HomePageView.Item> items = row.items().stream()
+                        .filter(i -> {
+                            boolean ok = stillInStock.contains(Long.parseLong(i.itemId()));
+                            if (!ok) {
+                                dropped[0]++;
+                            }
+                            return ok;
+                        })
+                        .toList();
+                if (items.size() >= minItems) {
+                    kept.add(new HomePageView.Row(row.id(), row.title(), row.strategy(), items));
+                }
+            }
+            if (dropped[0] > 0) {
+                rows = kept;
+                outOfStock += dropped[0];
+                removed += dropped[0];
+            }
+            recordStockLookupMs(ms);
+        }
+
         Set<String> remaining = new LinkedHashSet<>(names.keySet());
         remaining.removeAll(usedCategories);
         generated.forEach(r -> remaining.remove(r.category()));
         String next = remaining.isEmpty() ? null : cursor.next(newlyShown, tried).encode();
+        recordStockRemoved(removed);
         HomePageView page = new HomePageView(String.valueOf(userId), Instant.now().toString(),
                 "GENPAGE", null, null,
                 new HomePageView.Latency(contextMs, 0, 0, elapsed(startedAt)),
-                rows, new HomePageView.AssemblyStats(all.size(), unmatched, outOfStock, duplicates, 0, rows.size()),
+                rows, new HomePageView.AssemblyStats(all.size(), unmatched, outOfStock, duplicates, 0, rows.size(),
+                        lookups, lookupMs, removed),
                 cursor.page(), next, experiment.experiment(), experiment.variant());
         impressions.record(page);
         return page;
@@ -493,6 +636,18 @@ public class HomeComposer {
     private static HomePageView.Item item(ProductCatalogFacts.ProductCardFacts card, String reason, int rank) {
         return new HomePageView.Item(String.valueOf(card.productId()), card.name(), card.price(),
                 card.imageUrl(), card.inStock(), null, reason, card.categoryCode(), rank);
+    }
+
+    /** 재고 확인 한 번의 시간을 방식별 지표에 남긴다 — {@code count} 가 곧 조회 횟수다(X3, #317). */
+    private void recordStockLookupMs(long ms) {
+        stockLookupTimer.record(Duration.ofMillis(ms));
+    }
+
+    /** 재고 때문에 뺀 항목 수를 방식별 지표에 남긴다(X3, #317). */
+    private void recordStockRemoved(int removed) {
+        if (removed > 0) {
+            stockRemovedCounter.increment(removed);
+        }
     }
 
     private static long elapsed(long fromNanos) {
