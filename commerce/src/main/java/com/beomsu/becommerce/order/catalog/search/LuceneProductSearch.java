@@ -14,6 +14,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
@@ -36,6 +37,8 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.ByteBuffersDirectory;
@@ -71,6 +74,10 @@ public class LuceneProductSearch implements ProductSearch, AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(LuceneProductSearch.class);
     /** 문서를 갈아 끼울 때 찾는 키. 저장 필드 {@code id} 는 색인되지 않아 따로 둔다. */
     private static final String ID_KEY = "id_key";
+    /** 동점을 끊는 정렬 키(#258). 점수가 같으면 상품 id 오름차순 — 문서를 갈아 끼워도(NRT) 순서가 그대로다. */
+    private static final String ID_SORT = "id_sort";
+    private static final Sort RELEVANCE_THEN_ID =
+            new Sort(SortField.FIELD_SCORE, new SortField(ID_SORT, SortField.Type.LONG));
 
     private final Analyzer analyzer = new EnglishAnalyzer();
     private final Directory directory = new ByteBuffersDirectory();
@@ -98,6 +105,7 @@ public class LuceneProductSearch implements ProductSearch, AutoCloseable {
         Document d = new Document();
         d.add(new StoredField("id", doc.productId()));
         d.add(new StringField(ID_KEY, Long.toString(doc.productId()), Field.Store.NO));
+        d.add(new NumericDocValuesField(ID_SORT, doc.productId()));
         d.add(new TextField("name", nullToEmpty(doc.name()), Field.Store.NO));
         d.add(new TextField("product_type", nullToEmpty(doc.productType()), Field.Store.NO));
         d.add(new TextField("description", nullToEmpty(doc.description()), Field.Store.NO));
@@ -173,7 +181,8 @@ public class LuceneProductSearch implements ProductSearch, AutoCloseable {
 
     private SearchPage page(Query q, int page, int size) {
         return withSearcher(searcher -> {
-            TopDocs top = searcher.search(q, (page + 1) * size);
+            // 동점을 내부 문서 번호로 두면 가격·재고만 바뀐 문서도 갈아 끼울 때 번호가 바뀌어 순서가 흔들린다(#258)
+            TopDocs top = searcher.search(q, (page + 1) * size, RELEVANCE_THEN_ID);
             List<Long> ids = new ArrayList<>();
             ScoreDoc[] docs = top.scoreDocs;
             for (int i = page * size; i < docs.length; i++) {
