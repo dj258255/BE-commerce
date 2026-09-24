@@ -81,6 +81,7 @@ export JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Cont
   python3 tools/check_doc_links.py
   ```
 - 실 인프라가 필요한 검증은 별도 태스크로 분리한다(`integrationTest`, `chaosTest`, `bench`).
+- 로컬 Docker Desktop(macOS)에서 `integrationTest` 를 돌릴 때는 `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock` 을 준다. 없으면 Testcontainers 의 정리 컨테이너(Ryuk)가 소켓을 마운트하지 못해 뜨지 않고, 테스트 컨테이너가 남는다. Ryuk 을 끄려면(`TESTCONTAINERS_RYUK_DISABLED=true`) 공용 컨테이너가 JVM 종료 때 스스로 멈춘다(#286).
 - 스키마를 바꾸면 Flyway 마이그레이션을 추가하고 `ddl-auto=validate`로 실기동을 확인한다.
 
 ## 문서
