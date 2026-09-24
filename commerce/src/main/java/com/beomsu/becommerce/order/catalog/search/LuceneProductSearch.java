@@ -18,7 +18,6 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -35,12 +34,15 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 앱 프로세스 안의 Lucene 검색.
@@ -49,7 +51,10 @@ import org.apache.lucene.util.BytesRef;
  * 최댓값(dis_max)을 쓴다. 점수 함수는 셋 다 Lucene 기본 BM25 다.
  *
  * <p><b>대가</b>: 색인이 프로세스 메모리에 있다. 인스턴스마다 기동 때 색인을 새로 만들고, 인스턴스끼리
- * 색인을 나눠 쓰지 못한다. 카탈로그가 바뀌면 인스턴스마다 다시 만들어야 한다.
+ * 색인을 나눠 쓰지 못한다. 카탈로그가 바뀌면 인스턴스마다 반영해야 한다.
+ *
+ * <p><b>문서 하나씩 갈아 끼울 수 있다</b>(#246). 쓰기 핸들을 닫지 않고 두고, {@link #upsert}·{@link #delete} 로 바꾼 것은
+ * {@link #refreshReader()} 가 검색기를 다시 열 때 보인다(near-real-time). 다시 열기 전까지는 옛 검색기가 답한다.
  */
 public class LuceneProductSearch implements ProductSearch, AutoCloseable {
 
@@ -63,44 +68,98 @@ public class LuceneProductSearch implements ProductSearch, AutoCloseable {
         }
     }
 
+    private static final Logger log = LoggerFactory.getLogger(LuceneProductSearch.class);
+    /** 문서를 갈아 끼울 때 찾는 키. 저장 필드 {@code id} 는 색인되지 않아 따로 둔다. */
+    private static final String ID_KEY = "id_key";
+
     private final Analyzer analyzer = new EnglishAnalyzer();
     private final Directory directory = new ByteBuffersDirectory();
-    private final DirectoryReader reader;
-    private final IndexSearcher searcher;
+    private final IndexWriter writer;
+    private final SearcherManager searchers;
     private final long buildMillis;
-    private final int docCount;
 
     public LuceneProductSearch(Iterable<Doc> docs) {
         long started = System.nanoTime();
-        int count = 0;
-        try (IndexWriter writer = new IndexWriter(directory, new IndexWriterConfig(analyzer))) {
+        try {
+            this.writer = new IndexWriter(directory, new IndexWriterConfig(analyzer));
             for (Doc doc : docs) {
-                Document d = new Document();
-                d.add(new StoredField("id", doc.productId()));
-                d.add(new TextField("name", nullToEmpty(doc.name()), Field.Store.NO));
-                d.add(new TextField("product_type", nullToEmpty(doc.productType()), Field.Store.NO));
-                d.add(new TextField("description", nullToEmpty(doc.description()), Field.Store.NO));
-                keyword(d, "category_code", doc.categoryCode(), false);
-                keyword(d, "subcategory_code", doc.subcategoryCode(), false);
-                keyword(d, "colour_code", doc.colourCode(), true);
-                keyword(d, "product_type_kw", doc.productType(), true);
-                d.add(new LongPoint("price", doc.price()));
-                d.add(new StringField("in_stock", doc.inStock() ? "1" : "0", Field.Store.NO));
-                writer.addDocument(d);
-                count++;
+                writer.addDocument(document(doc));
             }
             writer.forceMerge(1);
+            writer.commit();
+            this.searchers = new SearcherManager(writer, null);
         } catch (IOException e) {
             throw new UncheckedIOException("Lucene 색인 실패", e);
         }
-        try {
-            this.reader = DirectoryReader.open(directory);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Lucene 색인 열기 실패", e);
-        }
-        this.searcher = new IndexSearcher(reader);
         this.buildMillis = (System.nanoTime() - started) / 1_000_000;
-        this.docCount = count;
+    }
+
+    private static Document document(Doc doc) {
+        Document d = new Document();
+        d.add(new StoredField("id", doc.productId()));
+        d.add(new StringField(ID_KEY, Long.toString(doc.productId()), Field.Store.NO));
+        d.add(new TextField("name", nullToEmpty(doc.name()), Field.Store.NO));
+        d.add(new TextField("product_type", nullToEmpty(doc.productType()), Field.Store.NO));
+        d.add(new TextField("description", nullToEmpty(doc.description()), Field.Store.NO));
+        keyword(d, "category_code", doc.categoryCode(), false);
+        keyword(d, "subcategory_code", doc.subcategoryCode(), false);
+        keyword(d, "colour_code", doc.colourCode(), true);
+        keyword(d, "product_type_kw", doc.productType(), true);
+        d.add(new LongPoint("price", doc.price()));
+        d.add(new StringField("in_stock", doc.inStock() ? "1" : "0", Field.Store.NO));
+        return d;
+    }
+
+    /** 같은 id 의 문서를 갈아 끼운다(없으면 더한다). 검색에 보이는 것은 다음 {@link #refreshReader()} 뒤다. */
+    public void upsert(Doc doc) {
+        try {
+            writer.updateDocument(new Term(ID_KEY, Long.toString(doc.productId())), document(doc));
+        } catch (IOException e) {
+            throw new UncheckedIOException("Lucene 문서 갱신 실패", e);
+        }
+    }
+
+    public void delete(long productId) {
+        try {
+            writer.deleteDocuments(new Term(ID_KEY, Long.toString(productId)));
+        } catch (IOException e) {
+            throw new UncheckedIOException("Lucene 문서 삭제 실패", e);
+        }
+    }
+
+    /** 바뀐 것이 있으면 검색기를 다시 연다. 없으면 싸다(바뀐 것이 없다는 것만 확인한다). */
+    public void refreshReader() {
+        try {
+            searchers.maybeRefresh();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Lucene 검색기 갱신 실패", e);
+        }
+    }
+
+    /** 검색기를 빌려 쓰고 돌려준다. 다시 열린 뒤에도 빌린 검색기는 돌려줄 때까지 유효하다. */
+    private <T> T withSearcher(SearcherWork<T> work) {
+        IndexSearcher searcher;
+        try {
+            searcher = searchers.acquire();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Lucene 검색기 획득 실패", e);
+        }
+        try {
+            return work.apply(searcher);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Lucene 검색 실패", e);
+        } finally {
+            try {
+                searchers.release(searcher);
+            } catch (IOException e) {
+                log.debug("Lucene 검색기 반납 실패: {}", e.toString());
+            }
+        }
+    }
+
+    @FunctionalInterface
+    interface SearcherWork<T> {
+        T apply(IndexSearcher searcher) throws IOException;
     }
 
     @Override
@@ -109,18 +168,19 @@ public class LuceneProductSearch implements ProductSearch, AutoCloseable {
         if (q == null) {
             return SearchPage.empty();
         }
-        try {
-            int wanted = (page + 1) * size;
-            TopDocs top = searcher.search(q, wanted);
+        return page(q, page, size);
+    }
+
+    private SearchPage page(Query q, int page, int size) {
+        return withSearcher(searcher -> {
+            TopDocs top = searcher.search(q, (page + 1) * size);
             List<Long> ids = new ArrayList<>();
             ScoreDoc[] docs = top.scoreDocs;
             for (int i = page * size; i < docs.length; i++) {
                 ids.add(searcher.storedFields().document(docs[i].doc).getField("id").numericValue().longValue());
             }
             return new SearchPage(ids, searcher.count(q));
-        } catch (IOException e) {
-            throw new UncheckedIOException("Lucene 검색 실패", e);
-        }
+        });
     }
 
     @Override
@@ -135,17 +195,7 @@ public class LuceneProductSearch implements ProductSearch, AutoCloseable {
         if (text == null) {
             return SearchPage.empty();
         }
-        Query q = withFilters(text, filters);
-        try {
-            TopDocs top = searcher.search(q, (page + 1) * size);
-            List<Long> ids = new ArrayList<>();
-            for (int i = page * size; i < top.scoreDocs.length; i++) {
-                ids.add(searcher.storedFields().document(top.scoreDocs[i].doc).getField("id").numericValue().longValue());
-            }
-            return new SearchPage(ids, searcher.count(q));
-        } catch (IOException e) {
-            throw new UncheckedIOException("Lucene 검색 실패", e);
-        }
+        return page(withFilters(text, filters), page, size);
     }
 
     /** 패싯 — 축마다 <b>자기 축을 뺀</b> 필터로 일치 집합 전체를 센다(상위 몇 개가 아니다). */
@@ -185,8 +235,7 @@ public class LuceneProductSearch implements ProductSearch, AutoCloseable {
     }
 
     private Map<String, Long> countBy(Query q, String field) {
-        try {
-            return searcher.search(q, new CollectorManager<FacetCollector, Map<String, Long>>() {
+        return withSearcher(searcher -> searcher.search(q, new CollectorManager<FacetCollector, Map<String, Long>>() {
                 @Override
                 public FacetCollector newCollector() {
                     return new FacetCollector(field);
@@ -198,10 +247,7 @@ public class LuceneProductSearch implements ProductSearch, AutoCloseable {
                     collectors.forEach(c -> c.counts.forEach((k, v) -> counts.merge(k, v, Long::sum)));
                     return counts;
                 }
-            });
-        } catch (IOException e) {
-            throw new UncheckedIOException("Lucene 패싯 실패", e);
-        }
+            }));
     }
 
     /** 문서값(SortedDocValues)으로 한 필드의 값별 개수를 센다. 점수는 계산하지 않는다. */
@@ -290,16 +336,17 @@ public class LuceneProductSearch implements ProductSearch, AutoCloseable {
     }
 
     /** 벤치마크가 전체 일치 집합을 뽑을 때만 쓴다(#244). */
-    IndexSearcher searcher() {
-        return searcher;
+    <T> T search(SearcherWork<T> work) {
+        return withSearcher(work);
     }
 
     public long buildMillis() {
         return buildMillis;
     }
 
+    /** 지금 검색기에 보이는 문서 수. 지운 문서는 빠진다. */
     public int docCount() {
-        return docCount;
+        return withSearcher(searcher -> searcher.getIndexReader().numDocs());
     }
 
     /** 색인 파일 크기의 합. 메모리 디렉터리라 이것이 곧 색인이 차지하는 힙이다. */
@@ -327,7 +374,8 @@ public class LuceneProductSearch implements ProductSearch, AutoCloseable {
 
     @Override
     public void close() throws IOException {
-        reader.close();
+        searchers.close();
+        writer.close();
         directory.close();
         analyzer.close();
     }

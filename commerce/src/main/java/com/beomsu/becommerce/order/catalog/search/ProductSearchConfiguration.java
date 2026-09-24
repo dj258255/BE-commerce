@@ -6,9 +6,12 @@ import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.web.client.RestClient;
@@ -24,16 +27,18 @@ public class ProductSearchConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(ProductSearchConfiguration.class);
 
+    /** 엔진 구현(예: {@link RefreshingLuceneSearch})도 빈이라 {@code ProductSearch} 가 둘이다. 주입은 물러서기까지 감싼 이쪽이다. */
     @Bean
+    @Primary
     ProductSearch productSearch(@Value("${app.catalog.search.engine:lucene}") String engine,
                                 @Value("${app.catalog.search.engine-url:http://localhost:9200}") String engineUrl,
                                 @Value("${app.catalog.search.index:products}") String index,
                                 @Value("${app.catalog.search.timeout:300ms}") Duration timeout,
-                                @Value("${app.catalog.search.lucene-refresh:10m}") Duration luceneRefresh,
                                 @Value("${app.catalog.search.filters-in-engine:true}") boolean filtersInEngine,
                                 ProductRepository products,
                                 StockRepository stock,
                                 NamedParameterJdbcTemplate jdbc,
+                                ObjectProvider<RefreshingLuceneSearch> lucene,
                                 MeterRegistry registry) {
         LikeProductSearch likeFields = new LikeProductSearch(products, true);
         CandidateFiltering candidates = new CandidateFiltering(products, stock);
@@ -41,7 +46,7 @@ public class ProductSearchConfiguration {
             case "like" -> new LikeProductSearch(products, false);
             case "like-fields" -> likeFields;
             case "fulltext" -> new FallbackProductSearch(new FulltextProductSearch(jdbc), likeFields, registry);
-            case "lucene" -> new FallbackProductSearch(lucene(jdbc, luceneRefresh, registry), likeFields, candidates, registry);
+            case "lucene" -> new FallbackProductSearch(lucene.getObject(), likeFields, candidates, registry);
             case "elasticsearch", "opensearch" -> new FallbackProductSearch(
                     new HttpEngineProductSearch(restClient(engineUrl, timeout), index, engine), likeFields, candidates,
                     registry);
@@ -56,15 +61,23 @@ public class ProductSearchConfiguration {
         return chosen;
     }
 
-    /** 기동 때 카탈로그 전체를 읽어 메모리 색인을 만들고, 주기마다 새로 만들어 갈아 끼운다. */
-    private static RefreshingLuceneSearch lucene(NamedParameterJdbcTemplate jdbc, Duration refresh, MeterRegistry registry) {
-        return new RefreshingLuceneSearch(() -> jdbc.getJdbcTemplate().query(
-                "SELECT p.product_id, p.name, p.product_type, p.description, p.category_code, p.subcategory_code, "
-                        + "p.colour_code, p.price, COALESCE(s.quantity, 1) > 0 "
-                        + "FROM products p LEFT JOIN stock s ON s.product_id = p.product_id",
-                (rs, i) -> new LuceneProductSearch.Doc(rs.getLong(1), rs.getString(2), rs.getString(3), rs.getString(4),
-                        rs.getString(5), rs.getString(6), rs.getString(7), rs.getLong(8), rs.getBoolean(9))),
-                refresh, registry);
+    @Bean
+    CatalogDocs catalogDocs(NamedParameterJdbcTemplate jdbc) {
+        return new CatalogDocs(jdbc);
+    }
+
+    /**
+     * 기동 때 카탈로그 전체를 읽어 메모리 색인을 만들고, 주기마다 새로 만들어 갈아 끼운다. 변경 반영({@code cdc.enabled})을 켜면
+     * 바뀐 상품만 {@code lucene-nrt-refresh} 주기로 보이게 한다(#246). 끄면 검색기를 다시 열 일이 없어 주기를 0 으로 둔다.
+     */
+    @Bean(destroyMethod = "close")
+    @ConditionalOnProperty(name = "app.catalog.search.engine", havingValue = "lucene", matchIfMissing = true)
+    RefreshingLuceneSearch luceneSearch(CatalogDocs docs,
+                                        @Value("${app.catalog.search.lucene-refresh:10m}") Duration refresh,
+                                        @Value("${app.catalog.search.cdc.enabled:false}") boolean cdc,
+                                        @Value("${app.catalog.search.lucene-nrt-refresh:1s}") Duration nrtRefresh,
+                                        MeterRegistry registry) {
+        return new RefreshingLuceneSearch(docs::all, docs::byIds, refresh, cdc ? nrtRefresh : Duration.ZERO, registry);
     }
 
     /** 엔진이 느리면 기다리지 않는다 — 제한 시간을 넘기면 실패로 보고 DB 로 물러선다. */

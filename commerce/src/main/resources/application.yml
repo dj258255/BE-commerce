@@ -525,8 +525,16 @@ app:
       engine: ${APP_CATALOG_SEARCH_ENGINE:lucene}          # like · like-fields · fulltext · lucene · elasticsearch · opensearch
       engine-url: ${APP_CATALOG_SEARCH_ENGINE_URL:http://localhost:9200}
       timeout: ${APP_CATALOG_SEARCH_TIMEOUT:300ms}
-      # 카탈로그는 앱 밖에서 적재되므로 변경을 들을 수 없다. 주기마다 통째로 다시 만든다(10만 건 1.4초).
+      # 주기마다 통째로 다시 만든다(10만 건 1.9초). 변경 반영을 켜도 놓친 이벤트를 메우는 안전망으로 남긴다.
       lucene-refresh: ${APP_CATALOG_SEARCH_LUCENE_REFRESH:10m}
+      # 변경 반영(#246, ADR-056). products·stock 의 CDC 이벤트를 받아 색인에 반영한다(p95 1.1초, 재색인만이면 최대 10분).
+      # kafka 프로파일과 cdc/register-catalog-connector.json 커넥터가 있을 때만 동작한다. 없으면 리스너가 뜨지 않는다.
+      # Lucene 은 인스턴스마다, ES·OpenSearch 는 색인기 하나가 받는다.
+      cdc:
+        enabled: ${APP_CATALOG_SEARCH_CDC_ENABLED:true}
+        topic: ${APP_CATALOG_SEARCH_CDC_TOPIC:catalog.change}
+      # 변경 반영을 켰을 때 Lucene 검색기를 다시 여는 주기. 바뀐 문서가 검색에 보이기까지의 하한이다.
+      lucene-nrt-refresh: ${APP_CATALOG_SEARCH_LUCENE_NRT_REFRESH:1s}
   # 홈 컴포저(M7) — 여러 출처를 **한 화면으로 조립**한다. 추천 코어는 행 하나의 재료다.
   #
   # 왜 규칙이 필요한가: 관련도만으로 채우면 **같은 상품이 여러 행에 반복되고 한 대분류가 화면을
