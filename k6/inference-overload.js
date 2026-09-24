@@ -25,6 +25,9 @@ const BASE = __ENV.BASE_URL || 'http://localhost:8080';
 const ACCOUNTS = Number(__ENV.ACCOUNTS || 8);
 // 사용자당 심는 활동 수. 컨텍스트가 있어야 "개인화된 응답"과 "모델이 답한 응답"이 구분된다.
 const ACTIVITY_PER_USER = Number(__ENV.ACTIVITY_PER_USER || 10);
+// 활동에 쓸 상품 id 목록(JSON 파일). 실제 모델(GenPage)을 켤 때 준다 — 모델 어휘 밖의 id 는 빈 프롬프트가 되어
+// 호출 비용이 실제 사용자와 달라진다(#271). 없으면 스텁용 가짜 id(700000번대)를 쓴다.
+const ACTIVITY_ITEMS = __ENV.ACTIVITY_ITEMS ? JSON.parse(open(__ENV.ACTIVITY_ITEMS)) : null;
 // VU 예산은 **최악의 지연**에서 정해야 한다. 부족하면 k6 가 도착률을 못 채우고(dropped_iterations)
 // 그 열이 거짓말이 된다 — 실제로 처음에 8 VU 로 320 req/s 를 시도해 2440건을 버렸다.
 // 최악 = busy-timeout 400ms → 320/s × 0.45s ≈ 144 VU. 여유를 둔다.
@@ -84,7 +87,9 @@ export function setup() {
       // 첫 실행에서 zero_ctx 가 전부였고, 그래서 그 실행을 버렸다.
       for (let seq = 1; seq <= ACTIVITY_PER_USER; seq++) {
         http.post(`${BASE}/api/v1/personalization/activity`,
-          JSON.stringify({ itemId: 700000 + i * 100 + seq, type: seq % 2 === 0 ? 'VIEW' : 'CLICK', seq }),
+          JSON.stringify({
+            itemId: ACTIVITY_ITEMS ? ACTIVITY_ITEMS[(i * ACTIVITY_PER_USER + seq) % ACTIVITY_ITEMS.length] : 700000 + i * 100 + seq,
+            type: seq % 2 === 0 ? 'VIEW' : 'CLICK', seq }),
           { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             tags: { name: 'seed-activity' } });
       }
