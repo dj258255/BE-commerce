@@ -4,6 +4,7 @@ import com.beomsu.becommerce.order.internal.OrderException;
 import com.beomsu.becommerce.order.catalog.search.CandidateFiltering;
 import com.beomsu.becommerce.order.catalog.search.LikeProductSearch;
 import com.beomsu.becommerce.order.catalog.search.ProductSearch;
+import com.beomsu.becommerce.order.catalog.search.QueryRewriter;
 import com.beomsu.becommerce.order.catalog.search.SearchFacets;
 import com.beomsu.becommerce.order.catalog.search.SearchFilters;
 import org.springframework.data.domain.Page;
@@ -52,6 +53,11 @@ public class CatalogQueryService {
     private final FacetCache facetCache;
     private final ProductSearch productSearch;
     private final CandidateFiltering candidateFiltering;
+    private final com.beomsu.becommerce.order.catalog.search.QueryRewriting rewriting;
+
+    private QueryRewriter.Rewritten rewrite(String q) {
+        return rewriting == null ? new QueryRewriter.Rewritten(q, null, List.of(), false) : rewriting.rewrite(q);
+    }
     private volatile Map<String, String> colourNames;
 
     public CatalogQueryService(ProductRepository productRepository,
@@ -60,6 +66,18 @@ public class CatalogQueryService {
                                ProductReviewRepository reviewRepository,
                                FacetCache facetCache,
                                ProductSearch productSearch) {
+        this(productRepository, categoryRepository, stockRepository, reviewRepository, facetCache, productSearch, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public CatalogQueryService(ProductRepository productRepository,
+                               CategoryRepository categoryRepository,
+                               StockRepository stockRepository,
+                               ProductReviewRepository reviewRepository,
+                               FacetCache facetCache,
+                               ProductSearch productSearch,
+                               com.beomsu.becommerce.order.catalog.search.QueryRewriting rewriting) {
+        this.rewriting = rewriting;
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.stockRepository = stockRepository;
@@ -142,8 +160,20 @@ public class CatalogQueryService {
                                     String colour, String productType,
                                     Long minPrice, Long maxPrice, Boolean inStock, String sort, int page, int size) {
         if (q != null && !q.isBlank()) {
-            return search(q.trim(), searchFilters(category, colour, productType, minPrice, maxPrice, inStock),
-                    sort, Math.max(page, 0), clampSize(size));
+            // 한국어·미국식 검색어를 카탈로그의 말로 고친다(#260). 한국어 색상은 색상 필터가 된다
+            QueryRewriter.Rewritten r = rewrite(q.trim());
+            String effectiveColour = colour == null || colour.isBlank() ? r.colourCode() : colour;
+            if (!r.text().isBlank()) {
+                return search(r.text(), searchFilters(category, effectiveColour, productType, minPrice, maxPrice, inStock),
+                        sort, Math.max(page, 0), clampSize(size));
+            }
+            if (r.colourCode() != null) {
+                colour = effectiveColour;                    // 검색어가 전부 필터로 바뀌었다 → 목록으로
+                q = null;
+            } else {
+                return search(q.trim(), searchFilters(category, colour, productType, minPrice, maxPrice, inStock),
+                        sort, Math.max(page, 0), clampSize(size));
+            }
         }
         Pageable pageable = PageRequest.of(Math.max(page, 0), clampSize(size), sortOf(sort));
         String[] axis = categoryAxis(category);
@@ -204,10 +234,16 @@ public class CatalogQueryService {
         if (q == null || q.isBlank()) {
             return facets(category, null, colour, productType, minPrice, maxPrice);
         }
-        SearchFilters filters = searchFilters(category, colour, productType, minPrice, maxPrice, inStock);
+        QueryRewriter.Rewritten r = rewrite(q.trim());
+        String effectiveColour = colour == null || colour.isBlank() ? r.colourCode() : colour;
+        if (r.text().isBlank() && r.colourCode() != null) {
+            return facets(category, null, effectiveColour, productType, minPrice, maxPrice);
+        }
+        String text = r.text().isBlank() ? q.trim() : r.text();
+        SearchFilters filters = searchFilters(category, effectiveColour, productType, minPrice, maxPrice, inStock);
         SearchFacets counts = productSearch.filtersInEngine()
-                ? productSearch.facets(q.trim(), filters)
-                : candidateFiltering.facets(productSearch, q.trim(), filters);
+                ? productSearch.facets(text, filters)
+                : candidateFiltering.facets(productSearch, text, filters);
         Map<String, String> names = colourNames();
         return new FacetView(facetList(counts.colours(), names), facetList(counts.productTypes(), Map.of()));
     }
