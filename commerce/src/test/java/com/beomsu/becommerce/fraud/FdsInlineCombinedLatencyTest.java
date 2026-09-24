@@ -49,7 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>수치를 통과 조건으로 걸지 않는다. 기계마다 달라지는 값을 임계로 걸면 CI 가 환경을 잰다.
  */
-@Tag("integration")
+@Tag("measurement")   // 수치를 재는 측정이다 — PR 마다가 아니라 매일 돈다(#274)
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DisplayName("FDS 를 승인 경로에 넣었을 때의 종단 지연 — 덧셈이 맞는지")

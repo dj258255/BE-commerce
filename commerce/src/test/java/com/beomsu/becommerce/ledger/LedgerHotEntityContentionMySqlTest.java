@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 원장 잔액을 같은 행에 미리 저장한다고 가정했을 때 hot entity가 만드는 직렬화 비용을 측정한다.
  * 실제 ledger_entries는 append-only라 애플리케이션 DB가 아니라 별도 MySQL 컨테이너에서 실행한다.
  */
-@Tag("integration")
+@Tag("measurement")   // 수치를 재는 측정이다 — PR 마다가 아니라 매일 돈다(#274)
 class LedgerHotEntityContentionMySqlTest {
 
     @Test
