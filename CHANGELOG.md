@@ -7,6 +7,17 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — 추천 과부하 게이트가 관측한 처리량으로 판단한다 (#264)
+
+### 변경
+
+- 추천 과부하 기본 정책이 `ADMISSION` 이다. ADR-037 이 정한 값인데 설정은 `BOUNDED` 로 남아 있었다
+- `ADMISSION` 은 최근 2초 동안 끝난 모델 호출 수로 대기를 추정한다(`app.recommendation.admission-estimate=OBSERVED`). 모델이 설정보다 느려도 대기 예산이 지켜진다(p95 315 → 193ms)
+- 운영에서 `BOUNDED` 를 유지하려면 `APP_RECOMMENDATION_POLICY=BOUNDED`
+
+### 왜
+
+[ADR-065](docs/adr/ADR-065-admission-by-observed-throughput.md) · [실측](personalization/docs/runs/20260924-overload-sensitivity/report.md)
 ## Unreleased — ES·OpenSearch 검색 순서가 색인 절차에 흔들리지 않는다 (#262)
 
 ### 변경

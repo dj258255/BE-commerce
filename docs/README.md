@@ -144,6 +144,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-062](adr/ADR-062-search-tie-break-by-id.md) | 검색 동점은 상품 id 로 끊는다 — 기준(0)은 못 넘었지만 흔들림을 99% 줄였다 |
 | [ADR-063](adr/ADR-063-query-rewrite-not-default.md) | 검색어 고치기를 만들었지만 기본으로 켜지 않는다 — 한국어는 부서명 사전으로는 모자랐다 |
 | [ADR-064](adr/ADR-064-engine-tie-break.md) | ES·OpenSearch 도 동점을 상품 id 로 끊는다 — 두 엔진의 차이는 전부 동점 순서였다 |
+| [ADR-065](adr/ADR-065-admission-by-observed-throughput.md) | 과부하 게이트는 관측한 처리량으로 대기를 추정하고, 기본 정책을 ADMISSION 으로 맞춘다 |
 
 ## 보조 문서
 
