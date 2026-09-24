@@ -17,7 +17,7 @@
 | 2 | **PCI 책임분계** | 연동 방식(리다이렉트/iframe/직접)에 따라 SAQ 유형이 갈리는데 계약이 없다 | **외부**: 가맹점 계약·SAQ. 적으면 거짓이 된다([ADR-019](adr/ADR-019-pci-scope-by-not-touching-cards.md)) |
 | 3 | **두 개 이상 실 PG failover** | 실계약 PG 가 하나뿐이라 가짜 둘 사이를 오가는 것은 증명이 아니다 | **외부**: 두 번째 PG 계약([ADR-020](adr/ADR-020-multi-pg-routing-off-by-default.md)) |
 | 4 | **FDS 임계값의 숫자** | 차지백 라벨이 없다. 설계와 비용 파라미터만 정했다 | **데이터**: 지연 라벨([ADR-028](adr/ADR-028-fds-threshold-with-delayed-labels.md)) |
-| 5 | **추천 품질의 온라인 판정** | 오프라인 지표는 게이트이고 최종 판정은 A/B 다. **실험 기반은 만들었다**(배정·노출·귀속·분석, 합성 사용자로 검증 — [ADR-061](adr/ADR-061-ab-assignment-and-attribution.md)). **다음에 돌릴 것**: 재구매 우선 혼합 대 지금([ADR-060](adr/ADR-060-genpage-serves-purchases.md)). `APP_RECOMMENDATION_MODEL_KIND=genpage` · `APP_EXPERIMENT_REC_HISTORY_ENABLED=true` 로 켜면 실험군은 추천 행과 홈 다음 쪽 모두 구매 이력을 넣는다(#270). 분석은 `tools/ab_analysis.py`. 판정 기준(지표·기간·표본)은 켜기 전에 이슈에 적는다 — 합성 검증에서 변형당 500명의 구매 차이 구간이 ±2.8%p 였다 | **데이터**: 실사용자 |
+| 5 | **추천 품질의 온라인 판정** | 오프라인 지표는 게이트이고 최종 판정은 A/B 다. **실험 기반은 만들었다**(배정·노출·귀속·분석, 합성 사용자로 검증 — [ADR-061](adr/ADR-061-ab-assignment-and-attribution.md)). **다음에 돌릴 것**: 재구매 우선 혼합 대 지금([ADR-060](adr/ADR-060-genpage-serves-purchases.md)). `APP_RECOMMENDATION_MODEL_KIND=genpage` · `APP_EXPERIMENT_REC_HISTORY_ENABLED=true` 로 켜면 실험군은 추천 행과 홈 다음 쪽 모두 구매 이력을 넣는다(#270). 가상 사용자로 돌릴 때는 `tools/virtual_users/driver.py`(H&M 고객 페르소나가 화면에 보인 상품을 보고 고른다, #292). 분석은 `tools/ab_analysis.py`. 판정 기준(지표·기간·표본)은 켜기 전에 이슈에 적는다 — 합성 검증에서 변형당 500명의 구매 차이 구간이 ±2.8%p 였다 | **데이터**: 실사용자 |
 | 7 | **캐시 압축을 켜는 것** | 임계값·코덱은 정했는데 **적용할 캐시가 없다**. 컨텍스트 캐시는 Lua 가 값을 읽어 병합해 압축하면 깨진다 | 구조 — [ADR-041](adr/ADR-041-cache-compression-threshold.md)·[ADR-035](adr/ADR-035-order-tolerant-context-merge.md) |
 
 **1~5 는 외부 계약이나 실사용자가 필요하다.** 지금 적으면 거짓이 되므로 열어 둔다.
