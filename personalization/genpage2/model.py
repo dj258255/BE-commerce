@@ -14,6 +14,7 @@ from typing import Any, Sequence
 import numpy as np
 import torch
 from torch import nn
+from torch.nn import functional as F
 
 
 PRESETS = {
@@ -144,6 +145,111 @@ class GenPageV2(nn.Module):
         length = tokens.shape[1]
         # True means blocked for TransformerEncoder's boolean attention mask.
         return self.final_norm(self.transformer(x, mask=self.causal_mask[:length, :length]))
+
+    def forward_cached(
+        self,
+        tokens: torch.Tensor,
+        content_idx: torch.Tensor | None = None,
+        cache: dict[str, Any] | None = None,
+    ) -> tuple[torch.Tensor, dict[str, Any]]:
+        """Run a causal suffix while retaining each layer's K/V tensors.
+
+        ``tokens`` is either a complete right-padded prompt (``cache=None``)
+        or only newly appended tokens.  Cache lengths keep right-padded
+        examples independent even though their K/V tensors share a rectangular
+        batch allocation.  The implementation mirrors the pre-norm
+        ``TransformerEncoderLayer`` used by :meth:`forward`; parameter names
+        and state-dict structure are untouched.
+        """
+        if tokens.ndim != 2:
+            raise ValueError("tokens must be [batch, time]")
+        batch, width = tokens.shape
+        if width == 0:
+            raise ValueError("tokens cannot be empty")
+        if content_idx is None:
+            content_idx = torch.full_like(tokens, -1)
+        if content_idx.shape != tokens.shape:
+            raise ValueError("content_idx must have the same shape as tokens")
+        device = tokens.device
+        if cache is None:
+            previous_lengths = torch.zeros(batch, dtype=torch.long, device=device)
+            new_lengths = (tokens != 0).sum(dim=1).to(device=device)
+            old_layers: list[tuple[torch.Tensor, torch.Tensor]] = []
+        else:
+            previous_lengths = torch.as_tensor(cache["lengths"], device=device, dtype=torch.long)
+            if previous_lengths.numel() != batch:
+                raise ValueError("cache batch size differs from tokens")
+            new_lengths = (tokens != 0).sum(dim=1).to(device=device)
+            old_layers = cache["layers"]
+            if len(old_layers) != len(self.transformer.layers):
+                raise ValueError("cache layer count differs from model")
+
+        positions = previous_lengths[:, None] + torch.arange(width, device=device)[None, :]
+        x = self.token_embedding(tokens) + self.position_embedding(positions.clamp_max(self.cfg.maxlen - 1))
+        x = x + self.type_embedding(self.token_type[tokens])
+        if self.content is not None:
+            valid = content_idx >= 0
+            rows = content_idx.clamp(min=0, max=self.content.shape[0] - 1).long()
+            features = self.content[rows].to(device=device, dtype=torch.float32)
+            fusion = self.content_projection(features).to(x.dtype)
+            x = x + torch.where(valid.unsqueeze(-1), fusion, torch.zeros_like(fusion))
+
+        lengths = previous_lengths + new_lengths
+        max_old = old_layers[0][0].shape[2] if old_layers else 0
+        layer_caches: list[tuple[torch.Tensor, torch.Tensor]] = []
+        key_positions = torch.arange(max_old + width, device=device)[None, None, :]
+        query_offsets = torch.arange(width, device=device)[None, :]
+        # A zero-length padded suffix must still have a numerically valid row;
+        # its output is discarded, while real queries retain their causal mask.
+        query_offsets = torch.minimum(query_offsets, (new_lengths - 1).clamp_min(0)[:, None])
+        allowed_keys = (
+            (key_positions < lengths[:, None, None])
+            & (key_positions <= previous_lengths[:, None, None] + query_offsets[:, :, None])
+        )
+
+        for layer_index, layer in enumerate(self.transformer.layers):
+            normed = layer.norm1(x)
+            qkv = F.linear(normed, layer.self_attn.in_proj_weight, layer.self_attn.in_proj_bias)
+            q, k, v = qkv.chunk(3, dim=-1)
+            heads = layer.self_attn.num_heads
+            head_dim = q.shape[-1] // heads
+            q = q.view(batch, width, heads, head_dim).transpose(1, 2)
+            k = k.view(batch, width, heads, head_dim).transpose(1, 2)
+            v = v.view(batch, width, heads, head_dim).transpose(1, 2)
+            old_k, old_v = old_layers[layer_index] if old_layers else (None, None)
+            total_width = max_old + width
+            all_k = torch.zeros((batch, heads, total_width, head_dim), dtype=k.dtype, device=device)
+            all_v = torch.zeros_like(all_k)
+            if old_k is not None and old_k.shape[2]:
+                all_k[:, :, :old_k.shape[2]] = old_k.to(device=device, dtype=k.dtype)
+                all_v[:, :, :old_v.shape[2]] = old_v.to(device=device, dtype=v.dtype)
+            for row in range(batch):
+                start = int(previous_lengths[row])
+                all_k[row, :, start:start + width] = k[row]
+                all_v[row, :, start:start + width] = v[row]
+            scores = torch.matmul(q, all_k.transpose(-2, -1)) / (head_dim ** 0.5)
+            scores = scores.masked_fill(~allowed_keys[:, None, :, :], float("-inf"))
+            attention = torch.softmax(scores, dim=-1)
+            attended = torch.matmul(attention, all_v).transpose(1, 2).contiguous().view(batch, width, -1)
+            x = x + layer.dropout1(layer.self_attn.out_proj(attended))
+            feed = layer.linear2(layer.dropout(layer.activation(layer.linear1(layer.norm2(x)))))
+            x = x + layer.dropout2(feed)
+            x = self.final_norm(x) if layer_index == len(self.transformer.layers) - 1 else x
+
+            new_k = torch.zeros((batch, heads, max(lengths).item() if lengths.numel() else 0, head_dim),
+                                dtype=k.dtype, device=device)
+            new_v = torch.zeros_like(new_k)
+            if old_k is not None and old_k.shape[2]:
+                new_k[:, :, :old_k.shape[2]] = old_k.to(device=device, dtype=k.dtype)
+                new_v[:, :, :old_v.shape[2]] = old_v.to(device=device, dtype=v.dtype)
+            for row in range(batch):
+                start = int(previous_lengths[row])
+                new_k[row, :, start:start + width] = k[row]
+                new_v[row, :, start:start + width] = v[row]
+            layer_caches.append((new_k.detach(), new_v.detach()))
+        if not self.transformer.layers:
+            x = self.final_norm(x)
+        return x, {"layers": layer_caches, "lengths": lengths.detach()}
 
     def logits(self, hidden: torch.Tensor) -> torch.Tensor:
         return self.output_projection(hidden)
