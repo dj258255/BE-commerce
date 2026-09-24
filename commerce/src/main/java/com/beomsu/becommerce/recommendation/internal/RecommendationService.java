@@ -134,6 +134,17 @@ public class RecommendationService {
         return history(userId);
     }
 
+    /**
+     * 홈 다음 쪽이 모델에 넣을 구매 이력(#270). 이 사용자의 모델 입력이 구매일 때만(설정이 {@code purchases} 이거나
+     * 실험군) 목록을 내고, 아니면 {@code null} 이다. 추천 행과 같은 규칙으로 고른다 — 한 사용자의 두 경로가 다른
+     * 입력을 쓰면 실험 변형이 무엇인지 흐려진다.
+     */
+    public List<Long> purchaseHistoryForModel(long userId) {
+        ExperimentAssigner.Assignment assignment = assignment(userId);
+        boolean usesPurchases = assignment.treatment() ? purchases != null : HISTORY_PURCHASES.equals(historySource);
+        return usesPurchases ? purchases.recentPurchasedProductIds(userId, purchaseLimit) : null;
+    }
+
     private boolean repeatFirst(ExperimentAssigner.Assignment assignment) {
         return assignment.treatment() ? purchases != null : repeatFirst;
     }

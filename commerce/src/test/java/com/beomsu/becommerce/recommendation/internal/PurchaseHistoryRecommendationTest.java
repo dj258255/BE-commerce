@@ -65,4 +65,13 @@ class PurchaseHistoryRecommendationTest {
         assertThat(view.items()).containsExactly(7L, 8L);
         verify(purchases, never()).recentPurchasedProductIds(anyLong(), anyInt());
     }
+
+    @Test
+    @DisplayName("다음 쪽이 쓸 구매 이력은 추천 행과 같은 설정을 따른다 — activity 면 null(#270)")
+    void pageHistoryFollowsSource() {
+        when(purchases.recentPurchasedProductIds(1L, 100)).thenReturn(List.of(5L, 3L));
+
+        assertThat(service(RecommendationService.HISTORY_PURCHASES, false, 4).purchaseHistoryForModel(1L)).containsExactly(5L, 3L);
+        assertThat(service(RecommendationService.HISTORY_ACTIVITY, false, 4).purchaseHistoryForModel(1L)).isNull();
+    }
 }

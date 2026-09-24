@@ -9,8 +9,10 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -38,9 +40,22 @@ public class RecommendationFacts {
     private final GenPagePageClient pageModel;
     private final Counter pageOk;
     private final Counter pageFailed;
+    private final boolean pageSessionFirst;
+
+    /** 홈 다음 쪽의 모델 입력(#270). 구매만 넣거나, 세션의 조회·클릭을 앞에 붙인다. */
+    static final String PAGE_HISTORY_PURCHASES = "purchases";
+    static final String PAGE_HISTORY_SESSION_THEN_PURCHASES = "session-then-purchases";
 
     RecommendationFacts(RecommendationService service, ItemPoolSource pool,
                         ObjectProvider<GenPagePageClient> pageModel, MeterRegistry registry) {
+        this(service, pool, pageModel, registry, PAGE_HISTORY_PURCHASES);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    RecommendationFacts(RecommendationService service, ItemPoolSource pool,
+                        ObjectProvider<GenPagePageClient> pageModel, MeterRegistry registry,
+                        @Value("${app.recommendation.page-history:purchases}") String pageHistory) {
+        this.pageSessionFirst = PAGE_HISTORY_SESSION_THEN_PURCHASES.equals(pageHistory);
         this.service = service;
         this.pool = pool;
         this.pageModel = pageModel.getIfAvailable();
@@ -50,6 +65,38 @@ public class RecommendationFacts {
 
     /** 모델이 만든 행 하나 — 대분류와 그 안의 상품 id(모델의 순서). */
     public record GeneratedRow(String category, List<Long> itemIds) {
+    }
+
+    /**
+     * 홈 다음 쪽의 행을 모델이 생성한다. 모델 입력은 이 모듈이 고른다(#270): 이 사용자의 추천이 구매 이력을 쓰면
+     * 구매(설정에 따라 세션을 앞에 붙여)를, 아니면 세션을 넣는다. 모델이 꺼져 있으면 구매를 읽지 않는다.
+     *
+     * @param session 이 요청 시점의 최근 조회·클릭(최근 것부터)
+     */
+    public List<GeneratedRow> generatePageRows(long userId, List<Long> session, Collection<Long> exclude,
+                                               Collection<String> excludeCategories, int rows, int itemsPerRow) {
+        if (pageModel == null) {
+            return List.of();
+        }
+        return generatePageRows(pageHistory(userId, session), exclude, excludeCategories, rows, itemsPerRow);
+    }
+
+    /**
+     * 모델에 넣을 이력. GenPage 는 구매 시퀀스로 학습했으니 구매가 학습과 같은 입력이다. 세션을 앞에 붙이면
+     * 1쪽 이후 본 것이 가장 최근 토큰이 되어 행 선택에 반영될 수 있다 — 대가는 학습에 없던 조회가 섞이는 것이다.
+     */
+    List<Long> pageHistory(long userId, List<Long> session) {
+        List<Long> bought = service.purchaseHistoryForModel(userId);
+        if (bought == null) {
+            return session;
+        }
+        if (!pageSessionFirst || session.isEmpty()) {
+            return bought;
+        }
+        List<Long> out = new ArrayList<>(session.size() + bought.size());
+        out.addAll(session);
+        out.addAll(bought);
+        return out;
     }
 
     /**
