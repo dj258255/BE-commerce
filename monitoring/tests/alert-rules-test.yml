@@ -170,3 +170,48 @@ tests:
             exp_annotations:
               summary: "대사 미해결(PENDING) 적체"
               description: "가장 오래된 PENDING 대사 예외가 15분 넘게 남아 있습니다. 어드민에서 예외 큐를 검토·종결하세요."
+
+  # ── CDC 커넥터(#252) ─────────────────────────────────────────────
+  # 태스크가 멈추면 1분 뒤 울린다.
+  - interval: 30s
+    input_series:
+      - series: 'cdc_connector_running{connector="catalog-cdc"}'
+        values: '1 1 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: CdcConnectorNotRunning
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              domain: cdc
+              connector: catalog-cdc
+            exp_annotations:
+              summary: "CDC 커넥터 catalog-cdc 가 RUNNING 이 아님"
+              description: "검색 색인·개인화 컨텍스트 반영이 멈춘다. Connect REST 의 /connectors/catalog-cdc/status 를 보십시오."
+
+  # 조용할 때의 하트비트(약 48초 간격)로는 울리지 않는다. 나이가 0 → 48 을 오가도 60 을 안 넘는다.
+  - interval: 12s
+    input_series:
+      - series: 'cdc_heartbeat_age_seconds{connector="catalog-cdc"}'
+        values: '0 12 24 36 48 0 12 24 36 48 0 12 24 36 48 0 12 24 36 48'
+    alert_rule_test:
+      - eval_time: 3m48s
+        alertname: CdcHeartbeatStale
+        exp_alerts: []
+
+  # RUNNING 인데 하트비트가 끊기면 60초를 넘긴 뒤 2분 지나 울린다.
+  - interval: 30s
+    input_series:
+      - series: 'cdc_heartbeat_age_seconds{connector="catalog-cdc"}'
+        values: '0+30x10'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: CdcHeartbeatStale
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              domain: cdc
+              connector: catalog-cdc
+            exp_annotations:
+              summary: "CDC 커넥터 catalog-cdc 의 하트비트가 240초째 없음"
+              description: "상태는 정상이어도 변경이 흐르지 않는다. 커넥터 로그에서 재연결 반복·DB 접속 오류를 보십시오."

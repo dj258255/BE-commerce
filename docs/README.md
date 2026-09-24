@@ -138,6 +138,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-056](adr/ADR-056-search-index-freshness-by-cdc.md) | 검색 색인은 CDC 로 반영한다 — 엔진은 앱 안 Lucene 을 유지한다 |
 | [ADR-057](adr/ADR-057-recovery-backoff-over-order.md) | 미확정 복구는 확정 못 한 건을 뒤로 민다 — 순서를 바꿔서는 풀리지 않았다 |
 | [ADR-058](adr/ADR-058-shed-browse-before-webhook.md) | 자원이 마르면 조회를 먼저 돌려보낸다 — 웹훅은 PG 상한만으로는 지켜지지 않았다 |
+| [ADR-059](adr/ADR-059-cdc-poll-and-health.md) | CDC 는 poll 100ms 를 유지하고, 떠 있는지와 흐르는지를 따로 감시한다 |
 | [ADR-060](adr/ADR-060-genpage-serves-purchases.md) | GenPage 추천 행은 구매 이력으로 서빙하고, 재구매 우선 혼합을 A/B 후보로 둔다 |
 
 ## 보조 문서

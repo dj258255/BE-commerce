@@ -39,6 +39,16 @@
     "transforms.route.replacement": "user.activity",
     "poll.interval.ms": "100",
     "max.batch.size": "256",
-    "max.queue.size": "1024"
+    "max.queue.size": "1024",
+    "transforms.unwrap.predicate": "isData",
+    "transforms.rename.predicate": "isData",
+    "transforms.ts.predicate": "isData",
+    "transforms.keyFromValue.predicate": "isData",
+    "transforms.keyField.predicate": "isData",
+    "transforms.route.predicate": "isData",
+    "predicates": "isData",
+    "predicates.isData.type": "org.apache.kafka.connect.transforms.predicates.TopicNameMatches",
+    "predicates.isData.pattern": "pay\\-cdc\\.becommerce\\..*",
+    "heartbeat.interval.ms": "10000"
   }
 }

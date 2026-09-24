@@ -19,6 +19,18 @@
 ### 왜
 
 [ADR-060](docs/adr/ADR-060-genpage-serves-purchases.md) · [리포트](personalization/docs/runs/hm-genpage-report.md)
+## Unreleased — CDC 커넥터가 떠 있는지와 흐르는지를 감시한다 (#252)
+
+### 변경
+
+- `APP_CDC_HEALTH_CONNECT_URL` 을 주면(kafka 프로파일) `cdc_connector_running` · `cdc_heartbeat_age_seconds` · `cdc_connect_reachable` 를 낸다
+- 알림 `CdcConnectorNotRunning` · `CdcHeartbeatStale` · `CdcConnectUnreachable`
+- 두 커넥터에 하트비트(10초)를 켜고, 변환이 데이터 토픽에만 걸리도록 조건을 붙였다. 커넥터를 다시 등록해야 적용된다
+- `poll.interval.ms=100` 은 그대로 둔다(500 대비 Connect CPU +1.0~2.5%p, 지연 p95 97ms 대 478ms)
+
+### 왜
+
+[ADR-059](docs/adr/ADR-059-cdc-poll-and-health.md) · [실측](docs/performance/cdc-cost-and-health.md)
 
 ## Unreleased — 조회가 몰리면 조회를 먼저 돌려보낸다 (#250)
 
