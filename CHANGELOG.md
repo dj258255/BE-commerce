@@ -7,6 +7,18 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — 상품 변경이 검색에 1초 남짓 만에 반영된다 (#246)
+
+### 변경
+
+- 상품·가격·재고 변경을 CDC(`catalog-cdc` 커넥터 → `catalog.change`)로 받아 검색 색인에 반영한다. 반영 지연 p95 1.1초(전에는 최대 10분)
+- 품절된 상품이 "재고 있음" 검색 결과에서 1초 남짓 만에 빠진다
+- kafka 프로파일과 커넥터가 있을 때만 동작한다. 없으면 전처럼 10분마다 다시 만든다
+
+### 왜
+
+[ADR-056](docs/adr/ADR-056-search-index-freshness-by-cdc.md) · [실측](docs/performance/search-freshness.md)
+
 ## Unreleased — 검색어와 필터·패싯을 함께 건다 (#244)
 
 ### 변경
