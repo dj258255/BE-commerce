@@ -95,6 +95,14 @@ public class FakePgClient implements PgClient {
      */
     private final AtomicLong readTimeoutMillis = new AtomicLong(5_000);
 
+    /**
+     * 이 접두어로 시작하는 결제 키는 조회에 늘 "진행 중"이라고 답한다(#248). 비어 있으면 끈다.
+     *
+     * <p>복구가 확정하지 못하는 건을 만든다. 실 PG 에서는 승인 처리가 길어지거나 PG 내부가 막혔을 때 이렇게 답한다.
+     */
+    @Value("${payment.fake-pg.query-in-progress-prefix:}")
+    private String queryInProgressPrefix = "";
+
     @Value("${payment.fake-pg.approve-latency-ms:0}")
     public void setApproveLatencyMillis(long millis) {
         approveLatencyMillis.set(millis);
@@ -154,6 +162,9 @@ public class FakePgClient implements PgClient {
 
     @Override
     public PgQueryResult query(String paymentKey) {
+        if (!queryInProgressPrefix.isEmpty() && paymentKey != null && paymentKey.startsWith(queryInProgressPrefix)) {
+            return new PgQueryResult(PgPaymentStatus.IN_PROGRESS, null);
+        }
         PgPaymentStatus status = pgSide.getOrDefault(paymentKey, PgPaymentStatus.NOT_FOUND);
         String method = status == PgPaymentStatus.APPROVED ? "CARD" : null;
         return new PgQueryResult(status, method);

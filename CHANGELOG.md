@@ -7,6 +7,17 @@
 > 이 파일은 2026-09-20에 만들었다. 그 이전 릴리스는 GitHub Releases에만 있고 여기로 옮기지 않았다
 > (커밋 로그와 ADR이 그 시기의 기록이다). 여기서부터는 릴리스마다 아래에 한 절씩 더한다.
 
+## Unreleased — 미확정 복구가 확정 못 한 건에 막히지 않는다 (#248)
+
+### 변경
+
+- PG 가 "진행 중"이라고 답하거나 조회가 실패한 미확정 결제는 다음 시도를 1·2·4·8분 뒤(상한 10분)로 미룬다(`app.recovery.policy=backoff`, 기본값)
+- 그런 건이 청크만큼 쌓여도 뒤의 미확정이 계속 풀린다. 전에는 5분 동안 한 건도 못 푼 경우를 재현했다
+- `payments` 에 `recovery_attempts`·`recovery_next_at` 컬럼을 더했다(V67)
+
+### 왜
+
+[ADR-057](docs/adr/ADR-057-recovery-backoff-over-order.md) · [실측](docs/performance/recovery-order.md)
 ## Unreleased — 상품 변경이 검색에 1초 남짓 만에 반영된다 (#246)
 
 ### 변경

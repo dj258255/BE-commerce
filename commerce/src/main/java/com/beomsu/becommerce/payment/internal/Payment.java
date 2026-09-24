@@ -85,6 +85,13 @@ public class Payment {
 
     private Instant approvedAt;
 
+    /** 복구가 확정하지 못한 횟수(#248). PG 가 "진행 중"이라 답했거나 조회가 실패한 경우다. */
+    @Column(nullable = false)
+    private int recoveryAttempts;
+
+    /** 다음에 다시 물어볼 시각. backoff 정책만 채운다. null 이면 바로 대상이다. */
+    private Instant recoveryNextAt;
+
     @OneToMany(mappedBy = "payment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private final List<PaymentHistory> histories = new ArrayList<>();
 
@@ -200,6 +207,14 @@ public class Payment {
         transitionTo(PaymentStatus.DONE, TriggeredBy.RECOVERY_BATCH, "복구: PG 승인 확인");
         this.method = method;
         this.approvedAt = Instant.now();
+    }
+
+    /**
+     * 확정하지 못한 복구 시도를 남긴다(상태는 그대로 UNKNOWN). {@code nextAt} 이 있으면 그때까지 복구 대상에서 빠진다.
+     */
+    public void recordRecoveryAttempt(Instant nextAt) {
+        this.recoveryAttempts++;
+        this.recoveryNextAt = nextAt;
     }
 
     /** UNKNOWN → ABORTED. PG에 결제 정보가 없을 때(승인이 실제로 안 됨). */
