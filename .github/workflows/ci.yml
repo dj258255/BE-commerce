@@ -215,11 +215,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 레이어를 GitHub Actions 캐시에 둔다(#281). 런타임 단계의 apt-get 은 베이스 이미지에만 기대므로 한 번 받으면 재사용된다.
+      # 매번 Ubuntu 미러에서 받다가 미러 동기화 중에 이 잡이 실패한 적이 있다(#279).
+      - uses: docker/setup-buildx-action@v3
+
       # .dockerignore가 없으면 컨텍스트에 personalization/data(29GB)가 딸려 들어가 빌드가 사실상 불가능하다.
       # 그래서 <굽는 것 자체>가 그 파일의 회귀 테스트다.
       - name: Build app image
-        run: docker build -t be-commerce:ci .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: be-commerce:ci
+          cache-from: type=gha,scope=app
+          cache-to: type=gha,mode=max,scope=app
 
       # 독립 Gradle 프로젝트라 이미지도 따로 굽는다(루트 bootJar에 포함되지 않는다).
       - name: Build consumer-app image
-        run: docker build -f commerce/consumer-app/Dockerfile -t be-commerce-consumer:ci .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: commerce/consumer-app/Dockerfile
+          push: false
+          tags: be-commerce-consumer:ci
+          cache-from: type=gha,scope=consumer
+          cache-to: type=gha,mode=max,scope=consumer
