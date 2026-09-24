@@ -37,17 +37,19 @@ id 배치는 아래 순서로 고정한다(앞에서부터 이어 붙인다).
 3. 요청: `DOW_0..6`, `MONTH_1..12`
 4. 행동 종류: `ACT_STORE`(sales_channel 1), `ACT_ONLINE`(2), `ACT_VIEW`, `ACT_CLICK` — 뒤 둘은 H&M 에 없어 학습되지 않는다(서빙에서 앱의 세션 행동용)
 5. 시각 구간(요청 시각 기준 며칠 전): `AGO_0-3, AGO_4-7, AGO_8-14, AGO_15-30, AGO_31-60, AGO_61-120, AGO_121-365, AGO_366+`
-6. 행: `ROW_REPEAT`(다시 사기), `ROW_S<section_no>`(H&M 섹션 56개, section_no 오름차순)
+6. 행: `ROW_REPEAT`(다시 사기), `ROW_S<section_no>`(articles 에 있는 섹션 전부 57개, section_no 오름차순)
 7. 상품: `ITEM_<article_id>`(어휘 상품, article_id 오름차순)
+
+`article_id` 는 parquet 그대로 **10자리 문자열**(`"0108775015"`)로 다룬다. 정수로 바꾸면 앞자리 0이 사라져 v1 산출물 · 앱 카탈로그와 어긋난다. **콘텐츠 행 번호**는 articles.parquet 의 article_id 를 오름차순 정렬한 순위(0부터)이고 A1 · A2 가 같은 규칙으로 계산한다.
 
 ```python
 class Vocab:
     tokens: list[str]                      # id → 이름
     def id(self, name: str) -> int
-    def item(self, article_id: int) -> int | None      # 어휘 밖이면 None
-    def row_of(self, article_id: int) -> int           # 그 상품의 섹션 행 토큰 id(모든 105,542개 상품에 정의)
+    def item(self, article_id: str) -> int | None      # 어휘 밖이면 None
+    def row_of(self, article_id: str) -> int           # 그 상품의 섹션 행 토큰 id(모든 105,542개 상품에 정의)
     item_ids: range; row_ids: range; context_ids: range   # 종류별 연속 구간
-    article_of: dict[int, int]             # 상품 토큰 id → article_id
+    article_of: dict[int, str]             # 상품 토큰 id → article_id
     def save(self, path) / @staticmethod load(path)     # JSON
 ```
 
@@ -89,7 +91,7 @@ SEP_PAGE
 - 텍스트: `passage: {prod_name}. {product_type_name}, {product_group_name}. {colour_group_name}, {perceived_colour_value_name}. {section_name}, {garment_group_name}, {index_name}. {detail_desc}`
 - 평균 풀링 + L2 정규화
 - 저장: `OUT/content/content_e5.npy`(float16, [105542, 384], article_id 오름차순) · `OUT/content/articles.json`(행 번호 → article_id)
-- `def load_content(out) -> (np.ndarray, dict[int, int])` — 행렬과 article_id → 행 번호
+- `def load_content(out) -> (np.ndarray, dict[str, int])` — 행렬과 article_id → 행 번호
 
 ## 4. 모델 (`genpage2/model.py`, A3)
 
@@ -125,12 +127,12 @@ class GenPageV2(nn.Module):
 
 ```python
 @dataclass
-class GeneratedRow: row_token: int; items: list[int]        # 상품은 article_id
+class GeneratedRow: row_token: int; items: list[str]        # 상품은 article_id
 
 class PageDecoder:
     def __init__(self, model, vocab, content_rows, device)
-    def generate(self, ctx_tokens: list[int], ctx_content: list[int], *, history_articles: list[int],
-                 prev_page: list[int] | None = None, exclude_items: set[int] = frozenset(),
+    def generate(self, ctx_tokens: list[int], ctx_content: list[int], *, history_articles: list[str],
+                 prev_page: list[int] | None = None, exclude_items: set[str] = frozenset(),
                  exclude_rows: set[int] = frozenset(), pinned: dict[int, int] | None = None,
                  n_rows: int = 3, items_per_row: int = 8, prefix: int = 2) -> tuple[list[GeneratedRow], int]
                  # 반환: 행 목록, 규칙 위반 수(마스크가 맞으면 0)
