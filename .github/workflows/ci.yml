@@ -161,7 +161,10 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
+      # Spring Modulith 가 PR 의 base 와 비교해 바뀐 모듈을 찾는다(#278). 그 커밋까지의 이력이 있어야 한다
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -172,13 +175,28 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # PR: 바뀐 모듈과 그 모듈에 기대는 모듈의 테스트만 돈다(#278). 설정·마이그레이션·빌드 파일이 바뀌면 전부 돈다.
+      #     모듈 밖 테스트 공용 코드(testsupport 등)가 바뀌어도 전부 돈다 — Modulith 는 그 변경을 어느 모듈에도 대지 못한다.
+      # main 푸시: 최적화를 끄고 전부 돈다 — PR 에서 건너뛴 테스트를 합쳐진 상태로 한 번은 본다.
       - name: Run integration tests (Testcontainers)
-        run: ./gradlew -p commerce integrationTest --console=plain
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            ./gradlew -p commerce integrationTest --console=plain "$(python3 tools/ci_modulith_scope.py "$BASE" "$HEAD")"
+          else
+            ./gradlew -p commerce integrationTest --console=plain -Dspring.modulith.test.skip-optimizations=true
+          fi
 
       # 통합 테스트도 같은 기준으로 본다. 실제 PG 키가 없어 건너뛰는 계약 테스트는
-      # ci/allowed-skips.txt 에 이유와 함께 등록돼 있다.
+      # ci/allowed-skips.txt 에 이유와 함께 등록돼 있다. Modulith 가 변경 영향이 없어 건너뛴 것은
+      # 테스트 실행 중에 적은 이유 파일로 가려 따로 센다(JUnit XML 에는 이유가 남지 않는다).
       - name: Check skipped tests (건너뛴 테스트는 통과가 아니다)
-        run: python3 tools/check_skipped_tests.py commerce/build/test-results/integrationTest ci/allowed-skips.txt
+        run: >-
+          python3 tools/check_skipped_tests.py commerce/build/test-results/integrationTest ci/allowed-skips.txt
+          --skip-reasons commerce/build/test-results/integrationTest-skip-reasons.txt
 
       - name: Upload integration report
         if: always()
