@@ -3,6 +3,9 @@
 ML 범위를 줄이면서 멈췄다(PLAN '선을 넘기 위한 순서'). 백엔드 · 포트폴리오 뒤에 ML 을 끝까지 할 때 여기서 잇는다.
 
 - 상태: reward.py · simulate.py · 테스트 구현됨. 아래 1차 검토 지적은 **고치지 못하고** 멈췄다
+- **테스트 2개가 실패하는 상태로 보관했다**(수정 도중 멈춰 새 테스트가 새 구조를 기대한다). 실패 목록:
+  - `test_page_two_places_actions_in_history_and_page_prefix_after_sep_page (genpage2.tests.test_simulate.PageTwoTest.test_page_two_places_actions_in_history_and_page_prefix_after_sep_page)`
+  - `test_reference_time_drops_later_transactions (genpage2.tests.test_simulate.PriceIndexTest.test_reference_time_drops_later_transactions)`
 - 검증 명령: `cd personalization && $PY -m unittest discover -s genpage2/tests -t .`
 
 ## 남은 검토 지적(1차)
