@@ -4,12 +4,14 @@ import argparse
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
 
 from genpage2.decode import GeneratedRow
-from genpage2.evaluate import evaluate_pages, map_at_12, repeat_last_pages, run
+from genpage2.evaluate import _load_decoder, evaluate_pages, map_at_12, repeat_last_pages, run
 
 
 class FakeVocab:
@@ -78,6 +80,31 @@ class EvaluateTest(unittest.TestCase):
         # APs are 1/2, 0, 0, 1/12; all four customers are in the denominator.
         self.assertEqual(customers, 4)
         self.assertAlmostEqual(score, (0.5 + 1 / 12) / 4)
+
+    def test_checkpoint_context_level_is_given_to_decoder(self):
+        class DecoderVocab:
+            tokens = ["PAD", "BOS", "EOS", "SEP_PROFILE", "SEP_REQUEST", "SEP_HISTORY", "SEP_PAGE",
+                      "ROW_REPEAT", "ROW_S1", "ITEM_A"]
+            item_ids = range(9, 10)
+            row_ids = range(7, 9)
+            article_of = {9: "A"}
+
+            def id(self, name):
+                return self.tokens.index(name)
+
+            def row_of(self, article):
+                return 8
+
+        model = MagicMock()
+        model.cfg = SimpleNamespace(maxlen=17)
+        model.to.return_value = model
+        model.eval.return_value = model
+        with patch("genpage2.vocab.Vocab.load", return_value=DecoderVocab()), \
+             patch("genpage2.content.load_content", return_value=(np.zeros((1, 2)), {"A": 0})), \
+             patch("genpage2.model.load_checkpoint", return_value=(model, SimpleNamespace(), {"context": "items"})):
+            decoder, *_ = _load_decoder(Path("/mode"), Path("/checkpoint"), "cpu")
+        self.assertEqual(decoder.level, "items")
+        self.assertEqual(decoder.maxlen, 17)
 
 
 if __name__ == "__main__":

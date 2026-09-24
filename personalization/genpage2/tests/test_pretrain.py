@@ -13,6 +13,7 @@ from genpage2.train_pretrain import (
     batch_loss,
     history_only_context,
     make_batch,
+    replace_known_inputs,
     replace_item_inputs,
     truncate_context_page,
 )
@@ -64,6 +65,13 @@ class PretrainTest(unittest.TestCase):
         replaced = replace_item_inputs(original, self.vocab.item_ids, 7, 1.0)
         self.assertEqual(replaced.tolist(), [[1, 7, 10, 7, 2]])
         self.assertEqual(original.tolist(), [[1, 13, 10, 14, 2]])
+
+    def test_known_fallback_replaces_rows_and_items_without_mutating_targets(self):
+        original = torch.tensor([[12, 13, 10, 14, 12]])
+        replaced = replace_known_inputs(original, item_range=self.vocab.item_ids, item_fallback_id=7,
+                                        row_range=(12, 13), row_fallback_id=8, probability=1.0)
+        self.assertEqual(replaced.tolist(), [[8, 7, 10, 7, 8]])
+        self.assertEqual(original.tolist(), [[12, 13, 10, 14, 12]])
 
     def test_batch_loss_projects_only_masked_positions(self):
         cfg = ModelConfig(vocab_size=len(self.vocab.tokens), dim=8, layers=1, heads=2, ffn=16,
