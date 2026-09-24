@@ -82,6 +82,8 @@ dependencies {
     // --- Test ---
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.modulith:spring-modulith-starter-test'
+    // 바뀐 모듈과 그 모듈에 기대는 모듈의 테스트만 돌린다(#278). integrationTest 에서만 켠다
+    testImplementation 'org.springframework.modulith:spring-modulith-junit'
     testImplementation 'com.h2database:h2'   // 락 전략 동시성 비교 테스트(인메모리, Docker 불필요)
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
@@ -174,6 +176,16 @@ tasks.register('integrationTest', Test) {
         includeTags 'integration'
     }
     testLogging { showStandardStreams = true }   // 실측 수치를 콘솔로 봐야 한다
+    // Spring Modulith 의 변경 기반 선택(#278). 확장은 JUnit 자동 감지로 들어오므로 이 태스크에서만 켠다.
+    // git 이 본 변경(커밋 안 한 것 · 푸시 안 한 커밋, 또는 reference-commit 이후)이 닿지 않는 모듈의 테스트는 건너뛴다.
+    // 클래스패스 리소스(application.yml · 마이그레이션)나 빌드 파일이 바뀌면 전부 돈다.
+    systemProperty 'junit.jupiter.extensions.autodetection.enabled', 'true'
+    ['spring.modulith.test.reference-commit', 'spring.modulith.test.skip-optimizations'].each { key ->
+        def value = System.getProperty(key)
+        if (value) {
+            systemProperty key, value     // Gradle 은 -D 를 테스트 JVM 에 넘기지 않는다
+        }
+    }
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     shouldRunAfter('test')
