@@ -55,6 +55,8 @@ class RecommendationExperimentTest {
         assertThat(t.items()).containsExactly(9L, 2L, 3L);          // 산 것 먼저
         assertThat(c.variant()).isEqualTo(ExperimentAssigner.CONTROL);
         assertThat(c.items()).containsExactly(2L, 3L);              // 활동 이력 · 혼합 없음
+        assertThat(s.purchaseHistoryForModel(treated)).containsExactly(9L);   // 다음 쪽도 같은 변형(#270)
+        assertThat(s.purchaseHistoryForModel(control)).isNull();
     }
 
     @Test

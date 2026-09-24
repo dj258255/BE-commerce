@@ -195,6 +195,9 @@ public class HomeComposer {
      *       {@code CATEGORY_POPULAR_SESSION} 으로 표시한다 — 세션이 순서를 바꿨는지 응답만 보고 알 수 있다</li>
      * </ul>
      *
+     * <p>모델이 행을 만들 때 무엇을 입력으로 넣을지는 추천 모듈이 정한다(#270, ADR-066). 구매 이력을 쓰는 사용자면
+     * 구매만 넣으므로 위의 세션 반영은 규칙 행에만 남는다.
+     *
      * <p>한 대분류는 한 번만 행이 된다. 시도한 대분류는 행이 못 되더라도(항목이 {@code minItems} 미만) 커서에
      * 남겨 다음 쪽에서 다시 시도하지 않는다. 시도할 대분류가 남지 않으면 {@code nextCursor} 가 {@code null} 이다.
      */
@@ -235,7 +238,7 @@ public class HomeComposer {
         Set<String> usedCategories = new LinkedHashSet<>();
         cursor.usedRows().stream().filter(r -> r.startsWith("cat:")).forEach(r -> usedCategories.add(r.substring(4)));
         List<RecommendationFacts.GeneratedRow> generated =
-                recommendations.generatePageRows(recent, cursor.shown(), usedCategories, pageRows, itemCap);
+                recommendations.generatePageRows(userId, recent, cursor.shown(), usedCategories, pageRows, itemCap);
         if (!generated.isEmpty()) {
             return composeGenerated(userId, cursor, generated, names, usedCategories, contextMs, startedAt);
         }

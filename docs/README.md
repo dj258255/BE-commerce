@@ -145,6 +145,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-063](adr/ADR-063-query-rewrite-not-default.md) | 검색어 고치기를 만들었지만 기본으로 켜지 않는다 — 한국어는 부서명 사전으로는 모자랐다 |
 | [ADR-064](adr/ADR-064-engine-tie-break.md) | ES·OpenSearch 도 동점을 상품 id 로 끊는다 — 두 엔진의 차이는 전부 동점 순서였다 |
 | [ADR-065](adr/ADR-065-admission-by-observed-throughput.md) | 과부하 게이트는 관측한 처리량으로 대기를 추정하고, 기본 정책을 ADMISSION 으로 맞춘다 |
+| [ADR-066](adr/ADR-066-next-page-follows-purchase-history.md) | 홈 다음 쪽의 GenPage 입력은 추천 행과 같은 이력을 따르고, 구매를 쓸 때는 구매만 넣는다 |
 | [ADR-067](adr/ADR-067-genpage-page-shares-capacity.md) | 홈 다음 쪽의 GenPage 호출도 추천 행과 같은 동시 호출 자리를 쓰고, 자리가 없으면 기다리지 않는다 |
 
 ## 보조 문서
