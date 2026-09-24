@@ -413,6 +413,12 @@ app:
   # API 유입 제어(rate limit) — "감당 못 할 요청은 바깥 층에서 싸게 거절한다(429)".
   # 대상: POST /api/v1/orders, POST /api/v1/payments/confirm (RateLimitFilter, 시큐리티 체인 내
   # Bearer 인증 뒤). 고정 윈도우(1초) INCR — 경계 순간 최대 2배 통과는 단순성의 대가로 수용.
+  # CDC 감시(#252). Connect REST 주소를 주면(kafka 프로파일일 때) 커넥터 상태와 하트비트 나이를 지표로 낸다.
+  # 비어 있으면 감시가 뜨지 않는다. 알림 규칙은 monitoring/alert-rules.yml 의 cdc 그룹.
+  cdc:
+    health:
+      connect-url: ${APP_CDC_HEALTH_CONNECT_URL:}
+      interval: ${APP_CDC_HEALTH_INTERVAL:30s}
   # 조회 셰딩(#250, ADR-058). 진행 중인 조회가 문턱에 닿으면 새 조회를 503 으로 돌려보낸다. 웹훅·결제는 돌려보내지 않는다.
   # 조회가 DB 커넥션(20)을 다 쥐면 웹훅이 그 줄에 서서 10초 규약을 넘긴다(PG 5초 · 조회 200/s 에서 15.6%, 켜면 0%).
   # 조회 용량을 재는 벤치마크는 이 값을 false 로 두고 잰다(tools/bench.sh 등).

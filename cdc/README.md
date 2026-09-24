@@ -207,3 +207,24 @@ curl -sS -X POST -H 'Content-Type: application/json' \
 
 값을 쓰지 않는 이유: stock 이벤트에는 상품 필드가 없고, 두 표의 이벤트가 순서를 바꿔 오거나 두 번 올 수 있다.
 id 로 지금 DB 를 읽으면 셋 다 신경 쓸 필요가 없다. 대가는 변경마다 DB 조회 한 번이다(Lucene 은 인스턴스마다).
+
+---
+
+# 하트비트와 감시 (#252)
+
+두 커넥터 모두 `heartbeat.interval.ms=10000` 이다. 하트비트는 `__debezium-heartbeat.<topic.prefix>` 토픽에 찍힌다.
+앱의 `CdcHealthMonitor` 가 그 나이와 Connect REST 상태를 지표로 낸다([ADR-059](../docs/adr/ADR-059-cdc-poll-and-health.md)).
+
+```bash
+APP_CDC_HEALTH_CONNECT_URL=http://localhost:8083   # 이 값을 줄 때만 감시가 뜬다(kafka 프로파일)
+```
+
+**변환에 조건(`predicates.isData`)을 붙였다.** 두 커넥터의 `RegexRouter` 는 `.*` 를 한 토픽으로 보내고 `ValueToKey` 는 값에서
+`product_id`·`userId` 를 꺼낸다. 하트비트 레코드에는 그 필드가 없다. 조건 없이 하트비트를 켜면 하트비트가 데이터 토픽에 섞이고
+키 변환에서 깨진다. 조건은 토픽 이름이 `<topic.prefix>.becommerce.` 로 시작할 때만 변환을 건다.
+
+**조용할 때 하트비트는 10초가 아니라 약 48초마다 온다**(#252 실측). 10초 간격은 binlog 이벤트를 처리할 때의 값이다.
+알림 `CdcHeartbeatStale` 의 문턱(60초)은 이 간격을 보고 정했다.
+
+**이미 등록한 커넥터는 다시 등록해야 설정이 바뀐다**(`DELETE` 후 `POST`, 또는 `config` 를 `PUT`).
+
