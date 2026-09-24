@@ -39,8 +39,16 @@ final class EngineQuery {
      * 자리로 내렸다. 필드는 best_fields(필드별 점수 중 최댓값), 오타 허용은 {@code AUTO}(3~5자 1글자, 6자 이상 2글자).
      */
     static Map<String, Object> searchBody(String query, int from, int size) {
-        return Map.of("from", from, "size", size, "_source", false, "track_total_hits", true, "query", textQuery(query));
+        return Map.of("from", from, "size", size, "_source", false, "track_total_hits", true, "query", textQuery(query),
+                "sort", RELEVANCE_THEN_ID);
     }
+
+    /**
+     * 점수 내림차순, 같으면 상품 id 오름차순(#262). 동점을 엔진 내부 문서 순서에 맡기면 색인 절차(세그먼트가 언제 만들어지고 어떻게
+     * 병합됐는가)에 따라 순서가 바뀐다. ES 와 OpenSearch 의 상위 10개 겹침 0.8 이 전부 이것이었다(점수가 다른 쿼리 0).
+     */
+    static final List<Map<String, Object>> RELEVANCE_THEN_ID =
+            List.of(Map.of("_score", "desc"), Map.of("product_id", "asc"));
 
     /** 정확 일치 절(3배)과 오타 허용 절을 bool should 로 묶은 텍스트 질의. */
     static Map<String, Object> textQuery(String query) {
@@ -57,7 +65,8 @@ final class EngineQuery {
     /** 검색어 + 필터(#244). 필터는 점수에 끼지 않는 filter 절이다. */
     static Map<String, Object> filteredBody(String query, SearchFilters filters, int from, int size) {
         return Map.of("from", from, "size", size, "_source", false, "track_total_hits", true,
-                "query", Map.of("bool", Map.of("must", List.of(textQuery(query)), "filter", filterClauses(filters))));
+                "query", Map.of("bool", Map.of("must", List.of(textQuery(query)), "filter", filterClauses(filters))),
+                "sort", RELEVANCE_THEN_ID);
     }
 
     /**

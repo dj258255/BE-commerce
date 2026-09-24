@@ -34,4 +34,13 @@ class EngineQueryTest {
         assertThat(EngineQuery.autoEdits("dress")).isEqualTo(1);
         assertThat(EngineQuery.autoEdits("blouse")).isEqualTo(2);
     }
+
+    @Test
+    @DisplayName("검색·필터 본문 모두 점수 내림차순, 같으면 상품 id 오름차순으로 정렬한다(#262)")
+    void tieBreakByProductId() {
+        List<Map<String, Object>> expected = List.of(Map.of("_score", "desc"), Map.of("product_id", "asc"));
+        assertThat(EngineQuery.searchBody("dress", 0, 10)).containsEntry("sort", expected);
+        assertThat(EngineQuery.filteredBody("dress", SearchFilters.NONE, 0, 10)).containsEntry("sort", expected);
+    }
 }
+

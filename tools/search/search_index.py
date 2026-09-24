@@ -34,12 +34,15 @@ def main():
     ap.add_argument("base")
     ap.add_argument("index", nargs="?", default="products")
     ap.add_argument("--replicate", type=int, default=1, help="규모 실험: 실제 행을 N 번 복제(#244)")
+    ap.add_argument("--live-refresh", action="store_true",
+                    help="적재 중에도 refresh 를 켠다(#236 의 절차). 세그먼트가 엔진마다 다르게 생겨 내부 문서 순서가 갈린다(#262)")
     a = ap.parse_args()
     base, index = a.base.rstrip("/"), a.index
     rows = replicate(load_full(), a.replicate)          # 제너레이터 — 300만 행을 메모리에 다 올리지 않는다
     call("DELETE", f"{base}/{index}")
     call("PUT", f"{base}/{index}", MAPPING)
-    call("PUT", f"{base}/{index}/_settings", json.dumps({"index": {"refresh_interval": "-1"}}))   # 적재 중에는 끈다
+    if not a.live_refresh:
+        call("PUT", f"{base}/{index}/_settings", json.dumps({"index": {"refresh_interval": "-1"}}))   # 적재 중에는 끈다
     started = time.time()
     while True:
         batch = list(itertools.islice(rows, BATCH))
@@ -48,7 +51,7 @@ def main():
         lines = []
         for r in batch:
             lines.append(json.dumps({"index": {"_index": index, "_id": str(r["product_id"])}}))
-            doc = {k: r[k] for k in ("name", "product_type", "description", "category_code", "subcategory_code",
+            doc = {k: r[k] for k in ("product_id", "name", "product_type", "description", "category_code", "subcategory_code",
                                      "colour_code", "price", "in_stock")}
             doc["product_type_kw"] = r["product_type"]
             lines.append(json.dumps(doc, ensure_ascii=False))

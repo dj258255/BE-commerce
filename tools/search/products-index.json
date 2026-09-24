@@ -2,6 +2,7 @@
   "settings": { "number_of_shards": 1, "number_of_replicas": 0, "refresh_interval": "1s" },
   "mappings": {
     "properties": {
+      "product_id":       { "type": "long" },
       "name":             { "type": "text", "analyzer": "english" },
       "product_type":     { "type": "text", "analyzer": "english" },
       "description":      { "type": "text", "analyzer": "english" },
