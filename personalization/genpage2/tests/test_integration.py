@@ -39,12 +39,14 @@ class RealPipelineIntegrationTest(unittest.TestCase):
             for day in range(1, 11):
                 for article in articles.article_id:
                     purchases.append({"t_dat": f"2020-08-{day:02d}", "customer_id": "customer-1",
-                                       "article_id": article, "sales_channel_id": 2})
+                                       "article_id": article, "sales_channel_id": 2,
+                                       "price": 0.01 + 0.01 * int(article[-1])})
             # One training target week and one validation target week.
             for date in ("2020-09-03", "2020-09-10"):
                 for article in articles.article_id:
                     purchases.append({"t_dat": date, "customer_id": "customer-1",
-                                       "article_id": article, "sales_channel_id": 2})
+                                       "article_id": article, "sales_channel_id": 2,
+                                       "price": 0.01 + 0.01 * int(article[-1])})
             transactions = pd.DataFrame(purchases)
             transactions["t_dat"] = pd.to_datetime(transactions["t_dat"])
             normalized = root / "hm" / "normalized"
