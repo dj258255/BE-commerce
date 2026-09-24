@@ -22,8 +22,8 @@ import org.testcontainers.utility.DockerImageName;
  * </ul>
  *
  * <p>{@code @Testcontainers} · {@code @Container} 와 섞지 않는다. 그 확장은 클래스가 끝나면 컨테이너를 멈춘다.
- * 여기 컨테이너는 JVM 이 끝날 때 멈춘다. Ryuk 에만 맡기지 않는다 — 로컬 Docker Desktop 에서 Ryuk 이 뜨지 못해
- * 실행마다 MySQL · Redis 가 남았다(종료 훅이 대신 치운다). 테스트는 한 JVM 안에서 차례로 돈다고 가정한다
+ * 여기 컨테이너는 Ryuk 이 JVM 이 끝난 뒤 치운다. Ryuk 을 끈 경우({@code TESTCONTAINERS_RYUK_DISABLED=true})에만
+ * 종료 훅이 직접 멈춘다({@link #stopOnExitIfNoRyuk}). 테스트는 한 JVM 안에서 차례로 돈다고 가정한다
  * (Gradle 이 여러 JVM 으로 나눠 돌리면 JVM 마다 따로 띄운다).
  */
 public final class SharedContainers {
@@ -45,7 +45,7 @@ public final class SharedContainers {
 
         static {
             MYSQL.start();
-            Runtime.getRuntime().addShutdownHook(new Thread(MYSQL::stop, "shared-mysql-stop"));
+            stopOnExitIfNoRyuk(MYSQL);
         }
     }
 
@@ -55,7 +55,18 @@ public final class SharedContainers {
 
         static {
             REDIS.start();
-            Runtime.getRuntime().addShutdownHook(new Thread(REDIS::stop, "shared-redis-stop"));
+            stopOnExitIfNoRyuk(REDIS);
+        }
+    }
+
+    /**
+     * Ryuk 을 끈 경우에만 JVM 종료 때 컨테이너를 멈춘다(#286). 늘 걸면 안 된다 — 종료 훅은 순서가 없어 스프링 테스트
+     * 컨텍스트가 닫히기 전에 MySQL 이 멈추고, 컨텍스트마다 커넥션 풀이 죽은 DB 를 검증하며 기다린다. CI 에서 전부 돌 때
+     * 종료 단계가 약 60초였다(검증 실패 240번). Ryuk 은 JVM 이 끝난 뒤 치우므로 이 경합이 없다.
+     */
+    private static void stopOnExitIfNoRyuk(GenericContainer<?> container) {
+        if ("true".equalsIgnoreCase(System.getenv("TESTCONTAINERS_RYUK_DISABLED"))) {
+            Runtime.getRuntime().addShutdownHook(new Thread(container::stop, "shared-container-stop"));
         }
     }
 
