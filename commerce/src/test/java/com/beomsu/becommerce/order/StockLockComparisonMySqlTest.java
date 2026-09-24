@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.order;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.AfterAll;
@@ -7,7 +8,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.MySQLContainer;
 
 import java.sql.*;
 import java.util.concurrent.*;
@@ -44,7 +44,7 @@ class StockLockComparisonMySqlTest {
     private static final int WARMUP = 2;
     private static final int OPTIMISTIC_MAX_RETRY = 50;
 
-    private static MySQLContainer<?> mysql;
+    private static String jdbcUrl;
     private static HikariDataSource ds;
 
     /** InnoDB 고유 신호 — 데드락(1213)과 락 대기 타임아웃(1205)은 H2에서 관측 자체가 불가능하다. */
@@ -53,15 +53,13 @@ class StockLockComparisonMySqlTest {
 
     @BeforeAll
     static void startDb() throws SQLException {
-        mysql = new MySQLContainer<>("mysql:8.4")
-                .withDatabaseName("locktest")
-                .withCommand("--innodb-flush-log-at-trx-commit=1", "--max-connections=400");
-        mysql.start();
+        // 공용 MySQL(#276)에 새 DB. flush-log-at-trx-commit=1 은 기본값이고 max-connections=400 은 공용 컨테이너가 준다
+        jdbcUrl = SharedContainers.freshDatabase("locktest");
 
         HikariConfig cfg = new HikariConfig();
-        cfg.setJdbcUrl(mysql.getJdbcUrl());
-        cfg.setUsername(mysql.getUsername());
-        cfg.setPassword(mysql.getPassword());
+        cfg.setJdbcUrl(jdbcUrl);
+        cfg.setUsername(SharedContainers.username());
+        cfg.setPassword(SharedContainers.password());
         cfg.setMaximumPoolSize(POOL);
         cfg.setMinimumIdle(POOL);
         ds = new HikariDataSource(cfg);
@@ -79,7 +77,6 @@ class StockLockComparisonMySqlTest {
     @AfterAll
     static void stopDb() {
         if (ds != null) ds.close();
-        if (mysql != null) mysql.stop();
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.payment.integration;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -17,11 +18,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
 import java.util.Map;
@@ -46,34 +42,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 상태가 실제로 DB에 확정됐는지 단언한다 — 목이 흉내 낼 수 없는 실 영속 계층을 실 MySQL로 지킨다.
  */
 @Tag("integration")
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DisplayName("결제 영속 통합 — 승인/취소/구매확정이 실 MySQL에 확정되는지(응답이 아니라 DB 상태)")
 class PaymentPersistenceIntegrationTest {
 
-    @Container
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse("mysql:8.4"))
-            .withDatabaseName("becommerce")
-            .withUsername("becommerce")
-            .withPassword("becommerce");
-
     // Redis 컨테이너를 확실히 붙여 컨텍스트 부팅 리스크를 없앤다(Lettuce 지연 초기화에 기대지 않는다).
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
 
     @DynamicPropertySource
     static void datasourceAndRedis(DynamicPropertyRegistry registry) {
-        // Flyway V1~V5 마이그레이션이 이 실 MySQL 위로 돈다.
-        String url = MYSQL.getJdbcUrl() + "?serverTimezone=UTC&characterEncoding=UTF-8";
-        registry.add("spring.datasource.url", () -> url);
-        registry.add("spring.datasource.username", MYSQL::getUsername);
-        registry.add("spring.datasource.password", MYSQL::getPassword);
-        // Redis(멱등 선체크/분산락) — 컨테이너 주소를 주입해 부팅을 안정화한다.
-        registry.add("spring.data.redis.host", REDIS::getHost);
-        registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379).toString());
-        // 이 테스트에서 쓰지 않는 Kafka 외부화는 확실히 꺼 둔다(브로커 없이 부팅).
-        registry.add("spring.kafka.bootstrap-servers", () -> "");
+        SharedContainers.register(registry, "PaymentPersistence");
     }
 
     @LocalServerPort

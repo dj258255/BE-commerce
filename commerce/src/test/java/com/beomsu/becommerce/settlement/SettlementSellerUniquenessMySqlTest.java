@@ -1,8 +1,8 @@
 package com.beomsu.becommerce.settlement;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
-import org.testcontainers.containers.MySQLContainer;
 
 import java.sql.*;
 
@@ -40,12 +40,12 @@ class SettlementSellerUniquenessMySqlTest {
     @Test
     @DisplayName("판매자 없는 정산은 아예 못 들어가고, 같은 날짜·판매자는 한 줄만 들어간다")
     void sellerIsRequiredAndUniquePerDate() throws Exception {
-        try (MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4").withDatabaseName("uniq")) {
-            mysql.start();
-            Flyway.configure().dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
+        {
+            String url = SharedContainers.freshDatabase("uniq");   // 공용 MySQL(#276)에 새 DB
+            Flyway.configure().dataSource(url, SharedContainers.username(), SharedContainers.password())
                     .locations("classpath:db/migration").load().migrate();
 
-            try (Connection c = mysql.createConnection("")) {
+            try (Connection c = java.sql.DriverManager.getConnection(url, SharedContainers.username(), SharedContainers.password())) {
                 // V49 가 플랫폼 판매자 행을 넣어 뒀다. 이게 없으면 아래 직판 정산이 가리킬 곳이 없다.
                 assertThat(sellerExists(c, PLATFORM))
                         .as("V49 가 플랫폼 자신을 판매자로 등록해야 한다")

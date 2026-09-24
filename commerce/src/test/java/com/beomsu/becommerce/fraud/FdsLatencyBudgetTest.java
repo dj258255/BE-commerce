@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.fraud;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.beomsu.becommerce.fraud.internal.CardBlocklist;
 import com.beomsu.becommerce.fraud.internal.FraudCheckRequest;
 import com.beomsu.becommerce.fraud.internal.FraudService;
@@ -13,9 +14,6 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.util.Arrays;
 
@@ -42,16 +40,17 @@ import static org.mockito.ArgumentMatchers.anyString;
  * 임계로 걸면 CI 가 환경을 재는 꼴이 된다.
  */
 @Tag("integration")
-@Testcontainers
 @DisplayName("FDS 지연 예산 — 승인 경로에 넣을 수 있는가")
 class FdsLatencyBudgetTest {
 
     private static final int WARMUP = 200;
     private static final int SAMPLES = 2_000;
 
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
+    static final GenericContainer<?> REDIS = SharedContainers.redis();   // 공용 Redis(#276)
+
+    static {
+        SharedContainers.flushRedis();   // 예전에는 클래스마다 새 Redis 였다 — 빈 상태로 시작한다
+    }
 
     private FraudService serviceWith(VelocityCounter counter) {
         CardBlocklist blocklist = mock(CardBlocklist.class);

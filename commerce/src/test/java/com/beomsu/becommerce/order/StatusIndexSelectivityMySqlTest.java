@@ -1,9 +1,9 @@
 package com.beomsu.becommerce.order;
 
+import com.beomsu.becommerce.testsupport.SharedContainers;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.*;
-import org.testcontainers.containers.MySQLContainer;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -34,17 +34,15 @@ class StatusIndexSelectivityMySqlTest {
     private static final String RARE   = "SELECT id, order_no FROM settlement_items WHERE status='PENDING' ORDER BY id LIMIT 100";
     private static final String COMMON = "SELECT id, order_no FROM settlement_items WHERE status='DONE'    ORDER BY id LIMIT 100";
 
-    private static MySQLContainer<?> mysql;
+    private static String jdbcUrl;
     private static HikariDataSource ds;
     private static double rareBefore, commonBefore;
 
     @BeforeAll
     static void startDb() throws SQLException {
-        mysql = new MySQLContainer<>("mysql:8.4").withDatabaseName("sel")
-                .withCommand("--innodb-buffer-pool-size=536870912");
-        mysql.start();
+        jdbcUrl = SharedContainers.freshDatabase("sel");   // 공용 MySQL(#276), 버퍼 풀 512MB 는 공용 컨테이너가 준다
         HikariConfig cfg = new HikariConfig();
-        cfg.setJdbcUrl(mysql.getJdbcUrl()); cfg.setUsername(mysql.getUsername()); cfg.setPassword(mysql.getPassword());
+        cfg.setJdbcUrl(jdbcUrl); cfg.setUsername(SharedContainers.username()); cfg.setPassword(SharedContainers.password());
         cfg.setMaximumPoolSize(4);
         ds = new HikariDataSource(cfg);
 
@@ -77,7 +75,7 @@ class StatusIndexSelectivityMySqlTest {
     }
 
     @AfterAll
-    static void stopDb() { if (ds != null) ds.close(); if (mysql != null) mysql.stop(); }
+    static void stopDb() { if (ds != null) ds.close(); }
 
     @Test @Order(1) @DisplayName("As-is: status 인덱스 없이 드문 값(0.1%)과 흔한 값(99.9%)")
     void before() throws Exception {
