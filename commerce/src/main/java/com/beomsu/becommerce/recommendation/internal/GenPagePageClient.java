@@ -44,8 +44,8 @@ public class GenPagePageClient {
     public List<Row> generate(List<Long> history, Collection<Long> exclude, Collection<String> excludeCategories,
                               int rows, int itemsPerRow) {
         JsonNode body = client.post().uri("/page").contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("history", history, "exclude", exclude, "exclude_categories", excludeCategories,
-                        "rows", rows, "items_per_row", itemsPerRow, "prefix", prefix))
+                .body(ModelRequestBody.of(Map.of("history", history, "exclude", exclude, "exclude_categories", excludeCategories,
+                        "rows", rows, "items_per_row", itemsPerRow, "prefix", prefix)))
                 .retrieve().body(JsonNode.class);
         List<Row> out = new ArrayList<>();
         if (body == null) {

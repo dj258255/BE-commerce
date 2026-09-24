@@ -1,0 +1,12 @@
+{
+ "users": 30,
+ "page2_p50": 98.4817499993369,
+ "page2_p95": 127.11524998303503,
+ "strategies": {
+  "CATEGORY_POPULAR_SESSION": 86,
+  "CATEGORY_POPULAR": 4
+ },
+ "duplicates": 0,
+ "category_mismatch": 0,
+ "items": 720
+}

@@ -65,7 +65,7 @@ public class GenPageModelClient implements ModelClient {
         }
         try {
             JsonNode body = client.post().uri("/recommend").contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("history", recentItemIds, "k", resultSize))
+                    .body(ModelRequestBody.of(Map.of("history", recentItemIds, "k", resultSize)))
                     .retrieve().body(JsonNode.class);
             List<Long> items = new ArrayList<>();
             if (body != null) {

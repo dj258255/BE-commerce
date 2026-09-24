@@ -13,6 +13,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Optional<Order> findByOrderNo(String orderNo);
 
+    /**
+     * 사용자가 산 상품(결제 완료 주문의 항목), 최근 것부터(#254). 주문 id 역순 → 항목 id 역순이다.
+     * {@code (user_id, id)} 인덱스로 사용자의 주문만 읽는다.
+     */
+    @org.springframework.data.jpa.repository.Query("select i.productId from OrderItem i join i.order o"
+            + " where o.userId = :userId and o.status = com.beomsu.becommerce.order.internal.OrderStatus.PAID"
+            + " order by o.id desc, i.id desc")
+    List<Long> findPurchasedProductIds(@org.springframework.data.repository.query.Param("userId") long userId, Pageable page);
+
     /** 내 주문 목록 — 최신순 최근 50건. Top50으로 DB에서 상한을 걸어 무한 적재를 막는다. */
     List<Order> findTop50ByUserIdOrderByIdDesc(long userId);
 
