@@ -8,6 +8,14 @@
 # 모델 서버는 환경변수로 받는다. 기본은 v2(personalization/serving/genpage2_server.py, 8766)이고 그 파일이
 # 아직 없으면 v1(serving/genpage_server.py, 8765)으로 떨어진다 — #317 은 v2 서버가 준비 중에 만든 하네스다.
 # MODEL_CMD="" 로 주면 서버를 띄우지 않는다(이미 떠 있는 것을 쓸 때).
+#
+# 1차 수정 — 품절이 노출 상품에 닿지 않았다:
+#   1. 품절 후보를 DB 가 아니라 **모델이 실제로 보여 주는 상품**에서 고른다. 같은 앱(POST, 품절 없음)으로
+#      CANDIDATE_WARMUP 초 부하를 흘려 노출 빈도 상위 PRODUCT_LIMIT 개를 파일로 남기고, 모든 방식 · 속도가
+#      그 목록을 함께 쓴다.
+#   2. 품절 주입은 워밍업이 끝난 **뒤** 측정과 함께 시작한다(x3_stock_race.py 가 직접 띄운다) — 워밍업 전에
+#      시작하면 높은 속도에서 측정이 시작하기도 전에 후보가 다 팔린다.
+#   3. 조건이 끝나면 원래 수량으로 되돌리고 **복원을 검증**한다(다음 조건이 이미 품절된 상태로 시작하지 않게).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -17,18 +25,19 @@ RAW="$OUT/raw"
 mkdir -p "$RAW"
 
 MODES=${MODES:-"NONE POST PRE POST_FINAL"}
-RATES=${RATES:-"0 5 20"}                 # 품절 속도 R (/s). 0 은 품절을 주입하지 않는다(대조군)
+# 품절 속도 R (/s). 0 은 대조군. 후보 400개 기준 60초에 R=3 ≈ 45%, R=10 ≈ 100% 가 팔린다.
+RATES=${RATES:-"0 3 10"}
 USERS=${USERS:-8}
 RATE=${RATE:-20}                         # 초당 홈 반복 수(1쪽+2쪽)
 DURATION=${DURATION:-60}
 WARMUP=${WARMUP:-8}
+CANDIDATE_WARMUP=${CANDIDATE_WARMUP:-60} # 품절 후보를 고르는 부하(초) — 품절은 주입하지 않는다
 PORT=${PORT:-18080}
 BASE="http://localhost:${PORT}"
 JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 JAVA="$(/usr/libexec/java_home -v 21)/bin/java"
 PY=${PY:-python3}
-MYSQL_CONTAINER=${MYSQL_CONTAINER:-pay-mysql-1}
-PRODUCT_LIMIT=${PRODUCT_LIMIT:-400}
+PRODUCT_LIMIT=${PRODUCT_LIMIT:-400}      # 품절 후보 수(노출 빈도 상위)
 
 # 모델 서버 — 파일이 있으면 v2, 없으면 v1.
 if [ -z "${MODEL_CMD+x}" ]; then
@@ -45,13 +54,12 @@ MODEL_URL=${MODEL_URL:-http://localhost:8765}
 
 [ -f "$JAR" ] || { echo "$JAR 가 없다 — ./gradlew -p commerce bootJar 를 먼저 돌려라"; exit 1; }
 
-APP=""; MODEL=""; SELLOUT=""
+APP=""; MODEL=""
 stop_app() { [ -n "$APP" ] && kill "$APP" 2>/dev/null || true; APP=""; }
 cleanup() {
-  [ -n "$SELLOUT" ] && kill "$SELLOUT" 2>/dev/null || true
   stop_app
   [ -n "$MODEL" ] && kill "$MODEL" 2>/dev/null || true
-  MODEL=""; SELLOUT=""
+  MODEL=""
 }
 trap cleanup EXIT
 
@@ -104,18 +112,25 @@ start_app() {
 echo "== 인프라(mysql · redis)"
 docker compose up -d mysql redis >/dev/null 2>&1 || echo "  (경고: docker compose up 실패 — 이미 떠 있는 것을 쓴다)"
 
-# 품절 후보 — 실제 카탈로그에서 재고가 있는 상품을 고른다. 홈은 카탈로그에 있는 상품만 그린다.
-PRODUCTS_FILE="$OUT/products.txt"
-docker exec "$MYSQL_CONTAINER" mysql -N -ubecommerce -pbecommerce becommerce \
-  -e "select product_id from stock where quantity > 0 order by product_id limit $PRODUCT_LIMIT" 2>/dev/null \
-  > "$PRODUCTS_FILE" || true
-[ -s "$PRODUCTS_FILE" ] || { echo "품절 후보 상품을 DB 에서 못 읽었다(컨테이너 $MYSQL_CONTAINER)"; exit 1; }
-echo "== 품절 후보 상품 $(wc -l < "$PRODUCTS_FILE" | tr -d ' ')개"
+start_model || exit 1
+
+# ── 품절 후보 — **모델이 실제로 보여 주는 상품**에서 고른다(1번 요구).
+#    같은 앱(POST, 품절 없음)으로 부하를 흘려 응답에 담긴 상품의 노출 빈도를 세고 상위 PRODUCT_LIMIT 개를 남긴다.
+PRODUCTS_FILE="$OUT/sellout-candidates.txt"
+echo "== 품절 후보 수집 — POST · 품절 없음 · ${CANDIDATE_WARMUP}초 · 상위 ${PRODUCT_LIMIT}개"
+start_app POST "$OUT/candidates-app.log" || exit 1
+$PY tools/x3_stock_race.py --app "$BASE" --name candidates --mode POST \
+  --users "$USERS" --rate "$RATE" --duration "$CANDIDATE_WARMUP" --warmup "$WARMUP" \
+  --candidates-out "$PRODUCTS_FILE" --candidates-limit "$PRODUCT_LIMIT" \
+  --out "$OUT/candidates.json" > "$OUT/candidates.log" 2>&1 \
+  || { echo "품절 후보 수집 실패 — $OUT/candidates.log"; exit 1; }
+stop_app
+[ -s "$PRODUCTS_FILE" ] || { echo "품절 후보가 비었다 — $OUT/candidates.log"; exit 1; }
+CANDIDATE_COUNT=$(wc -l < "$PRODUCTS_FILE" | tr -d ' ')
+echo "== 품절 후보 ${CANDIDATE_COUNT}개 — 노출 빈도 상위 · $PRODUCTS_FILE"
 
 echo "== X3 실측 시작 — 방식 [$MODES] × 품절 R [$RATES]/s · 홈 ${RATE}/s · ${DURATION}초"
 echo "== 모델 $MODEL_URL · 출력 $OUT"
-
-start_model || exit 1
 
 for mode in $MODES; do
   for rate in $RATES; do
@@ -124,23 +139,24 @@ for mode in $MODES; do
     echo "-- $mode · 품절 ${rate}/s"
     start_app "$mode" "$dir/app.log" || exit 1
 
-    # 런마다 재고를 초기화한다 — 앞 런의 품절이 넘어오면 비교가 안 된다.
-    if [ "$rate" != "0" ]; then
-      SELLOUT_STATE="$dir/sellout-state.json"
-      $PY tools/x3_sellout.py --products-file "$PRODUCTS_FILE" --rate "$rate" \
-        --state "$SELLOUT_STATE" > "$dir/sellout.log" 2>&1 &
-      SELLOUT=$!
-      sleep 2
-    fi
-
+    SELLOUT_STATE="$dir/sellout-state.json"
+    # 품절 주입은 x3_stock_race.py 가 워밍업 뒤에 띄운다(2번 요구) — 여기서 미리 띄우지 않는다.
     $PY tools/x3_stock_race.py --app "$BASE" --name "${mode}-r${rate}" --mode "$mode" \
-      --sellout-rate "$rate" --users "$USERS" --rate "$RATE" --duration "$DURATION" --warmup "$WARMUP" \
+      --candidates "$PRODUCTS_FILE" \
+      --sellout-rate "$rate" --sellout-products-file "$PRODUCTS_FILE" --sellout-state "$SELLOUT_STATE" \
+      --users "$USERS" --rate "$RATE" --duration "$DURATION" --warmup "$WARMUP" \
       --out "$dir/race.json" > "$dir/race.log" 2>&1 || echo "   (race 실패 — $dir/race.log)"
 
-    if [ -n "$SELLOUT" ]; then
-      kill "$SELLOUT" 2>/dev/null || true
-      SELLOUT=""
-      $PY tools/x3_sellout.py --restore --state "$SELLOUT_STATE" > "$dir/restore.log" 2>&1 || true
+    # 조건이 끝나면 원래 수량으로 되돌리고 **검증**한다(3번 요구).
+    RESTORE="없음(대조군 · 품절 안 함)"
+    if [ "$rate" != "0" ]; then
+      if $PY tools/x3_sellout.py --restore --verify --state "$SELLOUT_STATE" > "$dir/restore.log" 2>&1; then
+        RESTORE="검증 통과"
+      else
+        RESTORE="실패 — $dir/restore.log"
+        echo "   !! 복원 실패 — 다음 조건이 이미 품절된 상태로 시작할 수 있다($dir/restore.log)"
+      fi
+      tail -1 "$dir/restore.log" || true
     fi
 
     cat > "$dir/meta.txt" <<EOF
@@ -150,6 +166,10 @@ users=$USERS
 rate=$RATE
 duration=$DURATION
 warmup=$WARMUP
+candidate_warmup=$CANDIDATE_WARMUP
+candidates=$CANDIDATE_COUNT
+candidates_file=$PRODUCTS_FILE
+restore=$RESTORE
 model_url=$MODEL_URL
 model_cmd=$MODEL_CMD
 EOF
