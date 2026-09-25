@@ -627,6 +627,8 @@ app:
     # ADMISSION 이 대기를 어떻게 추정하나(#264). CONFIGURED = 설정한 모델 지연·동시성, OBSERVED = 최근 2초 처리량.
     # 모델의 실제 지연이 설정의 두 배일 때 CONFIGURED 는 p95 315ms(예산 100 + 지연 100 의 1.6배), OBSERVED 는 193ms 였다.
     admission-estimate: ${APP_RECOMMENDATION_ADMISSION_ESTIMATE:OBSERVED}
+    # 관측 창(#339). 용량이 10초마다 두 배 ↔ 절반으로 바뀔 때 p95 가 0.5초 309 · 2초 190 · 8초 226ms. 0.5초는 표본(20)이 모자라 설정값으로 떨어졌다
+    admission-window-ms: ${APP_RECOMMENDATION_ADMISSION_WINDOW_MS:2000}
     # 모델에 넣을 최근 활동 수.
     context-limit: ${APP_RECOMMENDATION_CONTEXT_LIMIT:20}
     result-size: ${APP_RECOMMENDATION_RESULT_SIZE:12}

@@ -41,13 +41,14 @@ public class OverloadGate {
     private final boolean observed;
     private final java.util.function.LongSupplier clock;
 
-    /** 관측 창: 100ms 칸 20개(2초). 칸마다 끝난 모델 호출 수를 센다. */
-    private static final int BUCKETS = 20;
+    /** 관측 창: 100ms 칸 여러 개(기본 20개 = 2초, #339 에서 창 길이를 설정으로 뺐다). 칸마다 끝난 모델 호출 수를 센다. */
+    static final long DEFAULT_WINDOW_MS = 2_000;
     private static final long BUCKET_MS = 100;
+    private final int buckets;
     /** 창 안에 이만큼은 끝나야 관측값을 믿는다. 그 전에는 설정값으로 추정한다. */
     static final int MIN_SAMPLES = 20;
-    private final long[] bucketSlot = new long[BUCKETS];
-    private final int[] bucketCount = new int[BUCKETS];
+    private final long[] bucketSlot;
+    private final int[] bucketCount;
 
     /** 테스트·예전 호출부용: 설정값으로만 추정한다. */
     public OverloadGate(OverloadPolicy policy, int maxInFlight, long admissionBudgetMs, int modelConcurrency,
@@ -70,14 +71,26 @@ public class OverloadGate {
                         @Value("${app.recommendation.generation.scope:RANKING}") GenerationScope scope,
                         @Value("${app.recommendation.generation.ar-prefix:4}") int arPrefix,
                         @Value("${app.recommendation.generation.per-item-ms:15}") long perItemMs,
-                        @Value("${app.recommendation.admission-estimate:OBSERVED}") AdmissionEstimate estimate) {
+                        @Value("${app.recommendation.admission-estimate:OBSERVED}") AdmissionEstimate estimate,
+                        @Value("${app.recommendation.admission-window-ms:2000}") long windowMs) {
         this(policy, maxInFlight, admissionBudgetMs, modelConcurrency, modelLatencyMs, resultSize, scope, arPrefix, perItemMs,
-                estimate, System::currentTimeMillis);
+                estimate, System::currentTimeMillis, windowMs);
     }
 
     OverloadGate(OverloadPolicy policy, int maxInFlight, long admissionBudgetMs, int modelConcurrency, long modelLatencyMs,
                  int resultSize, GenerationScope scope, int arPrefix, long perItemMs, AdmissionEstimate estimate,
                  java.util.function.LongSupplier clock) {
+        this(policy, maxInFlight, admissionBudgetMs, modelConcurrency, modelLatencyMs, resultSize, scope, arPrefix, perItemMs,
+                estimate, clock, DEFAULT_WINDOW_MS);
+    }
+
+    /** @param windowMs 관측 창 길이. 100ms 단위로 내리고 100ms 보다 짧으면 100ms 다(#339) */
+    OverloadGate(OverloadPolicy policy, int maxInFlight, long admissionBudgetMs, int modelConcurrency, long modelLatencyMs,
+                 int resultSize, GenerationScope scope, int arPrefix, long perItemMs, AdmissionEstimate estimate,
+                 java.util.function.LongSupplier clock, long windowMs) {
+        this.buckets = (int) Math.max(1, windowMs / BUCKET_MS);
+        this.bucketSlot = new long[buckets];
+        this.bucketCount = new int[buckets];
         this.observed = estimate == AdmissionEstimate.OBSERVED;
         this.clock = clock;
         this.policy = policy;
@@ -89,8 +102,9 @@ public class OverloadGate {
         // 실험이 오염된다(과부하 실험 위에 생성 범위를 얹을 때 조용히 틀리는 자리다).
         this.modelLatencyMs = Math.max(
                 scope.estimatedLatencyMs(modelLatencyMs, Math.max(resultSize, 1), arPrefix, perItemMs), 1);
-        log.info("과부하 정책={} maxInFlight={} admissionBudget={}ms 모델용량={}동시/{}ms(범위 {}) 대기 추정={}",
-                policy, this.maxInFlight, admissionBudgetMs, this.modelConcurrency, this.modelLatencyMs, scope, estimate);
+        log.info("과부하 정책={} maxInFlight={} admissionBudget={}ms 모델용량={}동시/{}ms(범위 {}) 대기 추정={} 관측 창={}ms",
+                policy, this.maxInFlight, admissionBudgetMs, this.modelConcurrency, this.modelLatencyMs, scope, estimate,
+                buckets * BUCKET_MS);
     }
 
     /** 통과시키면 {@code true}. <b>호출자는 반드시 {@link #release()}를 불러야 한다</b>(통과한 경우만). */
@@ -144,7 +158,7 @@ public class OverloadGate {
      */
     public synchronized void completed() {
         long slot = clock.getAsLong() / BUCKET_MS;
-        int i = (int) (slot % BUCKETS);
+        int i = (int) (slot % buckets);
         if (bucketSlot[i] != slot) {
             bucketSlot[i] = slot;
             bucketCount[i] = 0;
@@ -152,16 +166,16 @@ public class OverloadGate {
         bucketCount[i]++;
     }
 
-    /** 최근 2초 처리량(건/ms). 표본이 {@link #MIN_SAMPLES} 보다 적으면 -1. */
+    /** 관측 창(기본 2초) 처리량(건/ms). 표본이 {@link #MIN_SAMPLES} 보다 적으면 -1. */
     synchronized double observedThroughputPerMs() {
         long now = clock.getAsLong() / BUCKET_MS;
         int sum = 0;
-        for (int i = 0; i < BUCKETS; i++) {
-            if (now - bucketSlot[i] < BUCKETS) {
+        for (int i = 0; i < buckets; i++) {
+            if (now - bucketSlot[i] < buckets) {
                 sum += bucketCount[i];
             }
         }
-        return sum < MIN_SAMPLES ? -1 : sum / (double) (BUCKETS * BUCKET_MS);
+        return sum < MIN_SAMPLES ? -1 : sum / (double) (buckets * BUCKET_MS);
     }
 
     /** 대기 추정 방식(#264). */
