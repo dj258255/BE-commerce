@@ -1,3 +1,4 @@
+import os
 import tempfile
 import time
 import unittest
@@ -5,9 +6,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from unittest.mock import patch
 
-from genpage2.dataset import (Example, _ago_token_ids, age_bucket, ago_bucket, build_context, build_page,
-                              generate_examples, load_examples, stats, write_examples)
+from genpage2 import config
+from genpage2.dataset import (Example, _ago_token_ids, _read_inputs, age_bucket, ago_bucket, build_context,
+                              build_page, generate_examples, load_examples, stats, write_examples)
 from genpage2.vocab import Vocab, content_rows
 
 
@@ -17,7 +20,13 @@ def catalogue():
 
 
 def tx(rows):
-    return pd.DataFrame(rows, columns=["t_dat", "customer_id", "article_id", "sales_channel_id"])
+    columns = ["t_dat", "customer_id", "article_id", "sales_channel_id"]
+    if rows and len(rows[0]) == 5:
+        columns.append("price")
+    frame = pd.DataFrame(rows, columns=columns)
+    if "price" not in frame:
+        frame["price"] = 10.0
+    return frame
 
 
 def vocab_and_rows():
@@ -38,13 +47,69 @@ class DatasetTest(unittest.TestCase):
         events = tx([(pd.Timestamp("2020-01-01") + pd.Timedelta(days=i), "c", "0000000002" if i == 0 else "0000000001", 1 if i % 2 else 2) for i in range(62)] + [("2020-04-01", "c", "0000000001", 1)])
         tokens, content = build_context(vocab, events, "2020-03-05", {"age": 20}, rows)
         history_start = tokens.index(vocab.id("SEP_HISTORY")) + 1
-        self.assertEqual((len(tokens) - history_start - 1) // 3, 60)
+        self.assertEqual((len(tokens) - history_start - 1) // config.EVENT_WIDTH, 60)
+        self.assertEqual(len(tokens), history_start + config.HISTORY_EVENTS * config.EVENT_WIDTH + 1)
         self.assertNotIn(vocab.id("AGO_366+"), tokens)  # no future event's invalid age bucket
         self.assertEqual(tokens[history_start], vocab.id("ITEM_0000000001"))  # 60 newest, first fallback dropped
         fallback_events = tx([("2020-01-01", "c", "0000000002", 1)])
         ft, fc = build_context(vocab, fallback_events, "2020-01-02", {"age": 20}, rows)
         pos = ft.index(vocab.id("ITEM_FALLBACK"))
         self.assertEqual(fc[pos], rows["0000000002"])
+
+    def test_price_edges_use_only_prior_sales_and_equal_values_go_right(self):
+        request = pd.Timestamp("2020-03-05")
+        before = tx([(f"2020-01-{day:02d}", "v", "0000000001", 1, float(day))
+                     for day in range(1, 11)])
+        future = tx([("2020-03-06", "v", "0000000001", 1, 1_000_000.0)])
+        vocab = Vocab.build(before, catalogue())
+        all_sales = pd.concat([before, future])
+        unchanged = Vocab.build(all_sales[pd.to_datetime(all_sales.t_dat) < request], catalogue())
+        self.assertEqual(unchanged.price_edges, vocab.price_edges)
+        edge = vocab.price_edges[3]
+        tokens, content = build_context(vocab,
+                                        tx([("2020-03-04", "c", "0000000001", 1, edge)]),
+                                        request, {"age": 20}, content_rows(catalogue()))
+        self.assertEqual(tokens[-2], vocab.id("PRICE_4"))
+        self.assertEqual(content[-2], -1)
+
+    def test_context_events_have_four_tokens_and_content_only_on_item(self):
+        vocab, rows = vocab_and_rows()
+        events = tx([(pd.Timestamp("2020-01-01") + pd.Timedelta(days=day), "c", "0000000001", 1, float(day))
+                     for day in range(config.HISTORY_EVENTS)])
+        tokens, content = build_context(vocab, events, "2020-03-05", {"age": 20}, rows)
+        history_start = tokens.index(vocab.id("SEP_HISTORY")) + 1
+        self.assertEqual(len(tokens), history_start + config.HISTORY_EVENTS * config.EVENT_WIDTH + 1)
+        for start in range(history_start, len(tokens) - 1, config.EVENT_WIDTH):
+            self.assertEqual(content[start], rows["0000000001"])
+            self.assertEqual(content[start + 1:start + config.EVENT_WIDTH], [-1, -1, -1])
+
+    def test_full_input_path_keeps_price_column_and_rejects_missing_price(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            normalized = root / "hm" / "normalized"
+            normalized.mkdir(parents=True)
+            arts = catalogue().iloc[:1].copy()
+            customers = pd.DataFrame({"customer_id": ["c"], "age": [30]})
+            sales = tx([(pd.Timestamp("2020-01-01") + pd.Timedelta(days=i), "c", "0000000001", 1, float(i + 1))
+                        for i in range(20)])
+            arts.to_parquet(normalized / "articles.parquet", index=False)
+            customers.to_parquet(normalized / "customers.parquet", index=False)
+            sales.to_parquet(normalized / "transactions.parquet", index=False)
+            with patch.dict(os.environ, {"GENPAGE_DATA": str(root)}):
+                loaded, _, loaded_articles = _read_inputs(None)
+                self.assertIn("price", loaded.columns)
+                vocab = Vocab.build(loaded, loaded_articles)
+                tokens, _ = build_context(vocab, loaded, "2020-02-01", {"age": 30}, content_rows(loaded_articles))
+                price_tokens = [token for token in tokens if token in vocab.price_ids]
+                self.assertGreater(len(set(price_tokens)), 1)
+
+            sales.drop(columns=["price"]).to_parquet(normalized / "transactions.parquet", index=False)
+            with patch.dict(os.environ, {"GENPAGE_DATA": str(root)}):
+                with self.assertRaises(Exception):
+                    _read_inputs(None)
+
+            with self.assertRaises(ValueError):
+                build_context(vocab, sales.drop(columns=["price"]), "2020-02-01", {"age": 30}, content_rows(loaded_articles))
 
     def test_context_has_no_future_tokens_or_content_rows(self):
         vocab, rows = vocab_and_rows()

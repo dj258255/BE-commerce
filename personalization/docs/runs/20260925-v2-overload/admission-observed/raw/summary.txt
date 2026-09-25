@@ -1,0 +1,4 @@
+[E3] policy=ADMISSION  rate=12  achieved=12  coverage=100.0%  personalized=100.0%  serving_p95=53.0ms  serving_p99=60.6ms  model_p95=45.0ms  rejected=0  timeout=0  failed=0  zero_ctx=0  req_failed=0.0%  dropped=0
+[E3] policy=ADMISSION  rate=23  achieved=22  coverage=100.0%  personalized=100.0%  serving_p95=121.0ms  serving_p99=190.2ms  model_p95=116.5ms  rejected=0  timeout=0  failed=0  zero_ctx=0  req_failed=0.0%  dropped=0
+[E3] policy=ADMISSION  rate=35  achieved=32  coverage=69.8%  personalized=69.8%  serving_p95=243.0ms  serving_p99=260.0ms  model_p95=238.0ms  rejected=317  timeout=0  failed=0  zero_ctx=0  req_failed=0.0%  dropped=0
+[E3] policy=ADMISSION  rate=46  achieved=42  coverage=52.4%  personalized=52.4%  serving_p95=246.0ms  serving_p99=265.2ms  model_p95=242.0ms  rejected=657  timeout=0  failed=0  zero_ctx=0  req_failed=0.0%  dropped=0

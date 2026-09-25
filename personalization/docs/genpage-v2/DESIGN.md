@@ -23,7 +23,8 @@ cd personalization && $PY -m genpage2.evaluate --mode validate --ckpt ...
 | `MIN_COUNT` | 10 | 어휘: 기준 시각 이전 10회 이상 팔린 상품(v1 과 같다) |
 | `HISTORY_EVENTS` | 60 | 프롬프트에 넣는 최근 구매 이벤트 수 |
 | `MAX_ROWS`, `ITEMS_PER_ROW` | 6, 8 | 정답 페이지 · 생성 페이지의 크기 |
-| `MAXLEN` | 256 | 모델 시퀀스 길이 |
+| `MAXLEN` | 320 | 모델 시퀀스 길이(문맥 12 + 60 × 4 + 페이지 최대 55 = 307) |
+| `EVENT_WIDTH` | 4 | 이력 이벤트 하나의 토큰 수 `[상품][채널][며칠 전][가격]` |
 | `SEED` | 7 | |
 
 `mode` 는 `validate` 또는 `final`. 학습 데이터와 어휘는 그 mode 의 요청 시각 **이전**만 본다.
@@ -37,6 +38,7 @@ id 배치는 아래 순서로 고정한다(앞에서부터 이어 붙인다).
 3. 요청: `DOW_0..6`, `MONTH_1..12`
 4. 행동 종류: `ACT_STORE`(sales_channel 1), `ACT_ONLINE`(2), `ACT_VIEW`, `ACT_CLICK` — 뒤 둘은 H&M 에 없어 학습되지 않는다(서빙에서 앱의 세션 행동용)
 5. 시각 구간(요청 시각 기준 며칠 전): `AGO_0-3, AGO_4-7, AGO_8-14, AGO_15-30, AGO_31-60, AGO_61-120, AGO_121-365, AGO_366+`
+5-1. 가격 구간: `PRICE_0..PRICE_7`. 경계는 기준 시각 이전 거래 가격의 12.5% 분위수 7개로 정하고 `vocab.json` 에 `price_edges` 로 저장한다(원문 `[Action_Duration_Bucket]` 자리. 구매에서 참여의 크기에 해당하는 값이 가격이다)
 6. 행: `ROW_REPEAT`(다시 사기), `ROW_S<section_no>`(articles 에 있는 섹션 전부 57개, section_no 오름차순)
 7. 상품: `ITEM_<article_id>`(어휘 상품, article_id 오름차순)
 
@@ -61,7 +63,7 @@ class Vocab:
 
 ```
 BOS SEP_PROFILE AGE CLUB NEWS FN ACTIVE SEP_REQUEST DOW MONTH SEP_HISTORY
-  (이벤트 × 최근 60개, 오래된 것부터: [상품 토큰 또는 ITEM_FALLBACK] [ACT_STORE|ACT_ONLINE] [AGO_구간])
+  (이벤트 × 최근 60개, 오래된 것부터: [상품 토큰 또는 ITEM_FALLBACK] [ACT_STORE|ACT_ONLINE] [AGO_구간] [PRICE_구간])
 SEP_PAGE
 ```
 
@@ -93,6 +95,22 @@ SEP_PAGE
 - 저장: `OUT/content/content_e5.npy`(float16, [105542, 384], article_id 오름차순) · `OUT/content/articles.json`(행 번호 → article_id)
 - `def load_content(out) -> (np.ndarray, dict[str, int])` — 행렬과 article_id → 행 번호
 
+## 3-1. 문맥 수준 (`genpage2/context.py`)
+
+학습과 평가 · 서빙이 **같은 함수**로 문맥을 만든다(처음 구현에서 평가가 학습과 다른 문맥을 써서 원문 대조 때 고쳤다).
+
+```python
+LEVELS = ("items", "+action", "+time", "+price", "+profile", "full")
+def view(ctx_tokens, ctx_content, vocab, level) -> (tokens, content)
+```
+
+- `items`: `BOS SEP_HISTORY [상품]… SEP_PAGE` — 이벤트 폭 1
+- `+action`: 이벤트 `[상품][채널]` — 폭 2 · `+time`: 폭 3 · `+price`: 폭 4
+- `+profile`: `BOS SEP_PROFILE 프로필 5 SEP_HISTORY 이벤트 폭 4 … SEP_PAGE`
+- `full`: 저장된 문맥 그대로(프로필 + 요청 + 폭 4)
+- `event_width(level)` 로 자르기 단위를 준다. 자르기는 가장 오래된 이벤트부터
+- 체크포인트 `config.json` 의 `extra.context` 에 수준을 남기고, 평가 · 서빙은 그 값을 읽어 같은 `view` 를 적용한다
+
 ## 4. 모델 (`genpage2/model.py`, A3)
 
 ```python
@@ -119,7 +137,7 @@ class GenPageV2(nn.Module):
 
 - 입력 = 문맥 + 정답 페이지, 너무 길면 문맥의 **이력 앞쪽**을 자른다(특수 · 프로필 · 요청 토큰은 남긴다)
 - 손실 = 다음 토큰 교차 엔트로피, **페이지 토큰을 예측하는 위치에만**(원문: 문맥이 프롬프트, 페이지가 응답)
-- 대체 토큰: 입력의 상품 토큰을 `fallback_prob` 로 `ITEM_FALLBACK` 으로 바꾼다(정답은 그대로)
+- 대체 토큰: 입력의 상품 토큰을 `fallback_prob` 로 `ITEM_FALLBACK` 으로, 행 토큰을 같은 확률로 `ROW_FALLBACK` 으로 바꾼다(정답은 그대로. 원문: 알려진 토큰의 일부를 그 종류의 대체 토큰으로)
 - 인자: `--mode validate|final --preset small|base|large --context full|history --epochs --max-steps --batch --lr`. `--context history` 는 프로필 · 요청 · 행동 · 시각 토큰을 빼고 상품 토큰만 남긴다(원문 발견 1의 절제)
 - 저장: `OUT/<mode>/ckpt/<이름>/model.pt` · `config.json` · `train_log.jsonl`(단계 · 손실 · 초당 토큰)
 
@@ -159,7 +177,7 @@ class PageDecoder:
 
 ## 8. 후학습 · 증분 · 서빙 (B 뒤에 자세히 적는다)
 
-- **WBC**(C1): 학습 고객 · 요청 시각마다 사전학습 모델로 페이지를 생성해 "노출"로 둔다. 노출된 상품 토큰의 라벨 = 다음 7일에 샀는가(부호), 가중치 = 산 횟수(양성) 또는 고정값(음성). 행 토큰의 보상 = 그 행 상품 보상의 합. 로짓에 가중 이진 교차 엔트로피
+- **WBC**(C1) 원문 실험도 같이: (1) 사전학습 있이 · 없이 WBC 를 비교(WBC 손실 · 행 AUC · 상품 AUC, 표본 가중 ROC-AUC) (2) 크기 · 문맥 스윕을 WBC 손실로도 가능한 범위에서. 학습 고객 · 요청 시각마다 사전학습 모델로 페이지를 생성해 "노출"로 둔다. 노출된 상품 토큰의 라벨 = 다음 7일에 샀는가(부호), 가중치 = 산 횟수(양성) 또는 고정값(음성). 행 토큰의 보상 = 그 행 상품 보상의 합. 로짓에 가중 이진 교차 엔트로피
 - **RL**(C2): 보상 모델(사전학습 체크포인트에서 시작, 페이지 보상 = 산 상품 수 예측) → Dr. GRPO(그룹 G 개 생성, 이점 = 보상 − 그룹 평균, 길이 정규화 없음) + 참조 모델 KL + 형식 보상
-- **증분**(C3): 기준 시점까지 전체 학습 → 하루씩(그날 예시 + 과거 표본 10%) 이어 학습. 새 상품은 `ITEM_FALLBACK` 임베딩으로 시작
-- **서빙**(C4): `serving/genpage2_server.py` — v1 과 같은 HTTP 계약(`/recommend`, `/page`)에 행 토큰 · 제목을 더한다. 앱은 `model.genpage-version` 과 실험 변형별 모델 주소를 받는다
+- **증분**(C3): 원문처럼 주기적 대규모 사전학습 + 후학습, 그 사이 매일 **전날 후학습 체크포인트에서 이어** 그날 데이터 + 과거 표본으로 학습. 어휘를 매일 갱신하고 새 상품 · 새 행 토큰은 그 종류의 대체 토큰 임베딩으로 시작. **문맥 주입**: 최근 14일에 처음 팔린 상품 상위 N개를 `SEP_NEW` 구간에 `ITEM_FALLBACK`(+ 콘텐츠)으로 넣는다
+- **서빙**(C4): `serving/genpage2_server.py` — v1 과 같은 HTTP 계약(`/recommend`, `/page`)에 행 토큰 · 제목을 더한다. 쪽 나누기는 원문처럼 앞 쪽 토큰 **과 그 행들에 대한 세션 행동**(앱의 조회 · 클릭을 `ACT_VIEW` · `ACT_CLICK` 최근 이벤트로)을 프롬프트에 넣는다. 앱은 `model.genpage-version` 과 실험 변형별 모델 주소를 받는다

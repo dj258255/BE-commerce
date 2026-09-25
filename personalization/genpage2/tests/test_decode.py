@@ -94,6 +94,21 @@ class DecodeTest(unittest.TestCase):
                                         exclude_items={"A", "B", "D", "E"}, n_rows=2)
         self.assertEqual(rows, [])
 
+    def test_allowed_items_mask_products_and_row_eligibility(self):
+        rows, violations = self.decoder.generate(
+            self.context, self.content, history_articles=[], allowed_items={"A", "B", "C"},
+            n_rows=2, items_per_row=3,
+        )
+        self.assertEqual(violations, 0)
+        self.assertEqual([row.row_token for row in rows], [4])
+        self.assertEqual(set(rows[0].items), {"A", "B", "C"})
+        # B 행에는 카탈로그상 세 상품이 있지만 후보에는 두 개뿐이다.
+        rows, _ = self.decoder.generate(
+            self.context, self.content, history_articles=[], pinned={0: 5},
+            allowed_items={"A", "B", "C", "D", "E"}, n_rows=1, items_per_row=3,
+        )
+        self.assertEqual(rows, [])
+
     def test_hybrid_bulk_uses_last_prefix_distribution(self):
         rows, _ = self.decoder.generate(self.context, self.content, history_articles=[], pinned={0: 4},
                                         n_rows=1, items_per_row=3, prefix=1)
@@ -115,6 +130,47 @@ class DecodeTest(unittest.TestCase):
         second = self.decoder.generate(**examples[0], **kwargs, temperature=0.8,
                                        generator=torch.Generator().manual_seed(77))
         self.assertEqual(first, second)
+
+    def test_batch_equals_single_with_per_example_allowed_and_pinned(self):
+        examples = [
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": [],
+             "pinned": {0: 4}, "allowed_items": {"A", "B", "C"}},
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": [],
+             "pinned": {0: 5}, "allowed_items": {"D", "E", "F"}},
+        ]
+        kwargs = {"n_rows": 1, "items_per_row": 3, "prefix": 1}
+        self.assertEqual(self.decoder.generate_batch(examples, **kwargs),
+                         [self.decoder.generate(**example, **kwargs) for example in examples])
+
+    def test_missing_page_separator_is_added_before_projection_for_single_and_batch(self):
+        class RecordingDecoder(PageDecoder):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.projected = []
+
+            def _project_and_trim(self, tokens, content, keep):
+                self.projected.append((list(tokens), list(content)))
+                return super()._project_and_trim(tokens, content, keep)
+
+        decoder = RecordingDecoder(FakeModel(), self.vocab, {a: n for n, a in enumerate("ABCDEF")}, "cpu")
+        kwargs = {"history_articles": [], "n_rows": 1, "items_per_row": 3, "prefix": 1}
+        # A serving request may end at SEP_HISTORY.  It must reach the shared
+        # projector as a valid prompt rather than failing in context.truncate.
+        single = decoder.generate([1], [-1], **kwargs)
+        batched = decoder.generate_batch([{"ctx_tokens": [1], "ctx_content": [-1], "history_articles": []}],
+                                         n_rows=1, items_per_row=3, prefix=1)
+        self.assertEqual(single, batched[0])
+        self.assertEqual(decoder.projected[0], ([1, 2], [-1, -1]))
+        self.assertEqual(decoder.projected[1], ([1, 2], [-1, -1]))
+
+    def test_existing_page_separator_keeps_exact_generation(self):
+        kwargs = {"history_articles": [], "n_rows": 1, "items_per_row": 3, "prefix": 1}
+        expected = ([GeneratedRow(4, ["A", "C", "B"])], 0)
+        self.assertEqual(self.decoder.generate([1, 2], [-1, -1], **kwargs), expected)
+        self.assertEqual(self.decoder.generate_batch(
+            [{"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": []}],
+            n_rows=1, items_per_row=3, prefix=1,
+        ), [expected])
 
     def test_truncate_keeps_prefix_page_and_whole_events(self):
         tokens = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
