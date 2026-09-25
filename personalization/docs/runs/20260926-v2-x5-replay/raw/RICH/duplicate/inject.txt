@@ -1,0 +1,23 @@
+  user 6647: 12건 (긴 사용자=False)
+  user 6648: 12건 (긴 사용자=False)
+  user 6649: 12건 (긴 사용자=False)
+  user 6650: 12건 (긴 사용자=False)
+  user 6651: 12건 (긴 사용자=False)
+  user 6652: 12건 (긴 사용자=False)
+  user 6653: 12건 (긴 사용자=False)
+  user 6654: 12건 (긴 사용자=False)
+  user 6655: 12건 (긴 사용자=False)
+  user 6656: 12건 (긴 사용자=False)
+  user 6657: 12건 (긴 사용자=False)
+  user 6658: 12건 (긴 사용자=False)
+  user 6659: 12건 (긴 사용자=False)
+  user 6660: 12건 (긴 사용자=False)
+  user 6661: 12건 (긴 사용자=False)
+  user 6662: 12건 (긴 사용자=False)
+  user 6663: 12건 (긴 사용자=False)
+  user 6664: 12건 (긴 사용자=False)
+  user 6665: 12건 (긴 사용자=False)
+  user 6666: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 240건 · 그 외 80건
+매니페스트: personalization/docs/runs/20260926-v2-x5-replay/raw/RICH/duplicate/manifest.json

@@ -1,0 +1,2492 @@
+{
+  "summary": {
+    "condition": "baseline-kafka @KAFKA",
+    "session": "OFF",
+    "users": 20,
+    "compared": 20,
+    "exact": 0,
+    "exactRate": 0.0,
+    "tokenMismatchRate": 0.43333333333333335,
+    "flags": {
+      "missing": 20,
+      "extra": 0,
+      "order": 0,
+      "action": 20,
+      "meaning": 20,
+      "time": 0,
+      "request": 20
+    },
+    "notCalled": 0,
+    "noPrompt": 0,
+    "ambiguous": 0,
+    "requestBytesMedian": 251.0,
+    "page2MsP50": 99.07597897108644,
+    "page2MsP95": 106.55887494795024,
+    "config": {
+      "requestOf": "2020-09-16 00:00:00",
+      "maxItems": 20
+    }
+  },
+  "users": [
+    {
+      "userId": 6507,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006507001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006507002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006507003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006507004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006507005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006507006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006507007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006507008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006507009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006507010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006507011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006507012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006507005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006507006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006507007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006507008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006507009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006507010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006507011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006507012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 156.94433404132724,
+      "rowSources": []
+    },
+    {
+      "userId": 6508,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006508001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006508002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006508003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006508004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006508005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006508006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006508007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006508008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006508009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006508010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006508011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006508012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006508005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006508006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006508007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006508008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006508009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006508010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006508011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006508012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 106.55887494795024,
+      "rowSources": []
+    },
+    {
+      "userId": 6509,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006509001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006509002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006509003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006509004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006509005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006509006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006509007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006509008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006509009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006509010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006509011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006509012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006509005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006509006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006509007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006509008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006509009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006509010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006509011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006509012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 100.7505829911679,
+      "rowSources": []
+    },
+    {
+      "userId": 6510,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006510001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006510002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006510003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006510004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006510005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006510006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006510007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006510008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006510009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006510010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006510011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006510012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006510005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006510006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006510007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006510008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006510009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006510010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006510011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006510012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 98.47458300646394,
+      "rowSources": []
+    },
+    {
+      "userId": 6511,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006511001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006511002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006511003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006511004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006511005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006511006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006511007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006511008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006511009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006511010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006511011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006511012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006511005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006511006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006511007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006511008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006511009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006511010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006511011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006511012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 96.62174992263317,
+      "rowSources": []
+    },
+    {
+      "userId": 6512,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006512001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006512002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006512003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006512004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006512005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006512006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006512007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006512008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006512009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006512010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006512011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006512012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006512005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006512006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006512007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006512008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006512009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006512010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006512011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006512012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 97.12879091966897,
+      "rowSources": []
+    },
+    {
+      "userId": 6513,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006513001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006513002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006513003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006513004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006513005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006513006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006513007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006513008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006513009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006513010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006513011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006513012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006513005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006513006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006513007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006513008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006513009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006513010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006513011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006513012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 101.53166705276817,
+      "rowSources": []
+    },
+    {
+      "userId": 6514,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006514001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006514002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006514003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006514004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006514005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006514006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006514007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006514008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006514009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006514010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006514011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006514012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006514005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006514006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006514007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006514008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006514009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006514010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006514011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006514012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 100.08779098279774,
+      "rowSources": []
+    },
+    {
+      "userId": 6515,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006515001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006515002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006515003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006515004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006515005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006515006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006515007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006515008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006515009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006515010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006515011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006515012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006515005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006515006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006515007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006515008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006515009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006515010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006515011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006515012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 103.98004204034805,
+      "rowSources": []
+    },
+    {
+      "userId": 6516,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006516001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006516002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006516003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006516004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006516005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006516006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006516007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006516008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006516009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006516010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006516011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006516012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006516005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006516006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006516007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006516008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006516009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006516010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006516011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006516012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 100.23699991870672,
+      "rowSources": []
+    },
+    {
+      "userId": 6517,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006517001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006517002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006517003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006517004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006517005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006517006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006517007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006517008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006517009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006517010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006517011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006517012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006517005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006517006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006517007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006517008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006517009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006517010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006517011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006517012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 97.36208396498114,
+      "rowSources": []
+    },
+    {
+      "userId": 6518,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006518001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006518002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006518003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006518004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006518005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006518006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006518007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006518008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006518009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006518010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006518011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006518012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006518005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006518006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006518007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006518008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006518009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006518010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006518011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006518012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 97.04162506386638,
+      "rowSources": []
+    },
+    {
+      "userId": 6519,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006519001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006519002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006519003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006519004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006519005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006519006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006519007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006519008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006519009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006519010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006519011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006519012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006519005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006519006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006519007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006519008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006519009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006519010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006519011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006519012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 102.40479197818786,
+      "rowSources": []
+    },
+    {
+      "userId": 6520,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006520001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006520002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006520003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006520004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006520005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006520006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006520007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006520008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006520009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006520010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006520011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006520012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006520005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006520006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006520007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006520008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006520009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006520010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006520011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006520012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 102.37025003880262,
+      "rowSources": []
+    },
+    {
+      "userId": 6521,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006521001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006521002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006521003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006521004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006521005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006521006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006521007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006521008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006521009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006521010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006521011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006521012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006521005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006521006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006521007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006521008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006521009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006521010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006521011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006521012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 99.67737493570894,
+      "rowSources": []
+    },
+    {
+      "userId": 6522,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006522001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006522002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006522003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006522004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006522005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006522006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006522007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006522008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006522009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006522010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006522011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006522012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006522005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006522006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006522007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006522008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006522009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006522010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006522011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006522012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 95.24445794522762,
+      "rowSources": []
+    },
+    {
+      "userId": 6523,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006523001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006523002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006523003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006523004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006523005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006523006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006523007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006523008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006523009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006523010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006523011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006523012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006523005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006523006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006523007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006523008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006523009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006523010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006523011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006523012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 93.53933308739215,
+      "rowSources": []
+    },
+    {
+      "userId": 6524,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006524001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006524002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006524003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006524004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006524005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006524006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006524007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006524008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006524009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006524010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006524011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006524012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006524005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006524006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006524007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006524008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006524009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006524010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006524011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006524012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 90.39295790717006,
+      "rowSources": []
+    },
+    {
+      "userId": 6525,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006525001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006525002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006525003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006525004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006525005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006525006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006525007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006525008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006525009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006525010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006525011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006525012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006525005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006525006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006525007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006525008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006525009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006525010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006525011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006525012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 89.0954170608893,
+      "rowSources": []
+    },
+    {
+      "userId": 6526,
+      "flags": {
+        "missing": true,
+        "extra": false,
+        "order": false,
+        "action": true,
+        "meaning": true,
+        "time": false,
+        "request": true,
+        "exact": false
+      },
+      "tokenDiff": 26,
+      "tokens": 60,
+      "expected": [
+        [
+          "0006526001",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006526002",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006526003",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006526004",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006526005",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006526006",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006526007",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006526008",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006526009",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006526010",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006526011",
+          "CLICK",
+          "AGO_0-3"
+        ],
+        [
+          "0006526012",
+          "CLICK",
+          "AGO_0-3"
+        ]
+      ],
+      "online": [
+        [
+          "0006526005",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006526006",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006526007",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006526008",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006526009",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006526010",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006526011",
+          "ONLINE",
+          "AGO_0-3"
+        ],
+        [
+          "0006526012",
+          "ONLINE",
+          "AGO_0-3"
+        ]
+      ],
+      "now": null,
+      "bytes": 251,
+      "ms": 93.24979095254093,
+      "rowSources": []
+    }
+  ]
+}

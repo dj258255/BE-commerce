@@ -42,6 +42,9 @@ class Engine:
         self.ckpt = Path(ckpt).name
         self.lock = threading.Lock()
         self.price_by_article, self.default_price = self._prices()
+        # X5(#328): one JSON line per request with what the server understood — the
+        # events it parsed and the prompt token names. Off unless the variable is set.
+        self.prompt_log = os.environ.get("GENPAGE2_PROMPT_LOG") or None
         self.row_names = {self.vocab.id("ROW_REPEAT"): "REPEAT"}
         self.row_titles = {self.vocab.id("ROW_REPEAT"): "다시 사기"}
         self._load_sections()
@@ -115,16 +118,29 @@ class Engine:
                     tokens.append(item_token)
         return tokens
 
-    def _prompt(self, request: dict[str, Any]) -> tuple[list[int], list[int], dict[str, Any], list[str]]:
+    def _prompt(self, request: dict[str, Any], kind: str = "page") -> tuple[list[int], list[int], dict[str, Any], list[str]]:
         events = self._events(request)
         tokens, content, report = build_prompt(self.vocab,
                                                now=request.get("now") or config.request_of(self.mode), profile=request.get("profile"),
                                                events=events, content_rows=self.content_rows)
         report["missing"]["now"] = request.get("now") is None
         report["level"] = self.decoder.level
+        if self.prompt_log:
+            self._log_prompt(kind, request, events, tokens)
         history = [_article_id(x["item"]) for x in events
                    if str(x.get("action") or "ONLINE").upper() in ("STORE", "ONLINE") and "item" in x]
         return tokens, content, report, list(reversed(history))
+
+    def _log_prompt(self, kind: str, request: dict[str, Any], events: list[dict[str, Any]], tokens: list[int]) -> None:
+        """Append the parsed prompt. Called under ``self.lock``, so lines never interleave."""
+        # `bytes` is the request re-serialized compactly — the same form the app's Jackson writes.
+        line = {"t": time.time(), "kind": kind, "now": request.get("now"),
+                "bytes": len(json.dumps(request, ensure_ascii=False, separators=(",", ":")).encode("utf-8")),
+                "events": [{"item": _article_id(e.get("item", "")), "action": e.get("action"), "at": e.get("at")}
+                           for e in events],
+                "tokens": [self.vocab.tokens[t] for t in tokens]}
+        with open(self.prompt_log, "a", encoding="utf-8") as f:
+            f.write(json.dumps(line, ensure_ascii=False) + "\n")
 
     def _excluded_rows(self, values: Any, report: dict[str, Any]) -> set[int]:
         wanted = set(values or [])
@@ -135,7 +151,7 @@ class Engine:
         return rows
 
     def _page_unlocked(self, request: dict[str, Any], *, recommend: bool = False) -> dict[str, Any]:
-        tokens, content, report, history = self._prompt(request)
+        tokens, content, report, history = self._prompt(request, "recommend" if recommend else "page")
         exclude = {_article_id(x) for x in request.get("exclude", [])}
         excluded_rows = self._excluded_rows(request.get("exclude_categories", []), report)
         prev_page = self._prev_page(request.get("prev_rows", []), report)

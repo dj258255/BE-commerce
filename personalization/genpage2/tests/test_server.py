@@ -62,5 +62,32 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(self.request("/missing", {"history": []})[0], 404)
 
 
+class PromptLogTest(unittest.TestCase):
+    """X5(#328): the server writes what it parsed, one line per request."""
+
+    def test_log_line_has_kind_events_and_token_names(self):
+        import tempfile
+        from pathlib import Path
+
+        class _Vocab:
+            tokens = ["BOS", "SEP_PAGE", "ITEM_FALLBACK"]
+
+        engine = object.__new__(genpage2_server.Engine)
+        engine.vocab = _Vocab()
+        with tempfile.TemporaryDirectory() as tmp:
+            engine.prompt_log = str(Path(tmp) / "prompts.jsonl")
+            engine._log_prompt("page", {"now": "2026-09-26T03:00:00Z"},
+                               [{"item": 12, "action": "CLICK", "at": "2026-09-26T02:00:00Z", "_inferred_price": 1.0}],
+                               [0, 2, 1])
+            engine._log_prompt("recommend", {}, [], [0, 1])
+            lines = [json.loads(x) for x in Path(engine.prompt_log).read_text().splitlines()]
+        self.assertEqual(len(lines), 2)
+        self.assertEqual([x["kind"] for x in lines], ["page", "recommend"])
+        self.assertEqual(lines[0]["events"], [{"item": "0000000012", "action": "CLICK", "at": "2026-09-26T02:00:00Z"}])
+        self.assertEqual(lines[0]["tokens"], ["BOS", "ITEM_FALLBACK", "SEP_PAGE"])
+        self.assertIsNone(lines[1]["now"])
+        self.assertEqual(lines[1]["bytes"], len(b"{}"))
+
+
 if __name__ == "__main__":
     unittest.main()
