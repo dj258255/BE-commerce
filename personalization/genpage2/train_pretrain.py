@@ -20,8 +20,11 @@ from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset
 
-from .config import MAXLEN, SEED, out_dir
+from . import config
+from .context import LEVELS, truncate as truncate_context, view as context_view
 from .model import GenPageV2, ModelConfig, save_checkpoint
+
+SEED = config.SEED
 
 
 class NpzExamples(Dataset):
@@ -67,52 +70,21 @@ def _item_bounds(vocab: Any) -> tuple[int, int]:
     return (min(values), max(values) + 1) if values else (0, 0)
 
 
-def history_only_context(ctx_tokens: Sequence[int], ctx_content: Sequence[int], vocab: Any) -> tuple[np.ndarray, np.ndarray]:
-    """Retain only item-bearing history between a fresh BOS/HISTORY/PAGE frame."""
-    tokens = np.asarray(ctx_tokens, dtype=np.int64)
-    content = np.asarray(ctx_content, dtype=np.int64)
-    if len(tokens) != len(content):
-        raise ValueError("context token/content lengths differ")
-    bos, history, page = (_vocab_id(vocab, n) for n in ("BOS", "SEP_HISTORY", "SEP_PAGE"))
-    item_start, item_end = _item_bounds(vocab)
-    keep = ((tokens >= item_start) & (tokens < item_end)) | (content >= 0)
-    selected_tokens, selected_content = tokens[keep], content[keep]
-    return (np.concatenate(([bos, history], selected_tokens, [page])).astype(np.int64),
-            np.concatenate(([-1, -1], selected_content, [-1])).astype(np.int64))
+def _row_bounds(vocab: Any) -> range | tuple[int, int] | None:
+    ids = getattr(vocab, "row_ids", None)
+    if ids is not None:
+        values = list(ids)
+    else:
+        values = [i for i, token in enumerate(vocab.tokens)
+                  if token.startswith("ROW_") and token != "ROW_FALLBACK"]
+    return range(min(values), max(values) + 1) if values else None
 
 
-def truncate_context_page(ctx_tokens: Sequence[int], ctx_content: Sequence[int], page_tokens: Sequence[int], *,
-                          maxlen: int, sep_history: int, sep_page: int,
-                          event_width: int = 3) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
-    """Remove oldest complete three-token events, then page suffix if necessary.
-
-    Returns the number of removed history tokens as the final element.
-    """
-    ctx = np.asarray(ctx_tokens, dtype=np.int64).copy()
-    content = np.asarray(ctx_content, dtype=np.int64).copy()
-    page = np.asarray(page_tokens, dtype=np.int64).copy()
-    if len(ctx) != len(content):
-        raise ValueError("context token/content lengths differ")
-    if event_width <= 0:
-        raise ValueError("event_width must be positive")
+def _optional_vocab_id(vocab: Any, name: str) -> int | None:
     try:
-        history_at = int(np.where(ctx == sep_history)[0][-1])
-        page_at = int(np.where(ctx == sep_page)[0][-1])
-    except IndexError as exc:
-        raise ValueError("context must contain SEP_HISTORY and SEP_PAGE") from exc
-    if history_at >= page_at:
-        raise ValueError("SEP_HISTORY must precede SEP_PAGE")
-    removed = 0
-    # Full history events are [item, action, ago]; history-only events are [item].
-    while len(ctx) + len(page) > maxlen and page_at - history_at - 1 >= event_width:
-        cut = history_at + 1
-        ctx = np.concatenate((ctx[:cut], ctx[cut + event_width:]))
-        content = np.concatenate((content[:cut], content[cut + event_width:]))
-        page_at -= event_width
-        removed += event_width
-    if len(ctx) + len(page) > maxlen:
-        page = page[:max(0, maxlen - len(ctx))]
-    return ctx, content, page, removed
+        return _vocab_id(vocab, name)
+    except (KeyError, ValueError):
+        return None
 
 
 def page_loss_mask(length: int, page_start: int) -> np.ndarray:
@@ -147,21 +119,43 @@ def replace_item_inputs(tokens: torch.Tensor, item_range: range | tuple[int, int
     return replaced
 
 
-def make_batch(examples: Sequence[tuple[np.ndarray, np.ndarray, np.ndarray]], *, vocab: Any, maxlen: int = MAXLEN,
+def replace_known_inputs(tokens: torch.Tensor, *, item_range: range | tuple[int, int], item_fallback_id: int,
+                         row_range: range | tuple[int, int] | None = None, row_fallback_id: int | None = None,
+                         probability: float, generator: torch.Generator | None = None) -> torch.Tensor:
+    """Replace known item and row inputs independently, leaving targets untouched."""
+    replaced = replace_item_inputs(tokens, item_range, item_fallback_id, probability, generator)
+    if row_range is None or row_fallback_id is None or probability <= 0:
+        return replaced
+    row_start, row_end = _item_range_bounds(row_range)
+    is_row = (tokens >= row_start) & (tokens < row_end)
+    if probability >= 1:
+        selected = is_row
+    else:
+        selected = is_row & (torch.rand(tokens.shape, device=tokens.device, generator=generator) < probability)
+    replaced[selected] = int(row_fallback_id)
+    return replaced
+
+
+def make_batch(examples: Sequence[tuple[np.ndarray, np.ndarray, np.ndarray]], *, vocab: Any, maxlen: int | None = None,
                context: str = "full", pad_id: int | None = None) -> dict[str, torch.Tensor]:
     """Join context/page examples and right-pad a batch without global expansion."""
-    if context not in {"full", "history"}:
-        raise ValueError("context must be 'full' or 'history'")
+    # ``history`` appeared in early A3 commands.  Keep it as an input alias,
+    # but checkpoints and new commands always record the documented ``items``.
+    if context == "history":
+        context = "items"
+    if context not in LEVELS:
+        raise ValueError(f"context must be one of {LEVELS}")
+    maxlen = int(getattr(config, "MAXLEN", 320) if maxlen is None else maxlen)
     pad = _vocab_id(vocab, "PAD") if pad_id is None else pad_id
     sep_history, sep_page = _vocab_id(vocab, "SEP_HISTORY"), _vocab_id(vocab, "SEP_PAGE")
     prepared: list[tuple[np.ndarray, np.ndarray, int]] = []
     for ctx, content, page in examples:
-        if context == "history":
-            ctx, content = history_only_context(ctx, content, vocab)
-        event_width = 1 if context == "history" else 3
-        ctx, content, page, _ = truncate_context_page(ctx, content, page, maxlen=maxlen,
-                                                       sep_history=sep_history, sep_page=sep_page,
-                                                       event_width=event_width)
+        ctx, content = context_view(ctx, content, vocab, context)
+        # Only history events may be discarded.  Page targets are a response,
+        # so a pathological overlong target is clipped only after prompt trim.
+        ctx, content = truncate_context(ctx, content, maxlen - len(page), vocab=vocab, level=context)
+        ctx, content = np.asarray(ctx, dtype=np.int64), np.asarray(content, dtype=np.int64)
+        page = np.asarray(page, dtype=np.int64)[:max(0, maxlen - len(ctx))]
         joined = np.concatenate((ctx, page))
         joined_content = np.concatenate((content, np.full(len(page), -1, dtype=np.int64)))
         if not page_loss_mask(len(joined), len(ctx)).any():
@@ -198,10 +192,13 @@ def add_page_content(batch: dict[str, torch.Tensor], token_rows: torch.Tensor) -
 
 
 def batch_loss(model: GenPageV2, batch: dict[str, torch.Tensor], *, item_range: range | tuple[int, int],
-               fallback_id: int, fallback_prob: float,
+               fallback_id: int, fallback_prob: float, row_range: range | tuple[int, int] | None = None,
+               row_fallback_id: int | None = None,
                generator: torch.Generator | None = None) -> tuple[torch.Tensor, torch.Tensor]:
     targets = batch["tokens"][:, 1:]
-    inputs = replace_item_inputs(batch["tokens"], item_range, fallback_id, fallback_prob, generator)
+    inputs = replace_known_inputs(batch["tokens"], item_range=item_range, item_fallback_id=fallback_id,
+                                  row_range=row_range, row_fallback_id=row_fallback_id,
+                                  probability=fallback_prob, generator=generator)
     mask = batch["loss_mask"]
     hidden = model(inputs, batch["content_idx"])
     selected_hidden = hidden[:, :-1][mask]
@@ -233,6 +230,8 @@ def evaluate(model: GenPageV2, dataset: Dataset, *, vocab: Any, token_rows: torc
     item_start, item_end = _item_bounds(vocab)
     item_range = range(item_start, item_end)
     fallback = _vocab_id(vocab, "ITEM_FALLBACK")
+    row_range = _row_bounds(vocab)
+    row_fallback = _optional_vocab_id(vocab, "ROW_FALLBACK")
     with torch.no_grad():
         seen = 0
         for batch in loader:
@@ -244,7 +243,8 @@ def evaluate(model: GenPageV2, dataset: Dataset, *, vocab: Any, token_rows: torc
             batch = {k: v[:take].to(device) for k, v in batch.items()}
             add_page_content(batch, token_rows)
             loss, logits = batch_loss(model, batch, item_range=item_range,
-                                      fallback_id=fallback, fallback_prob=0)
+                                      fallback_id=fallback, fallback_prob=0,
+                                      row_range=row_range, row_fallback_id=row_fallback)
             total_loss += float(loss) * count
             total_tokens += count
             row_mask = batch["loss_mask"]
@@ -268,10 +268,14 @@ def train(args: argparse.Namespace, vocab_loader: Any | None = None) -> dict[str
 
         vocab_loader = Vocab.load
 
+    if args.context == "history":  # old programmatic callers; CLI no longer advertises it
+        args.context = "items"
+    if args.context not in LEVELS:
+        raise ValueError(f"context must be one of {LEVELS}")
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     device = _device(args.device)
-    data_dir = Path(args.data_dir) if args.data_dir else out_dir() / args.mode
+    data_dir = Path(args.data_dir) if args.data_dir else config.out_dir() / args.mode
     output = Path(args.out) if args.out else data_dir / "ckpt" / args.name
     vocab = vocab_loader(data_dir / "vocab.json")
     content, article_rows = _load_content(data_dir)
@@ -290,6 +294,8 @@ def train(args: argparse.Namespace, vocab_loader: Any | None = None) -> dict[str
     item_start, item_end = _item_bounds(vocab)
     item_range = range(item_start, item_end)
     fallback_id = _vocab_id(vocab, "ITEM_FALLBACK")
+    row_range = _row_bounds(vocab)
+    row_fallback_id = _optional_vocab_id(vocab, "ROW_FALLBACK")
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     planned_steps = args.max_steps or max(1, math.ceil(len(train_data) / args.batch) * args.epochs)
     def factor(step: int) -> float:
@@ -322,7 +328,8 @@ def train(args: argparse.Namespace, vocab_loader: Any | None = None) -> dict[str
                 add_page_content(batch, token_rows)
                 optimizer.zero_grad(set_to_none=True)
                 loss, _ = batch_loss(model, batch, item_range=item_range,
-                                     fallback_id=fallback_id, fallback_prob=cfg.fallback_prob, generator=generator)
+                                     fallback_id=fallback_id, fallback_prob=cfg.fallback_prob,
+                                     row_range=row_range, row_fallback_id=row_fallback_id, generator=generator)
                 loss.backward()
                 nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 optimizer.step()
@@ -369,7 +376,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", choices=("validate", "final"), required=True)
     parser.add_argument("--preset", choices=("small", "base", "large"), default="small")
-    parser.add_argument("--context", choices=("full", "history"), default="full")
+    parser.add_argument("--context", choices=LEVELS, default="full")
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--max-steps", type=int)
     parser.add_argument("--batch", type=int, default=64)
@@ -383,7 +390,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--eval-examples", type=int, default=5000)
     parser.add_argument("--log-every", type=int, default=50)
     parser.add_argument("--seed", type=int, default=SEED)
-    parser.add_argument("--maxlen", type=int, default=MAXLEN)
+    parser.add_argument("--maxlen", type=int, default=getattr(config, "MAXLEN", 320))
     parser.add_argument("--fallback-prob", type=float, default=0.05)
     return parser.parse_args(argv)
 

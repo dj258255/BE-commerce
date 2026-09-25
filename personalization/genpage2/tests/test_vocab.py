@@ -13,7 +13,8 @@ def articles():
 
 def transactions():
     return pd.DataFrame({"article_id": ["0000000001"] * 10 + ["0000000002"] * 9,
-                         "t_dat": pd.Timestamp("2020-01-01")})
+                         "t_dat": pd.Timestamp("2020-01-01"),
+                         "price": list(range(1, 20))})
 
 
 class VocabTest(unittest.TestCase):
@@ -22,6 +23,9 @@ class VocabTest(unittest.TestCase):
         self.assertEqual(vocab.tokens[:10], ["PAD", "BOS", "EOS", "SEP_PROFILE", "SEP_REQUEST", "SEP_HISTORY", "SEP_PAGE", "ITEM_FALLBACK", "ROW_FALLBACK", "UNK"])
         self.assertIsNotNone(vocab.item("0000000001"))
         self.assertIsNone(vocab.item("0000000002"))
+        self.assertEqual(vocab.tokens[vocab.ago_ids.stop:vocab.price_ids.stop],
+                         [f"PRICE_{n}" for n in range(8)])
+        self.assertEqual(vocab.price_ids.start, vocab.ago_ids.stop)
         self.assertLess(vocab.row_ids.start, vocab.item_ids.start)
         self.assertEqual(list(vocab.item_ids), [vocab.item("0000000001")])
         self.assertEqual(vocab.row_of("0000000010"), vocab.id("ROW_S2"))
@@ -36,3 +40,4 @@ class VocabTest(unittest.TestCase):
         self.assertEqual(loaded.tokens, vocab.tokens)
         self.assertEqual(loaded.article_of, vocab.article_of)
         self.assertEqual(loaded.row_of("0000000002"), vocab.row_of("0000000002"))
+        self.assertEqual(loaded.price_edges, vocab.price_edges)

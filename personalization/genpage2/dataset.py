@@ -18,6 +18,9 @@ from . import config
 from .vocab import Vocab, _article_id, content_rows
 
 
+TRANSACTION_COLUMNS = ("t_dat", "customer_id", "article_id", "sales_channel_id", "price")
+
+
 def age_bucket(age: object) -> str:
     if pd.isna(age):
         return "NA"
@@ -59,6 +62,23 @@ def _ago_token_ids(vocab: Vocab, request_day: int, event_days: np.ndarray) -> np
     return ago_ids[bins]
 
 
+def price_bucket(vocab: Vocab, price: object) -> int:
+    """Return the fixed octile token for one transaction price."""
+    value = float(price)
+    if not np.isfinite(value):
+        raise ValueError("transaction price must be finite")
+    return vocab.price_ids[np.searchsorted(vocab.price_edges, value, side="right")]
+
+
+def _price_token_ids(vocab: Vocab, prices: np.ndarray) -> np.ndarray:
+    """Vectorized price bucketing; a boundary belongs to the bucket on its right."""
+    values = np.asarray(prices, dtype=float)
+    if not np.isfinite(values).all():
+        raise ValueError("transaction prices must be finite")
+    buckets = np.searchsorted(vocab.price_edges, values, side="right")
+    return np.arange(vocab.price_ids.start, vocab.price_ids.stop, dtype=np.int32)[buckets]
+
+
 def _value(row: pd.Series | dict | None, key: str, default: str = "NA") -> str:
     if row is None or key not in row or pd.isna(row[key]):
         return default
@@ -90,6 +110,8 @@ def _ordered_before(events: pd.DataFrame, request_date: object) -> pd.DataFrame:
 def build_context(vocab: Vocab, events: pd.DataFrame, request_date: object,
                   customer: pd.Series | dict | None, article_content_rows: dict[str, int]) -> tuple[list[int], list[int]]:
     """Return prompt tokens and aligned catalogue-row indexes (or -1)."""
+    if "price" not in events.columns:
+        raise ValueError("transactions must contain a price column")
     request = pd.Timestamp(request_date)
     tokens = [vocab.id("BOS"), vocab.id("SEP_PROFILE")] + profile_tokens(vocab, customer)
     tokens += [vocab.id("SEP_REQUEST"), vocab.id(f"DOW_{request.weekday()}"), vocab.id(f"MONTH_{request.month}"), vocab.id("SEP_HISTORY")]
@@ -98,10 +120,12 @@ def build_context(vocab: Vocab, events: pd.DataFrame, request_date: object,
     for event in history.itertuples(index=False):
         article = _article_id(getattr(event, "article_id"))
         item = vocab.item(article)
+        price = getattr(event, "price")
         tokens.extend([item if item is not None else vocab.id("ITEM_FALLBACK"),
                        vocab.id("ACT_STORE") if int(getattr(event, "sales_channel_id")) == 1 else vocab.id("ACT_ONLINE"),
-                       vocab.id(ago_bucket(request, getattr(event, "t_dat")))])
-        content.extend([article_content_rows[article], -1, -1])
+                       vocab.id(ago_bucket(request, getattr(event, "t_dat"))),
+                       price_bucket(vocab, price)])
+        content.extend([article_content_rows[article], -1, -1, -1])
     tokens.append(vocab.id("SEP_PAGE"))
     content.append(-1)
     return tokens, content
@@ -178,7 +202,7 @@ def _page_from_arrays(vocab: Vocab, history_articles: set[str], dates: np.ndarra
 
 def _context_from_arrays(vocab: Vocab, request: pd.Timestamp, profile: list[int], dates: np.ndarray,
                          articles: np.ndarray, item_tokens: np.ndarray, channels: np.ndarray,
-                         article_content: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+                         article_content: np.ndarray, prices: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     tokens = [vocab.id("BOS"), vocab.id("SEP_PROFILE"), *profile, vocab.id("SEP_REQUEST"),
               vocab.id(f"DOW_{request.weekday()}"), vocab.id(f"MONTH_{request.month}"), vocab.id("SEP_HISTORY")]
     content = [-1] * len(tokens)
@@ -186,13 +210,15 @@ def _context_from_arrays(vocab: Vocab, request: pd.Timestamp, profile: list[int]
     items = item_tokens[-config.HISTORY_EVENTS:]
     channels = channels[-config.HISTORY_EVENTS:]
     content_rows = article_content[-config.HISTORY_EVENTS:]
+    prices = prices[-config.HISTORY_EVENTS:]
     fallback = vocab.id("ITEM_FALLBACK")
     action_store, action_online = vocab.id("ACT_STORE"), vocab.id("ACT_ONLINE")
     actions = np.where(channels == 1, action_store, action_online).astype(np.int32)
     ago = _ago_token_ids(vocab, request.normalize().to_datetime64().astype("datetime64[D]").astype(np.int64), dates)
-    for item, action, age, row in zip(items, actions, ago, content_rows, strict=True):
-        tokens.extend([int(item) if int(item) != -1 else fallback, int(action), int(age)])
-        content.extend([int(row), -1, -1])
+    price = _price_token_ids(vocab, prices)
+    for item, action, age, price_id, row in zip(items, actions, ago, price, content_rows, strict=True):
+        tokens.extend([int(item) if int(item) != -1 else fallback, int(action), int(age), int(price_id)])
+        content.extend([int(row), -1, -1, -1])
     tokens.append(vocab.id("SEP_PAGE"))
     content.append(-1)
     return np.asarray(tokens, dtype=np.int32), np.asarray(content, dtype=np.int32)
@@ -206,6 +232,11 @@ def _customer_event_groups(transactions: pd.DataFrame, vocab: Vocab,
     article_ids = tx["article_id"].map(_article_id).to_numpy(dtype=str)
     dates = pd.to_datetime(tx["t_dat"]).to_numpy().astype("datetime64[D]").astype(np.int64)
     channels = tx["sales_channel_id"].to_numpy(dtype=np.int8)
+    if "price" not in tx.columns:
+        raise ValueError("transactions must contain a price column")
+    prices = pd.to_numeric(tx["price"], errors="coerce").to_numpy(dtype=float)
+    if not np.isfinite(prices).all():
+        raise ValueError("transactions must contain finite prices")
     item_tokens = np.fromiter((vocab._item_of.get(a, -1) for a in article_ids), dtype=np.int32, count=len(article_ids))
     row_tokens = np.fromiter((vocab._article_rows.get(a, -1) for a in article_ids), dtype=np.int32, count=len(article_ids))
     contents = np.asarray([article_content_rows.get(a, -1) for a in article_ids], dtype=np.int32)
@@ -217,6 +248,7 @@ def _customer_event_groups(transactions: pd.DataFrame, vocab: Vocab,
         yield str(customers[codes[idx[0]]]), {
             "dates": dates[idx], "articles": article_ids[idx], "item_tokens": item_tokens[idx],
             "row_tokens": row_tokens[idx], "content": contents[idx], "channels": channels[idx],
+            "prices": prices[idx],
         }
 
 
@@ -249,6 +281,7 @@ def generate_examples(vocab: Vocab, transactions: pd.DataFrame, customers: pd.Da
         row_tokens = events["row_tokens"]
         channels = events["channels"]
         content = events["content"]
+        prices = events["prices"]
         request_day = request.to_datetime64().astype("datetime64[D]").astype(np.int64)
         # Candidate dates are intentionally newest first and only four valid pages survive.
         made = 0
@@ -260,7 +293,7 @@ def generate_examples(vocab: Vocab, transactions: pd.DataFrame, customers: pd.Da
             page = _page_from_arrays(vocab, history_articles, dates[start:end], articles[start:end], item_tokens[start:end], row_tokens[start:end])
             if page is None:
                 continue
-            ctx, ctx_content = _context_from_arrays(vocab, r, profile_ids, dates[:start], articles[:start], item_tokens[:start], channels[:start], content[:start])
+            ctx, ctx_content = _context_from_arrays(vocab, r, profile_ids, dates[:start], articles[:start], item_tokens[:start], channels[:start], content[:start], prices[:start])
             truth = list(dict.fromkeys(articles[start:end].tolist()))
             hist = articles[max(0, start - 100):start][::-1].tolist()
             candidate = Example(customer_id, r, ctx, ctx_content, page, truth, hist)
@@ -285,7 +318,7 @@ def generate_examples(vocab: Vocab, transactions: pd.DataFrame, customers: pd.Da
         page_empty = page is None
         if page_empty:
             page = np.asarray([vocab.id("EOS")], dtype=np.int32)
-        ctx, ctx_content = _context_from_arrays(vocab, request, profile_ids, dates[:start], articles[:start], item_tokens[:start], channels[:start], content[:start])
+        ctx, ctx_content = _context_from_arrays(vocab, request, profile_ids, dates[:start], articles[:start], item_tokens[:start], channels[:start], content[:start], prices[:start])
         evaluation.append(Example(customer_id, request, ctx, ctx_content, page,
                                   list(dict.fromkeys(articles[start:end].tolist())),
                                   articles[max(0, start - 100):start][::-1].tolist(),
@@ -330,7 +363,7 @@ def load_examples(out: str | Path, name: str) -> tuple[dict[str, np.ndarray], pd
 def stats(train: list[Example], evaluation: list[Example], vocab: Vocab, elapsed: float) -> dict[str, object]:
     examples = train + evaluation
     page, page_offsets = _flat(examples, "page_tokens", np.int32)
-    _, ctx_offsets = _flat(examples, "ctx_tokens", np.int32)
+    context_tokens, ctx_offsets = _flat(examples, "ctx_tokens", np.int32)
 
     def segment_lengths(offsets: np.ndarray) -> np.ndarray:
         return np.diff(offsets)
@@ -343,6 +376,10 @@ def stats(train: list[Example], evaluation: list[Example], vocab: Vocab, elapsed
     rows = segment_counts(page, page_offsets, vocab.row_ids.start, vocab.row_ids.stop)
     items = segment_counts(page, page_offsets, vocab.item_ids.start, vocab.item_ids.stop)
     contexts = segment_lengths(ctx_offsets)
+    price_distribution = {
+        vocab.tokens[token_id]: int(np.count_nonzero(context_tokens == token_id))
+        for token_id in vocab.price_ids
+    }
 
     def percentile(values: np.ndarray, q: float) -> float:
         return float(np.percentile(values, q)) if values.size else 0.0
@@ -355,13 +392,15 @@ def stats(train: list[Example], evaluation: list[Example], vocab: Vocab, elapsed
     peak_memory_mb = float(rss / (1024 ** 2 if sys.platform == "darwin" else 1024))
     return {"vocab": {"total": len(vocab.tokens), "items": len(vocab.item_ids), "rows": len(vocab.row_ids),
                       "profile": len(vocab.profile_ids), "request": len(vocab.request_ids),
-                      "actions": len(vocab.action_ids), "ago": len(vocab.ago_ids)},
+                      "actions": len(vocab.action_ids), "ago": len(vocab.ago_ids),
+                      "prices": len(vocab.price_ids)},
             "train_examples": len(train), "eval_examples": len(evaluation), "eval_customers": len(evaluation),
             "eval_has_vocab_history_ratio": float(np.mean([bool(x.has_vocab_history) for x in evaluation])) if evaluation else 0.0,
             "eval_page_empty_ratio": float(np.mean([bool(x.page_empty) for x in evaluation])) if evaluation else 0.0,
             "page_rows": {"p50": percentile(rows, 50), "p90": percentile(rows, 90), "max": maximum(rows)},
             "page_items": {"p50": percentile(items, 50), "p90": percentile(items, 90), "max": maximum(items)},
             "context_length": {"p50": percentile(contexts, 50), "p95": percentile(contexts, 95), "max": maximum(contexts)},
+            "price_buckets": price_distribution,
             "over_maxlen": float(np.mean((contexts + segment_lengths(page_offsets)) > config.MAXLEN)) if examples else 0.0,
             "peak_memory_mb": round(peak_memory_mb, 2),
             "elapsed_seconds": round(elapsed, 3)}
@@ -385,15 +424,15 @@ def _read_inputs(sample_customers: int | None) -> tuple[pd.DataFrame, pd.DataFra
         wanted = set(chosen)
         parts = []
         reader = pq.ParquetFile(directory / "transactions.parquet")
-        for batch in reader.iter_batches(columns=["t_dat", "customer_id", "article_id", "sales_channel_id"], batch_size=262_144):
+        for batch in reader.iter_batches(columns=list(TRANSACTION_COLUMNS), batch_size=262_144):
             part = batch.to_pandas()
             part = part[part["customer_id"].astype(str).isin(wanted)]
             if not part.empty:
                 parts.append(part)
         tx = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(
-            columns=["t_dat", "customer_id", "article_id", "sales_channel_id"])
+            columns=list(TRANSACTION_COLUMNS))
     else:
-        tx = pd.read_parquet(directory / "transactions.parquet", columns=["t_dat", "customer_id", "article_id", "sales_channel_id"])
+        tx = pd.read_parquet(directory / "transactions.parquet", columns=list(TRANSACTION_COLUMNS))
     return tx, customers, articles
 
 

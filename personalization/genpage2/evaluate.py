@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from .config import ITEMS_PER_ROW, MAX_ROWS, SEED, data_dir, out_dir, request_of
+from .context import LEVELS
 from .decode import GeneratedRow, PageDecoder
 
 
@@ -173,9 +174,14 @@ def _load_decoder(mode_dir: Path, ckpt: Path, device_arg: str) -> tuple[PageDeco
     vocab = Vocab.load(mode_dir / "vocab.json")
     content, content_rows = load_content(mode_dir.parent / "content")
     loaded = load_checkpoint(ckpt, content=torch.tensor(content, dtype=torch.float32), device=device)
-    model = loaded[0]
+    model, _, extra = loaded
     model.to(device).eval()
-    return PageDecoder(model, vocab, content_rows, device), vocab, content, content_rows, device
+    level = extra.get("context", "full")
+    if level == "history":  # checkpoints written before the six-level rename
+        level = "items"
+    if level not in LEVELS:
+        raise ValueError(f"checkpoint has invalid extra.context {level!r}")
+    return PageDecoder(model, vocab, content_rows, device, level=level), vocab, content, content_rows, device
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
