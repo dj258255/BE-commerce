@@ -142,6 +142,36 @@ class DecodeTest(unittest.TestCase):
         self.assertEqual(self.decoder.generate_batch(examples, **kwargs),
                          [self.decoder.generate(**example, **kwargs) for example in examples])
 
+    def test_missing_page_separator_is_added_before_projection_for_single_and_batch(self):
+        class RecordingDecoder(PageDecoder):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.projected = []
+
+            def _project_and_trim(self, tokens, content, keep):
+                self.projected.append((list(tokens), list(content)))
+                return super()._project_and_trim(tokens, content, keep)
+
+        decoder = RecordingDecoder(FakeModel(), self.vocab, {a: n for n, a in enumerate("ABCDEF")}, "cpu")
+        kwargs = {"history_articles": [], "n_rows": 1, "items_per_row": 3, "prefix": 1}
+        # A serving request may end at SEP_HISTORY.  It must reach the shared
+        # projector as a valid prompt rather than failing in context.truncate.
+        single = decoder.generate([1], [-1], **kwargs)
+        batched = decoder.generate_batch([{"ctx_tokens": [1], "ctx_content": [-1], "history_articles": []}],
+                                         n_rows=1, items_per_row=3, prefix=1)
+        self.assertEqual(single, batched[0])
+        self.assertEqual(decoder.projected[0], ([1, 2], [-1, -1]))
+        self.assertEqual(decoder.projected[1], ([1, 2], [-1, -1]))
+
+    def test_existing_page_separator_keeps_exact_generation(self):
+        kwargs = {"history_articles": [], "n_rows": 1, "items_per_row": 3, "prefix": 1}
+        expected = ([GeneratedRow(4, ["A", "C", "B"])], 0)
+        self.assertEqual(self.decoder.generate([1, 2], [-1, -1], **kwargs), expected)
+        self.assertEqual(self.decoder.generate_batch(
+            [{"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": []}],
+            n_rows=1, items_per_row=3, prefix=1,
+        ), [expected])
+
     def test_truncate_keeps_prefix_page_and_whole_events(self):
         tokens = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
         content = list(range(len(tokens)))
