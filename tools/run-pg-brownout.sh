@@ -12,6 +12,9 @@ RATE=${2:-30}
 DUR=${3:-60s}
 RTO=${4:-5000}
 LIMIT=${5:-0}     # PG 동시 호출 상한. 0 이면 상한 없음(기본 동작)
+EXTRA=${EXTRA:-}  # 앱에 더 넘길 인자(예: --server.tomcat.threads.max=200). #335
+DRAIN_S=${DRAIN_S:-0}  # 0 보다 크면 측정 뒤 앱을 살려 두고 미확정이 0 이 될 때까지(최대 이 초) 1초마다 센다. #335
+MYSQL=${MYSQL:-"docker exec pay-mysql-1 mysql -N -B -ubecommerce -pbecommerce becommerce"}  # 미확정 건수를 셀 DB
 
 JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 # 기본 java 가 17 이면 21 로 빌드한 jar 가 안 뜬다. 8080 은 다른 것이 쓰고 있을 수 있어 비켜 둔다.
@@ -19,7 +22,7 @@ JAVA="$(/usr/libexec/java_home -v 21)/bin/java"   # JAVA_HOME 이 17 로 잡혀 
 PORT=${PORT:-18080}
 BASE="http://localhost:${PORT}"
 STAMP=$(date +%Y%m%d-%H%M%S)
-OUT="docs/performance/runs/${STAMP}-brownout-lat${LAT}-rate${RATE}-rto${RTO}-lim${LIMIT}"
+OUT=${OUT:-"docs/performance/runs/${STAMP}-brownout-lat${LAT}-rate${RATE}-rto${RTO}-lim${LIMIT}"}
 mkdir -p "$OUT"
 
 echo "== 실행: 지연 ${LAT}ms · 도착률 ${RATE}/s · ${DUR} · read-timeout ${RTO}ms · 상한 ${LIMIT}"
@@ -31,7 +34,7 @@ echo "== 출력: $OUT"
   --payment.fake-pg.read-timeout-ms="$RTO" \
   --payment.pg.max-concurrent-calls="$LIMIT" \
   --app.ratelimit.enabled=false \
-  --server.tomcat.mbeanregistry.enabled=true \
+  --server.tomcat.mbeanregistry.enabled=true $EXTRA \
   > "$OUT/app.log" 2>&1 &
 APP=$!
 SAMPLER=""
@@ -84,6 +87,20 @@ kill "$SAMPLER" 2>/dev/null || true
 
 # 미확정이 얼마나 쌓였는지는 앱이 살아 있을 때 지표로 받는다.
 curl -s "$BASE/actuator/prometheus" | grep -E "^payment_|^hikaricp_connections|^tomcat_threads" > "$OUT/prometheus-final.txt" 2>/dev/null || true
+
+if [ "$DRAIN_S" -gt 0 ]; then
+  # 브라운아웃이 끝난 뒤 복구 배치가 미확정을 얼마 만에 다 확정하는지. 지표의 미확정 건수와 가장 오래된 나이를 1초마다 적는다
+  echo "t,unknown,oldest_age_s" > "$OUT/drain.csv"
+  END=$(( $(date +%s) + DRAIN_S ))
+  while [ "$(date +%s)" -lt "$END" ]; do
+    u=$($MYSQL -e "SELECT COUNT(*) FROM payments WHERE status = 'UNKNOWN'" 2>/dev/null | tr -d '[:space:]')
+    a=$(curl -s "$BASE/actuator/prometheus" | awk '/^payment_unknown_oldest_age/ {print $NF; exit}')
+    echo "$(date +%s),${u:-},${a:-}" >> "$OUT/drain.csv"
+    [ "$u" = "0" ] && break
+    sleep 1
+  done
+  curl -s "$BASE/actuator/prometheus" | grep -E "^payment_" > "$OUT/prometheus-drained.txt" 2>/dev/null || true
+fi
 
 python3 - "$OUT/resources.csv" <<'PY'
 import csv, sys

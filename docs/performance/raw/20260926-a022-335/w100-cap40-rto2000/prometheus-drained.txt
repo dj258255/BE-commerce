@@ -1,0 +1,13 @@
+payment_confirm_total{application="be-commerce",outcome="failed"} 1342.0
+payment_confirm_total{application="be-commerce",outcome="timeout"} 1060.0
+payment_pg_approval_latency_seconds{application="be-commerce",quantile="0.5"} 0.0
+payment_pg_approval_latency_seconds{application="be-commerce",quantile="0.95"} 0.0
+payment_pg_approval_latency_seconds{application="be-commerce",quantile="0.99"} 0.0
+payment_pg_approval_latency_seconds_count{application="be-commerce"} 2402
+payment_pg_approval_latency_seconds_sum{application="be-commerce"} 2125.686425421
+payment_pg_approval_latency_seconds_max{application="be-commerce"} 0.0
+payment_pg_approval_rejected_total{application="be-commerce",reason="concurrency_limit"} 1342.0
+payment_pg_approval_unknown_total{application="be-commerce"} 1060.0
+payment_pg_query_retry_total{application="be-commerce"} 0.0
+payment_pg_query_retry_exhausted_total{application="be-commerce"} 0.0
+payment_unknown_oldest_age_seconds{application="be-commerce"} 0.0
