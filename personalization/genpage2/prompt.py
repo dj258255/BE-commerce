@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from . import config
-from .dataset import _context_from_arrays, profile_tokens
+from .dataset import _context_from_arrays, ago_bucket, profile_tokens
 from .vocab import _article_id
 
 
@@ -27,6 +27,10 @@ def _as_timestamp(value: Any, fallback: pd.Timestamp) -> pd.Timestamp:
     parsed = pd.Timestamp(value)
     if pd.isna(parsed):
         return fallback
+    # The app sends ISO instants with a zone ("...Z"); training dates are naive.
+    # Compare everything as naive UTC so a zoned `at` and a naive `now` can meet.
+    if parsed.tzinfo is not None:
+        parsed = parsed.tz_convert("UTC").tz_localize(None)
     return parsed
 
 
@@ -38,7 +42,9 @@ def build_prompt(vocab: Any, *, now: Any = None, profile: dict[str, Any] | None 
     Store/online events deliberately go through ``_context_from_arrays``: that
     is the same implementation used while making the training archive.  View
     and click events are appended immediately before ``SEP_PAGE`` because
-    those action kinds have no transaction-table representation.
+    those action kinds have no transaction-table representation.  Their time
+    bucket comes from ``at`` with the same rule as purchases (``ago_bucket``);
+    a session event without ``at`` falls in the request day.
     """
     request = _as_timestamp(now, config.request_of("validate"))
     source = list(events or [])
@@ -96,10 +102,10 @@ def build_prompt(vocab: Any, *, now: Any = None, profile: dict[str, Any] | None 
                                            item_tokens, channels, article_content, prices)
     values, content_values = tokens.astype(int).tolist(), content.astype(int).tolist()
     page_at = values.index(vocab.id("SEP_PAGE"))
-    for _, article, action, row, price in sessions:
+    for at, article, action, row, price in sessions:
         item = vocab.item(article)
         values[page_at:page_at] = [int(item) if item is not None else vocab.id("ITEM_FALLBACK"),
-                                    vocab.id(action), vocab.id("AGO_0-3"),
+                                    vocab.id(action), vocab.id(ago_bucket(request, at)),
                                     vocab.price_ids[np.searchsorted(vocab.price_edges, price, side="right")]]
         content_values[page_at:page_at] = [row, -1, -1, -1]
         page_at += 4

@@ -2,8 +2,10 @@ package com.beomsu.becommerce.recommendation.internal;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +29,10 @@ public class GenPagePageClient {
 
     /** 모델이 만든 행 하나. */
     public record Row(String category, List<Long> itemIds) {
+    }
+
+    /** 세션 행동 하나(X5, #328). {@code action} 은 CLICK · VIEW, {@code at} 은 null 이면 서버가 요청일로 본다. */
+    public record SessionEvent(long itemId, String action, Instant at) {
     }
 
     private final RestClient client;
@@ -59,24 +65,51 @@ public class GenPagePageClient {
 
     public List<Row> generate(List<Long> history, Collection<Long> exclude, Collection<String> excludeCategories,
                               int rows, int itemsPerRow) {
+        return generate(history, null, null, exclude, excludeCategories, rows, itemsPerRow);
+    }
+
+    /**
+     * 세션을 행동 종류 · 시각과 함께 보낸다(X5, #328). {@code session} 이 null 이면 위의 id 목록 요청과 본문이 같다.
+     *
+     * @param history 구매(최근 것부터)
+     * @param session 조회 · 클릭(<b>오래된 것부터</b> — 서버가 그 순서로 프롬프트에 넣는다)
+     * @param now     요청 시각. 서버가 요일 · 월 토큰과 세션의 시각 구간을 이것으로 계산한다
+     */
+    public List<Row> generate(List<Long> history, List<SessionEvent> session, Instant now, Collection<Long> exclude,
+                              Collection<String> excludeCategories, int rows, int itemsPerRow) {
+        Map<String, Object> body = new LinkedHashMap<>(Map.of("history", history, "exclude", exclude,
+                "exclude_categories", excludeCategories, "rows", rows, "items_per_row", itemsPerRow, "prefix", prefix));
+        if (session != null) {
+            body.put("session", session.stream().map(GenPagePageClient::wire).toList());
+            body.put("now", now.toString());
+        }
         if (capacity == null) {
-            return call(history, exclude, excludeCategories, rows, itemsPerRow);
+            return call(body);
         }
         if (!capacity.tryAcquire(0)) {
             throw new ModelBusyException("모델 자리가 없다 — 2쪽은 규칙 행으로 간다");
         }
         try {
-            return call(history, exclude, excludeCategories, rows, itemsPerRow);
+            return call(body);
         } finally {
             capacity.release();
         }
     }
 
-    private List<Row> call(List<Long> history, Collection<Long> exclude, Collection<String> excludeCategories,
-                           int rows, int itemsPerRow) {
+    /** 요청 본문의 세션 원소. 시각은 ISO-8601 문자열이다 — 본문 직렬화기에 시간 모듈이 없다. */
+    private static Map<String, Object> wire(SessionEvent event) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("item", event.itemId());
+        out.put("action", event.action());
+        if (event.at() != null) {
+            out.put("at", event.at().toString());
+        }
+        return out;
+    }
+
+    private List<Row> call(Map<String, Object> request) {
         JsonNode body = client.post().uri("/page").contentType(MediaType.APPLICATION_JSON)
-                .body(ModelRequestBody.of(Map.of("history", history, "exclude", exclude, "exclude_categories", excludeCategories,
-                        "rows", rows, "items_per_row", itemsPerRow, "prefix", prefix)))
+                .body(ModelRequestBody.of(request))
                 .retrieve().body(JsonNode.class);
         List<Row> out = new ArrayList<>();
         if (body == null) {

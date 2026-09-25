@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.recommendation;
 
+import com.beomsu.becommerce.personalization.RecentActivityFacts;
 import com.beomsu.becommerce.recommendation.internal.GenPagePageClient;
 import com.beomsu.becommerce.recommendation.internal.ItemPoolSource;
 import com.beomsu.becommerce.recommendation.internal.ModelBusyException;
@@ -13,9 +14,11 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * 추천 코어가 <b>다른 모듈에 내주는 계약</b> (ADR-018).
@@ -43,21 +46,44 @@ public class RecommendationFacts {
     private final Counter pageFailed;
     private final Counter pageBusy;
     private final boolean pageSessionFirst;
+    /** 저장소의 행동을 종류 · 시각과 함께 읽는다. {@code sessionRich} 일 때만 쓴다. */
+    private final RecentActivityFacts recentActivity;
+    private final boolean sessionRich;
+    private final int contextLimit;
 
     /** 홈 다음 쪽의 모델 입력(#270). 구매만 넣거나, 세션의 조회·클릭을 앞에 붙인다. */
     static final String PAGE_HISTORY_PURCHASES = "purchases";
     static final String PAGE_HISTORY_SESSION_THEN_PURCHASES = "session-then-purchases";
+
+    /** 2쪽 세션을 모델에 넘기는 방식(X5, #328). */
+    enum GenPageSession {
+        /** 지금 그대로 — 세션은 id 만, 규칙은 {@code page-history}. 서버는 id 를 요청일의 구매로 읽는다 */
+        OFF,
+        /** 구매는 {@code history} 에, 조회 · 클릭은 종류 · 시각과 함께 {@code session} 에, 요청 시각은 {@code now} 에 */
+        RICH
+    }
 
     RecommendationFacts(RecommendationService service, ItemPoolSource pool,
                         ObjectProvider<GenPagePageClient> pageModel, MeterRegistry registry) {
         this(service, pool, pageModel, registry, PAGE_HISTORY_PURCHASES);
     }
 
+    RecommendationFacts(RecommendationService service, ItemPoolSource pool,
+                        ObjectProvider<GenPagePageClient> pageModel, MeterRegistry registry, String pageHistory) {
+        this(service, pool, pageModel, registry, pageHistory, null, GenPageSession.OFF, 20);
+    }
+
     @org.springframework.beans.factory.annotation.Autowired
     RecommendationFacts(RecommendationService service, ItemPoolSource pool,
                         ObjectProvider<GenPagePageClient> pageModel, MeterRegistry registry,
-                        @Value("${app.recommendation.page-history:purchases}") String pageHistory) {
+                        @Value("${app.recommendation.page-history:purchases}") String pageHistory,
+                        RecentActivityFacts recentActivity,
+                        @Value("${app.recommendation.genpage-session:OFF}") GenPageSession genPageSession,
+                        @Value("${app.recommendation.context-limit:20}") int contextLimit) {
         this.pageSessionFirst = PAGE_HISTORY_SESSION_THEN_PURCHASES.equals(pageHistory);
+        this.recentActivity = recentActivity;
+        this.sessionRich = genPageSession == GenPageSession.RICH && recentActivity != null;
+        this.contextLimit = contextLimit;
         this.service = service;
         this.pool = pool;
         this.pageModel = pageModel.getIfAvailable();
@@ -86,6 +112,7 @@ public class RecommendationFacts {
     /**
      * 홈 다음 쪽의 행을 모델이 생성한다. 모델 입력은 이 모듈이 고른다(#270): 이 사용자의 추천이 구매 이력을 쓰면
      * 구매(설정에 따라 세션을 앞에 붙여)를, 아니면 세션을 넣는다. 모델이 꺼져 있으면 구매를 읽지 않는다.
+     * {@code genpage-session=RICH} 면 이 규칙 대신 구매는 구매로, 세션은 종류 · 시각과 함께 따로 보낸다(X5, #328).
      *
      * @param session 이 요청 시점의 최근 조회·클릭(최근 것부터)
      */
@@ -93,6 +120,16 @@ public class RecommendationFacts {
                                                Collection<String> excludeCategories, int rows, int itemsPerRow) {
         if (pageModel == null) {
             return List.of();
+        }
+        if (sessionRich) {
+            // X5(#328): id 만 넘기면 서버가 클릭을 요청일의 구매로 읽는다. 저장소가 가진 종류 · 시각을 그대로 넘긴다
+            List<Long> bought = service.purchaseHistoryForModel(userId);
+            List<GenPagePageClient.SessionEvent> events = new ArrayList<>();
+            for (RecentActivityFacts.RecentActivity a : recentActivity.recentActivities(userId, contextLimit).reversed()) {
+                events.add(new GenPagePageClient.SessionEvent(a.itemId(), a.type(), a.occurredAt()));
+            }
+            return generated(() -> pageModel.generate(bought == null ? List.of() : bought, events, Instant.now(),
+                    exclude, excludeCategories, rows, itemsPerRow));
         }
         return generatePageRows(pageHistory(userId, session), exclude, excludeCategories, rows, itemsPerRow);
     }
@@ -128,8 +165,13 @@ public class RecommendationFacts {
         if (pageModel == null) {
             return List.of();
         }
+        return generated(() -> pageModel.generate(history, exclude, excludeCategories, rows, itemsPerRow));
+    }
+
+    /** 모델 호출 하나를 결과 · 실패 · 자리 없음으로 센다. 실패하면 빈 목록이다(홈은 규칙 행으로 물러선다). */
+    private List<GeneratedRow> generated(Supplier<List<GenPagePageClient.Row>> call) {
         try {
-            List<GeneratedRow> out = pageModel.generate(history, exclude, excludeCategories, rows, itemsPerRow)
+            List<GeneratedRow> out = call.get()
                     .stream().map(r -> new GeneratedRow(r.category(), r.itemIds())).toList();
             pageOk.increment();
             return out;

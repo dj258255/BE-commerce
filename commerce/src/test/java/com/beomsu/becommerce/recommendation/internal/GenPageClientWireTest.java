@@ -9,6 +9,7 @@ import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
@@ -71,6 +72,34 @@ class GenPageClientWireTest {
         assertThat(contentLength.get()).isNotNull();
         assertThat(transferEncoding.get()).isNull();
         assertThat(body.get().path("exclude").toString()).isEqualTo("[9]");
+    }
+
+    @Test
+    @DisplayName("세션 없이 부르면 본문에 session · now 가 없다 — OFF 의 요청 모양은 그대로다(X5, #328)")
+    void pageWithoutSessionKeepsOldShape() throws Exception {
+        GenPagePageClient client = new GenPagePageClient(start("{\"rows\":[],\"violations\":0}"), Duration.ofSeconds(2), 2);
+
+        client.generate(List.of(5L), List.of(9L), List.of("kids"), 3, 8);
+
+        assertThat(body.get().has("session")).isFalse();
+        assertThat(body.get().has("now")).isFalse();
+        assertThat(body.get().path("history").toString()).isEqualTo("[5]");
+    }
+
+    @Test
+    @DisplayName("세션은 순서를 지킨 채 {item, action, at} 으로, 시각은 ISO 문자열로 간다 — 시각이 없으면 at 을 뺀다(X5, #328)")
+    void pageSendsTypedSession() throws Exception {
+        GenPagePageClient client = new GenPagePageClient(start("{\"rows\":[],\"violations\":0}"), Duration.ofSeconds(2), 2);
+
+        client.generate(List.of(), List.of(
+                        new GenPagePageClient.SessionEvent(1L, "VIEW", Instant.parse("2026-09-26T01:00:00Z")),
+                        new GenPagePageClient.SessionEvent(2L, "CLICK", null)),
+                Instant.parse("2026-09-26T01:10:00Z"), List.of(), List.of(), 3, 8);
+
+        assertThat(body.get().path("session").toString()).isEqualTo(
+                "[{\"item\":1,\"action\":\"VIEW\",\"at\":\"2026-09-26T01:00:00Z\"},{\"item\":2,\"action\":\"CLICK\"}]");
+        assertThat(body.get().path("now").asText()).isEqualTo("2026-09-26T01:10:00Z");
+        assertThat(body.get().path("history").toString()).isEqualTo("[]");
     }
 
     @Test

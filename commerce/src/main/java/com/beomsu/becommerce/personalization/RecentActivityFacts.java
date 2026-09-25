@@ -3,6 +3,7 @@ package com.beomsu.becommerce.personalization;
 import com.beomsu.becommerce.personalization.internal.OnlineContextReader;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -40,6 +41,23 @@ public class RecentActivityFacts {
                 .map(item -> item.itemId())
                 .distinct()
                 .limit(Math.max(limit, 1))
+                .toList();
+    }
+
+    /** 저장소 항목 하나를 행동 종류 · 발생 시각과 함께(X5, #328). {@code occurredAt} 은 옛 항목이면 null 일 수 있다. */
+    public record RecentActivity(long itemId, String type, Instant occurredAt) {
+    }
+
+    /**
+     * {@link #recentItemIds} 와 같은 저장소 항목을 <b>최근 것부터</b>, 종류와 시각을 버리지 않고 돌려준다.
+     *
+     * <p>중복을 지우지 않는다 — 같은 상품을 두 번 본 것도 사실이다. id 만 쓰는 호출자는 {@link #recentItemIds} 를 쓴다.
+     * GenPage v2 는 행동 종류와 시각을 토큰으로 받으므로, id 만 넘기면 서버가 그 빈칸을 추측으로 채운다(클릭 → 오늘의 구매).
+     */
+    public List<RecentActivity> recentActivities(long userId, int limit) {
+        return contextReader.read(userId, null, 0L).items().stream()
+                .limit(Math.max(limit, 1))
+                .map(item -> new RecentActivity(item.itemId(), item.activityType(), item.occurredAt()))
                 .toList();
     }
 }

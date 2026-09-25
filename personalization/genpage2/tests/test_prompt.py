@@ -37,6 +37,32 @@ class PromptTest(unittest.TestCase):
         self.assertEqual(content[page - 4], rows["0000000001"])
         self.assertEqual(report["missing"], {"at": 2, "action": 1, "price": 1, "profile": True, "now": True})
 
+    def test_session_time_bucket_comes_from_at_and_zoned_instants_meet_naive_now(self):
+        """X5(#328): a click from 5 days ago is AGO_4-7, not the request day."""
+        vocab, rows = vocab_and_rows()
+        tokens, _, report = build_prompt(
+            vocab, now="2026-09-26T03:00:00Z", profile=None, content_rows=rows,
+            events=[{"item": "1", "action": "VIEW", "at": "2026-09-21T23:59:00Z", "price": 2.0},
+                    {"item": "1", "action": "CLICK", "at": "2026-09-26T02:59:00Z", "price": 2.0}],
+        )
+        page = tokens.index(vocab.id("SEP_PAGE"))
+        self.assertEqual(tokens[page - 8:page],
+                         [vocab.item("0000000001"), vocab.id("ACT_VIEW"), vocab.id("AGO_4-7"), vocab.id("PRICE_0"),
+                          vocab.item("0000000001"), vocab.id("ACT_CLICK"), vocab.id("AGO_0-3"), vocab.id("PRICE_0")])
+        # the request tokens follow `now`, not the training request date
+        self.assertIn(vocab.id("DOW_5"), tokens)
+        self.assertIn(vocab.id("MONTH_9"), tokens)
+        self.assertEqual(report["missing"]["now"], False)
+
+    def test_future_session_event_stays_in_request_day(self):
+        vocab, rows = vocab_and_rows()
+        tokens, _, _ = build_prompt(
+            vocab, now="2026-09-26T03:00:00Z", profile=None, content_rows=rows,
+            events=[{"item": "1", "action": "CLICK", "at": "2026-09-27T01:00:00Z", "price": 2.0}],
+        )
+        page = tokens.index(vocab.id("SEP_PAGE"))
+        self.assertEqual(tokens[page - 2], vocab.id("AGO_0-3"))
+
 
 if __name__ == "__main__":
     unittest.main()
