@@ -4,7 +4,7 @@
 결정의 이유는 [ADR](adr/), 실측 원자료는 [`performance/`](performance/README.md)·
 [`personalization/docs/runs/`](../personalization/docs/runs)에 있고, 이 파일은 **그 둘로 가는 색인**이다.
 
-> **왜 따로 두는가.** ADR 67편은 결정 단위라 "지금 뭐가 남았는지" 가 안 보이고,
+> **왜 따로 두는가.** ADR 68편은 결정 단위라 "지금 뭐가 남았는지" 가 안 보이고,
 > 이슈는 닫히면 목록에서 사라진다. **읽는 사람이 현재 상태를 한 화면에서 복원**할 수 있어야 한다.
 
 ---
@@ -35,6 +35,7 @@
 |---|---|---|---|
 | **추천 모델 교체** | `repeat_last` MAP@12 **0.0234** (측정 전에 못 박음) | ALS 4구성 최고 **0.0076** — 인기(0.0087)보다도 낮다. alpha·factors 두 축으로 얻은 폭이 **15% 미만**인데 선까지는 207% | **안 넣는다** ([ADR-048](adr/ADR-048-als-model-not-adopted.md)) |
 | **GenPage 최소형으로 교체** | 같은 선 **0.023354** | 홀드아웃으로 세 번 골라 0.020937. **검증 기간을 따로 떼고 다시 골라 홀드아웃을 한 번 보니 0.020930** — 결론이 튜닝 방식에 기대지 않는다 | **서빙까지 붙이고 끈다** ([ADR-053](adr/ADR-053-genpage-mini-not-default.md) · [ADR-054](adr/ADR-054-genpage-validation-tuning.md)) |
+| **넷플릭스 GenPage 를 옮긴 v2 로 교체** | 같은 선 **0.023354** · 측정 전에 순서 · 기한 · 홀드아웃 한 번 | 검증 주로만 골라(행 고정 · 후보 집합 · WBC · 2에폭) 홀드아웃을 한 번 보니 **0.019268** — 선의 83%, v1(0.020930)보다도 낮다. WBC 는 노출되지 않은 토큰의 로짓 때문에 무너졌다 | **서빙 경로만 남기고 끈다** ([ADR-068](adr/ADR-068-genpage-v2-not-default.md)) |
 | **제약을 생성 중 차단** | 목록이 짧아지는 것을 막을 수 있는가 | 사후 필터가 **이미 100% 채우고** 있었다. 생성 중 차단은 서빙 중앙 62→**369ms**, coverage 100→**84%** | **기각** ([ADR-050](adr/ADR-050-post-filter-over-constrained-generation.md)) |
 | **전문 검색 엔진 도입** | 지연: 300ms 초과의 원인이 집계인가 · 품질: 오타·어형 nDCG@10 이 MySQL 최선보다 0.10 높은가 | 지연은 **포화**였다(패싯 사전 집계로 닫힘). 품질은 LIKE 0.071 · FULLTEXT 0.324 · Lucene 0.808 | 지연으로는 안 넣었고, **품질로 앱 안 Lucene 을 넣었다**. ES·OpenSearch 는 품질이 같아 운영 비용으로 뺐다 ([ADR-044](adr/ADR-044-no-search-engine-yet.md) → [ADR-051](adr/ADR-051-search-engine-by-quality.md)) |
 | **멀티 PG failover 켜기** | 가짜 PG 둘 사이의 전환이 failover 를 증명하는가 | 증명하지 못한다. **켤 조건 셋**을 대신 적었다 | **끈 채로 둔다** ([ADR-020](adr/ADR-020-multi-pg-routing-off-by-default.md)) |
