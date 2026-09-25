@@ -86,6 +86,7 @@ class PromptLogTest(unittest.TestCase):
         self.assertEqual(lines[0]["events"], [{"item": "0000000012", "action": "CLICK", "at": "2026-09-26T02:00:00Z"}])
         self.assertEqual(lines[0]["tokens"], ["BOS", "ITEM_FALLBACK", "SEP_PAGE"])
         self.assertIsNone(lines[1]["now"])
+        self.assertEqual(lines[1]["bytes"], len(b"{}"))
 
 
 if __name__ == "__main__":

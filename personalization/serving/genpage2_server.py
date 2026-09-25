@@ -133,7 +133,9 @@ class Engine:
 
     def _log_prompt(self, kind: str, request: dict[str, Any], events: list[dict[str, Any]], tokens: list[int]) -> None:
         """Append the parsed prompt. Called under ``self.lock``, so lines never interleave."""
+        # `bytes` is the request re-serialized compactly — the same form the app's Jackson writes.
         line = {"t": time.time(), "kind": kind, "now": request.get("now"),
+                "bytes": len(json.dumps(request, ensure_ascii=False, separators=(",", ":")).encode("utf-8")),
                 "events": [{"item": _article_id(e.get("item", "")), "action": e.get("action"), "at": e.get("at")}
                            for e in events],
                 "tokens": [self.vocab.tokens[t] for t in tokens]}
