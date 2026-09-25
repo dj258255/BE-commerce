@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,7 +13,9 @@ import numpy as np
 import pandas as pd
 
 from genpage2.decode import GeneratedRow
-from genpage2.evaluate import _load_decoder, _repeat_pin, evaluate_pages, map_at_12, repeat_last_pages, run
+from genpage2.evaluate import (_load_decoder, _repeat_pin, evaluate_pages, map_at_12, parse_shard,
+                               repeat_last_pages, run, shard_bounds)
+from genpage2.merge_eval import merge, merge_reports
 
 
 class FakeVocab:
@@ -148,6 +152,157 @@ class EvaluateTest(unittest.TestCase):
             decoder, *_ = _load_decoder(Path("/mode"), Path("/checkpoint"), "cpu")
         self.assertEqual(decoder.level, "items")
         self.assertEqual(decoder.maxlen, 17)
+
+
+class ShardEvaluateTest(unittest.TestCase):
+    def setUp(self):
+        self.meta = pd.DataFrame({
+            "customer_id": ["c0", "c1", "c2", "c3", "c4", "c5"],
+            "truth": [["A"], ["B", "C"], ["C"], ["A"], ["B"], ["A", "C"]],
+            "history": [["A", "X", "A"], ["B", "X"], ["C"], ["A"], ["B"], ["C", "A"]],
+            "has_vocab_history": [True, False, True, False, True, False],
+        })
+        self.vocab = FakeVocab()
+        self.content = np.array([[1.0, 0.0], [0.0, 1.0], [1.0, 0.0]])
+        self.content_rows = {"A": 0, "B": 1, "C": 2}
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.base = Path(self.temporary.name)
+        mode = self.base / "hm" / "model" / "genpage2" / "validate"
+        mode.mkdir(parents=True)
+        self.meta.to_parquet(mode / "eval_meta.parquet")
+        count = len(self.meta)
+        np.savez(mode / "eval.npz",
+                 ctx_tokens=np.arange(count, dtype=np.int64) + 1,
+                 ctx_content=np.full(count, -1, dtype=np.int64),
+                 ctx_offsets=np.arange(count + 1, dtype=np.int64))
+        normal = self.base / "hm" / "normalized"
+        normal.mkdir(parents=True)
+        pd.DataFrame({"t_dat": ["2020-09-08"] * 3, "article_id": ["A", "B", "C"]}).to_parquet(
+            normal / "transactions.parquet"
+        )
+        self.decoder = MagicMock()
+
+        def generate_batch(examples, **_kwargs):
+            out = []
+            for example in examples:
+                items = [a for a in example["history_articles"] if a in {"A", "B", "C"}][:2] or ["A"]
+                out.append(([GeneratedRow(3, items)], len(example["history_articles"]) % 3))
+            return out
+
+        self.decoder.generate_batch.side_effect = generate_batch
+
+    def _run(self, **overrides):
+        namespace = dict(mode="validate", ckpt="checkpoint", limit=None, data_dir=str(self.base), out=None,
+                         batch=256, device="cpu", baselines_only=False, pin_repeat=False, candidates=None)
+        namespace.update(overrides)
+        with patch("genpage2.evaluate._load_decoder", return_value=(
+            self.decoder, self.vocab, self.content, self.content_rows, "cpu",
+        )):
+            return run(argparse.Namespace(**namespace))
+
+    def _tx(self):
+        return pd.read_parquet(self.base / "hm" / "normalized" / "transactions.parquet")
+
+    def _assert_metrics_equal(self, expected, actual):
+        self.assertEqual(set(expected), set(actual))
+        for key, value in expected.items():
+            if key == "ms_per_page":
+                continue
+            if isinstance(value, str) or value is None:
+                self.assertEqual(value, actual[key], msg=key)
+            else:
+                self.assertAlmostEqual(value, actual[key], places=12, msg=key)
+
+    def _write_shards(self, shards, stem):
+        paths = []
+        for index, shard in enumerate(shards, start=1):
+            path = self.base / f"{stem}{index}.json"
+            path.write_text(json.dumps(shard, ensure_ascii=False, default=float), encoding="utf-8")
+            paths.append(path)
+        return paths
+
+    def test_sharded_merge_matches_single_run(self):
+        baseline = self._run()
+        out_paths = [str(self.base / f"shard{index}.json") for index in (1, 2, 3)]
+        shards = [self._run(shard=f"{index}/3", out=out_paths[index - 1]) for index in (1, 2, 3)]
+        self.assertEqual([shard["shard"] for shard in shards],
+                         [{"index": 1, "total": 3, "customers": 2},
+                          {"index": 2, "total": 3, "customers": 2},
+                          {"index": 3, "total": 3, "customers": 2}])
+        for shard in shards:
+            self.assertNotIn("results", shard)
+            self.assertNotIn("shard", shard["args"])
+        self.assertEqual([shard["args"]["out"] for shard in shards], out_paths)
+        paths = self._write_shards(shards, "shard")
+        merged_out = str(self.base / "merged.json")
+        with patch("genpage2.merge_eval.load_eval_assets",
+                   return_value=(self.vocab, self.content, self.content_rows)):
+            merged = merge([str(path) for path in paths], base=str(self.base), out=merged_out)
+        self.assertTrue((self.base / "merged.json").exists())
+        self.assertEqual(merged["mode"], baseline["mode"])
+        self.assertEqual(merged["ckpt"], baseline["ckpt"])
+        expected_args = dict(baseline["args"])
+        expected_args["out"] = merged_out
+        self.assertEqual(merged["args"], expected_args)
+        self.assertEqual(set(merged["results"]), set(baseline["results"]))
+        for name, metrics in baseline["results"].items():
+            self._assert_metrics_equal(metrics, merged["results"][name])
+
+    def test_merge_ignores_per_shard_execution_args(self):
+        shards = [self._run(shard=f"{index}/3", out=str(self.base / f"shard{index}.json"))
+                  for index in (1, 2, 3)]
+        for index, shard in enumerate(shards, start=1):
+            shard["args"]["threads"] = index
+        merged_out = str(self.base / "merged.json")
+        report = merge_reports(shards, meta=self.meta, vocab=self.vocab, content=self.content,
+                               content_rows=self.content_rows, tx=self._tx(), base=self.base, out=merged_out)
+        self.assertNotIn("threads", report["args"])
+        self.assertEqual(report["args"]["out"], merged_out)
+
+    def test_sharded_merge_averages_candidates_and_options(self):
+        baseline = self._run(pin_repeat=True, candidates="1,1")
+        shards = [self._run(shard=f"{index}/3", pin_repeat=True, candidates="1,1") for index in (1, 2, 3)]
+        paths = self._write_shards(shards, "cand")
+        with patch("genpage2.merge_eval.load_eval_assets",
+                   return_value=(self.vocab, self.content, self.content_rows)):
+            merged = merge([str(path) for path in paths], base=str(self.base))
+        self.assertEqual(merged["options"], {"pin_repeat": True, "candidates": [1, 1]})
+        self.assertAlmostEqual(merged["candidates_mean"], baseline["candidates_mean"], places=9)
+        for name, metrics in baseline["results"].items():
+            self._assert_metrics_equal(metrics, merged["results"][name])
+
+    def test_missing_shard_raises(self):
+        shards = [self._run(shard=f"{index}/3") for index in (1, 2)]
+        with self.assertRaises(ValueError):
+            merge_reports(shards, meta=self.meta, vocab=self.vocab, content=self.content,
+                          content_rows=self.content_rows, tx=self._tx(), base=self.base)
+
+    def test_duplicate_shard_raises(self):
+        shards = [self._run(shard=f"{index}/3") for index in (1, 2, 3)]
+        with self.assertRaises(ValueError):
+            merge_reports(shards + [copy.deepcopy(shards[0])], meta=self.meta, vocab=self.vocab,
+                          content=self.content, content_rows=self.content_rows, tx=self._tx(), base=self.base)
+
+    def test_overlapping_customers_raise(self):
+        shards = [self._run(shard=f"{index}/3") for index in (1, 2, 3)]
+        shards[1] = copy.deepcopy(shards[0])
+        shards[1]["shard"]["index"] = 2
+        with self.assertRaises(ValueError):
+            merge_reports(shards, meta=self.meta, vocab=self.vocab, content=self.content,
+                          content_rows=self.content_rows, tx=self._tx(), base=self.base)
+
+    def test_parse_shard_and_bounds(self):
+        self.assertIsNone(parse_shard(None))
+        self.assertEqual(parse_shard("2/3"), (2, 3))
+        for bad in ("2", "x/3", "0/3", "4/3", "1/0"):
+            with self.assertRaises(ValueError):
+                parse_shard(bad)
+        self.assertEqual(shard_bounds(6, 1, 3), (0, 2))
+        self.assertEqual(shard_bounds(6, 3, 3), (4, 6))
+        self.assertEqual(shard_bounds(7, 2, 3), (3, 5))
+        self.assertEqual(shard_bounds(2, 1, 3), (0, 1))
+        self.assertEqual(shard_bounds(2, 3, 3), (2, 2))
 
 
 if __name__ == "__main__":
