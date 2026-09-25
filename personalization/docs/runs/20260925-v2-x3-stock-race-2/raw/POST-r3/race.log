@@ -1,0 +1,6 @@
+사용자 8명 · http://localhost:18080 · 홈 8.0/s · 60초 · 모드 POST
+워밍업 8초 — 128요청(측정에서 뺀다)
+품절 주입 시작 rate=3.0/s · state=personalization/docs/runs/20260925-v2-x3-stock-race-2/raw/POST-r3/sellout-state.json
+응답 시점 품절 노출률 0.12% (3/2454) · 품절 후보 적중률 47.31% (1161/2454) · 60초 품절 100.00% (36/36)
+홈 p95 204.5ms · 규칙 행 폴백 0.00% · 조회 0.00회/0.00ms · 뺀 항목 11.09
+원자료: personalization/docs/runs/20260925-v2-x3-stock-race-2/raw/POST-r3/race.json (요청 952 · 오류 0)

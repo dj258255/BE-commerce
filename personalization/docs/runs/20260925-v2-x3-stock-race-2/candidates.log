@@ -1,0 +1,6 @@
+사용자 8명 · http://localhost:18080 · 홈 8.0/s · 60초 · 모드 POST
+워밍업 8초 — 128요청(측정에서 뺀다)
+품절 후보 36개를 personalization/docs/runs/20260925-v2-x3-stock-race-2/sellout-candidates.txt 에 남겼다(노출 상품 36종 중 빈도 상위)
+응답 시점 품절 노출률 0.00% (0/16125) · 품절 후보 적중률 0.00% (0/16125) · 60초 품절 0.00% (0/0)
+홈 p95 206.6ms · 규칙 행 폴백 0.00% · 조회 0.00회/0.00ms · 뺀 항목 0.00
+원자료: personalization/docs/runs/20260925-v2-x3-stock-race-2/candidates.json (요청 960 · 오류 0)
