@@ -1,0 +1,23 @@
+  user 6427: 12건 (긴 사용자=False)
+  user 6428: 12건 (긴 사용자=False)
+  user 6429: 12건 (긴 사용자=False)
+  user 6430: 12건 (긴 사용자=False)
+  user 6431: 12건 (긴 사용자=False)
+  user 6432: 12건 (긴 사용자=False)
+  user 6433: 12건 (긴 사용자=False)
+  user 6434: 12건 (긴 사용자=False)
+  user 6435: 12건 (긴 사용자=False)
+  user 6436: 12건 (긴 사용자=False)
+  user 6437: 12건 (긴 사용자=False)
+  user 6438: 12건 (긴 사용자=False)
+  user 6439: 12건 (긴 사용자=False)
+  user 6440: 12건 (긴 사용자=False)
+  user 6441: 12건 (긴 사용자=False)
+  user 6442: 12건 (긴 사용자=False)
+  user 6443: 12건 (긴 사용자=False)
+  user 6444: 12건 (긴 사용자=False)
+  user 6445: 12건 (긴 사용자=False)
+  user 6446: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260926-v2-x5-replay/raw/OFF/late/manifest.json

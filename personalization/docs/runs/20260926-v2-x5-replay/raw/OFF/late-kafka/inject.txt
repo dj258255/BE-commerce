@@ -1,0 +1,23 @@
+  user 6527: 12건 (긴 사용자=False)
+  user 6528: 12건 (긴 사용자=False)
+  user 6529: 12건 (긴 사용자=False)
+  user 6530: 12건 (긴 사용자=False)
+  user 6531: 12건 (긴 사용자=False)
+  user 6532: 12건 (긴 사용자=False)
+  user 6533: 12건 (긴 사용자=False)
+  user 6534: 12건 (긴 사용자=False)
+  user 6535: 12건 (긴 사용자=False)
+  user 6536: 12건 (긴 사용자=False)
+  user 6537: 12건 (긴 사용자=False)
+  user 6538: 12건 (긴 사용자=False)
+  user 6539: 12건 (긴 사용자=False)
+  user 6540: 12건 (긴 사용자=False)
+  user 6541: 12건 (긴 사용자=False)
+  user 6542: 12건 (긴 사용자=False)
+  user 6543: 12건 (긴 사용자=False)
+  user 6544: 12건 (긴 사용자=False)
+  user 6545: 12건 (긴 사용자=False)
+  user 6546: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260926-v2-x5-replay/raw/OFF/late-kafka/manifest.json

@@ -1,0 +1,23 @@
+  user 6507: 12건 (긴 사용자=False)
+  user 6508: 12건 (긴 사용자=False)
+  user 6509: 12건 (긴 사용자=False)
+  user 6510: 12건 (긴 사용자=False)
+  user 6511: 12건 (긴 사용자=False)
+  user 6512: 12건 (긴 사용자=False)
+  user 6513: 12건 (긴 사용자=False)
+  user 6514: 12건 (긴 사용자=False)
+  user 6515: 12건 (긴 사용자=False)
+  user 6516: 12건 (긴 사용자=False)
+  user 6517: 12건 (긴 사용자=False)
+  user 6518: 12건 (긴 사용자=False)
+  user 6519: 12건 (긴 사용자=False)
+  user 6520: 12건 (긴 사용자=False)
+  user 6521: 12건 (긴 사용자=False)
+  user 6522: 12건 (긴 사용자=False)
+  user 6523: 12건 (긴 사용자=False)
+  user 6524: 12건 (긴 사용자=False)
+  user 6525: 12건 (긴 사용자=False)
+  user 6526: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260926-v2-x5-replay/raw/OFF/baseline-kafka/manifest.json

@@ -1,0 +1,23 @@
+  user 6667: 12건 (긴 사용자=False)
+  user 6668: 12건 (긴 사용자=False)
+  user 6669: 12건 (긴 사용자=False)
+  user 6670: 12건 (긴 사용자=False)
+  user 6671: 12건 (긴 사용자=False)
+  user 6672: 12건 (긴 사용자=False)
+  user 6673: 12건 (긴 사용자=False)
+  user 6674: 12건 (긴 사용자=False)
+  user 6675: 12건 (긴 사용자=False)
+  user 6676: 12건 (긴 사용자=False)
+  user 6677: 12건 (긴 사용자=False)
+  user 6678: 12건 (긴 사용자=False)
+  user 6679: 12건 (긴 사용자=False)
+  user 6680: 12건 (긴 사용자=False)
+  user 6681: 12건 (긴 사용자=False)
+  user 6682: 12건 (긴 사용자=False)
+  user 6683: 12건 (긴 사용자=False)
+  user 6684: 12건 (긴 사용자=False)
+  user 6685: 12건 (긴 사용자=False)
+  user 6686: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260926-v2-x5-replay/raw/RICH/baseline-kafka/manifest.json

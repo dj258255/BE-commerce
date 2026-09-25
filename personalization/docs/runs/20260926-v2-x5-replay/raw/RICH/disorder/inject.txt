@@ -1,0 +1,23 @@
+  user 6567: 12건 (긴 사용자=False)
+  user 6568: 12건 (긴 사용자=False)
+  user 6569: 12건 (긴 사용자=False)
+  user 6570: 12건 (긴 사용자=False)
+  user 6571: 12건 (긴 사용자=False)
+  user 6572: 12건 (긴 사용자=False)
+  user 6573: 12건 (긴 사용자=False)
+  user 6574: 12건 (긴 사용자=False)
+  user 6575: 12건 (긴 사용자=False)
+  user 6576: 12건 (긴 사용자=False)
+  user 6577: 12건 (긴 사용자=False)
+  user 6578: 12건 (긴 사용자=False)
+  user 6579: 12건 (긴 사용자=False)
+  user 6580: 12건 (긴 사용자=False)
+  user 6581: 12건 (긴 사용자=False)
+  user 6582: 12건 (긴 사용자=False)
+  user 6583: 12건 (긴 사용자=False)
+  user 6584: 12건 (긴 사용자=False)
+  user 6585: 12건 (긴 사용자=False)
+  user 6586: 12건 (긴 사용자=False)
+
+주입 완료 — 사용자 20명 · 201 240건 · 그 외 0건
+매니페스트: personalization/docs/runs/20260926-v2-x5-replay/raw/RICH/disorder/manifest.json
