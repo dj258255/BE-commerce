@@ -1,0 +1,9 @@
+# GenPage v1 모델 서버를 CPU 제한 컨테이너로 떼어 놓을 때 쓴다(#342). 코드와 데이터는 붙인다(읽기 전용).
+#   docker build -t genpage-serving -f personalization/serving/Dockerfile.cpu personalization/serving
+#   docker run --cpus=2 -e GENPAGE_THREADS=2 -e GENPAGE_DATA=/data -e GENPAGE_HOST=0.0.0.0 -p 18765:8765 \
+#     -v $PWD/personalization/serving:/app/personalization/serving:ro -v $PWD/personalization/pipeline:/app/personalization/pipeline:ro \
+#     -v $PWD/personalization/data:/data:ro genpage-serving python /app/personalization/serving/genpage_server.py 8765
+FROM python:3.12-slim
+RUN pip install --no-cache-dir torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu \
+ && pip install --no-cache-dir pandas pyarrow numpy
+WORKDIR /app

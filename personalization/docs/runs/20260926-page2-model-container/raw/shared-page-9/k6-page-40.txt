@@ -1,0 +1,162 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: k6/home-next-page-load.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 50s max duration (incl. graceful stop):
+              * pages: 9.00 iterations/s for 40s (maxVUs: 100, gracefulStop: 10s)
+
+time="2026-09-26T08:51:07+09:00" level=warning msg="Error from API server" error="listen tcp 127.0.0.1:6565: bind: address already in use"
+
+Run     [ 100% ] setup()
+pages   [   0% ]
+
+Run     [ 100% ] setup()
+pages   [   0% ]
+
+Run     [ 100% ] setup()
+pages   [   0% ]
+
+Run     [ 100% ] setup()
+pages   [   0% ]
+
+Run     [ 100% ] setup()
+pages   [   0% ]
+
+Run     [ 100% ] setup()
+pages   [   0% ]
+
+running (07.0s), 003/100 VUs, 0 complete and 0 interrupted iterations
+pages   [   1% ] 003/100 VUs  00.2s/40s  9.00 iters/s
+
+running (08.0s), 001/100 VUs, 11 complete and 0 interrupted iterations
+pages   [   3% ] 001/100 VUs  01.2s/40s  9.00 iters/s
+
+running (09.0s), 001/100 VUs, 20 complete and 0 interrupted iterations
+pages   [   6% ] 001/100 VUs  02.2s/40s  9.00 iters/s
+
+running (10.0s), 001/100 VUs, 29 complete and 0 interrupted iterations
+pages   [   8% ] 001/100 VUs  03.2s/40s  9.00 iters/s
+
+running (11.0s), 001/100 VUs, 38 complete and 0 interrupted iterations
+pages   [  11% ] 001/100 VUs  04.2s/40s  9.00 iters/s
+
+running (12.0s), 001/100 VUs, 47 complete and 0 interrupted iterations
+pages   [  13% ] 001/100 VUs  05.2s/40s  9.00 iters/s
+
+running (13.0s), 001/100 VUs, 56 complete and 0 interrupted iterations
+pages   [  16% ] 001/100 VUs  06.2s/40s  9.00 iters/s
+
+running (14.0s), 002/100 VUs, 64 complete and 0 interrupted iterations
+pages   [  18% ] 002/100 VUs  07.2s/40s  9.00 iters/s
+
+running (15.0s), 001/100 VUs, 74 complete and 0 interrupted iterations
+pages   [  21% ] 001/100 VUs  08.2s/40s  9.00 iters/s
+
+running (16.0s), 001/100 VUs, 83 complete and 0 interrupted iterations
+pages   [  23% ] 001/100 VUs  09.2s/40s  9.00 iters/s
+
+running (17.0s), 001/100 VUs, 92 complete and 0 interrupted iterations
+pages   [  26% ] 001/100 VUs  10.2s/40s  9.00 iters/s
+
+running (18.0s), 001/100 VUs, 101 complete and 0 interrupted iterations
+pages   [  28% ] 001/100 VUs  11.2s/40s  9.00 iters/s
+
+running (19.0s), 001/100 VUs, 110 complete and 0 interrupted iterations
+pages   [  31% ] 001/100 VUs  12.2s/40s  9.00 iters/s
+
+running (20.0s), 001/100 VUs, 119 complete and 0 interrupted iterations
+pages   [  33% ] 001/100 VUs  13.2s/40s  9.00 iters/s
+
+running (21.0s), 001/100 VUs, 128 complete and 0 interrupted iterations
+pages   [  36% ] 001/100 VUs  14.2s/40s  9.00 iters/s
+
+running (22.0s), 001/100 VUs, 137 complete and 0 interrupted iterations
+pages   [  38% ] 001/100 VUs  15.2s/40s  9.00 iters/s
+
+running (23.0s), 001/100 VUs, 146 complete and 0 interrupted iterations
+pages   [  41% ] 001/100 VUs  16.2s/40s  9.00 iters/s
+
+running (24.0s), 002/100 VUs, 154 complete and 0 interrupted iterations
+pages   [  43% ] 002/100 VUs  17.2s/40s  9.00 iters/s
+
+running (25.0s), 001/100 VUs, 164 complete and 0 interrupted iterations
+pages   [  46% ] 001/100 VUs  18.2s/40s  9.00 iters/s
+
+running (26.0s), 001/100 VUs, 173 complete and 0 interrupted iterations
+pages   [  48% ] 001/100 VUs  19.2s/40s  9.00 iters/s
+
+running (27.0s), 001/100 VUs, 182 complete and 0 interrupted iterations
+pages   [  51% ] 001/100 VUs  20.2s/40s  9.00 iters/s
+
+running (28.0s), 002/100 VUs, 190 complete and 0 interrupted iterations
+pages   [  53% ] 002/100 VUs  21.2s/40s  9.00 iters/s
+
+running (29.0s), 002/100 VUs, 199 complete and 0 interrupted iterations
+pages   [  56% ] 002/100 VUs  22.2s/40s  9.00 iters/s
+
+running (30.0s), 001/100 VUs, 209 complete and 0 interrupted iterations
+pages   [  58% ] 001/100 VUs  23.2s/40s  9.00 iters/s
+
+running (31.0s), 001/100 VUs, 218 complete and 0 interrupted iterations
+pages   [  61% ] 001/100 VUs  24.2s/40s  9.00 iters/s
+
+running (32.0s), 001/100 VUs, 227 complete and 0 interrupted iterations
+pages   [  63% ] 001/100 VUs  25.2s/40s  9.00 iters/s
+
+running (33.0s), 001/100 VUs, 236 complete and 0 interrupted iterations
+pages   [  66% ] 001/100 VUs  26.2s/40s  9.00 iters/s
+
+running (34.0s), 001/100 VUs, 245 complete and 0 interrupted iterations
+pages   [  68% ] 001/100 VUs  27.2s/40s  9.00 iters/s
+
+running (35.0s), 001/100 VUs, 254 complete and 0 interrupted iterations
+pages   [  71% ] 001/100 VUs  28.2s/40s  9.00 iters/s
+
+running (36.0s), 001/100 VUs, 263 complete and 0 interrupted iterations
+pages   [  73% ] 001/100 VUs  29.2s/40s  9.00 iters/s
+
+running (37.0s), 001/100 VUs, 272 complete and 0 interrupted iterations
+pages   [  76% ] 001/100 VUs  30.2s/40s  9.00 iters/s
+
+running (38.0s), 001/100 VUs, 281 complete and 0 interrupted iterations
+pages   [  78% ] 001/100 VUs  31.2s/40s  9.00 iters/s
+
+running (39.0s), 001/100 VUs, 290 complete and 0 interrupted iterations
+pages   [  81% ] 001/100 VUs  32.2s/40s  9.00 iters/s
+
+running (40.0s), 001/100 VUs, 299 complete and 0 interrupted iterations
+pages   [  83% ] 001/100 VUs  33.2s/40s  9.00 iters/s
+
+running (41.0s), 002/100 VUs, 307 complete and 0 interrupted iterations
+pages   [  86% ] 002/100 VUs  34.2s/40s  9.00 iters/s
+
+running (42.0s), 001/100 VUs, 317 complete and 0 interrupted iterations
+pages   [  88% ] 001/100 VUs  35.2s/40s  9.00 iters/s
+
+running (43.0s), 001/100 VUs, 326 complete and 0 interrupted iterations
+pages   [  91% ] 001/100 VUs  36.2s/40s  9.00 iters/s
+
+running (44.0s), 001/100 VUs, 335 complete and 0 interrupted iterations
+pages   [  93% ] 001/100 VUs  37.2s/40s  9.00 iters/s
+
+running (45.0s), 001/100 VUs, 344 complete and 0 interrupted iterations
+pages   [  96% ] 001/100 VUs  38.2s/40s  9.00 iters/s
+
+running (46.0s), 001/100 VUs, 353 complete and 0 interrupted iterations
+pages   [  98% ] 001/100 VUs  39.2s/40s  9.00 iters/s
+
+running (47.0s), 001/100 VUs, 360 complete and 0 interrupted iterations
+pages ↓ [ 100% ] 003/100 VUs  40s  9.00 iters/s
+
+[PAGE] rate=9  achieved=10  generated=0.7%  page_p95=342.7ms  page_p99=350.0ms  dropped=0
+
+running (47.0s), 000/100 VUs, 361 complete and 0 interrupted iterations
+pages ✓ [ 100% ] 000/100 VUs  40s  9.00 iters/s

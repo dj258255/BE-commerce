@@ -1,0 +1,14 @@
+147.5 14.9 05-10:56:58 com.apple.Virtualization.VirtualMachine
+100.0 0.0 01-06:00:22 zsh
+17.6 0.5 05-12:50:01 junie
+15.3 0.2 06-19:42:25 WindowServer
+8.0 0.1 04-13:04:08 Webex
+3.9 0.2 03-18:05:42 Telegram
+3.7 0.6 03:11:04 Google
+3.7 0.2 06-19:42:17 ghostty
+3.7 0.2 06-19:42:07 NotificationCenter
+2.9 0.1 06-19:41:07 tccd
+2.3 0.0 06-09:49:11 trustd
+1.7 0.0 06-19:42:26 launchservicesd
+Load Avg: 10.89, 12.15, 10.89 
+CPU usage: 21.10% user, 15.43% sys, 63.45% idle 
