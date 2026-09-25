@@ -1,0 +1,14 @@
+99.0 0.0 01-05:18:57 zsh
+87.7 7.5 05-10:15:33 com.apple.Virtualization.VirtualMachine
+40.6 1.6 01-04:32:39 claude
+16.1 0.2 06-19:01:00 WindowServer
+13.7 0.0 06-19:00:44 ReportCrash
+9.4 0.2 06-19:00:52 ghostty
+8.0 0.1 04-12:22:43 Webex
+5.9 1.4 06-04:59:47 com.docker.backend
+5.7 0.0 06-19:00:05 coresymbolicationd
+5.5 0.3 03-17:24:17 Telegram
+4.5 0.3 00:01 Google
+3.9 0.8 02:29:39 Google
+Load Avg: 6.34, 9.27, 7.93 
+CPU usage: 14.74% user, 13.31% sys, 71.94% idle 
