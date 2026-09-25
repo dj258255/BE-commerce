@@ -1,0 +1,19 @@
+pcpu  pmem  etime        program
+100.0   0.0  01-02:30:24  zsh (측정과 무관한 다른 작업 셸)
+ 30.8   0.3  06-16:12:27  WindowServer
+ 13.9   0.0  00:00        (ps)
+ 11.3   8.3  05-07:27:00  Mac
+  9.0   0.1  04-09:34:10  Webex
+  8.5   0.1  06-16:12:18  ControlCenter
+  7.4   0.1  06-16:10:49  Stats
+  7.0   0.6  05-09:20:03  junie
+  4.9   0.3  03-14:35:44  Telegram
+  4.6   0.0  06-16:12:11  ReportCrash
+  2.2   2.6  03-02:20:34  터미널
+  1.9   0.0  06-16:11:32  coresymbolicationd
+  1.6   0.1  06-16:12:27  coreaudiod
+  1.3   0.1  00:01        intelligencecontextd
+  1.0   0.1  06-16:12:23  com.apple.DriverKit-AppleBCMWLAN
+Load Avg: 6.70, 6.02, 8.06
+CPU usage: 13.16% user, 12.69% sys, 74.14% idle
+PhysMem: 30G used (4497M wired, 2807M compressor), 890M unused.

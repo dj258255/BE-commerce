@@ -1,0 +1,19 @@
+pcpu  pmem  etime        program
+ 98.5   0.0  01-02:34:41  zsh (측정과 무관한 다른 작업 셸)
+ 37.6   0.4  06-16:16:44  WindowServer
+ 17.0   9.0  05-07:31:17  Mac
+ 13.6   0.4  06-16:16:33  corespotlightd
+ 10.2   0.2  06-16:16:35  ControlCenter
+  8.8   0.2  04-09:38:27  Webex
+  8.6   0.4  06-16:16:36  Preview
+  8.2   0.1  06-16:16:45  launchservicesd
+  4.3   0.3  03-14:40:01  Telegram
+  4.3   0.1  06-16:15:26  tccd
+  4.2   0.1  06-16:11:56  herdr
+  3.9   0.4  01-00:31:58  터미널
+  3.9   2.5  03-02:24:51  터미널
+  3.8   0.4  06-16:16:36  ghostty
+  3.2   2.0  06-16:16:36  Google
+Load Avg: 7.51, 6.47, 7.72
+CPU usage: 21.88% user, 16.76% sys, 61.35% idle
+PhysMem: 30G used (4570M wired, 3089M compressor), 825M unused.
