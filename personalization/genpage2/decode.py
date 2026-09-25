@@ -301,10 +301,11 @@ class PageDecoder:
         if items_per_row < 1 or n_rows < 1:
             return [], 0
         use_cache = bool(use_cache and hasattr(self.model, "forward_cached"))
-        tokens, content = self._project_and_trim(list(ctx_tokens), list(ctx_content), self.maxlen)
+        tokens, content = list(ctx_tokens), list(ctx_content)
         if self._sep_page not in tokens:
             tokens.append(self._sep_page)
             content.append(-1)
+        tokens, content = self._project_and_trim(tokens, content, self.maxlen)
         # Reserve room for the requested page before generation.  Otherwise a
         # very long prompt would evict already-generated early-row tokens.
         reserve = n_rows * (items_per_row + 1) + len(prev_page or []) + 1
@@ -384,12 +385,13 @@ class PageDecoder:
         for example in examples:
             args = dict(same_kwargs)
             args.update(example)
-            tokens, content = self._project_and_trim(list(args["ctx_tokens"]), list(args["ctx_content"]), self.maxlen)
+            tokens, content = list(args["ctx_tokens"]), list(args["ctx_content"])
             if len(tokens) != len(content):
                 raise ValueError("ctx_tokens 와 ctx_content 길이는 같아야 합니다")
             if self._sep_page not in tokens:
                 tokens.append(self._sep_page)
                 content.append(-1)
+            tokens, content = self._project_and_trim(tokens, content, self.maxlen)
             reserve = int(args.get("n_rows", 3)) * (int(args.get("items_per_row", 8)) + 1) + len(args.get("prev_page") or []) + 1
             tokens, content = truncate_context_view(tokens, content, max(1, self.maxlen - reserve),
                                                     vocab=self.vocab, level=self.level)
