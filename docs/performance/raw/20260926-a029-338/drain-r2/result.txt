@@ -1,0 +1,9 @@
+fail_lines=0
+fail_first=
+fail_last=
+fail_kinds=
+duplicate_orders=0
+payments_done=5300
+ http_req_failed................: 0.00% 0 out of 10380
+ http_reqs......................: 10380 56.647399/s
+ iterations.....................: 5160 28.159979/s

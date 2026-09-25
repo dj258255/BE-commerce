@@ -1,0 +1,9 @@
+fail_lines=251
+fail_first=2026-09-25T22:46:32.453Z
+fail_last=2026-09-25T22:46:40.646Z
+fail_kinds= 251 order_status=0;
+duplicate_orders=0
+payments_done=5083
+ http_req_failed................: 2.46% 251 out of 10189
+ http_reqs......................: 10189 54.790739/s
+ iterations.....................: 5190 27.908915/s

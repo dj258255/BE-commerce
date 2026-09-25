@@ -1,0 +1,885 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: k6/redeploy-blast-radius.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 30 max VUs, 3m30s max duration (incl. graceful stop):
+              * checkout: 30 looping VUs for 3m0s (exec: checkout, gracefulStop: 30s)
+
+
+Run        [ 100% ] setup()
+checkout   [   0% ]
+
+Run        [ 100% ] setup()
+checkout   [   0% ]
+
+Run        [ 100% ] setup()
+checkout   [   0% ]
+
+Run        [ 100% ] setup()
+checkout   [   0% ]
+
+Run        [ 100% ] setup()
+checkout   [   0% ]
+
+running (0m06.0s), 30/30 VUs, 0 complete and 0 interrupted iterations
+checkout   [   0% ] 30 VUs  0m00.4s/3m0s
+
+running (0m07.0s), 30/30 VUs, 30 complete and 0 interrupted iterations
+checkout   [   1% ] 30 VUs  0m01.4s/3m0s
+
+running (0m08.0s), 30/30 VUs, 45 complete and 0 interrupted iterations
+checkout   [   1% ] 30 VUs  0m02.4s/3m0s
+
+running (0m09.0s), 30/30 VUs, 71 complete and 0 interrupted iterations
+checkout   [   2% ] 30 VUs  0m03.4s/3m0s
+
+running (0m10.0s), 30/30 VUs, 97 complete and 0 interrupted iterations
+checkout   [   2% ] 30 VUs  0m04.4s/3m0s
+
+running (0m11.0s), 30/30 VUs, 123 complete and 0 interrupted iterations
+checkout   [   3% ] 30 VUs  0m05.4s/3m0s
+
+running (0m12.0s), 30/30 VUs, 150 complete and 0 interrupted iterations
+checkout   [   4% ] 30 VUs  0m06.4s/3m0s
+
+running (0m13.0s), 30/30 VUs, 180 complete and 0 interrupted iterations
+checkout   [   4% ] 30 VUs  0m07.4s/3m0s
+
+running (0m14.0s), 30/30 VUs, 210 complete and 0 interrupted iterations
+checkout   [   5% ] 30 VUs  0m08.4s/3m0s
+
+running (0m15.0s), 30/30 VUs, 240 complete and 0 interrupted iterations
+checkout   [   5% ] 30 VUs  0m09.4s/3m0s
+
+running (0m16.0s), 30/30 VUs, 270 complete and 0 interrupted iterations
+checkout   [   6% ] 30 VUs  0m10.4s/3m0s
+
+running (0m17.0s), 30/30 VUs, 300 complete and 0 interrupted iterations
+checkout   [   6% ] 30 VUs  0m11.4s/3m0s
+
+running (0m18.0s), 30/30 VUs, 330 complete and 0 interrupted iterations
+checkout   [   7% ] 30 VUs  0m12.4s/3m0s
+
+running (0m19.0s), 30/30 VUs, 360 complete and 0 interrupted iterations
+checkout   [   7% ] 30 VUs  0m13.4s/3m0s
+
+running (0m20.0s), 30/30 VUs, 390 complete and 0 interrupted iterations
+checkout   [   8% ] 30 VUs  0m14.4s/3m0s
+
+running (0m21.0s), 30/30 VUs, 420 complete and 0 interrupted iterations
+checkout   [   9% ] 30 VUs  0m15.4s/3m0s
+
+running (0m22.0s), 30/30 VUs, 448 complete and 0 interrupted iterations
+checkout   [   9% ] 30 VUs  0m16.4s/3m0s
+
+running (0m23.0s), 30/30 VUs, 477 complete and 0 interrupted iterations
+checkout   [  10% ] 30 VUs  0m17.4s/3m0s
+
+running (0m24.0s), 30/30 VUs, 502 complete and 0 interrupted iterations
+checkout   [  10% ] 30 VUs  0m18.4s/3m0s
+
+running (0m25.0s), 30/30 VUs, 530 complete and 0 interrupted iterations
+checkout   [  11% ] 30 VUs  0m19.4s/3m0s
+
+running (0m26.0s), 30/30 VUs, 558 complete and 0 interrupted iterations
+checkout   [  11% ] 30 VUs  0m20.4s/3m0s
+
+running (0m27.0s), 30/30 VUs, 585 complete and 0 interrupted iterations
+checkout   [  12% ] 30 VUs  0m21.4s/3m0s
+
+running (0m28.0s), 30/30 VUs, 613 complete and 0 interrupted iterations
+checkout   [  12% ] 30 VUs  0m22.4s/3m0s
+
+running (0m29.0s), 30/30 VUs, 642 complete and 0 interrupted iterations
+checkout   [  13% ] 30 VUs  0m23.4s/3m0s
+
+running (0m30.0s), 30/30 VUs, 670 complete and 0 interrupted iterations
+checkout   [  14% ] 30 VUs  0m24.4s/3m0s
+
+running (0m31.0s), 30/30 VUs, 697 complete and 0 interrupted iterations
+checkout   [  14% ] 30 VUs  0m25.4s/3m0s
+
+running (0m32.0s), 30/30 VUs, 724 complete and 0 interrupted iterations
+checkout   [  15% ] 30 VUs  0m26.4s/3m0s
+
+running (0m33.0s), 30/30 VUs, 752 complete and 0 interrupted iterations
+checkout   [  15% ] 30 VUs  0m27.4s/3m0s
+
+running (0m34.0s), 30/30 VUs, 780 complete and 0 interrupted iterations
+checkout   [  16% ] 30 VUs  0m28.4s/3m0s
+
+running (0m35.0s), 30/30 VUs, 810 complete and 0 interrupted iterations
+checkout   [  16% ] 30 VUs  0m29.4s/3m0s
+
+running (0m36.0s), 30/30 VUs, 840 complete and 0 interrupted iterations
+checkout   [  17% ] 30 VUs  0m30.4s/3m0s
+
+running (0m37.0s), 30/30 VUs, 870 complete and 0 interrupted iterations
+checkout   [  17% ] 30 VUs  0m31.4s/3m0s
+
+running (0m38.0s), 30/30 VUs, 900 complete and 0 interrupted iterations
+checkout   [  18% ] 30 VUs  0m32.4s/3m0s
+
+running (0m39.0s), 30/30 VUs, 930 complete and 0 interrupted iterations
+checkout   [  19% ] 30 VUs  0m33.4s/3m0s
+
+running (0m40.0s), 30/30 VUs, 960 complete and 0 interrupted iterations
+checkout   [  19% ] 30 VUs  0m34.4s/3m0s
+
+running (0m41.0s), 30/30 VUs, 990 complete and 0 interrupted iterations
+checkout   [  20% ] 30 VUs  0m35.4s/3m0s
+
+running (0m42.0s), 30/30 VUs, 1020 complete and 0 interrupted iterations
+checkout   [  20% ] 30 VUs  0m36.4s/3m0s
+
+running (0m43.0s), 30/30 VUs, 1050 complete and 0 interrupted iterations
+checkout   [  21% ] 30 VUs  0m37.4s/3m0s
+
+running (0m44.0s), 30/30 VUs, 1080 complete and 0 interrupted iterations
+checkout   [  21% ] 30 VUs  0m38.4s/3m0s
+
+running (0m45.0s), 30/30 VUs, 1110 complete and 0 interrupted iterations
+checkout   [  22% ] 30 VUs  0m39.4s/3m0s
+
+running (0m46.0s), 30/30 VUs, 1139 complete and 0 interrupted iterations
+checkout   [  22% ] 30 VUs  0m40.4s/3m0s
+
+running (0m47.0s), 30/30 VUs, 1167 complete and 0 interrupted iterations
+checkout   [  23% ] 30 VUs  0m41.4s/3m0s
+
+running (0m48.0s), 30/30 VUs, 1194 complete and 0 interrupted iterations
+checkout   [  24% ] 30 VUs  0m42.4s/3m0s
+
+running (0m49.0s), 30/30 VUs, 1221 complete and 0 interrupted iterations
+checkout   [  24% ] 30 VUs  0m43.4s/3m0s
+
+running (0m50.0s), 30/30 VUs, 1249 complete and 0 interrupted iterations
+checkout   [  25% ] 30 VUs  0m44.4s/3m0s
+
+running (0m51.0s), 30/30 VUs, 1278 complete and 0 interrupted iterations
+checkout   [  25% ] 30 VUs  0m45.4s/3m0s
+
+running (0m52.0s), 30/30 VUs, 1304 complete and 0 interrupted iterations
+checkout   [  26% ] 30 VUs  0m46.4s/3m0s
+
+running (0m53.0s), 30/30 VUs, 1331 complete and 0 interrupted iterations
+checkout   [  26% ] 30 VUs  0m47.4s/3m0s
+
+running (0m54.0s), 30/30 VUs, 1359 complete and 0 interrupted iterations
+checkout   [  27% ] 30 VUs  0m48.4s/3m0s
+
+running (0m55.0s), 30/30 VUs, 1385 complete and 0 interrupted iterations
+checkout   [  27% ] 30 VUs  0m49.4s/3m0s
+
+running (0m56.0s), 30/30 VUs, 1410 complete and 0 interrupted iterations
+checkout   [  28% ] 30 VUs  0m50.4s/3m0s
+
+running (0m57.0s), 30/30 VUs, 1436 complete and 0 interrupted iterations
+checkout   [  29% ] 30 VUs  0m51.4s/3m0s
+
+running (0m58.0s), 30/30 VUs, 1464 complete and 0 interrupted iterations
+checkout   [  29% ] 30 VUs  0m52.4s/3m0s
+
+running (0m59.0s), 30/30 VUs, 1494 complete and 0 interrupted iterations
+checkout   [  30% ] 30 VUs  0m53.4s/3m0s
+
+running (1m00.0s), 30/30 VUs, 1524 complete and 0 interrupted iterations
+checkout   [  30% ] 30 VUs  0m54.4s/3m0s
+
+running (1m01.0s), 30/30 VUs, 1554 complete and 0 interrupted iterations
+checkout   [  31% ] 30 VUs  0m55.4s/3m0s
+
+running (1m02.0s), 30/30 VUs, 1584 complete and 0 interrupted iterations
+checkout   [  31% ] 30 VUs  0m56.4s/3m0s
+
+running (1m03.0s), 30/30 VUs, 1614 complete and 0 interrupted iterations
+checkout   [  32% ] 30 VUs  0m57.4s/3m0s
+
+running (1m04.0s), 30/30 VUs, 1644 complete and 0 interrupted iterations
+checkout   [  32% ] 30 VUs  0m58.4s/3m0s
+
+running (1m05.0s), 30/30 VUs, 1674 complete and 0 interrupted iterations
+checkout   [  33% ] 30 VUs  0m59.4s/3m0s
+
+running (1m06.0s), 30/30 VUs, 1704 complete and 0 interrupted iterations
+checkout   [  34% ] 30 VUs  1m00.4s/3m0s
+
+running (1m07.0s), 30/30 VUs, 1730 complete and 0 interrupted iterations
+checkout   [  34% ] 30 VUs  1m01.4s/3m0s
+
+running (1m08.0s), 30/30 VUs, 1759 complete and 0 interrupted iterations
+checkout   [  35% ] 30 VUs  1m02.4s/3m0s
+
+running (1m09.0s), 30/30 VUs, 1786 complete and 0 interrupted iterations
+checkout   [  35% ] 30 VUs  1m03.4s/3m0s
+time="2026-09-26T08:19:10+09:00" level=info msg="[FAIL] 2026-09-25T23:19:10.887Z order status=502 err=" source=console
+time="2026-09-26T08:19:10+09:00" level=info msg="[FAIL] 2026-09-25T23:19:10.892Z order status=502 err=" source=console
+time="2026-09-26T08:19:10+09:00" level=info msg="[FAIL] 2026-09-25T23:19:10.920Z order status=502 err=" source=console
+time="2026-09-26T08:19:10+09:00" level=info msg="[FAIL] 2026-09-25T23:19:10.945Z order status=502 err=" source=console
+time="2026-09-26T08:19:10+09:00" level=info msg="[FAIL] 2026-09-25T23:19:10.962Z order status=502 err=" source=console
+time="2026-09-26T08:19:10+09:00" level=info msg="[FAIL] 2026-09-25T23:19:10.997Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.002Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.032Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.062Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.071Z order status=502 err=" source=console
+
+running (1m10.0s), 30/30 VUs, 1815 complete and 0 interrupted iterations
+checkout   [  36% ] 30 VUs  1m04.4s/3m0s
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.115Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.123Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.140Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.162Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.194Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.226Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.243Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.247Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.261Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.674Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.693Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.717Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.728Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.764Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.775Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.807Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.831Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.843Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.873Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.889Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.889Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.893Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.924Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.949Z order status=502 err=" source=console
+time="2026-09-26T08:19:11+09:00" level=info msg="[FAIL] 2026-09-25T23:19:11.965Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.000Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.004Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.034Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.066Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.074Z order status=502 err=" source=console
+
+running (1m11.0s), 30/30 VUs, 1845 complete and 0 interrupted iterations
+checkout   [  36% ] 30 VUs  1m05.4s/3m0s
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.119Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.125Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.143Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.166Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.197Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.231Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.245Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.247Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.263Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.677Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.697Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.720Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.730Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.767Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.778Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.809Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.833Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.844Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.876Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.893Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.893Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.895Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.926Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.952Z order status=502 err=" source=console
+time="2026-09-26T08:19:12+09:00" level=info msg="[FAIL] 2026-09-25T23:19:12.968Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.004Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.005Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.036Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.067Z order status=502 err=" source=console
+
+running (1m12.0s), 30/30 VUs, 1874 complete and 0 interrupted iterations
+checkout   [  37% ] 30 VUs  1m06.4s/3m0s
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.077Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.123Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.127Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.147Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.169Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.200Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.234Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.249Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.249Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.266Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.679Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.700Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.724Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.732Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.770Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.779Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.812Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.836Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.846Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.879Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.896Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.896Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.896Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.929Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.955Z order status=502 err=" source=console
+time="2026-09-26T08:19:13+09:00" level=info msg="[FAIL] 2026-09-25T23:19:13.972Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.008Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.008Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.037Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.070Z order status=502 err=" source=console
+
+running (1m13.0s), 30/30 VUs, 1904 complete and 0 interrupted iterations
+checkout   [  37% ] 30 VUs  1m07.4s/3m0s
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.078Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.124Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.128Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.149Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.170Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.204Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.236Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.252Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.252Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.269Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.681Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.704Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.727Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.734Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.772Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.781Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.814Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.839Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.849Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.880Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.899Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.899Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.899Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.930Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.959Z order status=502 err=" source=console
+time="2026-09-26T08:19:14+09:00" level=info msg="[FAIL] 2026-09-25T23:19:14.976Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.011Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.011Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.040Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.074Z order status=502 err=" source=console
+
+running (1m14.0s), 30/30 VUs, 1934 complete and 0 interrupted iterations
+checkout   [  38% ] 30 VUs  1m08.4s/3m0s
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.080Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.128Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.130Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.153Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.173Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.207Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.240Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.255Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.255Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.272Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.683Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.707Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.729Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.737Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.776Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.783Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.817Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.842Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.852Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.882Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.902Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.902Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.902Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.933Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.964Z order status=502 err=" source=console
+time="2026-09-26T08:19:15+09:00" level=info msg="[FAIL] 2026-09-25T23:19:15.993Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.014Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.014Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.044Z order status=502 err=" source=console
+
+running (1m15.0s), 30/30 VUs, 1963 complete and 0 interrupted iterations
+checkout   [  39% ] 30 VUs  1m09.4s/3m0s
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.078Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.081Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.130Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.131Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.156Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.178Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.210Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.243Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.259Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.259Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.275Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.696Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.710Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.730Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.738Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.779Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.785Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.820Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.846Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.855Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.884Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.906Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.906Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.906Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.936Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.966Z order status=502 err=" source=console
+time="2026-09-26T08:19:16+09:00" level=info msg="[FAIL] 2026-09-25T23:19:16.996Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.019Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.019Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.048Z order status=502 err=" source=console
+
+running (1m16.0s), 30/30 VUs, 1993 complete and 0 interrupted iterations
+checkout   [  39% ] 30 VUs  1m10.4s/3m0s
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.079Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.082Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.132Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.133Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.160Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.180Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.213Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.246Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.261Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.261Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.278Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.698Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.714Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.732Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.740Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.781Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.787Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.824Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.849Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.857Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.887Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.909Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.909Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.909Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.938Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.970Z order status=502 err=" source=console
+time="2026-09-26T08:19:17+09:00" level=info msg="[FAIL] 2026-09-25T23:19:17.998Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.022Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.022Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.051Z order status=502 err=" source=console
+
+running (1m17.0s), 30/30 VUs, 2023 complete and 0 interrupted iterations
+checkout   [  40% ] 30 VUs  1m11.4s/3m0s
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.081Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.084Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.136Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.136Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.164Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.183Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.215Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.248Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.264Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.264Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.280Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.701Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.718Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.734Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.740Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.783Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.788Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.827Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.853Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.859Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.891Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.913Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.913Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.913Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.942Z order status=502 err=" source=console
+time="2026-09-26T08:19:18+09:00" level=info msg="[FAIL] 2026-09-25T23:19:18.973Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.001Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.025Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.025Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.055Z order status=502 err=" source=console
+
+running (1m18.0s), 30/30 VUs, 2053 complete and 0 interrupted iterations
+checkout   [  40% ] 30 VUs  1m12.4s/3m0s
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.084Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.085Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.139Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.139Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.168Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.185Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.219Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.253Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.268Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.269Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.282Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.704Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.720Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.737Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.742Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.786Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.790Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.829Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.856Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.860Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.894Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.915Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.915Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.915Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.945Z order status=502 err=" source=console
+time="2026-09-26T08:19:19+09:00" level=info msg="[FAIL] 2026-09-25T23:19:19.974Z order status=502 err=" source=console
+time="2026-09-26T08:19:20+09:00" level=info msg="[FAIL] 2026-09-25T23:19:20.028Z order status=502 err=" source=console
+time="2026-09-26T08:19:20+09:00" level=info msg="[FAIL] 2026-09-25T23:19:20.028Z order status=502 err=" source=console
+time="2026-09-26T08:19:20+09:00" level=info msg="[FAIL] 2026-09-25T23:19:20.058Z order status=502 err=" source=console
+
+running (1m19.0s), 30/30 VUs, 2083 complete and 0 interrupted iterations
+checkout   [  41% ] 30 VUs  1m13.4s/3m0s
+time="2026-09-26T08:19:20+09:00" level=info msg="[FAIL] 2026-09-25T23:19:20.086Z order status=502 err=" source=console
+time="2026-09-26T08:19:20+09:00" level=info msg="[FAIL] 2026-09-25T23:19:20.086Z order status=502 err=" source=console
+time="2026-09-26T08:19:20+09:00" level=info msg="[FAIL] 2026-09-25T23:19:20.142Z order status=502 err=" source=console
+time="2026-09-26T08:19:20+09:00" level=info msg="[FAIL] 2026-09-25T23:19:20.142Z order status=502 err=" source=console
+
+running (1m20.0s), 30/30 VUs, 2112 complete and 0 interrupted iterations
+checkout   [  41% ] 30 VUs  1m14.4s/3m0s
+
+running (1m21.0s), 30/30 VUs, 2139 complete and 0 interrupted iterations
+checkout   [  42% ] 30 VUs  1m15.4s/3m0s
+
+running (1m22.0s), 30/30 VUs, 2164 complete and 0 interrupted iterations
+checkout   [  42% ] 30 VUs  1m16.4s/3m0s
+
+running (1m23.0s), 30/30 VUs, 2192 complete and 0 interrupted iterations
+checkout   [  43% ] 30 VUs  1m17.4s/3m0s
+
+running (1m24.0s), 30/30 VUs, 2220 complete and 0 interrupted iterations
+checkout   [  44% ] 30 VUs  1m18.4s/3m0s
+
+running (1m25.0s), 30/30 VUs, 2247 complete and 0 interrupted iterations
+checkout   [  44% ] 30 VUs  1m19.4s/3m0s
+
+running (1m26.0s), 30/30 VUs, 2275 complete and 0 interrupted iterations
+checkout   [  45% ] 30 VUs  1m20.4s/3m0s
+
+running (1m27.0s), 30/30 VUs, 2304 complete and 0 interrupted iterations
+checkout   [  45% ] 30 VUs  1m21.4s/3m0s
+
+running (1m28.0s), 30/30 VUs, 2334 complete and 0 interrupted iterations
+checkout   [  46% ] 30 VUs  1m22.4s/3m0s
+
+running (1m29.0s), 30/30 VUs, 2364 complete and 0 interrupted iterations
+checkout   [  46% ] 30 VUs  1m23.4s/3m0s
+
+running (1m30.0s), 30/30 VUs, 2394 complete and 0 interrupted iterations
+checkout   [  47% ] 30 VUs  1m24.4s/3m0s
+
+running (1m31.0s), 30/30 VUs, 2424 complete and 0 interrupted iterations
+checkout   [  47% ] 30 VUs  1m25.4s/3m0s
+
+running (1m32.0s), 30/30 VUs, 2454 complete and 0 interrupted iterations
+checkout   [  48% ] 30 VUs  1m26.4s/3m0s
+
+running (1m33.0s), 30/30 VUs, 2483 complete and 0 interrupted iterations
+checkout   [  49% ] 30 VUs  1m27.4s/3m0s
+
+running (1m34.0s), 30/30 VUs, 2511 complete and 0 interrupted iterations
+checkout   [  49% ] 30 VUs  1m28.4s/3m0s
+
+running (1m35.0s), 30/30 VUs, 2540 complete and 0 interrupted iterations
+checkout   [  50% ] 30 VUs  1m29.4s/3m0s
+
+running (1m36.0s), 30/30 VUs, 2568 complete and 0 interrupted iterations
+checkout   [  50% ] 30 VUs  1m30.4s/3m0s
+
+running (1m37.0s), 30/30 VUs, 2597 complete and 0 interrupted iterations
+checkout   [  51% ] 30 VUs  1m31.4s/3m0s
+
+running (1m38.0s), 30/30 VUs, 2625 complete and 0 interrupted iterations
+checkout   [  51% ] 30 VUs  1m32.4s/3m0s
+
+running (1m39.0s), 30/30 VUs, 2653 complete and 0 interrupted iterations
+checkout   [  52% ] 30 VUs  1m33.4s/3m0s
+
+running (1m40.0s), 30/30 VUs, 2681 complete and 0 interrupted iterations
+checkout   [  52% ] 30 VUs  1m34.4s/3m0s
+
+running (1m41.0s), 30/30 VUs, 2709 complete and 0 interrupted iterations
+checkout   [  53% ] 30 VUs  1m35.4s/3m0s
+
+running (1m42.0s), 30/30 VUs, 2737 complete and 0 interrupted iterations
+checkout   [  54% ] 30 VUs  1m36.4s/3m0s
+
+running (1m43.0s), 30/30 VUs, 2765 complete and 0 interrupted iterations
+checkout   [  54% ] 30 VUs  1m37.4s/3m0s
+
+running (1m44.0s), 30/30 VUs, 2794 complete and 0 interrupted iterations
+checkout   [  55% ] 30 VUs  1m38.4s/3m0s
+
+running (1m45.0s), 30/30 VUs, 2822 complete and 0 interrupted iterations
+checkout   [  55% ] 30 VUs  1m39.4s/3m0s
+
+running (1m46.0s), 30/30 VUs, 2850 complete and 0 interrupted iterations
+checkout   [  56% ] 30 VUs  1m40.4s/3m0s
+
+running (1m47.0s), 30/30 VUs, 2878 complete and 0 interrupted iterations
+checkout   [  56% ] 30 VUs  1m41.4s/3m0s
+
+running (1m48.0s), 30/30 VUs, 2906 complete and 0 interrupted iterations
+checkout   [  57% ] 30 VUs  1m42.4s/3m0s
+
+running (1m49.0s), 30/30 VUs, 2934 complete and 0 interrupted iterations
+checkout   [  57% ] 30 VUs  1m43.4s/3m0s
+
+running (1m50.0s), 30/30 VUs, 2964 complete and 0 interrupted iterations
+checkout   [  58% ] 30 VUs  1m44.4s/3m0s
+
+running (1m51.0s), 30/30 VUs, 2994 complete and 0 interrupted iterations
+checkout   [  59% ] 30 VUs  1m45.4s/3m0s
+
+running (1m52.0s), 30/30 VUs, 3024 complete and 0 interrupted iterations
+checkout   [  59% ] 30 VUs  1m46.4s/3m0s
+
+running (1m53.0s), 30/30 VUs, 3054 complete and 0 interrupted iterations
+checkout   [  60% ] 30 VUs  1m47.4s/3m0s
+
+running (1m54.0s), 30/30 VUs, 3084 complete and 0 interrupted iterations
+checkout   [  60% ] 30 VUs  1m48.4s/3m0s
+
+running (1m55.0s), 30/30 VUs, 3114 complete and 0 interrupted iterations
+checkout   [  61% ] 30 VUs  1m49.4s/3m0s
+
+running (1m56.0s), 30/30 VUs, 3144 complete and 0 interrupted iterations
+checkout   [  61% ] 30 VUs  1m50.4s/3m0s
+
+running (1m57.0s), 30/30 VUs, 3174 complete and 0 interrupted iterations
+checkout   [  62% ] 30 VUs  1m51.4s/3m0s
+
+running (1m58.0s), 30/30 VUs, 3204 complete and 0 interrupted iterations
+checkout   [  62% ] 30 VUs  1m52.4s/3m0s
+
+running (1m59.0s), 30/30 VUs, 3234 complete and 0 interrupted iterations
+checkout   [  63% ] 30 VUs  1m53.4s/3m0s
+
+running (2m00.0s), 30/30 VUs, 3262 complete and 0 interrupted iterations
+checkout   [  64% ] 30 VUs  1m54.4s/3m0s
+
+running (2m01.0s), 30/30 VUs, 3290 complete and 0 interrupted iterations
+checkout   [  64% ] 30 VUs  1m55.4s/3m0s
+
+running (2m02.0s), 30/30 VUs, 3318 complete and 0 interrupted iterations
+checkout   [  65% ] 30 VUs  1m56.4s/3m0s
+
+running (2m03.0s), 30/30 VUs, 3346 complete and 0 interrupted iterations
+checkout   [  65% ] 30 VUs  1m57.4s/3m0s
+
+running (2m04.0s), 30/30 VUs, 3373 complete and 0 interrupted iterations
+checkout   [  66% ] 30 VUs  1m58.4s/3m0s
+
+running (2m05.0s), 30/30 VUs, 3402 complete and 0 interrupted iterations
+checkout   [  66% ] 30 VUs  1m59.4s/3m0s
+
+running (2m06.0s), 30/30 VUs, 3431 complete and 0 interrupted iterations
+checkout   [  67% ] 30 VUs  2m00.4s/3m0s
+
+running (2m07.0s), 30/30 VUs, 3459 complete and 0 interrupted iterations
+checkout   [  67% ] 30 VUs  2m01.4s/3m0s
+
+running (2m08.0s), 30/30 VUs, 3486 complete and 0 interrupted iterations
+checkout   [  68% ] 30 VUs  2m02.4s/3m0s
+
+running (2m09.0s), 30/30 VUs, 3513 complete and 0 interrupted iterations
+checkout   [  69% ] 30 VUs  2m03.4s/3m0s
+
+running (2m10.0s), 30/30 VUs, 3541 complete and 0 interrupted iterations
+checkout   [  69% ] 30 VUs  2m04.4s/3m0s
+
+running (2m11.0s), 30/30 VUs, 3569 complete and 0 interrupted iterations
+checkout   [  70% ] 30 VUs  2m05.4s/3m0s
+
+running (2m12.0s), 30/30 VUs, 3597 complete and 0 interrupted iterations
+checkout   [  70% ] 30 VUs  2m06.4s/3m0s
+
+running (2m13.0s), 30/30 VUs, 3624 complete and 0 interrupted iterations
+checkout   [  71% ] 30 VUs  2m07.4s/3m0s
+
+running (2m14.0s), 30/30 VUs, 3654 complete and 0 interrupted iterations
+checkout   [  71% ] 30 VUs  2m08.4s/3m0s
+
+running (2m15.0s), 30/30 VUs, 3684 complete and 0 interrupted iterations
+checkout   [  72% ] 30 VUs  2m09.4s/3m0s
+
+running (2m16.0s), 30/30 VUs, 3714 complete and 0 interrupted iterations
+checkout   [  72% ] 30 VUs  2m10.4s/3m0s
+
+running (2m17.0s), 30/30 VUs, 3744 complete and 0 interrupted iterations
+checkout   [  73% ] 30 VUs  2m11.4s/3m0s
+
+running (2m18.0s), 30/30 VUs, 3774 complete and 0 interrupted iterations
+checkout   [  74% ] 30 VUs  2m12.4s/3m0s
+
+running (2m19.0s), 30/30 VUs, 3804 complete and 0 interrupted iterations
+checkout   [  74% ] 30 VUs  2m13.4s/3m0s
+
+running (2m20.0s), 30/30 VUs, 3834 complete and 0 interrupted iterations
+checkout   [  75% ] 30 VUs  2m14.4s/3m0s
+
+running (2m21.0s), 30/30 VUs, 3864 complete and 0 interrupted iterations
+checkout   [  75% ] 30 VUs  2m15.4s/3m0s
+
+running (2m22.0s), 30/30 VUs, 3894 complete and 0 interrupted iterations
+checkout   [  76% ] 30 VUs  2m16.4s/3m0s
+
+running (2m23.0s), 30/30 VUs, 3924 complete and 0 interrupted iterations
+checkout   [  76% ] 30 VUs  2m17.4s/3m0s
+
+running (2m24.0s), 30/30 VUs, 3954 complete and 0 interrupted iterations
+checkout   [  77% ] 30 VUs  2m18.4s/3m0s
+
+running (2m25.0s), 30/30 VUs, 3984 complete and 0 interrupted iterations
+checkout   [  77% ] 30 VUs  2m19.4s/3m0s
+
+running (2m26.0s), 30/30 VUs, 4013 complete and 0 interrupted iterations
+checkout   [  78% ] 30 VUs  2m20.4s/3m0s
+
+running (2m27.0s), 30/30 VUs, 4040 complete and 0 interrupted iterations
+checkout   [  79% ] 30 VUs  2m21.4s/3m0s
+
+running (2m28.0s), 30/30 VUs, 4067 complete and 0 interrupted iterations
+checkout   [  79% ] 30 VUs  2m22.4s/3m0s
+
+running (2m29.0s), 30/30 VUs, 4095 complete and 0 interrupted iterations
+checkout   [  80% ] 30 VUs  2m23.4s/3m0s
+
+running (2m30.0s), 30/30 VUs, 4123 complete and 0 interrupted iterations
+checkout   [  80% ] 30 VUs  2m24.4s/3m0s
+
+running (2m31.0s), 30/30 VUs, 4149 complete and 0 interrupted iterations
+checkout   [  81% ] 30 VUs  2m25.4s/3m0s
+
+running (2m32.0s), 30/30 VUs, 4175 complete and 0 interrupted iterations
+checkout   [  81% ] 30 VUs  2m26.4s/3m0s
+
+running (2m33.0s), 30/30 VUs, 4202 complete and 0 interrupted iterations
+checkout   [  82% ] 30 VUs  2m27.4s/3m0s
+
+running (2m34.0s), 30/30 VUs, 4229 complete and 0 interrupted iterations
+checkout   [  82% ] 30 VUs  2m28.4s/3m0s
+
+running (2m35.0s), 30/30 VUs, 4257 complete and 0 interrupted iterations
+checkout   [  83% ] 30 VUs  2m29.4s/3m0s
+
+running (2m36.0s), 30/30 VUs, 4285 complete and 0 interrupted iterations
+checkout   [  84% ] 30 VUs  2m30.4s/3m0s
+
+running (2m37.0s), 30/30 VUs, 4314 complete and 0 interrupted iterations
+checkout   [  84% ] 30 VUs  2m31.4s/3m0s
+
+running (2m38.0s), 30/30 VUs, 4344 complete and 0 interrupted iterations
+checkout   [  85% ] 30 VUs  2m32.4s/3m0s
+
+running (2m39.0s), 30/30 VUs, 4374 complete and 0 interrupted iterations
+checkout   [  85% ] 30 VUs  2m33.4s/3m0s
+
+running (2m40.0s), 30/30 VUs, 4404 complete and 0 interrupted iterations
+checkout   [  86% ] 30 VUs  2m34.4s/3m0s
+
+running (2m41.0s), 30/30 VUs, 4434 complete and 0 interrupted iterations
+checkout   [  86% ] 30 VUs  2m35.4s/3m0s
+
+running (2m42.0s), 30/30 VUs, 4464 complete and 0 interrupted iterations
+checkout   [  87% ] 30 VUs  2m36.4s/3m0s
+
+running (2m43.0s), 30/30 VUs, 4494 complete and 0 interrupted iterations
+checkout   [  87% ] 30 VUs  2m37.4s/3m0s
+
+running (2m44.0s), 30/30 VUs, 4524 complete and 0 interrupted iterations
+checkout   [  88% ] 30 VUs  2m38.4s/3m0s
+
+running (2m45.0s), 30/30 VUs, 4554 complete and 0 interrupted iterations
+checkout   [  89% ] 30 VUs  2m39.4s/3m0s
+
+running (2m46.0s), 30/30 VUs, 4584 complete and 0 interrupted iterations
+checkout   [  89% ] 30 VUs  2m40.4s/3m0s
+
+running (2m47.0s), 30/30 VUs, 4614 complete and 0 interrupted iterations
+checkout   [  90% ] 30 VUs  2m41.4s/3m0s
+
+running (2m48.0s), 30/30 VUs, 4644 complete and 0 interrupted iterations
+checkout   [  90% ] 30 VUs  2m42.4s/3m0s
+
+running (2m49.0s), 30/30 VUs, 4674 complete and 0 interrupted iterations
+checkout   [  91% ] 30 VUs  2m43.4s/3m0s
+
+running (2m50.0s), 30/30 VUs, 4701 complete and 0 interrupted iterations
+checkout   [  91% ] 30 VUs  2m44.4s/3m0s
+
+running (2m51.0s), 30/30 VUs, 4729 complete and 0 interrupted iterations
+checkout   [  92% ] 30 VUs  2m45.4s/3m0s
+
+running (2m52.0s), 30/30 VUs, 4757 complete and 0 interrupted iterations
+checkout   [  92% ] 30 VUs  2m46.4s/3m0s
+
+running (2m53.0s), 30/30 VUs, 4785 complete and 0 interrupted iterations
+checkout   [  93% ] 30 VUs  2m47.4s/3m0s
+
+running (2m54.0s), 30/30 VUs, 4813 complete and 0 interrupted iterations
+checkout   [  94% ] 30 VUs  2m48.4s/3m0s
+
+running (2m55.0s), 30/30 VUs, 4841 complete and 0 interrupted iterations
+checkout   [  94% ] 30 VUs  2m49.4s/3m0s
+
+running (2m56.0s), 30/30 VUs, 4868 complete and 0 interrupted iterations
+checkout   [  95% ] 30 VUs  2m50.4s/3m0s
+
+running (2m57.0s), 30/30 VUs, 4896 complete and 0 interrupted iterations
+checkout   [  95% ] 30 VUs  2m51.4s/3m0s
+
+running (2m58.0s), 30/30 VUs, 4924 complete and 0 interrupted iterations
+checkout   [  96% ] 30 VUs  2m52.4s/3m0s
+
+running (2m59.0s), 30/30 VUs, 4951 complete and 0 interrupted iterations
+checkout   [  96% ] 30 VUs  2m53.4s/3m0s
+
+running (3m00.0s), 30/30 VUs, 4978 complete and 0 interrupted iterations
+checkout   [  97% ] 30 VUs  2m54.4s/3m0s
+
+running (3m01.0s), 30/30 VUs, 5006 complete and 0 interrupted iterations
+checkout   [  97% ] 30 VUs  2m55.4s/3m0s
+
+running (3m02.0s), 30/30 VUs, 5034 complete and 0 interrupted iterations
+checkout   [  98% ] 30 VUs  2m56.4s/3m0s
+
+running (3m03.0s), 30/30 VUs, 5064 complete and 0 interrupted iterations
+checkout   [  99% ] 30 VUs  2m57.4s/3m0s
+
+running (3m04.0s), 30/30 VUs, 5094 complete and 0 interrupted iterations
+checkout   [  99% ] 30 VUs  2m58.4s/3m0s
+
+running (3m05.0s), 30/30 VUs, 5124 complete and 0 interrupted iterations
+checkout   [ 100% ] 30 VUs  2m59.4s/3m0s
+
+running (3m06.0s), 25/30 VUs, 5154 complete and 0 interrupted iterations
+checkout ↓ [ 100% ] 30 VUs  3m0s
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 30      0.160804/s
+    checks_succeeded...: 100.00% 30 out of 30
+    checks_failed......: 0.00%   0 out of 30
+
+    ✓ user login 200
+
+    HTTP
+    http_req_duration..............: avg=23.87ms min=342µs  med=18.14ms max=3.06s p(90)=41.07ms p(95)=49.2ms 
+      { expected_response:true }...: avg=24.51ms min=4.28ms med=24.84ms max=3.06s p(90)=41.36ms p(95)=49.79ms
+    http_req_failed................: 2.77%  281 out of 10137
+    http_reqs......................: 10137  54.335674/s
+
+    EXECUTION
+    iteration_duration.............: avg=1.04s   min=1s     med=1.04s   max=4.07s p(90)=1.05s   p(95)=1.07s  
+    iterations.....................: 5179   27.760132/s
+    vus............................: 25     min=0            max=30
+    vus_max........................: 30     min=30           max=30
+
+    NETWORK
+    data_received..................: 4.5 MB 24 kB/s
+    data_sent......................: 5.2 MB 28 kB/s
+
+
+
+
+running (3m06.6s), 00/30 VUs, 5179 complete and 0 interrupted iterations
+checkout ✓ [ 100% ] 30 VUs  3m0s
