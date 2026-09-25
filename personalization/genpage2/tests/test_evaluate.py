@@ -224,7 +224,8 @@ class ShardEvaluateTest(unittest.TestCase):
 
     def test_sharded_merge_matches_single_run(self):
         baseline = self._run()
-        shards = [self._run(shard=f"{index}/3") for index in (1, 2, 3)]
+        out_paths = [str(self.base / f"shard{index}.json") for index in (1, 2, 3)]
+        shards = [self._run(shard=f"{index}/3", out=out_paths[index - 1]) for index in (1, 2, 3)]
         self.assertEqual([shard["shard"] for shard in shards],
                          [{"index": 1, "total": 3, "customers": 2},
                           {"index": 2, "total": 3, "customers": 2},
@@ -232,18 +233,32 @@ class ShardEvaluateTest(unittest.TestCase):
         for shard in shards:
             self.assertNotIn("results", shard)
             self.assertNotIn("shard", shard["args"])
+        self.assertEqual([shard["args"]["out"] for shard in shards], out_paths)
         paths = self._write_shards(shards, "shard")
+        merged_out = str(self.base / "merged.json")
         with patch("genpage2.merge_eval.load_eval_assets",
                    return_value=(self.vocab, self.content, self.content_rows)):
-            merged = merge([str(path) for path in paths], base=str(self.base),
-                           out=str(self.base / "merged.json"))
+            merged = merge([str(path) for path in paths], base=str(self.base), out=merged_out)
         self.assertTrue((self.base / "merged.json").exists())
         self.assertEqual(merged["mode"], baseline["mode"])
         self.assertEqual(merged["ckpt"], baseline["ckpt"])
-        self.assertEqual(merged["args"], baseline["args"])
+        expected_args = dict(baseline["args"])
+        expected_args["out"] = merged_out
+        self.assertEqual(merged["args"], expected_args)
         self.assertEqual(set(merged["results"]), set(baseline["results"]))
         for name, metrics in baseline["results"].items():
             self._assert_metrics_equal(metrics, merged["results"][name])
+
+    def test_merge_ignores_per_shard_execution_args(self):
+        shards = [self._run(shard=f"{index}/3", out=str(self.base / f"shard{index}.json"))
+                  for index in (1, 2, 3)]
+        for index, shard in enumerate(shards, start=1):
+            shard["args"]["threads"] = index
+        merged_out = str(self.base / "merged.json")
+        report = merge_reports(shards, meta=self.meta, vocab=self.vocab, content=self.content,
+                               content_rows=self.content_rows, tx=self._tx(), base=self.base, out=merged_out)
+        self.assertNotIn("threads", report["args"])
+        self.assertEqual(report["args"]["out"], merged_out)
 
     def test_sharded_merge_averages_candidates_and_options(self):
         baseline = self._run(pin_repeat=True, candidates="1,1")

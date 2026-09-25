@@ -19,6 +19,16 @@ from .decode import GeneratedRow
 from .evaluate import (_load_examples, evaluate_pages, load_eval_assets, popular_last_week,
                        repeat_last_pages, v1_engine_pages)
 
+# 조각마다 다를 수밖에 없는 실행 인자(출력 경로 · 스레드)는 합칠 때 비교하지 않는다.
+_SHARD_LOCAL_ARGS = ("shard", "out", "threads")
+
+
+def _shared_args(args: Any) -> dict[str, Any]:
+    """Drop per-shard execution args so ``args`` can be compared across shards."""
+    if not isinstance(args, dict):
+        return {}
+    return {key: value for key, value in args.items() if key not in _SHARD_LOCAL_ARGS}
+
 
 def _shard_info(shard: dict[str, Any]) -> tuple[int, int]:
     info = shard.get("shard")
@@ -56,7 +66,7 @@ def _collect_violations(shards: list[dict[str, Any]]) -> dict[str, int]:
 
 def merge_reports(shards: list[dict[str, Any]], *, meta: pd.DataFrame, vocab: Any, content: Any,
                   content_rows: dict[str, int], tx: pd.DataFrame, base: Path | None = None,
-                  elapsed_seconds: float | None = None) -> dict[str, Any]:
+                  out: str | Path | None = None, elapsed_seconds: float | None = None) -> dict[str, Any]:
     """Validate the shard set and compute whole-market metrics exactly once."""
     if not shards:
         raise ValueError("합칠 조각이 없습니다")
@@ -83,7 +93,10 @@ def merge_reports(shards: list[dict[str, Any]], *, meta: pd.DataFrame, vocab: An
         raise ValueError("조각들의 device 가 다릅니다")
 
     ordered = [by_index[index] for index in range(1, total + 1)]
-    for field in ("args", "options", "ckpt"):
+    shared_args = [_shared_args(shard.get("args")) for shard in ordered]
+    if any(value != shared_args[0] for value in shared_args):
+        raise ValueError("조각들의 args 가 다릅니다")
+    for field in ("options", "ckpt"):
         values = [shard.get(field) for shard in ordered]
         if any(value != values[0] for value in values):
             raise ValueError(f"조각들의 {field} 가 다릅니다")
@@ -111,10 +124,13 @@ def merge_reports(shards: list[dict[str, Any]], *, meta: pd.DataFrame, vocab: An
                                       violations=violations, elapsed=generation,
                                       device=(next(iter(devices)) if devices else "cpu"))
 
+    merged_args = _shared_args(ordered[0].get("args"))
+    merged_args["out"] = str(out) if out is not None else None
+
     report: dict[str, Any] = {
         "mode": mode,
         "ckpt": ordered[0].get("ckpt"),
-        "args": ordered[0].get("args", {}),
+        "args": merged_args,
         "elapsed_seconds": float(sum(shard.get("elapsed_seconds", 0.0) for shard in ordered)),
         "results": results,
     }
@@ -142,7 +158,7 @@ def merge(inputs: Iterable[str | Path], *, base: str | Path | None = None, limit
     vocab, content, content_rows = load_eval_assets(root / "hm" / "model" / "genpage2" / mode)
     tx = pd.read_parquet(root / "hm" / "normalized" / "transactions.parquet", columns=["t_dat", "article_id"])
     report = merge_reports(shards, meta=meta, vocab=vocab, content=content, content_rows=content_rows,
-                           tx=tx, base=root)
+                           tx=tx, base=root, out=out)
     if out is not None:
         destination = Path(out)
         destination.parent.mkdir(parents=True, exist_ok=True)
