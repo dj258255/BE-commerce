@@ -1,0 +1,42 @@
+
+
+  █ THRESHOLDS 
+
+    http_req_duration{name:confirm}
+    ✓ 'p(95)<60000' p(95)=3.04s
+
+    http_req_duration{name:read}
+    ✓ 'p(95)<60000' p(95)=11.47ms
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 1       0.055299/s
+    checks_succeeded...: 100.00% 1 out of 1
+    checks_failed......: 0.00%   0 out of 1
+
+    ✓ login 200
+
+    CUSTOM
+    checkout_ok_200................: 150    8.294803/s
+
+    HTTP
+    http_req_duration..............: avg=762.85ms min=4.29ms med=7.58ms max=3.14s   p(90)=3.03s   p(95)=3.04s  
+      { expected_response:true }...: avg=762.85ms min=4.29ms med=7.58ms max=3.14s   p(90)=3.03s   p(95)=3.04s  
+      { name:confirm }.............: avg=3.03s    min=3.02s  med=3.03s  max=3.14s   p(90)=3.04s   p(95)=3.04s  
+      { name:read }................: avg=7.15ms   min=4.29ms med=6.54ms max=27.05ms p(90)=10.17ms p(95)=11.47ms
+    http_req_failed................: 0.00%  0 out of 602
+    http_reqs......................: 602    33.289808/s
+
+    EXECUTION
+    iteration_duration.............: avg=1.01s    min=4.37ms med=8.33ms max=3.2s    p(90)=3.04s   p(95)=3.05s  
+    iterations.....................: 451    24.939706/s
+    vus............................: 2      min=2        max=31 
+    vus_max........................: 220    min=220      max=220
+
+    NETWORK
+    data_received..................: 1.8 MB 101 kB/s
+    data_sent......................: 259 kB 14 kB/s
+
+
+
