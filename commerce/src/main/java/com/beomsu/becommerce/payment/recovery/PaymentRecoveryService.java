@@ -44,6 +44,13 @@ public class PaymentRecoveryService {
     /** backoff 정책에서 다음 시도를 미루는 상한. 이보다 오래 묻지 않으면 PG 가 확정한 뒤에도 우리가 늦게 안다. */
     static final Duration BACKOFF_CAP = Duration.ofMinutes(10);
 
+    /** backoff 정책의 첫 간격. 이후 두 배씩 늘린다(#248). 기본값은 ADR-057 그대로이고 #330 에서 상한과 함께 다시 쟀다. */
+    @org.springframework.beans.factory.annotation.Value("${app.recovery.backoff-base:1m}")
+    private Duration backoffBase = Duration.ofMinutes(1);
+
+    @org.springframework.beans.factory.annotation.Value("${app.recovery.backoff-cap:10m}")
+    private Duration backoffCap = BACKOFF_CAP;
+
     private final PaymentRepository paymentRepository;
     private final PgClient pgClient;
     private final ApplicationEventPublisher events;
@@ -78,21 +85,31 @@ public class PaymentRecoveryService {
     }
 
     /**
-     * 확정하지 못한 건을 남긴다. {@code backoff} 면 다음 시도를 1·2·4·8분 뒤(상한 {@link #BACKOFF_CAP})로 민다 —
+     * 확정하지 못한 건을 남긴다. {@code backoff} 면 다음 시도를 1·2·4·8분 뒤(상한 {@link #BACKOFF_CAP}, 둘 다 설정으로 바꿀 수 있다)로 민다 —
      * 그래야 앞자리가 비어 뒤의 건이 청크에 들어온다(#248). 다른 정책은 횟수만 남긴다.
      */
     private void deferred(Payment payment, Instant now) {
         try {
             Instant next = null;
             if ("backoff".equals(policy)) {
-                long minutes = Math.min(1L << Math.min(payment.getRecoveryAttempts(), 10), BACKOFF_CAP.toMinutes());
-                next = now.plus(Duration.ofMinutes(minutes));
+                next = now.plus(backoffDelay(payment.getRecoveryAttempts()));
             }
             payment.recordRecoveryAttempt(next);
             paymentRepository.saveAndFlush(payment);
         } catch (Exception e) {
             log.warn("복구 시도 기록 실패 paymentId={} : {}", payment.getId(), e.getMessage());
         }
+    }
+
+    /**
+     * 시도 횟수 {@code attempts} 뒤의 간격: 첫 간격 × 2^attempts, 상한에서 멈춘다.
+     * 설정이 0 이나 음수여도 배치를 죽이지 않고 기본값으로 돈다({@link #chunk()} 와 같은 이유).
+     */
+    Duration backoffDelay(int attempts) {
+        Duration base = backoffBase != null && backoffBase.isPositive() ? backoffBase : Duration.ofMinutes(1);
+        Duration cap = backoffCap != null && backoffCap.isPositive() ? backoffCap : BACKOFF_CAP;
+        Duration delay = base.multipliedBy(1L << Math.min(Math.max(attempts, 0), 20));
+        return delay.compareTo(cap) > 0 ? cap : delay;
     }
 
     /**
