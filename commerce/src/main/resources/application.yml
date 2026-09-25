@@ -643,6 +643,15 @@ app:
     #               변화 주입이 실제 재고를 건드리면 안 되기 때문이다(ADR-039의 격리).
     #               격리는 이제 기본값이 아니라 **하네스의 선택**으로 지켜진다(ADR-042)
     item-pool: ${APP_RECOMMENDATION_ITEM_POOL:CATALOG}
+    # 재고 확인 방식(X3, #317) — 모델이 만든 행을 **언제** 재고로 거르는가. 방식마다 응답 시점 정확도를
+    # 사는 대가가 조회 횟수 · 시간이다. 그 대가는 응답의 stats(stockLookups · stockLookupMs · stockRemoved)와
+    # 방식별 메트릭(home.stock.lookup · home.stock.removed, 태그 mode)에 남는다.
+    #   NONE       — 거르지 않는다(기준선). 모델이 준 상품을 그대로 조립한다
+    #   POST       — 생성 뒤 조립할 때 거른다(기본, ADR-050). 카드 조회에 실린 재고를 쓴다
+    #   PRE        — 모델 호출 **전에** 품절 id 를 모아 요청의 exclude 에 더한다. 조립에서는 거르지 않는다.
+    #                요청마다 품절 목록을 한 번 읽는다(상한 2,000) — 품절이 적다는 가정의 비용이다
+    #   POST_FINAL — POST + 응답 직전에 응답에 담긴 상품의 재고를 한 번 더 조회해 0 이면 뺀다
+    stock-check: ${APP_RECOMMENDATION_STOCK_CHECK:POST}
     model:
       # 모델 구현(ADR-053). stub(기본) | genpage — 작은 GenPage 모델 서버(personalization/serving/genpage_server.py).
       # genpage 는 품질 선(MAP@12 0.023354)을 못 넘어 기본으로 켜지 않았다. 켜면 추천 행과 홈 다음 쪽 행을 모델이 만든다.

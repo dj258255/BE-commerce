@@ -43,6 +43,10 @@ export type AssemblyStats = {
   duplicates: number;
   cappedOut: number;
   distinctCategories: number;
+  /** 재고 확인 계측(X3, #317) — 방식별 대가. 없으면 "무엇을 얼마에 샀는가"를 복원할 수 없다. */
+  stockLookups?: number;
+  stockLookupMs?: number;
+  stockRemoved?: number;
 };
 
 export type Homepage = {

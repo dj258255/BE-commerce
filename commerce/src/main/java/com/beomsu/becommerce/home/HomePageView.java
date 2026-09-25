@@ -83,8 +83,21 @@ public record HomePageView(String userId,
      * <p><b>{@code cappedOut} 이 있는 이유</b>: 다양성 상한에 걸려 빠진 항목을 <b>세지 않으면</b>
      * 그 손실이 어디에도 안 남는다 — 처음에 세지 않았고, 그래서 "규칙이 무엇을 하는가"를 표로
      * 설명할 수 없었다(항목 수가 줄어든 이유가 중복인지 상한인지 구분되지 않았다).
+     *
+     * <p><b>{@code stockLookups}·{@code stockLookupMs}·{@code stockRemoved} 가 있는 이유(X3, #317)</b>:
+     * 재고 확인 방식(사전 · 사후 · 최종)마다 <b>응답 시점 정확도를 사는 대가가 조회 횟수와 시간</b>이다.
+     * 그 대가를 응답이 밝히지 않으면 "방식별로 무엇을 얼마에 샀는가"를 원자료에서 복원할 수 없다.
+     * {@code stockRemoved} 는 그 방식이 재고 때문에 <b>뺀</b> 항목 수다 — {@code PRE} 는 모델 exclude 에
+     * 더한 품절 id 수, {@code POST}·{@code POST_FINAL} 은 조립·최종 확인에서 뺀 항목 수다.
      */
     public record AssemblyStats(int candidates, int unmatched, int outOfStock, int duplicates,
-                                int cappedOut, int distinctCategories) {
+                                int cappedOut, int distinctCategories,
+                                int stockLookups, long stockLookupMs, int stockRemoved) {
+
+        /** 재고 확인 계측 이전 모양(다른 호출부 · 테스트) — 계측값은 0 이다. */
+        public AssemblyStats(int candidates, int unmatched, int outOfStock, int duplicates,
+                             int cappedOut, int distinctCategories) {
+            this(candidates, unmatched, outOfStock, duplicates, cappedOut, distinctCategories, 0, 0L, 0);
+        }
     }
 }

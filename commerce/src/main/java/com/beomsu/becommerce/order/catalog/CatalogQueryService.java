@@ -416,6 +416,19 @@ public class CatalogQueryService {
                 .collect(Collectors.toSet());
     }
 
+    /**
+     * <b>지금 품절(quantity = 0) 인 상품 id</b> — 홈의 {@code PRE} 재고 확인(#317)이 모델 호출 전에 쓴다.
+     *
+     * <p>id 묶음이 아니라 <b>조건 질의</b>라서 상한(limit)이 필요하다. 품절이 많아지면 이 목록이 커지고
+     * 요청마다 그만큼 더 읽는다 — 품절이 적다는 가정 위에 선 방식이라 상한을 둔다.
+     */
+    public Set<Long> soldOutProductIds(int limit) {
+        if (limit <= 0) {
+            return Set.of();
+        }
+        return Set.copyOf(stockRepository.findSoldOutIds(PageRequest.of(0, limit)));
+    }
+
     private static int clampSize(int size) {
         return Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
     }
