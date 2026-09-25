@@ -1,0 +1,25 @@
+1790370299 hikaricp_connections_active=0.0 hikaricp_connections_pending=0.0 tomcat_threads_busy_threads=1.0 
+1790370301 
+1790370304 
+1790370307 
+1790370310 
+1790370313 
+1790370316 
+1790370320 
+1790370323 
+1790370326 
+1790370329 
+1790370332 
+1790370335 
+1790370338 
+1790370341 
+1790370344 
+1790370347 
+1790370350 
+1790370353 
+1790370356 
+1790370359 
+1790370362 
+1790370365 hikaricp_connections_active=20.0 hikaricp_connections_pending=38.0 tomcat_threads_busy_threads=40.0 
+1790370367 hikaricp_connections_active=0.0 hikaricp_connections_pending=0.0 tomcat_threads_busy_threads=24.0 
+1790370369 hikaricp_connections_active=0.0 hikaricp_connections_pending=0.0 tomcat_threads_busy_threads=8.0 

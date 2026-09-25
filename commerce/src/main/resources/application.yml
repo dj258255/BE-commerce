@@ -425,11 +425,12 @@ app:
       interval: ${APP_CDC_HEALTH_INTERVAL:30s}
   # 조회 셰딩(#250, ADR-058). 진행 중인 조회가 문턱에 닿으면 새 조회를 503 으로 돌려보낸다. 웹훅·결제는 돌려보내지 않는다.
   # 조회가 DB 커넥션(20)을 다 쥐면 웹훅이 그 줄에 서서 10초 규약을 넘긴다(PG 5초 · 조회 200/s 에서 15.6%, 켜면 0%).
+  # 문턱은 커넥션 줄의 길이를 묶는다(#329). 풀 20 에서 24 까지는 웹훅 p95 1초 안, 28 에서 4.1초, 32 에서 10초 초과 22%.
   # 조회 용량을 재는 벤치마크는 이 값을 false 로 두고 잰다(tools/bench.sh 등).
   web:
     browse-shed:
       enabled: ${APP_WEB_BROWSE_SHED_ENABLED:true}
-      max-in-flight: ${APP_WEB_BROWSE_SHED_MAX_IN_FLIGHT:16}   # 커넥션 20 중 4 를 결제·웹훅 몫으로 남긴다
+      max-in-flight: ${APP_WEB_BROWSE_SHED_MAX_IN_FLIGHT:12}   # 8·12·16·20 중 조회를 가장 적게 돌려보낸 값(#329, 3회 중앙값)
   ratelimit:
     enabled: ${APP_RATELIMIT_ENABLED:true}       # k6 전/후 비교용 스위치 — false면 필터가 전부 통과
     per-user-per-sec: ${APP_RATELIMIT_PER_USER:5}   # 사용자당 초당 허용(스크립트·이중클릭 억제)

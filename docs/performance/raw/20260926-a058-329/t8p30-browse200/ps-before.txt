@@ -1,0 +1,14 @@
+280.4 0.6 00:01 java
+142.5 6.1 05-07:57:03 com.apple.Virtualization.VirtualMachine
+100.0 0.0 01-03:00:27 zsh
+17.1 0.2 06-16:42:30 WindowServer
+9.1 1.5 03-02:50:37 claude
+8.1 0.1 04-10:04:13 Webex
+7.6 0.0 06-16:42:31 launchservicesd
+4.7 0.5 06-02:41:17 com.docker.backend
+4.7 0.1 06-16:42:22 ghostty
+4.4 0.7 11:09 Google
+3.4 0.2 03-15:05:47 Telegram
+2.9 11.7 00:15 Python
+Load Avg: 132.98, 99.43, 62.81 
+CPU usage: 47.94% user, 17.23% sys, 34.81% idle 

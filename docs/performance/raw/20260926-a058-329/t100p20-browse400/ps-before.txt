@@ -1,0 +1,14 @@
+159.5 8.6 05-08:12:29 com.apple.Virtualization.VirtualMachine
+98.7 0.0 01-03:15:53 zsh
+91.3 8.7 00:09 Python
+81.4 0.5 05-10:05:32 junie
+39.4 0.3 06-16:57:56 WindowServer
+14.6 0.1 06-16:57:40 ReportCrash
+8.9 0.1 04-10:19:39 Webex
+8.8 0.1 06-16:57:47 ControlCenter
+7.1 0.0 06-16:57:01 coresymbolicationd
+5.5 0.3 03-15:21:13 Telegram
+5.1 0.7 26:35 Google
+4.1 1.3 06-02:56:43 com.docker.backend
+Load Avg: 177.22, 137.53, 101.15 
+CPU usage: 21.9% user, 25.22% sys, 53.67% idle 
