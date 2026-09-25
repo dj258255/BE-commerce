@@ -20,9 +20,11 @@ AI 모델이 실제 request path 안에 들어왔을 때 **백엔드가 무엇�
 
 ## 현재 상태
 
-- **설계·계획**: 마일스톤 `M0`~`M7`(백엔드), `M8`(프론트), `M9`(정체성 정렬) — 이슈로 분해됨
-- **프론트**: `web/`에 껍데기. **목 계약(fixture)** 으로 화면을 먼저 만들고, 실험이 끝나면 실데이터로 교체
-- **백엔드**: 아직 없음 (M0 설계부터)
+- **백엔드**: 앱 안의 `recommendation`·`home`·`personalization`·`experiment` 모듈로 돌아간다. 실험 E1~E6 과 홈 조립(M7)을 실측으로 닫았고, 마일스톤 M0~M12 는 완료다([ROADMAP.md](ROADMAP.md))
+- **모델**: ALS 는 기준선을 못 넘어 넣지 않았다([ADR-048](../docs/adr/ADR-048-als-model-not-adopted.md)). GenPage 소형 모델은 서빙 경로까지 붙였지만 기본값은 꺼져 있다([ADR-053](../docs/adr/ADR-053-genpage-mini-not-default.md) · [ADR-060](../docs/adr/ADR-060-genpage-serves-purchases.md)). 켜는 판정은 A/B 이고 그 기반은 합성 사용자로만 검증했다([ADR-061](../docs/adr/ADR-061-ab-assignment-and-attribution.md))
+- **진행 중**: GenPage v2(`genpage2/`, [docs/genpage-v2](docs/genpage-v2/)). 원문 구성 요소를 데이터가 허락하는 데까지 옮기고 두 발견을 다시 잰다
+- **프론트**: 개인화 홈과 실험 콘솔은 `apps/web`(Next.js)으로 옮겼다. `web/` 는 이전 정적 화면이다
+- **M12 이후의 결정**(모델 서빙·과부하 재측정·홈 다음 쪽 입력 등)은 ROADMAP 표에 아직 행이 없다. [ADR](../docs/adr/) 053 이후와 [트러블슈팅 기록](../docs/TROUBLESHOOTING-LOG.md)이 그 기록이다
 
 ## 문서
 
@@ -43,8 +45,11 @@ AI 모델이 실제 request path 안에 들어왔을 때 **백엔드가 무엇�
 
 ```
 personalization/
-├── web/      프론트(개인화 홈 + 실험 콘솔) — 지금은 목 데이터
-└── (예정) 파이프라인·서빙·관측
+├── pipeline/   데이터 수집·정규화·피처·학습(ALS, GenPage v1)
+├── serving/    GenPage 모델 서버(파이썬 HTTP)
+├── genpage2/   GenPage v2(진행 중)
+├── docs/       데이터 계약·아키텍처·실험 명세·검증 기록(runs/)
+└── web/        이전 정적 화면. 지금 화면은 apps/web
 ```
 
 ## 데이터
