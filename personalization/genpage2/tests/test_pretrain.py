@@ -7,15 +7,14 @@ import numpy as np
 import torch
 
 from genpage2.model import GenPageV2, ModelConfig, load_checkpoint, save_checkpoint
+from genpage2.context import truncate, view
 from genpage2.train_pretrain import (
     NpzExamples,
     add_page_content,
     batch_loss,
-    history_only_context,
     make_batch,
     replace_known_inputs,
     replace_item_inputs,
-    truncate_context_page,
 )
 
 
@@ -47,13 +46,10 @@ class PretrainTest(unittest.TestCase):
         self.content = np.array([-1, -1, -1, -1, -1, -1, 0, -1, -1, 1, -1, -1, -1])
         self.page = np.array([12, 13, 2])
 
-    def test_truncation_drops_oldest_complete_history_events(self):
-        ctx, rows, page, removed = truncate_context_page(self.context, self.content, self.page, maxlen=10,
-                                                           sep_history=5, sep_page=6)
-        self.assertEqual(removed, 6)
+    def test_context_truncation_drops_oldest_complete_history_events(self):
+        ctx, rows = truncate(self.context, self.content, 7, vocab=self.vocab, level="full")
         self.assertEqual(ctx.tolist(), [1, 3, 8, 4, 9, 5, 6])
         self.assertEqual(rows.tolist(), [-1] * 7)
-        self.assertEqual(page.tolist(), [12, 13, 2])
 
     def test_loss_only_targets_page_tokens(self):
         batch = make_batch([(self.context, self.content, self.page)], vocab=self.vocab, maxlen=32)
@@ -83,12 +79,12 @@ class PretrainTest(unittest.TestCase):
         self.assertEqual(tuple(logits.shape), (int(batch["loss_mask"].sum()), len(self.vocab.tokens)))
         self.assertTrue(torch.isfinite(loss))
 
-    def test_history_context_keeps_only_item_tokens(self):
-        tokens, rows = history_only_context(self.context, self.content, self.vocab)
+    def test_context_items_view_keeps_only_item_tokens(self):
+        tokens, rows = view(self.context, self.content, self.vocab, "items")
         self.assertEqual(tokens.tolist(), [1, 5, 13, 14, 6])
         self.assertEqual(rows.tolist(), [-1, -1, 0, 1, -1])
 
-    def test_history_truncation_removes_one_token_events_and_keeps_page(self):
+    def test_context_items_truncation_removes_one_token_events_and_keeps_page(self):
         long_ctx = np.array([1, 3, 8, 4, 9, 5, 13, 10, 11, 14, 10, 11,
                              13, 10, 11, 14, 10, 11, 13, 10, 11, 6])
         long_content = np.full(len(long_ctx), -1, dtype=np.int64)

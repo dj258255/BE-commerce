@@ -87,46 +87,6 @@ def _optional_vocab_id(vocab: Any, name: str) -> int | None:
         return None
 
 
-def history_only_context(ctx_tokens: Sequence[int], ctx_content: Sequence[int], vocab: Any) -> tuple[np.ndarray, np.ndarray]:
-    """Compatibility spelling for the renamed ``items`` projection."""
-    tokens, content = context_view(ctx_tokens, ctx_content, vocab, "items")
-    return np.asarray(tokens, dtype=np.int64), np.asarray(content, dtype=np.int64)
-
-
-def truncate_context_page(ctx_tokens: Sequence[int], ctx_content: Sequence[int], page_tokens: Sequence[int], *,
-                          maxlen: int, sep_history: int, sep_page: int,
-                          event_width: int = 3) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
-    """Legacy wrapper retained for callers from the pre-context-module API.
-
-    Returns the number of removed history tokens as the final element.
-    """
-    ctx = np.asarray(ctx_tokens, dtype=np.int64).copy()
-    content = np.asarray(ctx_content, dtype=np.int64).copy()
-    page = np.asarray(page_tokens, dtype=np.int64).copy()
-    if len(ctx) != len(content):
-        raise ValueError("context token/content lengths differ")
-    if event_width <= 0:
-        raise ValueError("event_width must be positive")
-    try:
-        history_at = int(np.where(ctx == sep_history)[0][-1])
-        page_at = int(np.where(ctx == sep_page)[0][-1])
-    except IndexError as exc:
-        raise ValueError("context must contain SEP_HISTORY and SEP_PAGE") from exc
-    if history_at >= page_at:
-        raise ValueError("SEP_HISTORY must precede SEP_PAGE")
-    removed = 0
-    # Full history events are [item, action, ago]; history-only events are [item].
-    while len(ctx) + len(page) > maxlen and page_at - history_at - 1 >= event_width:
-        cut = history_at + 1
-        ctx = np.concatenate((ctx[:cut], ctx[cut + event_width:]))
-        content = np.concatenate((content[:cut], content[cut + event_width:]))
-        page_at -= event_width
-        removed += event_width
-    if len(ctx) + len(page) > maxlen:
-        page = page[:max(0, maxlen - len(ctx))]
-    return ctx, content, page, removed
-
-
 def page_loss_mask(length: int, page_start: int) -> np.ndarray:
     """Mask logits positions which predict a page token (including EOS)."""
     mask = np.zeros(max(0, length - 1), dtype=bool)
