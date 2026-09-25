@@ -756,6 +756,9 @@ payment:
     # <b>이 값은 PG 응답시간의 함수다.</b> PG 를 바꾸거나 p99 가 달라지면 위 계산을 다시 한다.
     # 0 이하면 상한 없음(이전 동작).
     max-concurrent-calls: ${PAYMENT_PG_MAX_CONCURRENT_CALLS:40}
+    # 조회(query) 시도 횟수. 1 이면 재시도 없음(#334). 일시 장애 1·5·10% 에서 3회가 1회보다 전량 확정이 빨랐고(100 대 158초,
+    # 102 대 249초, 207 대 966초) 건당 PG 조회는 시도 횟수와 무관하게 같았다(1/(1−실패율)). 승인은 재시도하지 않는다.
+    query-max-attempts: ${PAYMENT_PG_QUERY_MAX_ATTEMPTS:3}
 
   # PG HTTP 타임아웃. 코드(@Value)에도 같은 기본값이 있지만, 이 값은 장애 대응에서 조정 대상이라
   # 밖으로 꺼내 둔다.
