@@ -16,6 +16,12 @@
 - 결과물: k6/실험 명령, p50/p95/p99 표, retry budget ADR 후보
 - 위험: 로컬 fake PG의 분포는 실제 PG 장애를 대표하지 않는다.
 
+## 결과(2026-09-26, [#334](https://github.com/dj258255/BE-commerce/issues/334))
+
+재시도는 일시 장애를 흡수했고 PG 호출을 부풀리지 않았다. 현행 3회를 유지한다. 표와 해석은
+[docs/34 의 2026-09-26 절](../34-결제-재시도와-retry-storm-실험.md#2026-09-26-일시-장애에서-재시도-횟수를-바꿔-봤다-334), 원자료는
+[`performance/raw/20260926-p038-334/`](../performance/raw/20260926-p038-334/).
+
 ## 검증
 
 - `./gradlew -p commerce test --tests '*ResilientPgClientTest'`

@@ -124,6 +124,13 @@ public class FakePgClient implements PgClient {
     @Value("${payment.fake-pg.query-fail-for-ms:0}")
     private long queryFailForMs = 0;
 
+    /**
+     * 0 보다 크면 실패 접두어의 조회가 시간과 무관하게 이 확률로 예외가 된다(#334, 일시 장애). 호출마다 따로 뽑는다.
+     * 재시도가 일시 장애를 흡수하는지 PG 호출을 부풀리는지 가른다.
+     */
+    @Value("${payment.fake-pg.query-fail-rate:0}")
+    private double queryFailRate = 0;
+
     private final AtomicLong firstInProgressAt = new AtomicLong();
     private final AtomicLong firstFailAt = new AtomicLong();
 
@@ -198,7 +205,11 @@ public class FakePgClient implements PgClient {
     public PgQueryResult query(String paymentKey) {
         queryCalls.incrementAndGet();
         long now = System.currentTimeMillis();
-        if (!queryFailPrefix.isEmpty() && paymentKey != null && paymentKey.startsWith(queryFailPrefix)) {
+        if (!queryFailPrefix.isEmpty() && paymentKey != null && paymentKey.startsWith(queryFailPrefix) && queryFailRate > 0) {
+            if (java.util.concurrent.ThreadLocalRandom.current().nextDouble() < queryFailRate) {
+                throw new IllegalStateException("가짜 PG 조회 일시 장애(query-fail-rate)");
+            }
+        } else if (!queryFailPrefix.isEmpty() && paymentKey != null && paymentKey.startsWith(queryFailPrefix)) {
             long first = firstFailAt.updateAndGet(v -> v == 0 ? now : v);
             if (queryFailForMs <= 0 || now - first < queryFailForMs) {
                 throw new IllegalStateException("가짜 PG 조회 장애(query-fail-prefix)");
