@@ -1,0 +1,93 @@
+{
+  "experiment": "X1",
+  "mode": "validate",
+  "checkpoint": "/Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/validate/ckpt/b-small-full",
+  "device": "cpu",
+  "seed": 7,
+  "customers": 5000,
+  "batch_size": 256,
+  "timings_ms": {
+    "total": 958757.8589170007,
+    "prompt_build": 8981.832025165204,
+    "generation": 442035.1038760273
+  },
+  "levels": {
+    "a": {
+      "label": "학습 문맥",
+      "token_mismatch_rate": 0.0,
+      "content_mismatch_rate": 0.0,
+      "jaccard_at_12": 1.0,
+      "map_at_12": 0.0044331411392839965,
+      "map_customers": 5000,
+      "request_bytes_mean": 3824.5216,
+      "build_prompt_ms_mean": 0.0,
+      "build_prompt_ms_p95": 0.0,
+      "violations": 0,
+      "prompt_total_ms": 0.0,
+      "generation_total_ms": 87829.67329199892,
+      "level_total_ms": 87829.67329199892
+    },
+    "b": {
+      "label": "상품 id",
+      "token_mismatch_rate": 0.5058234497972455,
+      "content_mismatch_rate": 0.0,
+      "jaccard_at_12": 0.4622813411975022,
+      "map_at_12": 0.0046255739366453654,
+      "map_customers": 5000,
+      "request_bytes_mean": 594.4624,
+      "build_prompt_ms_mean": 0.49497728554997594,
+      "build_prompt_ms_p95": 0.9917687362758444,
+      "violations": 0,
+      "prompt_total_ms": 2474.8864277498797,
+      "generation_total_ms": 87077.35558302375,
+      "level_total_ms": 89552.24201077363
+    },
+    "c": {
+      "label": "상품 id + 구매 시각",
+      "token_mismatch_rate": 0.3070897802726035,
+      "content_mismatch_rate": 0.0,
+      "jaccard_at_12": 0.6058487205673583,
+      "map_at_12": 0.004399728234728235,
+      "map_customers": 5000,
+      "request_bytes_mean": 2394.4296,
+      "build_prompt_ms_mean": 0.4708695662324317,
+      "build_prompt_ms_p95": 0.987671158509329,
+      "violations": 0,
+      "prompt_total_ms": 2354.3478311621584,
+      "generation_total_ms": 87134.74820897682,
+      "level_total_ms": 89489.09604013897
+    },
+    "d": {
+      "label": "상품 id + 구매 시각 + 가격·채널",
+      "token_mismatch_rate": 0.06102628037494996,
+      "content_mismatch_rate": 0.0,
+      "jaccard_at_12": 0.8376958444651323,
+      "map_at_12": 0.004101353518174946,
+      "map_customers": 5000,
+      "request_bytes_mean": 4465.4246,
+      "build_prompt_ms_mean": 0.45738815747899936,
+      "build_prompt_ms_p95": 0.9714374755276369,
+      "violations": 0,
+      "prompt_total_ms": 2286.9407873949967,
+      "generation_total_ms": 87955.2839579992,
+      "level_total_ms": 90242.2247453942
+    },
+    "e": {
+      "label": "전체 서빙 문맥",
+      "token_mismatch_rate": 0.0,
+      "content_mismatch_rate": 0.0,
+      "jaccard_at_12": 1.0,
+      "map_at_12": 0.0044331411392839965,
+      "map_customers": 5000,
+      "request_bytes_mean": 3824.5216,
+      "build_prompt_ms_mean": 0.37313139577163384,
+      "build_prompt_ms_p95": 0.6452184461522847,
+      "violations": 0,
+      "prompt_total_ms": 1865.6569788581692,
+      "generation_total_ms": 92038.0428340286,
+      "level_total_ms": 93903.69981288677
+    }
+  },
+  "consistency_violation": false,
+  "consistency_differences": []
+}

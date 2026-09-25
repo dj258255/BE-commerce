@@ -46,8 +46,16 @@ class ContextTest(unittest.TestCase):
         self.assertIn("DOW_3", names["full"])
         for before, after in zip(LEVELS, LEVELS[1:]):
             self.assertTrue(set(names[before]).issubset(names[after]))
-        item_positions = [i for i, token in enumerate(rendered["full"][0]) if self.vocab.tokens[token].startswith("ITEM_")]
-        self.assertEqual(rendered["full"][1][item_positions].tolist(), [21, 22])
+        for level, (tokens, content) in rendered.items():
+            with self.subTest(level=level):
+                self.assertEqual(len(tokens), len(content))
+                item_positions = [i for i, token in enumerate(tokens)
+                                  if self.vocab.tokens[token].startswith("ITEM_")]
+                # Filtering fields never reorders history: content row 21 is
+                # still ITEM_A and 22 is still ITEM_B at every level.
+                self.assertEqual([self.vocab.tokens[tokens[i]] for i in item_positions], ["ITEM_A", "ITEM_B"])
+                self.assertEqual(content[item_positions].tolist(), [21, 22])
+                self.assertLess(item_positions[0], item_positions[1])
 
     def test_truncate_removes_complete_oldest_event_at_every_level(self):
         for level in LEVELS:
