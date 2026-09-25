@@ -1,5 +1,9 @@
 package com.beomsu.becommerce.payment.pg;
 
+import io.micrometer.core.instrument.FunctionCounter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -75,6 +79,8 @@ public class FakePgClient implements PgClient {
         pgSideStatusOnApprove.set(PgPaymentStatus.APPROVED);
         nextCardFingerprint.set(null);
         pgSide.clear();
+        firstInProgressAt.set(0);
+        firstFailAt.set(0);
     }
 
     /**
@@ -102,6 +108,34 @@ public class FakePgClient implements PgClient {
      */
     @Value("${payment.fake-pg.query-in-progress-prefix:}")
     private String queryInProgressPrefix = "";
+
+    /**
+     * 0 보다 크면 진행 중인 건을 차례로 풀어 준다(#330). 키 끝 번호가 i 면 첫 "진행 중" 응답에서 (i+1) × 이 값이
+     * 지난 뒤부터 승인으로 답한다. PG 가 언제 확정하든 복구가 그 뒤 얼마 만에 알아채는지(백오프 간격의 대가)를 잰다.
+     */
+    @Value("${payment.fake-pg.query-in-progress-release-step-ms:0}")
+    private long queryInProgressReleaseStepMs = 0;
+
+    /** 이 접두어로 시작하는 키는 조회가 예외로 끝난다(#330, PG 전면 장애). 비어 있으면 끈다. */
+    @Value("${payment.fake-pg.query-fail-prefix:}")
+    private String queryFailPrefix = "";
+
+    /** 첫 조회 실패에서 이만큼 지나면 장애가 끝난다(ms). 0 이면 끝나지 않는다. */
+    @Value("${payment.fake-pg.query-fail-for-ms:0}")
+    private long queryFailForMs = 0;
+
+    private final AtomicLong firstInProgressAt = new AtomicLong();
+    private final AtomicLong firstFailAt = new AtomicLong();
+
+    /** 조회가 이 가짜 PG 까지 닿은 횟수. 재시도·서킷을 지난 뒤 PG 를 실제로 몇 번 두드렸는지 본다(#330). */
+    private final AtomicLong queryCalls = new AtomicLong();
+
+    @Autowired(required = false)
+    void registerMetrics(MeterRegistry registry) {
+        FunctionCounter.builder("fake.pg.query.calls", queryCalls, AtomicLong::get).register(registry);
+        Gauge.builder("fake.pg.query.in.progress.first.epoch.ms", firstInProgressAt, AtomicLong::get).register(registry);
+        Gauge.builder("fake.pg.query.fail.first.epoch.ms", firstFailAt, AtomicLong::get).register(registry);
+    }
 
     @Value("${payment.fake-pg.approve-latency-ms:0}")
     public void setApproveLatencyMillis(long millis) {
@@ -162,11 +196,34 @@ public class FakePgClient implements PgClient {
 
     @Override
     public PgQueryResult query(String paymentKey) {
+        queryCalls.incrementAndGet();
+        long now = System.currentTimeMillis();
+        if (!queryFailPrefix.isEmpty() && paymentKey != null && paymentKey.startsWith(queryFailPrefix)) {
+            long first = firstFailAt.updateAndGet(v -> v == 0 ? now : v);
+            if (queryFailForMs <= 0 || now - first < queryFailForMs) {
+                throw new IllegalStateException("가짜 PG 조회 장애(query-fail-prefix)");
+            }
+        }
         if (!queryInProgressPrefix.isEmpty() && paymentKey != null && paymentKey.startsWith(queryInProgressPrefix)) {
+            if (queryInProgressReleaseStepMs > 0) {
+                long first = firstInProgressAt.updateAndGet(v -> v == 0 ? now : v);
+                if (now - first >= (trailingNumber(paymentKey) + 1) * queryInProgressReleaseStepMs) {
+                    return new PgQueryResult(PgPaymentStatus.APPROVED, "CARD");
+                }
+            }
             return new PgQueryResult(PgPaymentStatus.IN_PROGRESS, null);
         }
         PgPaymentStatus status = pgSide.getOrDefault(paymentKey, PgPaymentStatus.NOT_FOUND);
         String method = status == PgPaymentStatus.APPROVED ? "CARD" : null;
         return new PgQueryResult(status, method);
+    }
+
+    /** 키 끝의 숫자. 없으면 0. */
+    private static long trailingNumber(String key) {
+        int i = key.length();
+        while (i > 0 && Character.isDigit(key.charAt(i - 1))) {
+            i--;
+        }
+        return i == key.length() ? 0 : Long.parseLong(key.substring(i));
     }
 }

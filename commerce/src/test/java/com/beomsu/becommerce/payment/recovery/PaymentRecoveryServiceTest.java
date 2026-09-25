@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -134,6 +135,20 @@ class PaymentRecoveryServiceTest {
         service.recoverUnknownPayments();
         assertThat(p.getRecoveryAttempts()).isEqualTo(expectedMinutes.length + 1);
         verify(repository, never()).findByStatusAndRequestedAtBefore(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("backoff 간격은 설정으로 바꿀 수 있고 0 이나 음수면 기본값(1분·상한 10분)으로 돈다(#330)")
+    void backoffIntervalsAreConfigurable() {
+        ReflectionTestUtils.setField(service, "backoffBase", Duration.ofSeconds(30));
+        ReflectionTestUtils.setField(service, "backoffCap", Duration.ofMinutes(2));
+        assertThat(List.of(0, 1, 2, 3, 30).stream().map(service::backoffDelay).toList()).containsExactly(
+                Duration.ofSeconds(30), Duration.ofMinutes(1), Duration.ofMinutes(2), Duration.ofMinutes(2), Duration.ofMinutes(2));
+
+        ReflectionTestUtils.setField(service, "backoffBase", Duration.ZERO);
+        ReflectionTestUtils.setField(service, "backoffCap", Duration.ofMinutes(-1));
+        assertThat(service.backoffDelay(0)).isEqualTo(Duration.ofMinutes(1));
+        assertThat(service.backoffDelay(10)).isEqualTo(Duration.ofMinutes(10));
     }
 
     @Test

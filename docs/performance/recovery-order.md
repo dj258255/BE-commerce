@@ -6,6 +6,8 @@
 [이슈 #248](https://github.com/dj258255/BE-commerce/issues/248)에 **측정 전에** 적었다. 결정은
 [ADR-057](../adr/ADR-057-recovery-backoff-over-order.md).
 
+간격(1·2·4·8·10분)이 무엇을 맞바꾸는지와 PG 전면 장애는 [다음 리포트(#330)](recovery-backoff.md)에서 쟀다.
+
 [성능 §14.5](README.md)는 PG 측이 전부 승인인 경우만 쟀고 "IN_PROGRESS 는 다음 주기로 미뤄진다"고만 적었다.
 미뤄진 건이 다음 주기에 **어디에 서는지**는 재지 않았다.
 
