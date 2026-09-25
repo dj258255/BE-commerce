@@ -1,0 +1,23 @@
+== E3 실측 시작 (모델 4동시/50ms = 80/s)
+== 정책: ADMISSION
+== 부하: 120 req/s (60s씩, 워밍업 10000ms)
+== 출력: <OUT>
+-- ADMISSION
+   ADMISSION @ 120 req/s
+[E3] policy=ADMISSION  rate=120  achieved=111  coverage=60.2%  personalized=60.2%  serving_p95=154.0ms  serving_p99=160.0ms  model_p95=151.0ms  rejected=2390  timeout=0  failed=0  zero_ctx=0  req_failed=0.0%  dropped=0
+
+== 조건별 요약
+| 부하 (req/s) | `ADMISSION` coverage / p95 |
+|---:|---:|
+| 120 | **60.2%** / 154.0ms |
+
+**달성 부하** — 표의 `rate` 는 요청한 부하이고 아래는 실제로 통과한 양이다.
+정책이 앱을 마비시키면(스레드가 줄에 갇히면) 여기가 낮아진다 — 그 자체가 결과다.
+
+| 부하 | `ADMISSION` |
+|---:|---:|
+| 120 | 111 |
+
+| 부하 | 정책 | 달성 | coverage | **개인화** | serving p95 | serving p99 | model p95 | rejected | timeout | zero_ctx | dropped |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 120 | `ADMISSION` | 111 | 60.2% | **60.2%** | 154.0ms | 160.0ms | 151.0ms | 2390 | 0 | 0 | 0 |
