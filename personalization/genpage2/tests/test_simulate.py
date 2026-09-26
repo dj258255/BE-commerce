@@ -105,7 +105,7 @@ class PriceIndexTest(unittest.TestCase):
 
     def test_reference_time_drops_later_transactions(self):
         transactions = _frame([("2020-01-01", "c1", "0000000001", 1, 10.0),
-                               ("2020-08-01", "c1", "0000000001", 1, 100.0)])
+                               ("2020-08-15", "c1", "0000000001", 1, 100.0)])
         transactions["t_dat"] = pd.to_datetime(transactions["t_dat"])
         prices = PriceIndex.from_transactions(self.vocab, transactions, pd.Timestamp("2020-08-10"))
         self.assertEqual(prices.price_as_of("0000000001", pd.Timestamp("2020-09-01")), 10.0)
@@ -235,8 +235,10 @@ class PageTwoTest(unittest.TestCase):
             self.assertIn(action, tail)
 
         # 앞 쪽 토큰이 ctx 에 다시 들어가지 않는다(한 번만).
+        # 행 골격(ROW_)은 ctx 에 0번, 앞 쪽 상품(ITEM_)은 세션 이벤트로 1번까지 나온다.
         for token in second.prev_tokens:
-            self.assertNotIn(token, second.ctx_tokens)
+            limit = 1 if token in vocab.item_ids else 0
+            self.assertLessEqual(second.ctx_tokens.count(token), limit)
 
         # prev_tokens 에 ACT · AGO · PRICE 가 없다.
         for token in second.prev_tokens:
