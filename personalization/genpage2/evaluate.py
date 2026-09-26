@@ -12,6 +12,7 @@ from typing import Any, Iterable
 import numpy as np
 import pandas as pd
 
+from .candidates import build_candidates
 from .config import ITEMS_PER_ROW, MAX_ROWS, SEED, data_dir, out_dir, request_of
 from .context import LEVELS
 from .decode import GeneratedRow, PageDecoder
@@ -24,6 +25,84 @@ def _as_articles(value: Any) -> list[str]:
     if isinstance(value, str):
         return [value]
     return [str(v).zfill(10) if str(v).isdigit() else str(v) for v in value]
+
+
+def parse_candidates(value: str | tuple[int, int] | list[int] | None) -> tuple[int, int] | None:
+    """Parse the ``N,M`` CLI form without accepting ambiguous candidate sets."""
+    if value is None:
+        return None
+    if isinstance(value, (tuple, list)) and len(value) == 2:
+        top_n, per_section_m = value
+    elif isinstance(value, str):
+        parts = value.split(",")
+        if len(parts) != 2:
+            raise ValueError("--candidates 는 N,M 형식이어야 합니다")
+        top_n, per_section_m = parts
+    else:
+        raise ValueError("--candidates 는 N,M 형식이어야 합니다")
+    try:
+        result = int(top_n), int(per_section_m)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("--candidates 의 N 과 M 은 정수여야 합니다") from exc
+    if min(result) < 0:
+        raise ValueError("--candidates 의 N 과 M 은 0 이상이어야 합니다")
+    return result
+
+
+def parse_shard(value: str | tuple[int, int] | list[int] | None) -> tuple[int, int] | None:
+    """Parse the ``K/N`` CLI form; K is one-based so ``1/N`` is the first shard."""
+    if value is None:
+        return None
+    if isinstance(value, (tuple, list)) and len(value) == 2:
+        index, total = value
+    elif isinstance(value, str):
+        parts = value.split("/")
+        if len(parts) != 2:
+            raise ValueError("--shard 는 K/N 형식이어야 합니다")
+        index, total = parts
+    else:
+        raise ValueError("--shard 는 K/N 형식이어야 합니다")
+    try:
+        parsed = int(index), int(total)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("--shard 의 K 와 N 은 정수여야 합니다") from exc
+    shard_index, shard_total = parsed
+    if shard_total < 1:
+        raise ValueError("--shard 의 N 은 1 이상이어야 합니다")
+    if not 1 <= shard_index <= shard_total:
+        raise ValueError("--shard 의 K 는 1..N 범위여야 합니다")
+    return parsed
+
+
+def shard_bounds(count: int, index: int, total: int) -> tuple[int, int]:
+    """Return the half-open customer-position range of shard ``index`` (one-based).
+
+    The split mirrors ``numpy.array_split``: contiguous, near-equal chunks with the
+    remainder handed to the lowest shard numbers.
+    """
+    if total < 1 or not 1 <= index <= total:
+        raise ValueError("조각 번호는 1..N 범위여야 합니다")
+    base, extra = divmod(count, total)
+    start = (base + 1) * min(index - 1, extra) + base * max(index - 1 - extra, 0)
+    size = base + 1 if index - 1 < extra else base
+    return start, start + size
+
+
+def set_torch_threads(value: int | None) -> None:
+    """Limit this process to ``value`` torch threads so shards can run side by side."""
+    if value is None:
+        return
+    if int(value) < 1:
+        raise ValueError("--threads 는 1 이상이어야 합니다")
+    import torch
+
+    torch.set_num_threads(int(value))
+
+
+def _repeat_pin(history: list[str], vocab: Any) -> dict[int, int] | None:
+    """어휘 이력이 세 개 이상일 때만 첫 행을 다시 사기로 고정한다."""
+    items = {vocab.item(article) for article in history if vocab.item(article) is not None}
+    return {0: vocab.id("ROW_REPEAT")} if len(items) >= 3 else None
 
 
 def repeat_last_pages(meta: pd.DataFrame, k: int = 12) -> dict[str, list[str]]:
@@ -184,11 +263,142 @@ def _load_decoder(mode_dir: Path, ckpt: Path, device_arg: str) -> tuple[PageDeco
     return PageDecoder(model, vocab, content_rows, device, level=level), vocab, content, content_rows, device
 
 
+def load_eval_assets(mode_dir: Path) -> tuple[Any, np.ndarray, dict[str, int]]:
+    """Load the vocabulary and content rows that page metrics need."""
+    from .content import load_content
+    from .vocab import Vocab
+
+    vocab = Vocab.load(mode_dir / "vocab.json")
+    content, content_rows = load_content(mode_dir.parent / "content")
+    return vocab, content, content_rows
+
+
+def v1_engine_pages(meta: pd.DataFrame, base: Path) -> dict[str, list[str]]:
+    """Score the serving v1 engine for every customer, without regenerating it."""
+    root = Path(__file__).resolve().parents[1]
+    serving = str(root / "serving")
+    if serving not in sys.path:
+        sys.path.insert(0, serving)
+    os.environ["GENPAGE_DATA"] = str(base)
+    from genpage_server import Engine
+
+    engine = Engine()
+    pages: dict[str, list[str]] = {}
+    for row in meta.itertuples(index=False):
+        history = [int(a) for a in _as_articles(getattr(row, "history"))]
+        pages[str(getattr(row, "customer_id"))] = (
+            [str(a).zfill(10) for a in engine.recommend(history, 12)] if history else []
+        )
+    return pages
+
+
+def generate_pages(meta: pd.DataFrame, archive: Any, decoder: PageDecoder, vocab: Any,
+                   candidates_by_customer: dict[str, set[str]] | None, batch: int,
+                   pin_repeat: bool) -> tuple[dict[str, list[GeneratedRow]], dict[str, int]]:
+    """Generate one page per customer in ``meta`` order, in batches."""
+    pages: dict[str, list[GeneratedRow]] = {}
+    violations: dict[str, int] = {}
+    queued = list(meta.iterrows())
+    for begin in range(0, len(queued), batch):
+        part = queued[begin:begin + batch]
+        examples = []
+        for index, row in part:
+            ctx_tokens, ctx_content = _context_at(archive, int(index))
+            history = _as_articles(row.history)
+            examples.append({"ctx_tokens": ctx_tokens, "ctx_content": ctx_content,
+                             "history_articles": history,
+                             "pinned": _repeat_pin(history, vocab) if pin_repeat else None,
+                             "allowed_items": (candidates_by_customer[str(row.customer_id)]
+                                               if candidates_by_customer is not None else None)})
+        decoded = decoder.generate_batch(examples, n_rows=MAX_ROWS, items_per_row=ITEMS_PER_ROW, prefix=2)
+        for (_, row), (page, bad) in zip(part, decoded):
+            customer = str(row.customer_id)
+            pages[customer], violations[customer] = page, bad
+    return pages, violations
+
+
+def _report_args(args: argparse.Namespace, pin_repeat: bool,
+                 candidate_config: tuple[int, int] | None) -> dict[str, Any]:
+    """Reconstruct the option set a single-process run would report."""
+    report_args = dict(vars(args))
+    # 옵션을 끄면 종전 결과 JSON의 모양까지 유지한다.
+    if not pin_repeat:
+        report_args.pop("pin_repeat", None)
+    if candidate_config is None:
+        report_args.pop("candidates", None)
+    # 조각은 합친 결과의 args 에 남기지 않는다(단일 실행과 같은 모양).
+    report_args.pop("shard", None)
+    if getattr(args, "threads", None) is None:
+        report_args.pop("threads", None)
+    return report_args
+
+
+def _shard_report(args: argparse.Namespace, base: Path, meta: pd.DataFrame, archive: Any, *,
+                  shard_config: tuple[int, int], started: float, pin_repeat: bool,
+                  candidate_config: tuple[int, int] | None, report_args: dict[str, Any]) -> dict[str, Any]:
+    """Generate only the requested shard and keep per-customer raw output."""
+    if not args.ckpt:
+        raise ValueError("모델 평가에는 --ckpt 가 필요합니다")
+    index, total = shard_config
+    start, stop = shard_bounds(len(meta), index, total)
+    shard_meta = meta.iloc[start:stop]
+    tx = pd.read_parquet(base / "hm" / "normalized" / "transactions.parquet", columns=["t_dat", "article_id"])
+    request = request_of(args.mode)
+    mode_dir = base / "hm" / "model" / "genpage2" / args.mode
+    decoder, vocab, _content, _content_rows, device = _load_decoder(mode_dir, Path(args.ckpt), args.device)
+    candidates_by_customer = None
+    if candidate_config is not None:
+        top_n, per_section_m = candidate_config
+        candidates_by_customer = build_candidates(shard_meta, tx, request, top_n=top_n,
+                                                  per_section_m=per_section_m, vocab=vocab)
+    generated_at = time.perf_counter()
+    pages, violations = generate_pages(shard_meta, archive, decoder, vocab, candidates_by_customer,
+                                       args.batch, pin_repeat)
+    generation_seconds = time.perf_counter() - generated_at
+    report: dict[str, Any] = {
+        "mode": args.mode,
+        "ckpt": str(args.ckpt),
+        "args": report_args,
+        "device": device,
+        "shard": {"index": index, "total": total, "customers": int(len(shard_meta))},
+        "elapsed_seconds": time.perf_counter() - started,
+        "generation_seconds": generation_seconds,
+        "pages": [
+            {"customer_id": str(row.customer_id),
+             "rows": [{"row_token": int(generated.row_token), "items": [str(a) for a in generated.items]}
+                      for generated in pages.get(str(row.customer_id), [])],
+             "violations": int(violations.get(str(row.customer_id), 0))}
+            for row in shard_meta.itertuples(index=False)
+        ],
+    }
+    if pin_repeat or candidate_config is not None:
+        report["options"] = {
+            "pin_repeat": pin_repeat,
+            "candidates": (list(candidate_config) if candidate_config is not None else None),
+        }
+    if candidates_by_customer is not None:
+        report["candidates_mean"] = (sum(len(items) for items in candidates_by_customer.values()) / len(shard_meta)
+                                     if len(shard_meta) else 0.0)
+    return report
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     base = Path(args.data_dir) if args.data_dir else data_dir()
     meta, archive = _load_examples(base, args.mode, args.limit)
     request = request_of(args.mode)
+    pin_repeat = bool(getattr(args, "pin_repeat", False))
+    candidate_config = parse_candidates(getattr(args, "candidates", None))
+    shard_config = parse_shard(getattr(args, "shard", None))
+    set_torch_threads(getattr(args, "threads", None))
     started = time.perf_counter()
+    report_args = _report_args(args, pin_repeat, candidate_config)
+
+    if shard_config is not None:
+        return _shard_report(args, base, meta, archive, shard_config=shard_config, started=started,
+                             pin_repeat=pin_repeat, candidate_config=candidate_config,
+                             report_args=report_args)
+
+    candidates_by_customer: dict[str, set[str]] | None = None
     results: dict[str, Any] = {}
 
     repeat = repeat_last_pages(meta)
@@ -202,18 +412,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     results["popular_last_week"]["ms_per_page"] = None
 
     if args.mode == "final":
-        root = Path(__file__).resolve().parents[1]
-        serving = str(root / "serving")
-        if serving not in sys.path:
-            sys.path.insert(0, serving)
-        os.environ["GENPAGE_DATA"] = str(base)
-        from genpage_server import Engine
-        engine = Engine()
-        v1 = {}
-        for row in meta.itertuples(index=False):
-            history = [int(a) for a in _as_articles(getattr(row, "history"))]
-            v1[str(getattr(row, "customer_id"))] = [str(a).zfill(10) for a in engine.recommend(history, 12)] if history else []
-        results["v1_engine"] = evaluate_pages(meta, v1, elapsed=time.perf_counter() - started)
+        results["v1_engine"] = evaluate_pages(meta, v1_engine_pages(meta, base),
+                                              elapsed=time.perf_counter() - started)
         results["v1_engine"]["ms_per_page"] = None
 
     if not args.baselines_only:
@@ -221,27 +421,29 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             raise ValueError("모델 평가에는 --ckpt 가 필요합니다")
         mode_dir = base / "hm" / "model" / "genpage2" / args.mode
         decoder, vocab, content, content_rows, device = _load_decoder(mode_dir, Path(args.ckpt), args.device)
-        pages: dict[str, list[GeneratedRow]] = {}
-        violations: dict[str, int] = {}
+        if candidate_config is not None:
+            top_n, per_section_m = candidate_config
+            candidates_by_customer = build_candidates(meta, tx, request, top_n=top_n,
+                                                       per_section_m=per_section_m, vocab=vocab)
         generated_at = time.perf_counter()
-        queued = list(meta.iterrows())
-        for begin in range(0, len(queued), args.batch):
-            part = queued[begin:begin + args.batch]
-            examples = []
-            for index, row in part:
-                ctx_tokens, ctx_content = _context_at(archive, int(index))
-                examples.append({"ctx_tokens": ctx_tokens, "ctx_content": ctx_content,
-                                 "history_articles": _as_articles(row.history)})
-            decoded = decoder.generate_batch(examples, n_rows=MAX_ROWS, items_per_row=ITEMS_PER_ROW, prefix=2)
-            for (_, row), (page, bad) in zip(part, decoded):
-                customer = str(row.customer_id)
-                pages[customer], violations[customer] = page, bad
+        pages, violations = generate_pages(meta, archive, decoder, vocab, candidates_by_customer,
+                                           args.batch, pin_repeat)
         results["model"] = evaluate_pages(meta, pages, vocab=vocab, content=content, content_rows=content_rows,
-                                            violations=violations, elapsed=time.perf_counter() - generated_at, device=device)
+                                          violations=violations, elapsed=time.perf_counter() - generated_at,
+                                          device=device)
 
     elapsed = time.perf_counter() - started
-    return {"mode": args.mode, "ckpt": str(args.ckpt) if args.ckpt else None,
-            "args": vars(args), "elapsed_seconds": elapsed, "results": results}
+    report = {"mode": args.mode, "ckpt": str(args.ckpt) if args.ckpt else None,
+              "args": report_args, "elapsed_seconds": elapsed, "results": results}
+    if pin_repeat or candidate_config is not None:
+        report["options"] = {
+            "pin_repeat": pin_repeat,
+            "candidates": (list(candidate_config) if candidate_config is not None else None),
+        }
+    if candidates_by_customer is not None:
+        report["candidates_mean"] = (sum(len(items) for items in candidates_by_customer.values()) / len(meta)
+                                     if len(meta) else 0.0)
+    return report
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -254,10 +456,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--batch", type=int, default=256)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--baselines-only", action="store_true")
+    parser.add_argument("--pin-repeat", action="store_true")
+    parser.add_argument("--candidates", metavar="N,M")
+    parser.add_argument("--shard", metavar="K/N")
+    parser.add_argument("--threads", type=int)
     args = parser.parse_args(argv)
     report = run(args)
     base = Path(args.data_dir) if args.data_dir else data_dir()
     name = Path(args.ckpt).name if args.ckpt else "baselines"
+    candidate_config = parse_candidates(args.candidates)
+    shard_config = parse_shard(args.shard)
+    if args.pin_repeat:
+        name += "__pin"
+    if candidate_config is not None:
+        name += f"__cand{candidate_config[0]}-{candidate_config[1]}"
+    if shard_config is not None:
+        name += f"__shard{shard_config[0]}-{shard_config[1]}"
     destination = Path(args.out) if args.out else out_dir() / args.mode / "eval" / f"{name}.json"
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(report, ensure_ascii=False, indent=2, default=float), encoding="utf-8")

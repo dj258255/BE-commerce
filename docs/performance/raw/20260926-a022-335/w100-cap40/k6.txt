@@ -1,0 +1,247 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: k6/pg-brownout.js
+        output: -
+
+     scenarios: (100.00%) 2 scenarios, 460 max VUs, 1m15s max duration (incl. graceful stop):
+              * arrival: 50.00 iterations/s for 45s (maxVUs: 200-400, gracefulStop: 30s)
+              * reads: 20.00 iterations/s for 45s (maxVUs: 20-60, exec: readOrders, gracefulStop: 30s)
+
+
+running (0m01.0s), 042/220 VUs, 25 complete and 0 interrupted iterations
+arrival   [   2% ] 042/200 VUs  00.9s/45s  50.00 iters/s
+reads     [   2% ] 00/20 VUs    00.9s/45s  20.00 iters/s
+
+running (0m02.0s), 041/220 VUs, 96 complete and 0 interrupted iterations
+arrival   [   4% ] 041/200 VUs  01.9s/45s  50.00 iters/s
+reads     [   4% ] 00/20 VUs    01.9s/45s  20.00 iters/s
+
+running (0m03.0s), 042/220 VUs, 165 complete and 0 interrupted iterations
+arrival   [   7% ] 042/200 VUs  02.9s/45s  50.00 iters/s
+reads     [   7% ] 00/20 VUs    02.9s/45s  20.00 iters/s
+
+running (0m04.0s), 041/220 VUs, 235 complete and 0 interrupted iterations
+arrival   [   9% ] 042/200 VUs  03.9s/45s  50.00 iters/s
+reads     [   9% ] 00/20 VUs    03.9s/45s  20.00 iters/s
+
+running (0m05.0s), 041/220 VUs, 306 complete and 0 interrupted iterations
+arrival   [  11% ] 041/200 VUs  04.9s/45s  50.00 iters/s
+reads     [  11% ] 00/20 VUs    04.9s/45s  20.00 iters/s
+
+running (0m06.0s), 042/220 VUs, 375 complete and 0 interrupted iterations
+arrival   [  13% ] 042/200 VUs  05.9s/45s  50.00 iters/s
+reads     [  13% ] 00/20 VUs    05.9s/45s  20.00 iters/s
+
+running (0m07.0s), 042/220 VUs, 445 complete and 0 interrupted iterations
+arrival   [  15% ] 042/200 VUs  06.9s/45s  50.00 iters/s
+reads     [  15% ] 00/20 VUs    06.9s/45s  20.00 iters/s
+
+running (0m08.0s), 041/220 VUs, 516 complete and 0 interrupted iterations
+arrival   [  18% ] 041/200 VUs  07.9s/45s  50.00 iters/s
+reads     [  18% ] 00/20 VUs    07.9s/45s  20.00 iters/s
+
+running (0m09.0s), 041/220 VUs, 586 complete and 0 interrupted iterations
+arrival   [  20% ] 041/200 VUs  08.9s/45s  50.00 iters/s
+reads     [  20% ] 00/20 VUs    08.9s/45s  20.00 iters/s
+
+running (0m10.0s), 042/220 VUs, 655 complete and 0 interrupted iterations
+arrival   [  22% ] 042/200 VUs  09.9s/45s  50.00 iters/s
+reads     [  22% ] 00/20 VUs    09.9s/45s  20.00 iters/s
+
+running (0m11.0s), 041/220 VUs, 726 complete and 0 interrupted iterations
+arrival   [  24% ] 041/200 VUs  10.9s/45s  50.00 iters/s
+reads     [  24% ] 00/20 VUs    10.9s/45s  20.00 iters/s
+
+running (0m12.0s), 041/220 VUs, 796 complete and 0 interrupted iterations
+arrival   [  27% ] 041/200 VUs  11.9s/45s  50.00 iters/s
+reads     [  27% ] 00/20 VUs    11.9s/45s  20.00 iters/s
+
+running (0m13.0s), 041/220 VUs, 866 complete and 0 interrupted iterations
+arrival   [  29% ] 041/200 VUs  12.9s/45s  50.00 iters/s
+reads     [  29% ] 00/20 VUs    12.9s/45s  20.00 iters/s
+
+running (0m14.0s), 041/220 VUs, 936 complete and 0 interrupted iterations
+arrival   [  31% ] 041/200 VUs  13.9s/45s  50.00 iters/s
+reads     [  31% ] 00/20 VUs    13.9s/45s  20.00 iters/s
+
+running (0m15.0s), 041/220 VUs, 1006 complete and 0 interrupted iterations
+arrival   [  33% ] 041/200 VUs  14.9s/45s  50.00 iters/s
+reads     [  33% ] 00/20 VUs    14.9s/45s  20.00 iters/s
+
+running (0m16.0s), 041/220 VUs, 1076 complete and 0 interrupted iterations
+arrival   [  35% ] 041/200 VUs  15.9s/45s  50.00 iters/s
+reads     [  35% ] 00/20 VUs    15.9s/45s  20.00 iters/s
+
+running (0m17.0s), 041/220 VUs, 1146 complete and 0 interrupted iterations
+arrival   [  38% ] 041/200 VUs  16.9s/45s  50.00 iters/s
+reads     [  38% ] 00/20 VUs    16.9s/45s  20.00 iters/s
+
+running (0m18.0s), 041/220 VUs, 1216 complete and 0 interrupted iterations
+arrival   [  40% ] 041/200 VUs  17.9s/45s  50.00 iters/s
+reads     [  40% ] 00/20 VUs    17.9s/45s  20.00 iters/s
+
+running (0m19.0s), 041/220 VUs, 1286 complete and 0 interrupted iterations
+arrival   [  42% ] 041/200 VUs  18.9s/45s  50.00 iters/s
+reads     [  42% ] 00/20 VUs    18.9s/45s  20.00 iters/s
+
+running (0m20.0s), 042/220 VUs, 1355 complete and 0 interrupted iterations
+arrival   [  44% ] 042/200 VUs  19.9s/45s  50.00 iters/s
+reads     [  44% ] 00/20 VUs    19.9s/45s  20.00 iters/s
+
+running (0m21.0s), 041/220 VUs, 1426 complete and 0 interrupted iterations
+arrival   [  47% ] 041/200 VUs  20.9s/45s  50.00 iters/s
+reads     [  47% ] 00/20 VUs    20.9s/45s  20.00 iters/s
+
+running (0m22.0s), 041/220 VUs, 1496 complete and 0 interrupted iterations
+arrival   [  49% ] 041/200 VUs  21.9s/45s  50.00 iters/s
+reads     [  49% ] 00/20 VUs    21.9s/45s  20.00 iters/s
+
+running (0m23.0s), 041/220 VUs, 1566 complete and 0 interrupted iterations
+arrival   [  51% ] 041/200 VUs  22.9s/45s  50.00 iters/s
+reads     [  51% ] 00/20 VUs    22.9s/45s  20.00 iters/s
+
+running (0m24.0s), 041/220 VUs, 1636 complete and 0 interrupted iterations
+arrival   [  53% ] 041/200 VUs  23.9s/45s  50.00 iters/s
+reads     [  53% ] 00/20 VUs    23.9s/45s  20.00 iters/s
+
+running (0m25.0s), 041/220 VUs, 1706 complete and 0 interrupted iterations
+arrival   [  55% ] 041/200 VUs  24.9s/45s  50.00 iters/s
+reads     [  55% ] 00/20 VUs    24.9s/45s  20.00 iters/s
+
+running (0m26.0s), 041/220 VUs, 1776 complete and 0 interrupted iterations
+arrival   [  58% ] 041/200 VUs  25.9s/45s  50.00 iters/s
+reads     [  58% ] 00/20 VUs    25.9s/45s  20.00 iters/s
+
+running (0m27.0s), 041/220 VUs, 1846 complete and 0 interrupted iterations
+arrival   [  60% ] 041/200 VUs  26.9s/45s  50.00 iters/s
+reads     [  60% ] 00/20 VUs    26.9s/45s  20.00 iters/s
+
+running (0m28.0s), 041/220 VUs, 1916 complete and 0 interrupted iterations
+arrival   [  62% ] 041/200 VUs  27.9s/45s  50.00 iters/s
+reads     [  62% ] 00/20 VUs    27.9s/45s  20.00 iters/s
+
+running (0m29.0s), 041/220 VUs, 1986 complete and 0 interrupted iterations
+arrival   [  64% ] 041/200 VUs  28.9s/45s  50.00 iters/s
+reads     [  64% ] 00/20 VUs    28.9s/45s  20.00 iters/s
+
+running (0m30.0s), 041/220 VUs, 2056 complete and 0 interrupted iterations
+arrival   [  67% ] 041/200 VUs  29.9s/45s  50.00 iters/s
+reads     [  67% ] 00/20 VUs    29.9s/45s  20.00 iters/s
+
+running (0m31.0s), 041/220 VUs, 2126 complete and 0 interrupted iterations
+arrival   [  69% ] 041/200 VUs  30.9s/45s  50.00 iters/s
+reads     [  69% ] 00/20 VUs    30.9s/45s  20.00 iters/s
+
+running (0m32.0s), 041/220 VUs, 2196 complete and 0 interrupted iterations
+arrival   [  71% ] 041/200 VUs  31.9s/45s  50.00 iters/s
+reads     [  71% ] 00/20 VUs    31.9s/45s  20.00 iters/s
+
+running (0m33.0s), 041/220 VUs, 2266 complete and 0 interrupted iterations
+arrival   [  73% ] 041/200 VUs  32.9s/45s  50.00 iters/s
+reads     [  73% ] 00/20 VUs    32.9s/45s  20.00 iters/s
+
+running (0m34.0s), 042/220 VUs, 2335 complete and 0 interrupted iterations
+arrival   [  75% ] 041/200 VUs  33.9s/45s  50.00 iters/s
+reads     [  75% ] 00/20 VUs    33.9s/45s  20.00 iters/s
+
+running (0m35.0s), 041/220 VUs, 2406 complete and 0 interrupted iterations
+arrival   [  78% ] 041/200 VUs  34.9s/45s  50.00 iters/s
+reads     [  78% ] 00/20 VUs    34.9s/45s  20.00 iters/s
+
+running (0m36.0s), 041/220 VUs, 2476 complete and 0 interrupted iterations
+arrival   [  80% ] 041/200 VUs  35.9s/45s  50.00 iters/s
+reads     [  80% ] 00/20 VUs    35.9s/45s  20.00 iters/s
+
+running (0m37.0s), 040/220 VUs, 2547 complete and 0 interrupted iterations
+arrival   [  82% ] 040/200 VUs  36.9s/45s  50.00 iters/s
+reads     [  82% ] 00/20 VUs    36.9s/45s  20.00 iters/s
+
+running (0m38.0s), 041/220 VUs, 2616 complete and 0 interrupted iterations
+arrival   [  84% ] 041/200 VUs  37.9s/45s  50.00 iters/s
+reads     [  84% ] 00/20 VUs    37.9s/45s  20.00 iters/s
+
+running (0m39.0s), 041/220 VUs, 2686 complete and 0 interrupted iterations
+arrival   [  87% ] 041/200 VUs  38.9s/45s  50.00 iters/s
+reads     [  87% ] 00/20 VUs    38.9s/45s  20.00 iters/s
+
+running (0m40.0s), 041/220 VUs, 2756 complete and 0 interrupted iterations
+arrival   [  89% ] 041/200 VUs  39.9s/45s  50.00 iters/s
+reads     [  89% ] 00/20 VUs    39.9s/45s  20.00 iters/s
+
+running (0m41.0s), 041/220 VUs, 2826 complete and 0 interrupted iterations
+arrival   [  91% ] 041/200 VUs  40.9s/45s  50.00 iters/s
+reads     [  91% ] 00/20 VUs    40.9s/45s  20.00 iters/s
+
+running (0m42.0s), 041/220 VUs, 2896 complete and 0 interrupted iterations
+arrival   [  93% ] 041/200 VUs  41.9s/45s  50.00 iters/s
+reads     [  93% ] 00/20 VUs    41.9s/45s  20.00 iters/s
+
+running (0m43.0s), 041/220 VUs, 2966 complete and 0 interrupted iterations
+arrival   [  95% ] 041/200 VUs  42.9s/45s  50.00 iters/s
+reads     [  95% ] 00/20 VUs    42.9s/45s  20.00 iters/s
+
+running (0m44.0s), 041/220 VUs, 3036 complete and 0 interrupted iterations
+arrival   [  98% ] 041/200 VUs  43.9s/45s  50.00 iters/s
+reads     [  98% ] 00/20 VUs    43.9s/45s  20.00 iters/s
+
+running (0m45.0s), 041/220 VUs, 3106 complete and 0 interrupted iterations
+arrival   [ 100% ] 041/200 VUs  44.9s/45s  50.00 iters/s
+reads     [ 100% ] 00/20 VUs    44.9s/45s  20.00 iters/s
+
+running (0m46.0s), 010/220 VUs, 3142 complete and 0 interrupted iterations
+arrival ↓ [ 100% ] 042/200 VUs  45s  50.00 iters/s
+reads   ✓ [ 100% ] 00/20 VUs    45s  20.00 iters/s
+
+
+  █ THRESHOLDS 
+
+    http_req_duration{name:confirm}
+    ✓ 'p(95)<60000' p(95)=3.03s
+
+    http_req_duration{name:read}
+    ✓ 'p(95)<60000' p(95)=6.9ms
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 1       0.021651/s
+    checks_succeeded...: 100.00% 1 out of 1
+    checks_failed......: 0.00%   0 out of 1
+
+    ✓ login 200
+
+    CUSTOM
+    checkout_ok_200................: 600    12.990843/s
+    checkout_rejected_4xx..........: 1651   35.746469/s
+
+    HTTP
+    http_req_duration..............: avg=344.13ms min=2.92ms  med=5.7ms   max=3.09s   p(90)=3.02s  p(95)=3.03s
+      { expected_response:true }...: avg=488.83ms min=2.92ms  med=4.32ms  max=3.09s   p(90)=3.03s  p(95)=3.03s
+      { name:confirm }.............: avg=819.83ms min=11.92ms med=15.49ms max=3.09s   p(90)=3.03s  p(95)=3.03s
+      { name:read }................: avg=4.65ms   min=2.98ms  med=4.27ms  max=15.48ms p(90)=6.13ms p(95)=6.9ms
+    http_req_failed................: 30.55% 1651 out of 5404
+    http_reqs......................: 5404   117.00419/s
+
+    EXECUTION
+    iteration_duration.............: avg=590.3ms  min=3.02ms  med=18.73ms max=3.1s    p(90)=3.03s  p(95)=3.04s
+    iterations.....................: 3152   68.245227/s
+    vus............................: 10     min=10           max=42 
+    vus_max........................: 220    min=220          max=220
+
+    NETWORK
+    data_received..................: 8.1 MB 174 kB/s
+    data_sent......................: 2.6 MB 57 kB/s
+
+
+
+
+running (0m46.2s), 000/220 VUs, 3152 complete and 0 interrupted iterations
+arrival ✓ [ 100% ] 000/200 VUs  45s  50.00 iters/s
+reads   ✓ [ 100% ] 00/20 VUs    45s  20.00 iters/s

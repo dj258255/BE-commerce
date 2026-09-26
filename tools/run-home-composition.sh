@@ -85,7 +85,9 @@ echo "== 출력: $OUT"
 # 활동에 심을 **실제 상품 id** 를 DB 에서 읽는다. V55 가 데모 카탈로그(4~36)를 은퇴시켰으므로
 # 하드코딩한 id 는 이제 없다 — 홈은 카탈로그에 있는 상품만 카드로 그리므로, 없는 id 를 심으면
 # "최근 본 상품" 행이 통째로 비고, 그러면 규칙이 아니라 **id 공간의 불일치**를 재게 된다.
-PRODUCT_IDS=$(docker exec pay-mysql-1 mysql -N -ubecommerce -pbecommerce becommerce \
+# 활동에 쓸 상품을 읽을 DB. 일회용 DB 에서 돌릴 때는 MYSQL 로 바꾼다(#344)
+MYSQL=${MYSQL:-"docker exec pay-mysql-1 mysql -N -ubecommerce -pbecommerce becommerce"}
+PRODUCT_IDS=$($MYSQL \
   -e "select product_id from products where category_code is not null order by product_id limit 200" 2>/dev/null \
   | tr '\n' ' ')
 [ -n "$PRODUCT_IDS" ] || { echo "카탈로그가 비었다 — promote_products.py --emit-sql --load 를 먼저 돌려라"; exit 1; }

@@ -18,7 +18,7 @@ class BrowseShedConfiguration {
 
     @Bean
     FilterRegistrationBean<BrowseShedFilter> browseShedFilter(
-            @Value("${app.web.browse-shed.max-in-flight:16}") int maxInFlight, MeterRegistry registry) {
+            @Value("${app.web.browse-shed.max-in-flight:12}") int maxInFlight, MeterRegistry registry) {
         FilterRegistrationBean<BrowseShedFilter> bean = new FilterRegistrationBean<>(new BrowseShedFilter(maxInFlight, registry));
         bean.addUrlPatterns("/api/v1/*");
         bean.setOrder(Ordered.HIGHEST_PRECEDENCE + 10);

@@ -17,7 +17,7 @@
 
 | 문제 | 무엇이 충돌했나 | 고른 것과 그 대가 | 근거 |
 |---|---|---|---|
-| **느린 PG 앞에서 무엇을 먼저 버리나**<br>서킷은 실패를 세므로 **느리지만 성공하는 PG** 는 못 잡는다 | 결제 처리량 ↔ 무관한 요청의 지연 | 동시 호출 상한 40. 지연 3초에서 조회 p95 **7.31초 → 8ms**, 대가는 결제 거절 **73.3%**. 거절률은 `1 − 상한/(도착률×지연)` 으로 예측되고 **실측 오차 0.0%p** | [ADR-022](docs/adr/ADR-022-pg-brownout-resource-limits.md) · [성능 §14](docs/performance/README.md) |
+| **느린 PG 앞에서 무엇을 먼저 버리나**<br>서킷은 실패를 세므로 **느리지만 성공하는 PG** 는 못 잡는다 | 결제 처리량 ↔ 무관한 요청의 지연 | 동시 호출 상한 40. 지연 3초에서 조회 p95 **7,720ms → 8ms**(같은 스윕의 상한 없음 대 상한 40), 대가는 결제 거절 **73.3%**. 거절률은 `1 − 상한/(도착률×지연)` 으로 예측되고 **실측 오차 0.0%p** | [ADR-022](docs/adr/ADR-022-pg-brownout-resource-limits.md) · [성능 §14](docs/performance/README.md) |
 | **언제 서비스를 쪼갤 것인가**<br>흔히 드는 분리 근거 셋을 가설로 세워 각각 재현을 시도했다 | 팔기 쉬운 근거 ↔ 사실 | **셋 중 하나를 기각**(배치 경합은 풀이 포화되지 않아 미재현). 재현된 둘만 근거로 썼고, 배포 단위만 나눠 배포 중단 **270건 → 0건** | [ADR-029](docs/adr/ADR-029-deployment-unit-vs-service-boundary.md) · [성능 §15](docs/performance/README.md) |
 | **PG 응답이 불확실한 타임아웃**<br>성공도 실패도 아닌 상태를 무엇으로 적을 것인가 | 즉시 응답 ↔ 잘못 확정한 결제를 되돌리는 비용 | `UNKNOWN` 으로 보존하고 조회·복구로 확정. 복구 지연의 하한은 `MIN_AGE`, 상한은 `청크/주기` — **둘 다 식으로 예측되고 실측이 맞는다**(예측 t+106.5s / 실측 t+106s) | [성능 §14.5](docs/performance/README.md) |
 | **정산 분리 시 과거 데이터를 옮기나**<br>에스크로 홀드가 7일이라 전환 직전 7일치가 갈 곳을 잃는다 | 되돌릴 수 있음 ↔ 이중 쓰기 복잡도 | 미결 항목만 이관(C안). **예행에서만 나온 것 둘** — 스키마가 다르고, 이관이 전환보다 먼저여야 한다 | [ADR-024](docs/adr/ADR-024-settlement-extraction-data-cutover.md) |
@@ -25,8 +25,8 @@
 | **추천 모델을 넣을 것인가**<br>넘어야 할 선을 **측정 전에** 못 박았다 | 모델을 넣었다는 사실 ↔ 실제로 더 나은가 | **안 넣는다.** ALS 최고 MAP@12 **0.0076** 으로 기준선 `repeat_last` 0.0234 의 3분의 1. 두 축을 열어도 폭이 15% 미만 | [ADR-048](docs/adr/ADR-048-als-model-not-adopted.md) |
 | **캐시 값이 커질 때 압축할 것인가** | 네트워크·메모리 ↔ CPU | 교차점 실측(**187B 손해 / 279B 이득**), 임계값은 **이득이 확실한 1KB**. 코덱은 실측이 통념을 뒤집어 SNAPPY | [ADR-041](docs/adr/ADR-041-cache-compression-threshold.md) |
 | **DB 저장과 이벤트 발행 사이의 유실** | 단순함 ↔ at-least-once 보장 | 커밋과 같은 트랜잭션에 남기는 Outbox. 재기동 **8초** 내 재발행 확인 | [성능 §17](docs/performance/README.md) |
-| **재고·잔액의 동시 차감** | 정확한 순서 ↔ 처리량 | 조건부 `UPDATE` + 영향 행 수 판정. 승인 성공률 **39.6% → 100%**. **H2 에서는 순위가 반대였다** | [ADR-004](docs/adr/ADR-004-stock-deduction-locking.md) · [성능 §1](docs/performance/README.md) |
-| **트래픽 급증** | 모두가 느려짐 ↔ 일부는 거절 | 사용자별·전역 rate limit. 초과 **97.5% 차단**, p95 738ms → 52ms | [성능 §7](docs/performance/README.md) |
+| **재고·잔액의 동시 차감** | 정확한 순서 ↔ 처리량 | 재고는 조건부 `UPDATE` + 영향 행 수 판정. 실 MySQL 30스레드에서 초과판매 0, **40ms**(비관 락 75ms · 낙관 락 151ms). **H2 에서는 순위가 반대였다**. 포인트 적립은 별도 실험에서 원자 증가로 바꿔 승인 성공률 **39.6% → 100%** | [ADR-004](docs/adr/ADR-004-stock-deduction-locking.md) · [성능 §1](docs/performance/README.md) · [포인트 적립](docs/performance/point-accrual-contention.md) |
+| **트래픽 급증** | 모두가 느려짐 ↔ 일부는 거절 | 사용자별·전역 rate limit. 처음 잰 97.5% 차단은 한 계정이라 사용자별 층만 발동한 값이었다. 닫힌 루프로 잰 용량도 과소평가였고, 열린 루프로 다시 재서 **무릎 100/s**(120/s부터 성공률 92.4%)를 찾았다. 전역 상한 100/s는 그 무릎과 맞았다 | [성능 §7 · §9 · §12](docs/performance/README.md) |
 
 **위 다섯은 실험하지 않으면 고를 수 없었다.** 아래 다섯은 기반 지식으로 답이 좁혀지지만,
 그 지식이 **실제 결정에 쓰였는지**를 수치로 남겼다.
@@ -255,12 +255,12 @@ docker compose --profile monitoring up -d prometheus grafana
 | 지금 어디까지 왔는가 | [`personalization/ROADMAP.md`](personalization/ROADMAP.md) · [`docs/ROADMAP-TRADEOFFS.md`](docs/ROADMAP-TRADEOFFS.md) |
 | 무엇을 만들기로 했는가 · 완료 조건 | GitHub Issue (배경 / 할 일 / 검증 / 하지 말 것) |
 | 어느 단위로 나눴는가 | GitHub Milestone (M0~M12) |
-| 무엇을 바꿨는가 · 왜 그렇게 골랐는가 | PR 본문과 [ADR 67편](docs/README.md#아키텍처-결정-기록) |
+| 무엇을 바꿨는가 · 왜 그렇게 골랐는가 | PR 본문과 [ADR 68편](docs/README.md#아키텍처-결정-기록) |
 | 실제로 무엇을 확인했는가 | [`docs/performance/`](docs/performance/README.md) · [`personalization/docs/runs/`](personalization/docs/runs) — 원자료와 재현 명령 |
 | 사용자에게 무엇이 나갔는가 | [`CHANGELOG.md`](CHANGELOG.md) |
 | 무엇을 **안 하기로** 했는가 | ADR 상태가 `기각`·`미결`인 편들, 각 로드맵의 "하지 않은 것" 절 |
 
-마지막 줄이 이 저장소에서 제일 중요하다. **ADR 67편 중 상당수가 "안 한다"로 끝난다** —
+마지막 줄이 이 저장소에서 제일 중요하다. **ADR 68편 중 상당수가 "안 한다"로 끝난다** —
 검색 엔진([ADR-044](docs/adr/ADR-044-no-search-engine-yet.md)), 추천 모델([ADR-048](docs/adr/ADR-048-als-model-not-adopted.md)),
 생성 중 제약 차단([ADR-050](docs/adr/ADR-050-post-filter-over-constrained-generation.md)),
 멀티 PG failover([ADR-020](docs/adr/ADR-020-multi-pg-routing-off-by-default.md)) 모두 **재 보고 안 켰고,

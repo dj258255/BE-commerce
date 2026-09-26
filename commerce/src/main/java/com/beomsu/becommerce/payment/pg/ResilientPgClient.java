@@ -83,13 +83,21 @@ public class ResilientPgClient implements PgClient {
     @Autowired
     public ResilientPgClient(@Qualifier("pgDelegate") PgClient delegate,
                              @Value("${payment.pg.max-concurrent-calls:40}") int maxConcurrentCalls,
+                             @Value("${payment.pg.query-max-attempts:3}") int queryMaxAttempts,
                              ObjectProvider<MeterRegistry> meterRegistryProvider) {
         this(delegate, maxConcurrentCalls, meterRegistryProvider.getIfAvailable(
-                io.micrometer.core.instrument.simple.SimpleMeterRegistry::new));
+                io.micrometer.core.instrument.simple.SimpleMeterRegistry::new), queryMaxAttempts);
     }
 
-    /** 공통 초기화 경로. 테스트가 운영과 동일한 계측 구성을 주입할 때 사용한다. */
+    /** 공통 초기화 경로. 테스트가 운영과 동일한 계측 구성을 주입할 때 사용한다. 조회는 최대 3회. */
     public ResilientPgClient(PgClient delegate, int maxConcurrentCalls, MeterRegistry meterRegistry) {
+        this(delegate, maxConcurrentCalls, meterRegistry, 3);
+    }
+
+    /**
+     * 조회 시도 횟수까지 정한다(#334). 1 이면 재시도하지 않는다. 1 보다 작으면 기본값 3 으로 돈다.
+     */
+    public ResilientPgClient(PgClient delegate, int maxConcurrentCalls, MeterRegistry meterRegistry, int queryMaxAttempts) {
         this.delegate = delegate;
         // 0 이하면 상한을 걸지 않는다. 운영 기본값 40의 근거는 application.yml과 ADR-022에 있다.
         this.pgCallLimit = maxConcurrentCalls > 0 ? new Semaphore(maxConcurrentCalls) : null;
@@ -121,7 +129,7 @@ public class ResilientPgClient implements PgClient {
         this.circuitBreaker = CircuitBreaker.of("pg", cbConfig);
 
         RetryConfig retryConfig = RetryConfig.custom()
-                .maxAttempts(3)
+                .maxAttempts(queryMaxAttempts >= 1 ? queryMaxAttempts : 3)
                 // 지수 백오프 + 지터 — 재시도 폭풍(thundering herd) 방지
                 .intervalFunction(IntervalFunction.ofExponentialRandomBackoff(
                         Duration.ofMillis(20), 2.0, 0.5))

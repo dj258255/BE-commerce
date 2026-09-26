@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Collection;
 import java.util.List;
@@ -70,4 +71,15 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
     @Modifying(clearAutomatically = true)
     @Query("update Stock s set s.quantity = :qty where s.productId = :id and s.quantity <= 0")
     int setQuantityIfSoldOut(@Param("id") Long id, @Param("qty") int qty);
+
+    /**
+     * <b>실험용(X3, #317) — 품절(quantity = 0) 상품 id.</b>
+     *
+     * <p>{@code PRE} 재고 확인 방식이 모델 호출 <b>전에</b> 후보에서 빼려고 쓴다. 요청마다 이 질의를
+     * 날리므로 결과 수를 {@code Pageable} 로 자른다 — "품절 상품이 적다"는 가정의 상한이다.
+     * 전체 품절 목록을 캐시하는 대안은 재고 변경을 통보받아 무효화해야 하고(무효화 지점이 하나 더
+     * 생긴다) 그 대가는 여기서 지지 않는다.
+     */
+    @Query("select s.productId from Stock s where s.quantity = 0 order by s.productId")
+    List<Long> findSoldOutIds(Pageable pageable);
 }

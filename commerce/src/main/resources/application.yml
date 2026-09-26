@@ -364,6 +364,10 @@ app:
     # 읽는 순서(#248, ADR-057). 확정 못 한 건(PG 진행 중·조회 실패)이 청크만큼 앞자리에 쌓이면 unordered·oldest 는
     # 뒤를 5분 동안 한 건도 못 풀었고, backoff(다음 시도를 1·2·4·8분 뒤로, 상한 10분)는 막힘 없을 때의 1.2배로 풀었다.
     policy: ${APP_RECOVERY_POLICY:backoff}
+    # backoff 의 첫 간격과 상한(#330). 확정 지연은 "풀린 뒤 첫 시도까지"라 시도 시각으로 정해진다(예측과 실측 1.3~6.4초 차이).
+    # 상한 2분은 지연 평균 178 → 60초 대신 오래 막힌 건 한 건의 조회가 시간당 6 → 30번. 첫 간격 15초는 풀리는 건 해소가 1.56배로 늘었다.
+    backoff-base: ${APP_RECOVERY_BACKOFF_BASE:1m}
+    backoff-cap: ${APP_RECOVERY_BACKOFF_CAP:10m}
   # 멈춘 체크아웃 사가 복구 스케줄러(ADR-007) → CheckoutRecoveryService.recoverStuckCheckouts().
   # 예약(Phase1) 후 확정(Phase3) 전에 크래시로 PAYMENT_IN_PROGRESS로 멈춘 주문을 PG 조회로 완결/롤백.
   checkout:
@@ -421,11 +425,12 @@ app:
       interval: ${APP_CDC_HEALTH_INTERVAL:30s}
   # 조회 셰딩(#250, ADR-058). 진행 중인 조회가 문턱에 닿으면 새 조회를 503 으로 돌려보낸다. 웹훅·결제는 돌려보내지 않는다.
   # 조회가 DB 커넥션(20)을 다 쥐면 웹훅이 그 줄에 서서 10초 규약을 넘긴다(PG 5초 · 조회 200/s 에서 15.6%, 켜면 0%).
+  # 문턱은 커넥션 줄의 길이를 묶는다(#329). 풀 20 에서 24 까지는 웹훅 p95 1초 안, 28 에서 4.1초, 32 에서 10초 초과 22%.
   # 조회 용량을 재는 벤치마크는 이 값을 false 로 두고 잰다(tools/bench.sh 등).
   web:
     browse-shed:
       enabled: ${APP_WEB_BROWSE_SHED_ENABLED:true}
-      max-in-flight: ${APP_WEB_BROWSE_SHED_MAX_IN_FLIGHT:16}   # 커넥션 20 중 4 를 결제·웹훅 몫으로 남긴다
+      max-in-flight: ${APP_WEB_BROWSE_SHED_MAX_IN_FLIGHT:12}   # 8·12·16·20 중 조회를 가장 적게 돌려보낸 값(#329, 3회 중앙값)
   ratelimit:
     enabled: ${APP_RATELIMIT_ENABLED:true}       # k6 전/후 비교용 스위치 — false면 필터가 전부 통과
     per-user-per-sec: ${APP_RATELIMIT_PER_USER:5}   # 사용자당 초당 허용(스크립트·이중클릭 억제)
@@ -579,7 +584,9 @@ app:
     # 지연은 **폭이 차이보다 커서 판정 불가**(그래서 지연을 근거로 삼지 않는다). 그래서 기본을 2로 올렸다.
     # 적용 범위: 원천이 싼 행(최근 활동·인기 표)만. **모델 행은 그대로** — 모델에 더 요구하려면
     # result-size 를 키워야 하고 그 값이 과부하 게이트의 지연 추정에 들어가 입장 판단까지 바뀐다(E5).
-    refill-depth: ${APP_HOME_REFILL_DEPTH:2}
+    # #344 에서 깊이 1~4 를 3회씩 쟀다: 항목 13.3 · 15.6 · 17.3 · 17.2, 평균 순위 1.00 · 1.23 · 1.48 · 1.47배. 3 이 2 보다 +11.0%(≥10%)라
+    # 사전 등록 규칙대로 3 으로 올렸다. 인기 행이 항목 상한(8)에 닿아 4 는 더 늘지 않는다. 문턱을 겨우 넘었다(폭 15~17 대 16~19)
+    refill-depth: ${APP_HOME_REFILL_DEPTH:3}
     # 노출 기록 — 그 응답이 **무엇을 보여줬는가**(개인화 아키텍처의 "노출 이벤트").
     # **요청당 한 행**이다: 항목당이면 홈 한 번에 20행, 30req/s 에서 초당 600행이 된다(ADR-043).
     # 기록 실패는 홈을 죽이지 않는다(경고 + `home.impression.failed` 지표) — 기록은 관측이고 홈은 제품이다.
@@ -622,6 +629,8 @@ app:
     # ADMISSION 이 대기를 어떻게 추정하나(#264). CONFIGURED = 설정한 모델 지연·동시성, OBSERVED = 최근 2초 처리량.
     # 모델의 실제 지연이 설정의 두 배일 때 CONFIGURED 는 p95 315ms(예산 100 + 지연 100 의 1.6배), OBSERVED 는 193ms 였다.
     admission-estimate: ${APP_RECOMMENDATION_ADMISSION_ESTIMATE:OBSERVED}
+    # 관측 창(#339). 용량이 10초마다 두 배 ↔ 절반으로 바뀔 때 p95 가 0.5초 309 · 2초 190 · 8초 226ms. 0.5초는 표본(20)이 모자라 설정값으로 떨어졌다
+    admission-window-ms: ${APP_RECOMMENDATION_ADMISSION_WINDOW_MS:2000}
     # 모델에 넣을 최근 활동 수.
     context-limit: ${APP_RECOMMENDATION_CONTEXT_LIMIT:20}
     result-size: ${APP_RECOMMENDATION_RESULT_SIZE:12}
@@ -636,6 +645,11 @@ app:
     #   session-then-purchases — 1쪽 이후의 조회·클릭을 앞에 붙인다. 세션 반영을 살리는 대신 학습에 없던 조회가 섞인다
     # 1,000명 실측(ADR-066): 2쪽 recall 구매 0.0251 · 세션+구매 0.0191 · 세션만 0.0013, 세션 반영 0% · 12.8% · 75%
     page-history: ${APP_RECOMMENDATION_PAGE_HISTORY:purchases}
+    # 홈 다음 쪽에 세션을 어떤 모양으로 넘기나(X5, #328). GenPage v2 는 행동 종류 · 시각을 토큰으로 받는다.
+    #   OFF  — 지금 그대로. 위 규칙대로 id 목록만 history 에 넣는다. v2 서버는 그 id 를 요청일의 구매로 읽는다
+    #   RICH — history 에는 구매만, 조회 · 클릭은 session 에 {item, action, at} 으로, 요청 시각은 now 로 보낸다.
+    #          page-history 규칙은 쓰지 않는다
+    genpage-session: ${APP_RECOMMENDATION_GENPAGE_SESSION:OFF}
     # 추천이 **무엇을 추천할 수 있는가** — 후보 집합의 원천(M7).
     #   CATALOG   — 실제 커머스 카탈로그(기본). 홈이 상품 카드를 그릴 수 있고, 제약 확인이 실제
     #               재고를 읽는다. **이것이 "제품 연결"이다** — 추천 id 가 products 에 있어야 한다
@@ -643,6 +657,15 @@ app:
     #               변화 주입이 실제 재고를 건드리면 안 되기 때문이다(ADR-039의 격리).
     #               격리는 이제 기본값이 아니라 **하네스의 선택**으로 지켜진다(ADR-042)
     item-pool: ${APP_RECOMMENDATION_ITEM_POOL:CATALOG}
+    # 재고 확인 방식(X3, #317) — 모델이 만든 행을 **언제** 재고로 거르는가. 방식마다 응답 시점 정확도를
+    # 사는 대가가 조회 횟수 · 시간이다. 그 대가는 응답의 stats(stockLookups · stockLookupMs · stockRemoved)와
+    # 방식별 메트릭(home.stock.lookup · home.stock.removed, 태그 mode)에 남는다.
+    #   NONE       — 거르지 않는다(기준선). 모델이 준 상품을 그대로 조립한다
+    #   POST       — 생성 뒤 조립할 때 거른다(기본, ADR-050). 카드 조회에 실린 재고를 쓴다
+    #   PRE        — 모델 호출 **전에** 품절 id 를 모아 요청의 exclude 에 더한다. 조립에서는 거르지 않는다.
+    #                요청마다 품절 목록을 한 번 읽는다(상한 2,000) — 품절이 적다는 가정의 비용이다
+    #   POST_FINAL — POST + 응답 직전에 응답에 담긴 상품의 재고를 한 번 더 조회해 0 이면 뺀다
+    stock-check: ${APP_RECOMMENDATION_STOCK_CHECK:POST}
     model:
       # 모델 구현(ADR-053). stub(기본) | genpage — 작은 GenPage 모델 서버(personalization/serving/genpage_server.py).
       # genpage 는 품질 선(MAP@12 0.023354)을 못 넘어 기본으로 켜지 않았다. 켜면 추천 행과 홈 다음 쪽 행을 모델이 만든다.
@@ -737,6 +760,9 @@ payment:
     # <b>이 값은 PG 응답시간의 함수다.</b> PG 를 바꾸거나 p99 가 달라지면 위 계산을 다시 한다.
     # 0 이하면 상한 없음(이전 동작).
     max-concurrent-calls: ${PAYMENT_PG_MAX_CONCURRENT_CALLS:40}
+    # 조회(query) 시도 횟수. 1 이면 재시도 없음(#334). 일시 장애 1·5·10% 에서 3회가 1회보다 전량 확정이 빨랐고(100 대 158초,
+    # 102 대 249초, 207 대 966초) 건당 PG 조회는 시도 횟수와 무관하게 같았다(1/(1−실패율)). 승인은 재시도하지 않는다.
+    query-max-attempts: ${PAYMENT_PG_QUERY_MAX_ATTEMPTS:3}
 
   # PG HTTP 타임아웃. 코드(@Value)에도 같은 기본값이 있지만, 이 값은 장애 대응에서 조정 대상이라
   # 밖으로 꺼내 둔다.

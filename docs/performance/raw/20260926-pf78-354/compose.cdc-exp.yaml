@@ -1,0 +1,53 @@
+# 3묶음 CDC 실험용 일회용 스택(프로젝트 이름 cdcexp). 공유 compose(3306 · 9092 · 8083)와 포트를 겹치지 않게 하고 힙을 줄였다.
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: becommerce
+      MYSQL_USER: becommerce
+      MYSQL_PASSWORD: becommerce
+      MYSQL_ROOT_PASSWORD: root
+    ports: ["13326:3306"]
+    tmpfs: ["/var/lib/mysql:rw,size=1500m"]
+    command: [--log-bin=mysql-bin, --binlog-format=ROW, --binlog_row_image=FULL, --server-id=1, --innodb-buffer-pool-size=256M, --binlog-expire-logs-seconds=1800]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  kafka:
+    image: apache/kafka:3.8.0
+    ports: ["19092:19092"]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:19092,INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:19092,INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_HEAP_OPTS: -Xmx384m -Xms384m
+    tmpfs: ["/tmp/kraft-combined-logs:rw,size=800m"]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:19092 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+  debezium:
+    image: debezium/connect:3.0.0.Final
+    ports: ["18083:8083"]
+    environment:
+      BOOTSTRAP_SERVERS: kafka:29092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: connect_configs
+      OFFSET_STORAGE_TOPIC: connect_offsets
+      STATUS_STORAGE_TOPIC: connect_statuses
+      HEAP_OPTS: -Xmx384m -Xms256m
+    depends_on:
+      mysql: {condition: service_healthy}
+      kafka: {condition: service_healthy}

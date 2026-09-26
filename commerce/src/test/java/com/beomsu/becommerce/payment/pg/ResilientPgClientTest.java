@@ -123,6 +123,25 @@ class ResilientPgClientTest {
     }
 
     @Test
+    @DisplayName("조회 시도 횟수는 설정으로 바꾼다(#334). 1 이면 재시도 없이 한 번만 부르고, 1 보다 작으면 3 으로 돈다")
+    void queryMaxAttemptsIsConfigurable() {
+        FlakyPgClient once = new FlakyPgClient();
+        once.queryFailuresRemaining = 99;
+        var registry = new SimpleMeterRegistry();
+        ResilientPgClient noRetry = new ResilientPgClient(once, 0, registry, 1);
+
+        assertThatThrownBy(() -> noRetry.query("pk")).isInstanceOf(RuntimeException.class);
+        assertThat(once.queryCalls.get()).isEqualTo(1);
+        assertThat(registry.counter("payment.pg.query.retry").count()).isZero();
+
+        FlakyPgClient fallback = new FlakyPgClient();
+        fallback.queryFailuresRemaining = 99;
+        ResilientPgClient invalid = new ResilientPgClient(fallback, 0, new SimpleMeterRegistry(), 0);
+        assertThatThrownBy(() -> invalid.query("pk")).isInstanceOf(RuntimeException.class);
+        assertThat(fallback.queryCalls.get()).isEqualTo(3);
+    }
+
+    @Test
     @DisplayName("정상 PG에서는 승인이 그대로 성공하고 델리게이트를 정확히 1번 호출한다 — 기준선")
     void approveSucceedsWithoutOverhead() {
         FlakyPgClient healthy = new FlakyPgClient();   // approveError 없음 → 항상 성공

@@ -1,0 +1,419 @@
+{
+ "name": "f0.05-m3",
+ "n": 1000,
+ "window_s": 600.0,
+ "drained_s": 101.5,
+ "final_status": {
+  "ABORTED": 1000
+ },
+ "timeline": [
+  {
+   "t": 0.0,
+   "left": 1000,
+   "attempts_max": 0,
+   "calls": 0.0,
+   "retries": 0.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 2.1,
+   "left": 950,
+   "attempts_max": 0,
+   "calls": 54.0,
+   "retries": 4.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 4.1,
+   "left": 950,
+   "attempts_max": 0,
+   "calls": 54.0,
+   "retries": 4.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 6.1,
+   "left": 950,
+   "attempts_max": 0,
+   "calls": 54.0,
+   "retries": 4.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 8.2,
+   "left": 900,
+   "attempts_max": 0,
+   "calls": 108.0,
+   "retries": 8.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 10.2,
+   "left": 900,
+   "attempts_max": 0,
+   "calls": 108.0,
+   "retries": 8.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 12.3,
+   "left": 850,
+   "attempts_max": 0,
+   "calls": 163.0,
+   "retries": 13.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 14.3,
+   "left": 850,
+   "attempts_max": 0,
+   "calls": 163.0,
+   "retries": 13.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 16.4,
+   "left": 850,
+   "attempts_max": 0,
+   "calls": 163.0,
+   "retries": 13.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 18.4,
+   "left": 800,
+   "attempts_max": 0,
+   "calls": 215.0,
+   "retries": 15.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 20.4,
+   "left": 800,
+   "attempts_max": 0,
+   "calls": 215.0,
+   "retries": 15.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 22.5,
+   "left": 800,
+   "attempts_max": 0,
+   "calls": 239.0,
+   "retries": 16.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 24.5,
+   "left": 750,
+   "attempts_max": 0,
+   "calls": 266.0,
+   "retries": 16.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 26.5,
+   "left": 750,
+   "attempts_max": 0,
+   "calls": 266.0,
+   "retries": 16.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 28.6,
+   "left": 700,
+   "attempts_max": 0,
+   "calls": 323.0,
+   "retries": 23.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 30.6,
+   "left": 700,
+   "attempts_max": 0,
+   "calls": 323.0,
+   "retries": 23.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 32.6,
+   "left": 700,
+   "attempts_max": 0,
+   "calls": 323.0,
+   "retries": 23.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 34.6,
+   "left": 650,
+   "attempts_max": 0,
+   "calls": 373.0,
+   "retries": 23.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 36.7,
+   "left": 650,
+   "attempts_max": 0,
+   "calls": 373.0,
+   "retries": 23.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 38.7,
+   "left": 600,
+   "attempts_max": 0,
+   "calls": 426.0,
+   "retries": 26.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 40.7,
+   "left": 600,
+   "attempts_max": 0,
+   "calls": 426.0,
+   "retries": 26.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 42.7,
+   "left": 600,
+   "attempts_max": 0,
+   "calls": 426.0,
+   "retries": 26.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 44.8,
+   "left": 550,
+   "attempts_max": 0,
+   "calls": 478.0,
+   "retries": 28.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 46.8,
+   "left": 550,
+   "attempts_max": 0,
+   "calls": 478.0,
+   "retries": 28.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 48.8,
+   "left": 500,
+   "attempts_max": 0,
+   "calls": 531.0,
+   "retries": 31.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 50.9,
+   "left": 500,
+   "attempts_max": 0,
+   "calls": 531.0,
+   "retries": 31.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 52.9,
+   "left": 500,
+   "attempts_max": 0,
+   "calls": 531.0,
+   "retries": 31.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 54.9,
+   "left": 450,
+   "attempts_max": 0,
+   "calls": 584.0,
+   "retries": 34.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 56.9,
+   "left": 450,
+   "attempts_max": 0,
+   "calls": 584.0,
+   "retries": 34.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 59.0,
+   "left": 400,
+   "attempts_max": 0,
+   "calls": 636.0,
+   "retries": 36.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 61.0,
+   "left": 400,
+   "attempts_max": 0,
+   "calls": 636.0,
+   "retries": 36.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 63.0,
+   "left": 400,
+   "attempts_max": 0,
+   "calls": 636.0,
+   "retries": 36.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 65.0,
+   "left": 350,
+   "attempts_max": 0,
+   "calls": 688.0,
+   "retries": 38.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 67.0,
+   "left": 350,
+   "attempts_max": 0,
+   "calls": 688.0,
+   "retries": 38.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 69.1,
+   "left": 300,
+   "attempts_max": 0,
+   "calls": 742.0,
+   "retries": 42.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 71.1,
+   "left": 300,
+   "attempts_max": 0,
+   "calls": 742.0,
+   "retries": 42.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 73.1,
+   "left": 300,
+   "attempts_max": 0,
+   "calls": 742.0,
+   "retries": 42.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 75.1,
+   "left": 250,
+   "attempts_max": 0,
+   "calls": 794.0,
+   "retries": 44.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 77.2,
+   "left": 250,
+   "attempts_max": 0,
+   "calls": 794.0,
+   "retries": 44.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 79.2,
+   "left": 250,
+   "attempts_max": 0,
+   "calls": 826.0,
+   "retries": 46.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 81.2,
+   "left": 200,
+   "attempts_max": 0,
+   "calls": 847.0,
+   "retries": 47.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 83.2,
+   "left": 200,
+   "attempts_max": 0,
+   "calls": 847.0,
+   "retries": 47.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 85.3,
+   "left": 150,
+   "attempts_max": 0,
+   "calls": 898.0,
+   "retries": 48.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 87.3,
+   "left": 150,
+   "attempts_max": 0,
+   "calls": 898.0,
+   "retries": 48.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 89.3,
+   "left": 150,
+   "attempts_max": 0,
+   "calls": 898.0,
+   "retries": 48.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 91.3,
+   "left": 100,
+   "attempts_max": 0,
+   "calls": 950.0,
+   "retries": 50.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 93.4,
+   "left": 100,
+   "attempts_max": 0,
+   "calls": 950.0,
+   "retries": 50.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 95.4,
+   "left": 50,
+   "attempts_max": 0,
+   "calls": 1002.0,
+   "retries": 52.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 97.4,
+   "left": 50,
+   "attempts_max": 0,
+   "calls": 1002.0,
+   "retries": 52.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 99.4,
+   "left": 50,
+   "attempts_max": 0,
+   "calls": 1002.0,
+   "retries": 52.0,
+   "exhausted": 0.0
+  },
+  {
+   "t": 101.5,
+   "left": 0,
+   "attempts_max": 0,
+   "calls": 1054.0,
+   "retries": 54.0,
+   "exhausted": 0.0
+  }
+ ]
+}

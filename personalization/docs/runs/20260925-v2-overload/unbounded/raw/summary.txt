@@ -1,0 +1,4 @@
+[E3] policy=UNBOUNDED  rate=12  achieved=13  coverage=100.0%  personalized=100.0%  serving_p95=53.0ms  serving_p99=58.2ms  model_p95=46.0ms  rejected=0  timeout=0  failed=0  zero_ctx=0  req_failed=0.0%  dropped=0
+[E3] policy=UNBOUNDED  rate=23  achieved=23  coverage=100.0%  personalized=100.0%  serving_p95=56.5ms  serving_p99=62.1ms  model_p95=51.0ms  rejected=0  timeout=0  failed=0  zero_ctx=0  req_failed=0.0%  dropped=0
+[E3] policy=UNBOUNDED  rate=35  achieved=33  coverage=70.1%  personalized=70.1%  serving_p95=576.0ms  serving_p99=585.5ms  model_p95=571.0ms  rejected=0  timeout=314  failed=0  zero_ctx=0  req_failed=0.0%  dropped=0
+[E3] policy=UNBOUNDED  rate=46  achieved=43  coverage=52.4%  personalized=52.4%  serving_p95=576.0ms  serving_p99=587.2ms  model_p95=572.0ms  rejected=0  timeout=657  failed=0  zero_ctx=0  req_failed=0.0%  dropped=0

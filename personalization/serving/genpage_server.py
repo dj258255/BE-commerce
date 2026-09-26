@@ -181,7 +181,8 @@ def main():
     t0 = time.time()
     ENGINE = Engine()
     print(f"GenPage 모델 서버 :{port} · 어휘 {len(ENGINE.items):,} · 적재 {time.time() - t0:.1f}s", flush=True)
-    ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    # 컨테이너에서 띄울 때만 GENPAGE_HOST=0.0.0.0 으로 연다(#342). 기본은 이 맥 안에서만 받는다
+    ThreadingHTTPServer((os.environ.get("GENPAGE_HOST", "127.0.0.1"), port), Handler).serve_forever()
 
 
 if __name__ == "__main__":

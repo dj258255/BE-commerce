@@ -1,6 +1,7 @@
 """검색 색인의 반영 지연을 실제 API 로 잰다(#246). 판정 기준은 이슈에 측정 전에 고정했다.
 
     uv run --with pymysql python3 tools/search/freshness_eval.py run    OUT MODE BASE[,BASE...] [PER_TYPE]
+    uv run --with pymysql python3 tools/search/freshness_eval.py bulk   OUT MODE BASE[,BASE...] N   # 몰림 N 건 뒤의 탐침(#354)
     python3 tools/search/freshness_eval.py                        report OUT
 
 변경 셋을 DB 에 직접 쓰고, 커밋 시각부터 **모든 인스턴스의** 검색 결과에 반영될 때까지를 50ms 간격으로 확인한다.
@@ -12,6 +13,7 @@
 끝나면 바꾼 것을 되돌린다(되돌림도 CDC 로 흐르지만 측정은 끝난 뒤다).
 """
 import json
+import os
 import pathlib
 import random
 import statistics
@@ -31,7 +33,9 @@ INSERT_BASE = 9_000_000_000
 
 def db():
     import pymysql
-    return pymysql.connect(host="127.0.0.1", port=3306, user="root", password="root", database="becommerce",
+    # 일회용 DB 에서 돌릴 때는 DB_HOST · DB_PORT 로 바꾼다(#354)
+    return pymysql.connect(host=os.environ.get("DB_HOST", "127.0.0.1"), port=int(os.environ.get("DB_PORT", "3306")),
+                           user="root", password="root", database="becommerce",
                            autocommit=False)
 
 
@@ -138,6 +142,69 @@ def run(out, mode, bases, per_type):
     print(mode, summary(doc))
 
 
+def run_bulk(out, mode, bases, bulk_n, probes=20, timeout=300.0):
+    """몰림(#354): 상품 bulk_n 개의 가격을 1원 올리는 변경을 1,000건씩 한꺼번에 커밋하고, 바로 뒤에 가격을 500원으로 내리는
+    탐침 probes 개를 커밋해 탐침이 모든 인스턴스에 반영될 때까지 잰다. 탐침의 지연이 곧 앞의 몰림을 소화하는 시간이다."""
+    out = pathlib.Path(out)
+    out.mkdir(parents=True, exist_ok=True)
+    conn = db()
+    targets, _ = pick_targets(conn, bases, probes)
+    probe_ids = {pid for pid, _ in targets}
+    with conn.cursor() as c:
+        c.execute("SELECT product_id FROM products WHERE price > 1000 AND product_id < %s ORDER BY product_id", (INSERT_BASE,))
+        bulk_ids = [pid for (pid,) in c.fetchall() if pid not in probe_ids][:bulk_n]
+        c.execute("SELECT product_id, price FROM products WHERE product_id IN %s", ([p for p, _ in targets],))
+        old_price = dict(c.fetchall())
+    results, lock, threads = [], threading.Lock(), []
+
+    def watch(pid, text, committed):
+        seen = {}
+        while time.time() - committed < timeout and len(seen) < len(bases):
+            for b in bases:
+                if b in seen:
+                    continue
+                try:
+                    ids = search(b, {"q": text, "maxPrice": 500})
+                except Exception:
+                    continue
+                if pid in ids:
+                    seen[b] = time.time()
+            time.sleep(POLL)
+        lag = (max(seen.values()) - committed) * 1000 if len(seen) == len(bases) else None
+        with lock:
+            results.append({"kind": "price", "id": pid, "lag_ms": lag,
+                            "per_instance_ms": {b: (t - committed) * 1000 for b, t in seen.items()}})
+
+    bulk_started = time.time()
+    try:
+        with conn.cursor() as c:
+            for i in range(0, len(bulk_ids), 1000):
+                c.execute("UPDATE products SET price = price + 1 WHERE product_id IN %s", (bulk_ids[i:i + 1000],))
+                conn.commit()
+        bulk_seconds = time.time() - bulk_started
+        for pid, name in targets:
+            with conn.cursor() as c:
+                c.execute("UPDATE products SET price = 500 WHERE product_id = %s", (pid,))
+            conn.commit()
+            t = threading.Thread(target=watch, args=(pid, name, time.time()))
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+    finally:
+        with conn.cursor() as c:     # 되돌린다
+            for i in range(0, len(bulk_ids), 1000):
+                c.execute("UPDATE products SET price = price - 1 WHERE product_id IN %s", (bulk_ids[i:i + 1000],))
+            for pid, price in old_price.items():
+                c.execute("UPDATE products SET price = %s WHERE product_id = %s", (price, pid))
+        conn.commit()
+        conn.close()
+    doc = {"mode": mode, "instances": bases, "bulk": len(bulk_ids), "bulk_write_seconds": bulk_seconds, "probes": len(targets),
+           "timeout_s": timeout, "results": results}
+    (out / f"bulk-{mode}.json").write_text(json.dumps(doc, indent=1))
+    print(mode, "몰림", len(bulk_ids), "쓰기", round(bulk_seconds, 1), "초", summary(doc)["price"])
+
+
 def pct(xs, p):
     xs = sorted(xs)
     return xs[min(len(xs) - 1, int(round(p / 100 * (len(xs) - 1))))] if xs else None
@@ -185,5 +252,7 @@ if __name__ == "__main__":
     if cmd == "run":
         run(sys.argv[2], sys.argv[3], [b.rstrip("/") for b in sys.argv[4].split(",")],
             int(sys.argv[5]) if len(sys.argv) > 5 else 200)
+    elif cmd == "bulk":
+        run_bulk(sys.argv[2], sys.argv[3], [b.rstrip("/") for b in sys.argv[4].split(",")], int(sys.argv[5]))
     elif cmd == "report":
         report(sys.argv[2])

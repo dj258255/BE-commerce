@@ -1,0 +1,28 @@
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 10      0.612975/s
+    checks_succeeded...: 100.00% 10 out of 10
+    checks_failed......: 0.00%   0 out of 10
+
+    ✓ user login 200
+
+    HTTP
+    http_req_duration..............: avg=43.03ms min=7.27ms med=34.13ms max=347.2ms p(90)=84.82ms p(95)=120.89ms
+      { expected_response:true }...: avg=43.03ms min=7.27ms med=34.13ms max=347.2ms p(90)=84.82ms p(95)=120.89ms
+    http_req_failed................: 0.00%  0 out of 300
+    http_reqs......................: 300    18.38926/s
+
+    EXECUTION
+    iteration_duration.............: avg=1.08s   min=1.03s  med=1.06s   max=1.45s   p(90)=1.14s   p(95)=1.32s   
+    iterations.....................: 140    8.581655/s
+    vus............................: 10     min=10       max=10
+    vus_max........................: 10     min=10       max=10
+
+    NETWORK
+    data_received..................: 136 kB 8.4 kB/s
+    data_sent......................: 149 kB 9.1 kB/s
+
+
+

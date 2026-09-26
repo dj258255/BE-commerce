@@ -1,0 +1,2714 @@
+{
+ "mode": "lucene-cdc-250ms",
+ "instances": [
+  "http://localhost:18190",
+  "http://localhost:18191"
+ ],
+ "per_type": 100,
+ "rate": 20,
+ "poll_ms": 50.0,
+ "timeout_s": 30.0,
+ "write_seconds": 14.957953929901123,
+ "results": [
+  {
+   "kind": "insert",
+   "id": 9000000047,
+   "lag_ms": 209.11502838134766,
+   "per_instance_ms": {
+    "http://localhost:18190": 189.90206718444824,
+    "http://localhost:18191": 209.11502838134766
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000082,
+   "lag_ms": 210.98804473876953,
+   "per_instance_ms": {
+    "http://localhost:18191": 128.2341480255127,
+    "http://localhost:18190": 210.98804473876953
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 885490002,
+   "lag_ms": 338.00196647644043,
+   "per_instance_ms": {
+    "http://localhost:18191": 248.20303916931152,
+    "http://localhost:18190": 338.00196647644043
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000005,
+   "lag_ms": 156.57401084899902,
+   "per_instance_ms": {
+    "http://localhost:18190": 126.72781944274902,
+    "http://localhost:18191": 156.57401084899902
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 554007001,
+   "lag_ms": 367.74492263793945,
+   "per_instance_ms": {
+    "http://localhost:18190": 343.43695640563965,
+    "http://localhost:18191": 367.74492263793945
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 665263001,
+   "lag_ms": 204.38575744628906,
+   "per_instance_ms": {
+    "http://localhost:18190": 165.28892517089844,
+    "http://localhost:18191": 204.38575744628906
+   }
+  },
+  {
+   "kind": "price",
+   "id": 688662001,
+   "lag_ms": 344.9127674102783,
+   "per_instance_ms": {
+    "http://localhost:18191": 258.3479881286621,
+    "http://localhost:18190": 344.9127674102783
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 700767001,
+   "lag_ms": 305.9079647064209,
+   "per_instance_ms": {
+    "http://localhost:18190": 252.03299522399902,
+    "http://localhost:18191": 305.9079647064209
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 778605003,
+   "lag_ms": 467.2279357910156,
+   "per_instance_ms": {
+    "http://localhost:18190": 423.785924911499,
+    "http://localhost:18191": 467.2279357910156
+   }
+  },
+  {
+   "kind": "price",
+   "id": 845089001,
+   "lag_ms": 316.03193283081055,
+   "per_instance_ms": {
+    "http://localhost:18191": 233.69121551513672,
+    "http://localhost:18190": 316.03193283081055
+   }
+  },
+  {
+   "kind": "price",
+   "id": 541308023,
+   "lag_ms": 376.1260509490967,
+   "per_instance_ms": {
+    "http://localhost:18190": 358.9630126953125,
+    "http://localhost:18191": 376.1260509490967
+   }
+  },
+  {
+   "kind": "price",
+   "id": 510696011,
+   "lag_ms": 227.6768684387207,
+   "per_instance_ms": {
+    "http://localhost:18190": 212.0347023010254,
+    "http://localhost:18191": 227.6768684387207
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 797150001,
+   "lag_ms": 286.32593154907227,
+   "per_instance_ms": {
+    "http://localhost:18190": 266.6800022125244,
+    "http://localhost:18191": 286.32593154907227
+   }
+  },
+  {
+   "kind": "price",
+   "id": 569093013,
+   "lag_ms": 95.88193893432617,
+   "per_instance_ms": {
+    "http://localhost:18190": 85.67190170288086,
+    "http://localhost:18191": 95.88193893432617
+   }
+  },
+  {
+   "kind": "price",
+   "id": 766643001,
+   "lag_ms": 167.17791557312012,
+   "per_instance_ms": {
+    "http://localhost:18190": 157.57179260253906,
+    "http://localhost:18191": 167.17791557312012
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 906617002,
+   "lag_ms": 303.5130500793457,
+   "per_instance_ms": {
+    "http://localhost:18190": 274.0640640258789,
+    "http://localhost:18191": 303.5130500793457
+   }
+  },
+  {
+   "kind": "price",
+   "id": 598517002,
+   "lag_ms": 262.18318939208984,
+   "per_instance_ms": {
+    "http://localhost:18190": 250.18811225891113,
+    "http://localhost:18191": 262.18318939208984
+   }
+  },
+  {
+   "kind": "price",
+   "id": 717773009,
+   "lag_ms": 415.50707817077637,
+   "per_instance_ms": {
+    "http://localhost:18190": 397.6740837097168,
+    "http://localhost:18191": 415.50707817077637
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000009,
+   "lag_ms": 372.6937770843506,
+   "per_instance_ms": {
+    "http://localhost:18191": 301.9559383392334,
+    "http://localhost:18190": 372.6937770843506
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 598780005,
+   "lag_ms": 223.1729030609131,
+   "per_instance_ms": {
+    "http://localhost:18190": 205.33990859985352,
+    "http://localhost:18191": 223.1729030609131
+   }
+  },
+  {
+   "kind": "price",
+   "id": 757511002,
+   "lag_ms": 290.1570796966553,
+   "per_instance_ms": {
+    "http://localhost:18190": 272.47095108032227,
+    "http://localhost:18191": 290.1570796966553
+   }
+  },
+  {
+   "kind": "price",
+   "id": 651206001,
+   "lag_ms": 364.61615562438965,
+   "per_instance_ms": {
+    "http://localhost:18190": 349.80082511901855,
+    "http://localhost:18191": 364.61615562438965
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000096,
+   "lag_ms": 233.94298553466797,
+   "per_instance_ms": {
+    "http://localhost:18190": 218.4429168701172,
+    "http://localhost:18191": 233.94298553466797
+   }
+  },
+  {
+   "kind": "price",
+   "id": 454804011,
+   "lag_ms": 153.98192405700684,
+   "per_instance_ms": {
+    "http://localhost:18190": 128.36408615112305,
+    "http://localhost:18191": 153.98192405700684
+   }
+  },
+  {
+   "kind": "price",
+   "id": 705518001,
+   "lag_ms": 380.1531791687012,
+   "per_instance_ms": {
+    "http://localhost:18190": 363.2500171661377,
+    "http://localhost:18191": 380.1531791687012
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 625405002,
+   "lag_ms": 249.15003776550293,
+   "per_instance_ms": {
+    "http://localhost:18190": 222.73683547973633,
+    "http://localhost:18191": 249.15003776550293
+   }
+  },
+  {
+   "kind": "price",
+   "id": 659497003,
+   "lag_ms": 457.8700065612793,
+   "per_instance_ms": {
+    "http://localhost:18191": 379.4400691986084,
+    "http://localhost:18190": 457.8700065612793
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000027,
+   "lag_ms": 301.3639450073242,
+   "per_instance_ms": {
+    "http://localhost:18191": 221.73070907592773,
+    "http://localhost:18190": 301.3639450073242
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 537920001,
+   "lag_ms": 391.2620544433594,
+   "per_instance_ms": {
+    "http://localhost:18190": 367.9060935974121,
+    "http://localhost:18191": 391.2620544433594
+   }
+  },
+  {
+   "kind": "price",
+   "id": 638530002,
+   "lag_ms": 250.5779266357422,
+   "per_instance_ms": {
+    "http://localhost:18190": 233.35695266723633,
+    "http://localhost:18191": 250.5779266357422
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000040,
+   "lag_ms": 324.3980407714844,
+   "per_instance_ms": {
+    "http://localhost:18191": 249.88198280334473,
+    "http://localhost:18190": 324.3980407714844
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000079,
+   "lag_ms": 366.82987213134766,
+   "per_instance_ms": {
+    "http://localhost:18191": 296.07486724853516,
+    "http://localhost:18190": 366.82987213134766
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 833534003,
+   "lag_ms": 453.0961513519287,
+   "per_instance_ms": {
+    "http://localhost:18190": 431.9190979003906,
+    "http://localhost:18191": 453.0961513519287
+   }
+  },
+  {
+   "kind": "price",
+   "id": 852341001,
+   "lag_ms": 280.8711528778076,
+   "per_instance_ms": {
+    "http://localhost:18190": 269.942045211792,
+    "http://localhost:18191": 280.8711528778076
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000073,
+   "lag_ms": 422.67584800720215,
+   "per_instance_ms": {
+    "http://localhost:18190": 403.75590324401855,
+    "http://localhost:18191": 422.67584800720215
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 719212001,
+   "lag_ms": 223.80399703979492,
+   "per_instance_ms": {
+    "http://localhost:18190": 203.46713066101074,
+    "http://localhost:18191": 223.80399703979492
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 604014001,
+   "lag_ms": 291.75496101379395,
+   "per_instance_ms": {
+    "http://localhost:18190": 275.0048637390137,
+    "http://localhost:18191": 291.75496101379395
+   }
+  },
+  {
+   "kind": "price",
+   "id": 569976007,
+   "lag_ms": 388.8709545135498,
+   "per_instance_ms": {
+    "http://localhost:18190": 380.08594512939453,
+    "http://localhost:18191": 388.8709545135498
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 649671009,
+   "lag_ms": 221.7700481414795,
+   "per_instance_ms": {
+    "http://localhost:18191": 140.29502868652344,
+    "http://localhost:18190": 221.7700481414795
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000029,
+   "lag_ms": 201.9350528717041,
+   "per_instance_ms": {
+    "http://localhost:18190": 185.68897247314453,
+    "http://localhost:18191": 201.9350528717041
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 807215001,
+   "lag_ms": 322.5438594818115,
+   "per_instance_ms": {
+    "http://localhost:18190": 310.5778694152832,
+    "http://localhost:18191": 322.5438594818115
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000064,
+   "lag_ms": 382.48610496520996,
+   "per_instance_ms": {
+    "http://localhost:18190": 362.9281520843506,
+    "http://localhost:18191": 382.48610496520996
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 716115004,
+   "lag_ms": 140.3329372406006,
+   "per_instance_ms": {
+    "http://localhost:18190": 120.83697319030762,
+    "http://localhost:18191": 140.3329372406006
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000065,
+   "lag_ms": 304.81791496276855,
+   "per_instance_ms": {
+    "http://localhost:18190": 289.89386558532715,
+    "http://localhost:18191": 304.81791496276855
+   }
+  },
+  {
+   "kind": "price",
+   "id": 851400007,
+   "lag_ms": 209.66792106628418,
+   "per_instance_ms": {
+    "http://localhost:18190": 195.267915725708,
+    "http://localhost:18191": 209.66792106628418
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000048,
+   "lag_ms": 366.29700660705566,
+   "per_instance_ms": {
+    "http://localhost:18190": 350.83484649658203,
+    "http://localhost:18191": 366.29700660705566
+   }
+  },
+  {
+   "kind": "price",
+   "id": 595080003,
+   "lag_ms": 191.24102592468262,
+   "per_instance_ms": {
+    "http://localhost:18190": 183.09593200683594,
+    "http://localhost:18191": 191.24102592468262
+   }
+  },
+  {
+   "kind": "price",
+   "id": 488561026,
+   "lag_ms": 265.84601402282715,
+   "per_instance_ms": {
+    "http://localhost:18191": 194.21696662902832,
+    "http://localhost:18190": 265.84601402282715
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000087,
+   "lag_ms": 371.43588066101074,
+   "per_instance_ms": {
+    "http://localhost:18190": 353.4870147705078,
+    "http://localhost:18191": 371.43588066101074
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 868167002,
+   "lag_ms": 353.1630039215088,
+   "per_instance_ms": {
+    "http://localhost:18191": 274.7828960418701,
+    "http://localhost:18190": 353.1630039215088
+   }
+  },
+  {
+   "kind": "price",
+   "id": 754238009,
+   "lag_ms": 199.86200332641602,
+   "per_instance_ms": {
+    "http://localhost:18190": 179.68273162841797,
+    "http://localhost:18191": 199.86200332641602
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000019,
+   "lag_ms": 313.9762878417969,
+   "per_instance_ms": {
+    "http://localhost:18190": 293.3540344238281,
+    "http://localhost:18191": 313.9762878417969
+   }
+  },
+  {
+   "kind": "price",
+   "id": 743471001,
+   "lag_ms": 359.94982719421387,
+   "per_instance_ms": {
+    "http://localhost:18190": 345.00575065612793,
+    "http://localhost:18191": 359.94982719421387
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 596812001,
+   "lag_ms": 198.09508323669434,
+   "per_instance_ms": {
+    "http://localhost:18191": 130.4328441619873,
+    "http://localhost:18190": 198.09508323669434
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000046,
+   "lag_ms": 466.9618606567383,
+   "per_instance_ms": {
+    "http://localhost:18191": 390.0878429412842,
+    "http://localhost:18190": 466.9618606567383
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000099,
+   "lag_ms": 315.8719539642334,
+   "per_instance_ms": {
+    "http://localhost:18191": 238.24691772460938,
+    "http://localhost:18190": 315.8719539642334
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000062,
+   "lag_ms": 124.90701675415039,
+   "per_instance_ms": {
+    "http://localhost:18190": 106.77409172058105,
+    "http://localhost:18191": 124.90701675415039
+   }
+  },
+  {
+   "kind": "price",
+   "id": 561617003,
+   "lag_ms": 327.6681900024414,
+   "per_instance_ms": {
+    "http://localhost:18191": 266.3419246673584,
+    "http://localhost:18190": 327.6681900024414
+   }
+  },
+  {
+   "kind": "price",
+   "id": 701580001,
+   "lag_ms": 282.4251651763916,
+   "per_instance_ms": {
+    "http://localhost:18190": 267.14015007019043,
+    "http://localhost:18191": 282.4251651763916
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 525825007,
+   "lag_ms": 250.7929801940918,
+   "per_instance_ms": {
+    "http://localhost:18190": 225.42095184326172,
+    "http://localhost:18191": 250.7929801940918
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 807734001,
+   "lag_ms": 409.67512130737305,
+   "per_instance_ms": {
+    "http://localhost:18191": 328.610897064209,
+    "http://localhost:18190": 409.67512130737305
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 292453009,
+   "lag_ms": 215.62790870666504,
+   "per_instance_ms": {
+    "http://localhost:18191": 133.04591178894043,
+    "http://localhost:18190": 215.62790870666504
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000055,
+   "lag_ms": 198.87685775756836,
+   "per_instance_ms": {
+    "http://localhost:18190": 182.05499649047852,
+    "http://localhost:18191": 198.87685775756836
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000039,
+   "lag_ms": 273.13780784606934,
+   "per_instance_ms": {
+    "http://localhost:18190": 258.39900970458984,
+    "http://localhost:18191": 273.13780784606934
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000085,
+   "lag_ms": 354.74205017089844,
+   "per_instance_ms": {
+    "http://localhost:18190": 338.9618396759033,
+    "http://localhost:18191": 354.74205017089844
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 660703002,
+   "lag_ms": 211.2438678741455,
+   "per_instance_ms": {
+    "http://localhost:18191": 137.5899314880371,
+    "http://localhost:18190": 211.2438678741455
+   }
+  },
+  {
+   "kind": "price",
+   "id": 748269001,
+   "lag_ms": 357.81311988830566,
+   "per_instance_ms": {
+    "http://localhost:18190": 341.0351276397705,
+    "http://localhost:18191": 357.81311988830566
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 787894001,
+   "lag_ms": 270.88379859924316,
+   "per_instance_ms": {
+    "http://localhost:18190": 255.4187774658203,
+    "http://localhost:18191": 270.88379859924316
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000098,
+   "lag_ms": 126.28912925720215,
+   "per_instance_ms": {
+    "http://localhost:18190": 105.12185096740723,
+    "http://localhost:18191": 126.28912925720215
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000092,
+   "lag_ms": 226.14192962646484,
+   "per_instance_ms": {
+    "http://localhost:18190": 201.2019157409668,
+    "http://localhost:18191": 226.14192962646484
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000081,
+   "lag_ms": 213.0451202392578,
+   "per_instance_ms": {
+    "http://localhost:18190": 192.94500350952148,
+    "http://localhost:18191": 213.0451202392578
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000033,
+   "lag_ms": 375.5970001220703,
+   "per_instance_ms": {
+    "http://localhost:18190": 357.1171760559082,
+    "http://localhost:18191": 375.5970001220703
+   }
+  },
+  {
+   "kind": "price",
+   "id": 508987004,
+   "lag_ms": 293.57385635375977,
+   "per_instance_ms": {
+    "http://localhost:18190": 268.1310176849365,
+    "http://localhost:18191": 293.57385635375977
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000058,
+   "lag_ms": 232.58495330810547,
+   "per_instance_ms": {
+    "http://localhost:18190": 200.8819580078125,
+    "http://localhost:18191": 232.58495330810547
+   }
+  },
+  {
+   "kind": "price",
+   "id": 377436002,
+   "lag_ms": 341.05396270751953,
+   "per_instance_ms": {
+    "http://localhost:18190": 309.298038482666,
+    "http://localhost:18191": 341.05396270751953
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 598284001,
+   "lag_ms": 247.03192710876465,
+   "per_instance_ms": {
+    "http://localhost:18191": 173.1090545654297,
+    "http://localhost:18190": 247.03192710876465
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 749674005,
+   "lag_ms": 371.7389106750488,
+   "per_instance_ms": {
+    "http://localhost:18191": 150.4800319671631,
+    "http://localhost:18190": 371.7389106750488
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 743079001,
+   "lag_ms": 130.74994087219238,
+   "per_instance_ms": {
+    "http://localhost:18190": 116.53399467468262,
+    "http://localhost:18191": 130.74994087219238
+   }
+  },
+  {
+   "kind": "price",
+   "id": 746306001,
+   "lag_ms": 278.7039279937744,
+   "per_instance_ms": {
+    "http://localhost:18190": 268.26000213623047,
+    "http://localhost:18191": 278.7039279937744
+   }
+  },
+  {
+   "kind": "price",
+   "id": 716360001,
+   "lag_ms": 239.55607414245605,
+   "per_instance_ms": {
+    "http://localhost:18190": 218.60408782958984,
+    "http://localhost:18191": 239.55607414245605
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000025,
+   "lag_ms": 345.7379341125488,
+   "per_instance_ms": {
+    "http://localhost:18191": 121.99783325195312,
+    "http://localhost:18190": 345.7379341125488
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 485678020,
+   "lag_ms": 250.90479850769043,
+   "per_instance_ms": {
+    "http://localhost:18190": 233.60204696655273,
+    "http://localhost:18191": 250.90479850769043
+   }
+  },
+  {
+   "kind": "price",
+   "id": 690222008,
+   "lag_ms": 282.5937271118164,
+   "per_instance_ms": {
+    "http://localhost:18190": 265.2397155761719,
+    "http://localhost:18191": 282.5937271118164
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 596539001,
+   "lag_ms": 193.21489334106445,
+   "per_instance_ms": {
+    "http://localhost:18190": 177.5951385498047,
+    "http://localhost:18191": 193.21489334106445
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 903308003,
+   "lag_ms": 347.606897354126,
+   "per_instance_ms": {
+    "http://localhost:18190": 326.04193687438965,
+    "http://localhost:18191": 347.606897354126
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 870518001,
+   "lag_ms": 124.44686889648438,
+   "per_instance_ms": {
+    "http://localhost:18190": 106.26816749572754,
+    "http://localhost:18191": 124.44686889648438
+   }
+  },
+  {
+   "kind": "price",
+   "id": 535876002,
+   "lag_ms": 170.12619972229004,
+   "per_instance_ms": {
+    "http://localhost:18190": 159.17420387268066,
+    "http://localhost:18191": 170.12619972229004
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 711141003,
+   "lag_ms": 287.6739501953125,
+   "per_instance_ms": {
+    "http://localhost:18191": 213.0260467529297,
+    "http://localhost:18190": 287.6739501953125
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000077,
+   "lag_ms": 131.41298294067383,
+   "per_instance_ms": {
+    "http://localhost:18190": 111.91105842590332,
+    "http://localhost:18191": 131.41298294067383
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 487052001,
+   "lag_ms": 330.2919864654541,
+   "per_instance_ms": {
+    "http://localhost:18190": 281.77499771118164,
+    "http://localhost:18191": 330.2919864654541
+   }
+  },
+  {
+   "kind": "price",
+   "id": 713029001,
+   "lag_ms": 227.6589870452881,
+   "per_instance_ms": {
+    "http://localhost:18190": 199.1097927093506,
+    "http://localhost:18191": 227.6589870452881
+   }
+  },
+  {
+   "kind": "price",
+   "id": 643688001,
+   "lag_ms": 308.4893226623535,
+   "per_instance_ms": {
+    "http://localhost:18190": 289.81709480285645,
+    "http://localhost:18191": 308.4893226623535
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000075,
+   "lag_ms": 124.88198280334473,
+   "per_instance_ms": {
+    "http://localhost:18190": 107.67507553100586,
+    "http://localhost:18191": 124.88198280334473
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 528070005,
+   "lag_ms": 265.28310775756836,
+   "per_instance_ms": {
+    "http://localhost:18191": 194.749116897583,
+    "http://localhost:18190": 265.28310775756836
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000076,
+   "lag_ms": 431.76794052124023,
+   "per_instance_ms": {
+    "http://localhost:18190": 394.86002922058105,
+    "http://localhost:18191": 431.76794052124023
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000091,
+   "lag_ms": 326.0691165924072,
+   "per_instance_ms": {
+    "http://localhost:18190": 291.2590503692627,
+    "http://localhost:18191": 326.0691165924072
+   }
+  },
+  {
+   "kind": "price",
+   "id": 849027001,
+   "lag_ms": 382.9009532928467,
+   "per_instance_ms": {
+    "http://localhost:18190": 358.90674591064453,
+    "http://localhost:18191": 382.9009532928467
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 622043003,
+   "lag_ms": 249.6490478515625,
+   "per_instance_ms": {
+    "http://localhost:18190": 231.48679733276367,
+    "http://localhost:18191": 249.6490478515625
+   }
+  },
+  {
+   "kind": "price",
+   "id": 896064001,
+   "lag_ms": 201.18403434753418,
+   "per_instance_ms": {
+    "http://localhost:18190": 189.62407112121582,
+    "http://localhost:18191": 201.18403434753418
+   }
+  },
+  {
+   "kind": "price",
+   "id": 705974001,
+   "lag_ms": 257.86399841308594,
+   "per_instance_ms": {
+    "http://localhost:18190": 248.9151954650879,
+    "http://localhost:18191": 257.86399841308594
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000090,
+   "lag_ms": 191.1461353302002,
+   "per_instance_ms": {
+    "http://localhost:18190": 175.3380298614502,
+    "http://localhost:18191": 191.1461353302002
+   }
+  },
+  {
+   "kind": "price",
+   "id": 897077001,
+   "lag_ms": 357.8951358795166,
+   "per_instance_ms": {
+    "http://localhost:18190": 348.27303886413574,
+    "http://localhost:18191": 357.8951358795166
+   }
+  },
+  {
+   "kind": "price",
+   "id": 776532003,
+   "lag_ms": 381.60085678100586,
+   "per_instance_ms": {
+    "http://localhost:18190": 367.002010345459,
+    "http://localhost:18191": 381.60085678100586
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000089,
+   "lag_ms": 127.15816497802734,
+   "per_instance_ms": {
+    "http://localhost:18190": 110.42594909667969,
+    "http://localhost:18191": 127.15816497802734
+   }
+  },
+  {
+   "kind": "price",
+   "id": 873279004,
+   "lag_ms": 330.70898056030273,
+   "per_instance_ms": {
+    "http://localhost:18190": 317.7509307861328,
+    "http://localhost:18191": 330.70898056030273
+   }
+  },
+  {
+   "kind": "price",
+   "id": 789216002,
+   "lag_ms": 295.5598831176758,
+   "per_instance_ms": {
+    "http://localhost:18190": 280.6551456451416,
+    "http://localhost:18191": 295.5598831176758
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 612960001,
+   "lag_ms": 275.2048969268799,
+   "per_instance_ms": {
+    "http://localhost:18190": 249.53985214233398,
+    "http://localhost:18191": 275.2048969268799
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 729308001,
+   "lag_ms": 270.6758975982666,
+   "per_instance_ms": {
+    "http://localhost:18191": 186.2180233001709,
+    "http://localhost:18190": 270.6758975982666
+   }
+  },
+  {
+   "kind": "price",
+   "id": 679494007,
+   "lag_ms": 170.49431800842285,
+   "per_instance_ms": {
+    "http://localhost:18190": 160.85505485534668,
+    "http://localhost:18191": 170.49431800842285
+   }
+  },
+  {
+   "kind": "price",
+   "id": 735229002,
+   "lag_ms": 343.8272476196289,
+   "per_instance_ms": {
+    "http://localhost:18190": 332.92627334594727,
+    "http://localhost:18191": 343.8272476196289
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 816887004,
+   "lag_ms": 283.6019992828369,
+   "per_instance_ms": {
+    "http://localhost:18190": 266.5259838104248,
+    "http://localhost:18191": 283.6019992828369
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 854525001,
+   "lag_ms": 370.0387477874756,
+   "per_instance_ms": {
+    "http://localhost:18190": 344.0408706665039,
+    "http://localhost:18191": 370.0387477874756
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000018,
+   "lag_ms": 185.79912185668945,
+   "per_instance_ms": {
+    "http://localhost:18190": 172.19018936157227,
+    "http://localhost:18191": 185.79912185668945
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 619280001,
+   "lag_ms": 288.93423080444336,
+   "per_instance_ms": {
+    "http://localhost:18190": 275.56610107421875,
+    "http://localhost:18191": 288.93423080444336
+   }
+  },
+  {
+   "kind": "price",
+   "id": 660623001,
+   "lag_ms": 350.6171703338623,
+   "per_instance_ms": {
+    "http://localhost:18191": 87.4791145324707,
+    "http://localhost:18190": 350.6171703338623
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 662603003,
+   "lag_ms": 402.3549556732178,
+   "per_instance_ms": {
+    "http://localhost:18191": 120.24116516113281,
+    "http://localhost:18190": 402.3549556732178
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000061,
+   "lag_ms": 282.8841209411621,
+   "per_instance_ms": {
+    "http://localhost:18190": 266.2379741668701,
+    "http://localhost:18191": 282.8841209411621
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000036,
+   "lag_ms": 187.17479705810547,
+   "per_instance_ms": {
+    "http://localhost:18190": 170.26090621948242,
+    "http://localhost:18191": 187.17479705810547
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000045,
+   "lag_ms": 337.8639221191406,
+   "per_instance_ms": {
+    "http://localhost:18190": 324.27191734313965,
+    "http://localhost:18191": 337.8639221191406
+   }
+  },
+  {
+   "kind": "price",
+   "id": 620224001,
+   "lag_ms": 195.35470008850098,
+   "per_instance_ms": {
+    "http://localhost:18190": 181.5779209136963,
+    "http://localhost:18191": 195.35470008850098
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000001,
+   "lag_ms": 283.6170196533203,
+   "per_instance_ms": {
+    "http://localhost:18190": 264.9540901184082,
+    "http://localhost:18191": 283.6170196533203
+   }
+  },
+  {
+   "kind": "price",
+   "id": 589793002,
+   "lag_ms": 332.6129913330078,
+   "per_instance_ms": {
+    "http://localhost:18190": 312.44373321533203,
+    "http://localhost:18191": 332.6129913330078
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 810765001,
+   "lag_ms": 143.7089443206787,
+   "per_instance_ms": {
+    "http://localhost:18190": 117.83719062805176,
+    "http://localhost:18191": 143.7089443206787
+   }
+  },
+  {
+   "kind": "price",
+   "id": 655523001,
+   "lag_ms": 208.98008346557617,
+   "per_instance_ms": {
+    "http://localhost:18191": 134.7332000732422,
+    "http://localhost:18190": 208.98008346557617
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000057,
+   "lag_ms": 189.04709815979004,
+   "per_instance_ms": {
+    "http://localhost:18190": 174.5901107788086,
+    "http://localhost:18191": 189.04709815979004
+   }
+  },
+  {
+   "kind": "price",
+   "id": 678942032,
+   "lag_ms": 109.78078842163086,
+   "per_instance_ms": {
+    "http://localhost:18190": 95.7648754119873,
+    "http://localhost:18191": 109.78078842163086
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000015,
+   "lag_ms": 185.0268840789795,
+   "per_instance_ms": {
+    "http://localhost:18190": 170.49217224121094,
+    "http://localhost:18191": 185.0268840789795
+   }
+  },
+  {
+   "kind": "price",
+   "id": 720647001,
+   "lag_ms": 282.59992599487305,
+   "per_instance_ms": {
+    "http://localhost:18190": 269.2761421203613,
+    "http://localhost:18191": 282.59992599487305
+   }
+  },
+  {
+   "kind": "price",
+   "id": 562777001,
+   "lag_ms": 343.99938583374023,
+   "per_instance_ms": {
+    "http://localhost:18190": 330.0800323486328,
+    "http://localhost:18191": 343.99938583374023
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000042,
+   "lag_ms": 188.09127807617188,
+   "per_instance_ms": {
+    "http://localhost:18190": 172.00589179992676,
+    "http://localhost:18191": 188.09127807617188
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 720861003,
+   "lag_ms": 138.43774795532227,
+   "per_instance_ms": {
+    "http://localhost:18190": 115.2658462524414,
+    "http://localhost:18191": 138.43774795532227
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 651030001,
+   "lag_ms": 303.92909049987793,
+   "per_instance_ms": {
+    "http://localhost:18190": 284.304141998291,
+    "http://localhost:18191": 303.92909049987793
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 697831005,
+   "lag_ms": 357.61308670043945,
+   "per_instance_ms": {
+    "http://localhost:18190": 330.69419860839844,
+    "http://localhost:18191": 357.61308670043945
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 522068004,
+   "lag_ms": 117.2938346862793,
+   "per_instance_ms": {
+    "http://localhost:18190": 99.60818290710449,
+    "http://localhost:18191": 117.2938346862793
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000030,
+   "lag_ms": 269.3500518798828,
+   "per_instance_ms": {
+    "http://localhost:18190": 253.88789176940918,
+    "http://localhost:18191": 269.3500518798828
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000043,
+   "lag_ms": 116.61505699157715,
+   "per_instance_ms": {
+    "http://localhost:18190": 99.38311576843262,
+    "http://localhost:18191": 116.61505699157715
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000012,
+   "lag_ms": 286.9088649749756,
+   "per_instance_ms": {
+    "http://localhost:18190": 273.1928825378418,
+    "http://localhost:18191": 286.9088649749756
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000066,
+   "lag_ms": 194.4258213043213,
+   "per_instance_ms": {
+    "http://localhost:18190": 180.91702461242676,
+    "http://localhost:18191": 194.4258213043213
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000007,
+   "lag_ms": 263.1411552429199,
+   "per_instance_ms": {
+    "http://localhost:18191": 194.09513473510742,
+    "http://localhost:18190": 263.1411552429199
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000035,
+   "lag_ms": 291.27001762390137,
+   "per_instance_ms": {
+    "http://localhost:18190": 278.4287929534912,
+    "http://localhost:18191": 291.27001762390137
+   }
+  },
+  {
+   "kind": "price",
+   "id": 887748001,
+   "lag_ms": 87.19730377197266,
+   "per_instance_ms": {
+    "http://localhost:18190": 79.25200462341309,
+    "http://localhost:18191": 87.19730377197266
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000074,
+   "lag_ms": 371.35791778564453,
+   "per_instance_ms": {
+    "http://localhost:18190": 353.43384742736816,
+    "http://localhost:18191": 371.35791778564453
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000094,
+   "lag_ms": 294.97480392456055,
+   "per_instance_ms": {
+    "http://localhost:18190": 278.5069942474365,
+    "http://localhost:18191": 294.97480392456055
+   }
+  },
+  {
+   "kind": "price",
+   "id": 877075001,
+   "lag_ms": 186.58781051635742,
+   "per_instance_ms": {
+    "http://localhost:18191": 115.83590507507324,
+    "http://localhost:18190": 186.58781051635742
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 887681001,
+   "lag_ms": 255.77092170715332,
+   "per_instance_ms": {
+    "http://localhost:18191": 174.638032913208,
+    "http://localhost:18190": 255.77092170715332
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 620216053,
+   "lag_ms": 201.5237808227539,
+   "per_instance_ms": {
+    "http://localhost:18190": 184.71598625183105,
+    "http://localhost:18191": 201.5237808227539
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000059,
+   "lag_ms": 284.21616554260254,
+   "per_instance_ms": {
+    "http://localhost:18190": 265.8991813659668,
+    "http://localhost:18191": 284.21616554260254
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000016,
+   "lag_ms": 194.86427307128906,
+   "per_instance_ms": {
+    "http://localhost:18190": 179.64720726013184,
+    "http://localhost:18191": 194.86427307128906
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000024,
+   "lag_ms": 345.2622890472412,
+   "per_instance_ms": {
+    "http://localhost:18191": 270.19214630126953,
+    "http://localhost:18190": 345.2622890472412
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 760074001,
+   "lag_ms": 80.24215698242188,
+   "per_instance_ms": {
+    "http://localhost:18190": 73.883056640625,
+    "http://localhost:18191": 80.24215698242188
+   }
+  },
+  {
+   "kind": "price",
+   "id": 654108002,
+   "lag_ms": 156.65698051452637,
+   "per_instance_ms": {
+    "http://localhost:18190": 148.0700969696045,
+    "http://localhost:18191": 156.65698051452637
+   }
+  },
+  {
+   "kind": "price",
+   "id": 698111003,
+   "lag_ms": 374.67503547668457,
+   "per_instance_ms": {
+    "http://localhost:18190": 363.2688522338867,
+    "http://localhost:18191": 374.67503547668457
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 607394002,
+   "lag_ms": 228.6508083343506,
+   "per_instance_ms": {
+    "http://localhost:18190": 209.8557949066162,
+    "http://localhost:18191": 228.6508083343506
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000063,
+   "lag_ms": 355.6859493255615,
+   "per_instance_ms": {
+    "http://localhost:18191": 278.9120674133301,
+    "http://localhost:18190": 355.6859493255615
+   }
+  },
+  {
+   "kind": "price",
+   "id": 772934005,
+   "lag_ms": 296.19622230529785,
+   "per_instance_ms": {
+    "http://localhost:18191": 217.08011627197266,
+    "http://localhost:18190": 296.19622230529785
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000014,
+   "lag_ms": 193.526029586792,
+   "per_instance_ms": {
+    "http://localhost:18190": 180.40084838867188,
+    "http://localhost:18191": 193.526029586792
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 452616001,
+   "lag_ms": 299.86095428466797,
+   "per_instance_ms": {
+    "http://localhost:18190": 280.653715133667,
+    "http://localhost:18191": 299.86095428466797
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 828092002,
+   "lag_ms": 345.684289932251,
+   "per_instance_ms": {
+    "http://localhost:18190": 319.54026222229004,
+    "http://localhost:18191": 345.684289932251
+   }
+  },
+  {
+   "kind": "price",
+   "id": 601124001,
+   "lag_ms": 200.69313049316406,
+   "per_instance_ms": {
+    "http://localhost:18191": 122.7409839630127,
+    "http://localhost:18190": 200.69313049316406
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 559080001,
+   "lag_ms": 207.72814750671387,
+   "per_instance_ms": {
+    "http://localhost:18190": 191.53881072998047,
+    "http://localhost:18191": 207.72814750671387
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000078,
+   "lag_ms": 263.3037567138672,
+   "per_instance_ms": {
+    "http://localhost:18190": 248.94189834594727,
+    "http://localhost:18191": 263.3037567138672
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 685974001,
+   "lag_ms": 136.63697242736816,
+   "per_instance_ms": {
+    "http://localhost:18190": 115.53287506103516,
+    "http://localhost:18191": 136.63697242736816
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 727880009,
+   "lag_ms": 394.60182189941406,
+   "per_instance_ms": {
+    "http://localhost:18190": 383.52084159851074,
+    "http://localhost:18191": 394.60182189941406
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000083,
+   "lag_ms": 196.29693031311035,
+   "per_instance_ms": {
+    "http://localhost:18190": 180.32312393188477,
+    "http://localhost:18191": 196.29693031311035
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000072,
+   "lag_ms": 359.3897819519043,
+   "per_instance_ms": {
+    "http://localhost:18190": 345.6728458404541,
+    "http://localhost:18191": 359.3897819519043
+   }
+  },
+  {
+   "kind": "price",
+   "id": 685814035,
+   "lag_ms": 306.4730167388916,
+   "per_instance_ms": {
+    "http://localhost:18190": 298.2330322265625,
+    "http://localhost:18191": 306.4730167388916
+   }
+  },
+  {
+   "kind": "price",
+   "id": 923168002,
+   "lag_ms": 188.19594383239746,
+   "per_instance_ms": {
+    "http://localhost:18190": 175.3559112548828,
+    "http://localhost:18191": 188.19594383239746
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 753751001,
+   "lag_ms": 295.5949306488037,
+   "per_instance_ms": {
+    "http://localhost:18190": 279.1910171508789,
+    "http://localhost:18191": 295.5949306488037
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000054,
+   "lag_ms": 250.89311599731445,
+   "per_instance_ms": {
+    "http://localhost:18191": 186.19704246520996,
+    "http://localhost:18190": 250.89311599731445
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 696744001,
+   "lag_ms": 111.74392700195312,
+   "per_instance_ms": {
+    "http://localhost:18190": 95.36314010620117,
+    "http://localhost:18191": 111.74392700195312
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 609592003,
+   "lag_ms": 243.13998222351074,
+   "per_instance_ms": {
+    "http://localhost:18190": 219.30789947509766,
+    "http://localhost:18191": 243.13998222351074
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 573150001,
+   "lag_ms": 341.4318561553955,
+   "per_instance_ms": {
+    "http://localhost:18190": 325.8230686187744,
+    "http://localhost:18191": 341.4318561553955
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000097,
+   "lag_ms": 209.08808708190918,
+   "per_instance_ms": {
+    "http://localhost:18190": 190.25683403015137,
+    "http://localhost:18191": 209.08808708190918
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 881570001,
+   "lag_ms": 328.2959461212158,
+   "per_instance_ms": {
+    "http://localhost:18191": 242.00987815856934,
+    "http://localhost:18190": 328.2959461212158
+   }
+  },
+  {
+   "kind": "price",
+   "id": 631536013,
+   "lag_ms": 437.1020793914795,
+   "per_instance_ms": {
+    "http://localhost:18190": 413.8751029968262,
+    "http://localhost:18191": 437.1020793914795
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 580085003,
+   "lag_ms": 323.22096824645996,
+   "per_instance_ms": {
+    "http://localhost:18190": 303.41100692749023,
+    "http://localhost:18191": 323.22096824645996
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 797862002,
+   "lag_ms": 292.0100688934326,
+   "per_instance_ms": {
+    "http://localhost:18190": 276.2420177459717,
+    "http://localhost:18191": 292.0100688934326
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000053,
+   "lag_ms": 203.0642032623291,
+   "per_instance_ms": {
+    "http://localhost:18190": 186.11812591552734,
+    "http://localhost:18191": 203.0642032623291
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 487050003,
+   "lag_ms": 281.264066696167,
+   "per_instance_ms": {
+    "http://localhost:18190": 257.1530342102051,
+    "http://localhost:18191": 281.264066696167
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 821648009,
+   "lag_ms": 135.9851360321045,
+   "per_instance_ms": {
+    "http://localhost:18190": 112.01715469360352,
+    "http://localhost:18191": 135.9851360321045
+   }
+  },
+  {
+   "kind": "price",
+   "id": 748765002,
+   "lag_ms": 392.0109272003174,
+   "per_instance_ms": {
+    "http://localhost:18190": 380.92803955078125,
+    "http://localhost:18191": 392.0109272003174
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000088,
+   "lag_ms": 210.6029987335205,
+   "per_instance_ms": {
+    "http://localhost:18190": 190.59300422668457,
+    "http://localhost:18191": 210.6029987335205
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 617063002,
+   "lag_ms": 279.37793731689453,
+   "per_instance_ms": {
+    "http://localhost:18190": 265.26904106140137,
+    "http://localhost:18191": 279.37793731689453
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 804735007,
+   "lag_ms": 386.78812980651855,
+   "per_instance_ms": {
+    "http://localhost:18190": 361.7830276489258,
+    "http://localhost:18191": 386.78812980651855
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 732874001,
+   "lag_ms": 346.65799140930176,
+   "per_instance_ms": {
+    "http://localhost:18191": 265.18702507019043,
+    "http://localhost:18190": 346.65799140930176
+   }
+  },
+  {
+   "kind": "price",
+   "id": 731142002,
+   "lag_ms": 299.10969734191895,
+   "per_instance_ms": {
+    "http://localhost:18190": 284.55185890197754,
+    "http://localhost:18191": 299.10969734191895
+   }
+  },
+  {
+   "kind": "price",
+   "id": 800820001,
+   "lag_ms": 224.31302070617676,
+   "per_instance_ms": {
+    "http://localhost:18191": 164.03603553771973,
+    "http://localhost:18190": 224.31302070617676
+   }
+  },
+  {
+   "kind": "price",
+   "id": 685101001,
+   "lag_ms": 373.244047164917,
+   "per_instance_ms": {
+    "http://localhost:18191": 313.20810317993164,
+    "http://localhost:18190": 373.244047164917
+   }
+  },
+  {
+   "kind": "price",
+   "id": 892446001,
+   "lag_ms": 290.632963180542,
+   "per_instance_ms": {
+    "http://localhost:18191": 219.3436622619629,
+    "http://localhost:18190": 290.632963180542
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000011,
+   "lag_ms": 283.0939292907715,
+   "per_instance_ms": {
+    "http://localhost:18190": 263.8547420501709,
+    "http://localhost:18191": 283.0939292907715
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000093,
+   "lag_ms": 380.2628517150879,
+   "per_instance_ms": {
+    "http://localhost:18190": 361.04798316955566,
+    "http://localhost:18191": 380.2628517150879
+   }
+  },
+  {
+   "kind": "price",
+   "id": 249136011,
+   "lag_ms": 437.8690719604492,
+   "per_instance_ms": {
+    "http://localhost:18191": 359.45701599121094,
+    "http://localhost:18190": 437.8690719604492
+   }
+  },
+  {
+   "kind": "price",
+   "id": 722557001,
+   "lag_ms": 190.60087203979492,
+   "per_instance_ms": {
+    "http://localhost:18191": 112.02096939086914,
+    "http://localhost:18190": 190.60087203979492
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 556044001,
+   "lag_ms": 338.6268615722656,
+   "per_instance_ms": {
+    "http://localhost:18190": 320.0869560241699,
+    "http://localhost:18191": 338.6268615722656
+   }
+  },
+  {
+   "kind": "price",
+   "id": 721828001,
+   "lag_ms": 239.44497108459473,
+   "per_instance_ms": {
+    "http://localhost:18190": 218.0652618408203,
+    "http://localhost:18191": 239.44497108459473
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 860477002,
+   "lag_ms": 153.40280532836914,
+   "per_instance_ms": {
+    "http://localhost:18190": 132.87901878356934,
+    "http://localhost:18191": 153.40280532836914
+   }
+  },
+  {
+   "kind": "price",
+   "id": 636587004,
+   "lag_ms": 254.26101684570312,
+   "per_instance_ms": {
+    "http://localhost:18190": 237.7297878265381,
+    "http://localhost:18191": 254.26101684570312
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 678715002,
+   "lag_ms": 297.2369194030762,
+   "per_instance_ms": {
+    "http://localhost:18190": 275.4089832305908,
+    "http://localhost:18191": 297.2369194030762
+   }
+  },
+  {
+   "kind": "price",
+   "id": 695421021,
+   "lag_ms": 245.04804611206055,
+   "per_instance_ms": {
+    "http://localhost:18190": 231.09102249145508,
+    "http://localhost:18191": 245.04804611206055
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000008,
+   "lag_ms": 352.02717781066895,
+   "per_instance_ms": {
+    "http://localhost:18190": 109.75909233093262,
+    "http://localhost:18191": 352.02717781066895
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 873093016,
+   "lag_ms": 391.876220703125,
+   "per_instance_ms": {
+    "http://localhost:18190": 209.66601371765137,
+    "http://localhost:18191": 391.876220703125
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000068,
+   "lag_ms": 215.67320823669434,
+   "per_instance_ms": {
+    "http://localhost:18190": 197.91626930236816,
+    "http://localhost:18191": 215.67320823669434
+   }
+  },
+  {
+   "kind": "price",
+   "id": 678253001,
+   "lag_ms": 314.2368793487549,
+   "per_instance_ms": {
+    "http://localhost:18190": 130.57994842529297,
+    "http://localhost:18191": 314.2368793487549
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000038,
+   "lag_ms": 121.93989753723145,
+   "per_instance_ms": {
+    "http://localhost:18190": 106.03499412536621,
+    "http://localhost:18191": 121.93989753723145
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 826508006,
+   "lag_ms": 275.6221294403076,
+   "per_instance_ms": {
+    "http://localhost:18190": 248.57616424560547,
+    "http://localhost:18191": 275.6221294403076
+   }
+  },
+  {
+   "kind": "price",
+   "id": 933032003,
+   "lag_ms": 216.30120277404785,
+   "per_instance_ms": {
+    "http://localhost:18191": 145.54405212402344,
+    "http://localhost:18190": 216.30120277404785
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000013,
+   "lag_ms": 115.04912376403809,
+   "per_instance_ms": {
+    "http://localhost:18190": 100.58808326721191,
+    "http://localhost:18191": 115.04912376403809
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 694968014,
+   "lag_ms": 292.633056640625,
+   "per_instance_ms": {
+    "http://localhost:18190": 275.74610710144043,
+    "http://localhost:18191": 292.633056640625
+   }
+  },
+  {
+   "kind": "price",
+   "id": 866503004,
+   "lag_ms": 241.96791648864746,
+   "per_instance_ms": {
+    "http://localhost:18190": 231.1079502105713,
+    "http://localhost:18191": 241.96791648864746
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000069,
+   "lag_ms": 195.1439380645752,
+   "per_instance_ms": {
+    "http://localhost:18190": 180.1760196685791,
+    "http://localhost:18191": 195.1439380645752
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 624383009,
+   "lag_ms": 343.13106536865234,
+   "per_instance_ms": {
+    "http://localhost:18191": 276.4310836791992,
+    "http://localhost:18190": 343.13106536865234
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000010,
+   "lag_ms": 112.37406730651855,
+   "per_instance_ms": {
+    "http://localhost:18190": 96.37594223022461,
+    "http://localhost:18191": 112.37406730651855
+   }
+  },
+  {
+   "kind": "price",
+   "id": 879307001,
+   "lag_ms": 224.69091415405273,
+   "per_instance_ms": {
+    "http://localhost:18190": 205.21092414855957,
+    "http://localhost:18191": 224.69091415405273
+   }
+  },
+  {
+   "kind": "price",
+   "id": 717727002,
+   "lag_ms": 301.1929988861084,
+   "per_instance_ms": {
+    "http://localhost:18191": 234.72285270690918,
+    "http://localhost:18190": 301.1929988861084
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 824299001,
+   "lag_ms": 211.84372901916504,
+   "per_instance_ms": {
+    "http://localhost:18190": 188.96985054016113,
+    "http://localhost:18191": 211.84372901916504
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000037,
+   "lag_ms": 188.5080337524414,
+   "per_instance_ms": {
+    "http://localhost:18191": 114.79997634887695,
+    "http://localhost:18190": 188.5080337524414
+   }
+  },
+  {
+   "kind": "price",
+   "id": 704029003,
+   "lag_ms": 288.5410785675049,
+   "per_instance_ms": {
+    "http://localhost:18190": 275.36797523498535,
+    "http://localhost:18191": 288.5410785675049
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 318951024,
+   "lag_ms": 345.9601402282715,
+   "per_instance_ms": {
+    "http://localhost:18190": 324.8319625854492,
+    "http://localhost:18191": 345.9601402282715
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 554821001,
+   "lag_ms": 203.72509956359863,
+   "per_instance_ms": {
+    "http://localhost:18190": 188.53282928466797,
+    "http://localhost:18191": 203.72509956359863
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000049,
+   "lag_ms": 102.5390625,
+   "per_instance_ms": {
+    "http://localhost:18190": 90.36803245544434,
+    "http://localhost:18191": 102.5390625
+   }
+  },
+  {
+   "kind": "price",
+   "id": 625543001,
+   "lag_ms": 159.40618515014648,
+   "per_instance_ms": {
+    "http://localhost:18191": 92.1170711517334,
+    "http://localhost:18190": 159.40618515014648
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000023,
+   "lag_ms": 264.293909072876,
+   "per_instance_ms": {
+    "http://localhost:18191": 190.85383415222168,
+    "http://localhost:18190": 264.293909072876
+   }
+  },
+  {
+   "kind": "price",
+   "id": 738924001,
+   "lag_ms": 279.06012535095215,
+   "per_instance_ms": {
+    "http://localhost:18190": 266.08800888061523,
+    "http://localhost:18191": 279.06012535095215
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000017,
+   "lag_ms": 254.42814826965332,
+   "per_instance_ms": {
+    "http://localhost:18190": 241.13821983337402,
+    "http://localhost:18191": 254.42814826965332
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 716225001,
+   "lag_ms": 188.46487998962402,
+   "per_instance_ms": {
+    "http://localhost:18191": 120.15986442565918,
+    "http://localhost:18190": 188.46487998962402
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 738770002,
+   "lag_ms": 252.32505798339844,
+   "per_instance_ms": {
+    "http://localhost:18191": 159.93499755859375,
+    "http://localhost:18190": 252.32505798339844
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 767423013,
+   "lag_ms": 215.3029441833496,
+   "per_instance_ms": {
+    "http://localhost:18190": 182.1589469909668,
+    "http://localhost:18191": 215.3029441833496
+   }
+  },
+  {
+   "kind": "price",
+   "id": 796704003,
+   "lag_ms": 317.81792640686035,
+   "per_instance_ms": {
+    "http://localhost:18191": 250.47802925109863,
+    "http://localhost:18190": 317.81792640686035
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000004,
+   "lag_ms": 109.42316055297852,
+   "per_instance_ms": {
+    "http://localhost:18190": 92.75317192077637,
+    "http://localhost:18191": 109.42316055297852
+   }
+  },
+  {
+   "kind": "price",
+   "id": 215337066,
+   "lag_ms": 370.40209770202637,
+   "per_instance_ms": {
+    "http://localhost:18191": 305.3629398345947,
+    "http://localhost:18190": 370.40209770202637
+   }
+  },
+  {
+   "kind": "price",
+   "id": 421387036,
+   "lag_ms": 276.9968509674072,
+   "per_instance_ms": {
+    "http://localhost:18191": 212.65673637390137,
+    "http://localhost:18190": 276.9968509674072
+   }
+  },
+  {
+   "kind": "price",
+   "id": 528931002,
+   "lag_ms": 178.69281768798828,
+   "per_instance_ms": {
+    "http://localhost:18191": 112.71190643310547,
+    "http://localhost:18190": 178.69281768798828
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000021,
+   "lag_ms": 188.75908851623535,
+   "per_instance_ms": {
+    "http://localhost:18190": 173.02918434143066,
+    "http://localhost:18191": 188.75908851623535
+   }
+  },
+  {
+   "kind": "price",
+   "id": 767449002,
+   "lag_ms": 322.27301597595215,
+   "per_instance_ms": {
+    "http://localhost:18190": 311.9480609893799,
+    "http://localhost:18191": 322.27301597595215
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000034,
+   "lag_ms": 285.13312339782715,
+   "per_instance_ms": {
+    "http://localhost:18190": 270.7979679107666,
+    "http://localhost:18191": 285.13312339782715
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 819509001,
+   "lag_ms": 233.67929458618164,
+   "per_instance_ms": {
+    "http://localhost:18191": 151.45397186279297,
+    "http://localhost:18190": 233.67929458618164
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000050,
+   "lag_ms": 107.00607299804688,
+   "per_instance_ms": {
+    "http://localhost:18190": 91.44401550292969,
+    "http://localhost:18191": 107.00607299804688
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 609401001,
+   "lag_ms": 207.31306076049805,
+   "per_instance_ms": {
+    "http://localhost:18190": 190.83595275878906,
+    "http://localhost:18191": 207.31306076049805
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000051,
+   "lag_ms": 262.62497901916504,
+   "per_instance_ms": {
+    "http://localhost:18190": 248.28577041625977,
+    "http://localhost:18191": 262.62497901916504
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000084,
+   "lag_ms": 358.0279350280762,
+   "per_instance_ms": {
+    "http://localhost:18190": 342.3597812652588,
+    "http://localhost:18191": 358.0279350280762
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 717484003,
+   "lag_ms": 414.93821144104004,
+   "per_instance_ms": {
+    "http://localhost:18191": 341.3980007171631,
+    "http://localhost:18190": 414.93821144104004
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 872511002,
+   "lag_ms": 210.0660800933838,
+   "per_instance_ms": {
+    "http://localhost:18191": 135.5741024017334,
+    "http://localhost:18190": 210.0660800933838
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000000,
+   "lag_ms": 196.8247890472412,
+   "per_instance_ms": {
+    "http://localhost:18190": 180.53197860717773,
+    "http://localhost:18191": 196.8247890472412
+   }
+  },
+  {
+   "kind": "price",
+   "id": 783346024,
+   "lag_ms": 298.05803298950195,
+   "per_instance_ms": {
+    "http://localhost:18190": 285.8738899230957,
+    "http://localhost:18191": 298.05803298950195
+   }
+  },
+  {
+   "kind": "price",
+   "id": 567291001,
+   "lag_ms": 347.3649024963379,
+   "per_instance_ms": {
+    "http://localhost:18190": 331.8510055541992,
+    "http://localhost:18191": 347.3649024963379
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000031,
+   "lag_ms": 260.7848644256592,
+   "per_instance_ms": {
+    "http://localhost:18191": 192.45481491088867,
+    "http://localhost:18190": 260.7848644256592
+   }
+  },
+  {
+   "kind": "price",
+   "id": 725707001,
+   "lag_ms": 406.6030979156494,
+   "per_instance_ms": {
+    "http://localhost:18190": 380.5959224700928,
+    "http://localhost:18191": 406.6030979156494
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 897568001,
+   "lag_ms": 220.23987770080566,
+   "per_instance_ms": {
+    "http://localhost:18190": 193.3000087738037,
+    "http://localhost:18191": 220.23987770080566
+   }
+  },
+  {
+   "kind": "price",
+   "id": 624633003,
+   "lag_ms": 173.98405075073242,
+   "per_instance_ms": {
+    "http://localhost:18191": 91.8130874633789,
+    "http://localhost:18190": 173.98405075073242
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 766450005,
+   "lag_ms": 278.63121032714844,
+   "per_instance_ms": {
+    "http://localhost:18191": 193.74632835388184,
+    "http://localhost:18190": 278.63121032714844
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 706582002,
+   "lag_ms": 380.40995597839355,
+   "per_instance_ms": {
+    "http://localhost:18191": 296.04315757751465,
+    "http://localhost:18190": 380.40995597839355
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 827487004,
+   "lag_ms": 346.2681770324707,
+   "per_instance_ms": {
+    "http://localhost:18190": 321.12908363342285,
+    "http://localhost:18191": 346.2681770324707
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000060,
+   "lag_ms": 291.86320304870605,
+   "per_instance_ms": {
+    "http://localhost:18190": 276.86619758605957,
+    "http://localhost:18191": 291.86320304870605
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000071,
+   "lag_ms": 197.11899757385254,
+   "per_instance_ms": {
+    "http://localhost:18190": 183.55679512023926,
+    "http://localhost:18191": 197.11899757385254
+   }
+  },
+  {
+   "kind": "price",
+   "id": 775715004,
+   "lag_ms": 388.04101943969727,
+   "per_instance_ms": {
+    "http://localhost:18191": 318.0532455444336,
+    "http://localhost:18190": 388.04101943969727
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000006,
+   "lag_ms": 295.05395889282227,
+   "per_instance_ms": {
+    "http://localhost:18191": 212.54396438598633,
+    "http://localhost:18190": 295.05395889282227
+   }
+  },
+  {
+   "kind": "price",
+   "id": 829502002,
+   "lag_ms": 141.2069797515869,
+   "per_instance_ms": {
+    "http://localhost:18190": 122.17998504638672,
+    "http://localhost:18191": 141.2069797515869
+   }
+  },
+  {
+   "kind": "price",
+   "id": 783056001,
+   "lag_ms": 396.57020568847656,
+   "per_instance_ms": {
+    "http://localhost:18191": 315.23823738098145,
+    "http://localhost:18190": 396.57020568847656
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 565292019,
+   "lag_ms": 304.2161464691162,
+   "per_instance_ms": {
+    "http://localhost:18190": 283.04219245910645,
+    "http://localhost:18191": 304.2161464691162
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000028,
+   "lag_ms": 353.44886779785156,
+   "per_instance_ms": {
+    "http://localhost:18190": 333.8611125946045,
+    "http://localhost:18191": 353.44886779785156
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 408884002,
+   "lag_ms": 479.45189476013184,
+   "per_instance_ms": {
+    "http://localhost:18190": 451.82085037231445,
+    "http://localhost:18191": 479.45189476013184
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000002,
+   "lag_ms": 282.2427749633789,
+   "per_instance_ms": {
+    "http://localhost:18190": 262.67170906066895,
+    "http://localhost:18191": 282.2427749633789
+   }
+  },
+  {
+   "kind": "price",
+   "id": 312543001,
+   "lag_ms": 284.87300872802734,
+   "per_instance_ms": {
+    "http://localhost:18190": 270.7819938659668,
+    "http://localhost:18191": 284.87300872802734
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000022,
+   "lag_ms": 344.1610336303711,
+   "per_instance_ms": {
+    "http://localhost:18190": 327.70466804504395,
+    "http://localhost:18191": 344.1610336303711
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 839332003,
+   "lag_ms": 261.28697395324707,
+   "per_instance_ms": {
+    "http://localhost:18190": 233.22796821594238,
+    "http://localhost:18191": 261.28697395324707
+   }
+  },
+  {
+   "kind": "price",
+   "id": 908365001,
+   "lag_ms": 297.73902893066406,
+   "per_instance_ms": {
+    "http://localhost:18191": 220.14617919921875,
+    "http://localhost:18190": 297.73902893066406
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000044,
+   "lag_ms": 285.34698486328125,
+   "per_instance_ms": {
+    "http://localhost:18190": 271.18372917175293,
+    "http://localhost:18191": 285.34698486328125
+   }
+  },
+  {
+   "kind": "price",
+   "id": 573652003,
+   "lag_ms": 196.46406173706055,
+   "per_instance_ms": {
+    "http://localhost:18190": 183.14313888549805,
+    "http://localhost:18191": 196.46406173706055
+   }
+  },
+  {
+   "kind": "price",
+   "id": 832926001,
+   "lag_ms": 159.45720672607422,
+   "per_instance_ms": {
+    "http://localhost:18190": 151.5812873840332,
+    "http://localhost:18191": 159.45720672607422
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 577425002,
+   "lag_ms": 370.8457946777344,
+   "per_instance_ms": {
+    "http://localhost:18190": 125.65279006958008,
+    "http://localhost:18191": 370.8457946777344
+   }
+  },
+  {
+   "kind": "price",
+   "id": 630391006,
+   "lag_ms": 440.43803215026855,
+   "per_instance_ms": {
+    "http://localhost:18190": 206.20012283325195,
+    "http://localhost:18191": 440.43803215026855
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 612334004,
+   "lag_ms": 295.52721977233887,
+   "per_instance_ms": {
+    "http://localhost:18190": 283.3573818206787,
+    "http://localhost:18191": 295.52721977233887
+   }
+  },
+  {
+   "kind": "price",
+   "id": 659699001,
+   "lag_ms": 272.9449272155762,
+   "per_instance_ms": {
+    "http://localhost:18190": 253.5078525543213,
+    "http://localhost:18191": 272.9449272155762
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 669256001,
+   "lag_ms": 210.40701866149902,
+   "per_instance_ms": {
+    "http://localhost:18190": 196.86388969421387,
+    "http://localhost:18191": 210.40701866149902
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000052,
+   "lag_ms": 377.43115425109863,
+   "per_instance_ms": {
+    "http://localhost:18191": 305.0529956817627,
+    "http://localhost:18190": 377.43115425109863
+   }
+  },
+  {
+   "kind": "price",
+   "id": 857812002,
+   "lag_ms": 424.44586753845215,
+   "per_instance_ms": {
+    "http://localhost:18191": 359.9410057067871,
+    "http://localhost:18190": 424.44586753845215
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000032,
+   "lag_ms": 296.16594314575195,
+   "per_instance_ms": {
+    "http://localhost:18191": 224.7779369354248,
+    "http://localhost:18190": 296.16594314575195
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000067,
+   "lag_ms": 342.33999252319336,
+   "per_instance_ms": {
+    "http://localhost:18190": 125.79703330993652,
+    "http://localhost:18191": 342.33999252319336
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000026,
+   "lag_ms": 275.15602111816406,
+   "per_instance_ms": {
+    "http://localhost:18190": 261.87705993652344,
+    "http://localhost:18191": 275.15602111816406
+   }
+  },
+  {
+   "kind": "price",
+   "id": 838857001,
+   "lag_ms": 237.10012435913086,
+   "per_instance_ms": {
+    "http://localhost:18190": 227.21004486083984,
+    "http://localhost:18191": 237.10012435913086
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 596877001,
+   "lag_ms": 209.0930938720703,
+   "per_instance_ms": {
+    "http://localhost:18190": 192.28482246398926,
+    "http://localhost:18191": 209.0930938720703
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000056,
+   "lag_ms": 372.93386459350586,
+   "per_instance_ms": {
+    "http://localhost:18191": 297.50990867614746,
+    "http://localhost:18190": 372.93386459350586
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000080,
+   "lag_ms": 184.15594100952148,
+   "per_instance_ms": {
+    "http://localhost:18191": 108.34002494812012,
+    "http://localhost:18190": 184.15594100952148
+   }
+  },
+  {
+   "kind": "price",
+   "id": 462435027,
+   "lag_ms": 184.79061126708984,
+   "per_instance_ms": {
+    "http://localhost:18190": 173.22683334350586,
+    "http://localhost:18191": 184.79061126708984
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 523558004,
+   "lag_ms": 306.6980838775635,
+   "per_instance_ms": {
+    "http://localhost:18190": 289.7648811340332,
+    "http://localhost:18191": 306.6980838775635
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000086,
+   "lag_ms": 259.415864944458,
+   "per_instance_ms": {
+    "http://localhost:18191": 190.76299667358398,
+    "http://localhost:18190": 259.415864944458
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 836286002,
+   "lag_ms": 117.45405197143555,
+   "per_instance_ms": {
+    "http://localhost:18190": 101.90987586975098,
+    "http://localhost:18191": 117.45405197143555
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000020,
+   "lag_ms": 171.93293571472168,
+   "per_instance_ms": {
+    "http://localhost:18191": 107.05804824829102,
+    "http://localhost:18190": 171.93293571472168
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 767573001,
+   "lag_ms": 371.98495864868164,
+   "per_instance_ms": {
+    "http://localhost:18191": 313.5559558868408,
+    "http://localhost:18190": 371.98495864868164
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000041,
+   "lag_ms": 272.0651626586914,
+   "per_instance_ms": {
+    "http://localhost:18190": 254.07695770263672,
+    "http://localhost:18191": 272.0651626586914
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 694473001,
+   "lag_ms": 246.77395820617676,
+   "per_instance_ms": {
+    "http://localhost:18190": 222.62096405029297,
+    "http://localhost:18191": 246.77395820617676
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 773374001,
+   "lag_ms": 197.18503952026367,
+   "per_instance_ms": {
+    "http://localhost:18190": 161.452054977417,
+    "http://localhost:18191": 197.18503952026367
+   }
+  },
+  {
+   "kind": "price",
+   "id": 485678032,
+   "lag_ms": 345.5338478088379,
+   "per_instance_ms": {
+    "http://localhost:18191": 275.01416206359863,
+    "http://localhost:18190": 345.5338478088379
+   }
+  },
+  {
+   "kind": "price",
+   "id": 568505002,
+   "lag_ms": 91.68100357055664,
+   "per_instance_ms": {
+    "http://localhost:18190": 84.44690704345703,
+    "http://localhost:18191": 91.68100357055664
+   }
+  },
+  {
+   "kind": "price",
+   "id": 762033001,
+   "lag_ms": 158.47086906433105,
+   "per_instance_ms": {
+    "http://localhost:18190": 149.01971817016602,
+    "http://localhost:18191": 158.47086906433105
+   }
+  },
+  {
+   "kind": "price",
+   "id": 733784001,
+   "lag_ms": 371.9007968902588,
+   "per_instance_ms": {
+    "http://localhost:18190": 352.8027534484863,
+    "http://localhost:18191": 371.9007968902588
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000095,
+   "lag_ms": 293.7142848968506,
+   "per_instance_ms": {
+    "http://localhost:18190": 270.1413631439209,
+    "http://localhost:18191": 293.7142848968506
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000003,
+   "lag_ms": 352.4479866027832,
+   "per_instance_ms": {
+    "http://localhost:18191": 276.22008323669434,
+    "http://localhost:18190": 352.4479866027832
+   }
+  },
+  {
+   "kind": "insert",
+   "id": 9000000070,
+   "lag_ms": 263.15999031066895,
+   "per_instance_ms": {
+    "http://localhost:18191": 194.92793083190918,
+    "http://localhost:18190": 263.15999031066895
+   }
+  },
+  {
+   "kind": "stock",
+   "id": 716191001,
+   "lag_ms": 353.1820774078369,
+   "per_instance_ms": {
+    "http://localhost:18191": 279.7360420227051,
+    "http://localhost:18190": 353.1820774078369
+   }
+  }
+ ]
+}

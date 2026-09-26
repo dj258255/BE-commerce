@@ -1,0 +1,14 @@
+398.5 0.6 00:01 java
+132.1 6.1 05-08:02:57 com.apple.Virtualization.VirtualMachine
+99.6 0.0 01-03:06:21 zsh
+64.7 0.2 01:08:34 duetexpertd
+26.5 0.3 06-16:48:24 WindowServer
+23.7 0.1 00:07 biomesyncd
+15.2 0.6 06-16:48:16 KakaoTalk
+10.7 0.4 01-01:03:38 Claude
+9.0 1.2 06-16:48:16 Google
+8.9 0.0 17:22:51 BiomeAgent
+7.4 0.1 04-10:10:07 Webex
+5.8 0.1 06-16:48:08 ReportCrash
+Load Avg: 130.25, 98.79, 72.38 
+CPU usage: 68.89% user, 21.40% sys, 9.70% idle 

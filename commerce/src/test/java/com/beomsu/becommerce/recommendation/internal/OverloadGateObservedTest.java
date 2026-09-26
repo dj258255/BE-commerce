@@ -53,4 +53,26 @@ class OverloadGateObservedTest {
         }
         assertThat(g.estimatedWaitMs(7)).isEqualTo(50.0);
     }
+
+    @Test
+    @DisplayName("창이 짧으면 용량이 바뀐 뒤 옛 처리량을 더 빨리 잊는다(#339)")
+    void shorterWindowForgetsOldThroughputSooner() {
+        OverloadGate shortWindow = new OverloadGate(OverloadPolicy.ADMISSION, 24, 100, 4, 50, 12, GenerationScope.RANKING, 4, 15,
+                OverloadGate.AdmissionEstimate.OBSERVED, now::get, 500);
+        OverloadGate longWindow = gate(OverloadGate.AdmissionEstimate.OBSERVED);
+        for (int i = 0; i < 400; i++) {                                // 2초 동안 200/s
+            now.addAndGet(5);
+            shortWindow.completed();
+            longWindow.completed();
+        }
+        for (int i = 0; i < 100; i++) {                                // 용량이 절반(100/s)으로 떨어진 뒤 1초
+            now.addAndGet(10);
+            shortWindow.completed();
+            longWindow.completed();
+        }
+        // 0.5초 창은 이미 100/s 만 본다. 2초 창은 아직 옛 200/s 가 절반 섞여 대기를 작게 본다.
+        // 지금 칸은 반쯤 찬 채로 세므로 칸이 5개뿐인 짧은 창은 최대 한 칸(20%)만큼 적게 본다
+        assertThat(shortWindow.observedThroughputPerMs()).isBetween(0.078, 0.105);
+        assertThat(longWindow.observedThroughputPerMs()).isGreaterThan(0.13);
+    }
 }

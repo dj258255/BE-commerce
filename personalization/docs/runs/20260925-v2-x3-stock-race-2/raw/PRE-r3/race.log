@@ -1,0 +1,6 @@
+사용자 8명 · http://localhost:18080 · 홈 8.0/s · 60초 · 모드 PRE
+워밍업 8초 — 128요청(측정에서 뺀다)
+품절 주입 시작 rate=3.0/s · state=personalization/docs/runs/20260925-v2-x3-stock-race-2/raw/PRE-r3/sellout-state.json
+응답 시점 품절 노출률 0.23% (30/13200) · 품절 후보 적중률 11.63% (1535/13200) · 60초 품절 100.00% (36/36)
+홈 p95 207.6ms · 규칙 행 폴백 0.00% · 조회 0.50회/6.40ms · 뺀 항목 22.72
+원자료: personalization/docs/runs/20260925-v2-x3-stock-race-2/raw/PRE-r3/race.json (요청 960 · 오류 0)

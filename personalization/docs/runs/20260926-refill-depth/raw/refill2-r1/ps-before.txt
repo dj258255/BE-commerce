@@ -1,0 +1,14 @@
+98.7 0.0 01-06:07:52 zsh
+25.8 6.1 05-11:04:28 com.apple.Virtualization.VirtualMachine
+15.9 0.2 06-19:49:55 WindowServer
+10.4 0.1 04-13:11:38 Webex
+7.1 1.2 03-05:58:02 claude
+5.7 0.2 06-19:49:47 ghostty
+5.1 0.3 03-18:13:12 Telegram
+4.8 1.0 03:18:34 Google
+4.3 0.2 06-19:49:37 NotificationCenter
+4.2 1.4 01-05:21:34 claude
+2.5 0.1 06-17:50:09 Codex
+2.1 1.2 06-05:48:42 com.docker.backend
+Load Avg: 3.59, 7.30, 9.16 
+CPU usage: 15.5% user, 14.15% sys, 70.78% idle 

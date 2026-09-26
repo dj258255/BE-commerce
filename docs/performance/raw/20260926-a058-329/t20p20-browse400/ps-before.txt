@@ -1,0 +1,14 @@
+474.2 2.1 00:14 java
+123.9 6.8 05-07:52:39 com.apple.Virtualization.VirtualMachine
+97.8 0.0 01-02:56:03 zsh
+22.5 0.3 06-16:38:06 WindowServer
+19.2 0.4 06-16:37:58 ghostty
+7.4 0.1 04-09:59:49 Webex
+3.9 0.5 03-15:01:23 Telegram
+3.6 1.5 01-02:09:45 claude
+3.4 0.1 06-16:37:50 ReportCrash
+3.4 0.0 06-16:38:07 fseventsd
+2.6 0.1 06-16:36:28 Stats
+2.4 0.0 06-16:32:19 Input
+Load Avg: 95.74, 73.05, 43.62 
+CPU usage: 59.27% user, 19.48% sys, 21.23% idle 

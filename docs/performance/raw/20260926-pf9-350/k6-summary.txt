@@ -1,0 +1,60 @@
+step_700  ✓ [ 100% ] 0000/0400 VUs  1m0s          700.00 iters/s
+step_1000   [  98% ] 1498/1500 VUs  0m58.7s/1m0s  1000.00 iters/s
+step_50   ✓ [ 100% ] 0000/0050 VUs  1m0s          50.00 iters/s
+step_100  ✓ [ 100% ] 0000/0100 VUs  1m0s          100.00 iters/s
+step_200  ✓ [ 100% ] 0000/0200 VUs  1m0s          200.00 iters/s
+step_400  ✓ [ 100% ] 0000/0400 VUs  1m0s          400.00 iters/s
+step_700  ✓ [ 100% ] 0000/0400 VUs  1m0s          700.00 iters/s
+step_1000   [ 100% ] 1500/1500 VUs  0m59.7s/1m0s  1000.00 iters/s
+step_50   ✓ [ 100% ] 0000/0050 VUs  1m0s  50.00 iters/s
+step_100  ✓ [ 100% ] 0000/0100 VUs  1m0s  100.00 iters/s
+step_200  ✓ [ 100% ] 0000/0200 VUs  1m0s  200.00 iters/s
+step_400  ✓ [ 100% ] 0000/0400 VUs  1m0s  400.00 iters/s
+step_700  ✓ [ 100% ] 0000/0400 VUs  1m0s  700.00 iters/s
+step_1000 ↓ [ 100% ] 1500/1500 VUs  1m0s  1000.00 iters/s
+step_50   ✓ [ 100% ] 0000/0050 VUs  1m0s  50.00 iters/s
+step_100  ✓ [ 100% ] 0000/0100 VUs  1m0s  100.00 iters/s
+step_200  ✓ [ 100% ] 0000/0200 VUs  1m0s  200.00 iters/s
+step_400  ✓ [ 100% ] 0000/0400 VUs  1m0s  400.00 iters/s
+step_700  ✓ [ 100% ] 0000/0400 VUs  1m0s  700.00 iters/s
+step_1000 ↓ [ 100% ] 1500/1500 VUs  1m0s  1000.00 iters/s
+  █ TOTAL RESULTS 
+    CUSTOM
+    ok_at_1000rps..................: 100.00% 43870 out of 43870
+    ok_at_100rps...................: 100.00% 6001 out of 6001
+    ok_at_200rps...................: 100.00% 12000 out of 12000
+    ok_at_400rps...................: 100.00% 24000 out of 24000
+    ok_at_50rps....................: 100.00% 3000 out of 3000
+    ok_at_700rps...................: 100.00% 42001 out of 42001
+    p95_at_1000rps.................: med=2.06s   p(95)=2.28s    p(99)=2.38s    max=2.67s   
+    p95_at_100rps..................: med=10.68ms p(95)=13.77ms  p(99)=18.14ms  max=54.13ms 
+    p95_at_200rps..................: med=12.1ms  p(95)=16.21ms  p(99)=21.56ms  max=46.27ms 
+    p95_at_400rps..................: med=16.86ms p(95)=26.86ms  p(99)=63.45ms  max=347.38ms
+    p95_at_50rps...................: med=11.34ms p(95)=13.83ms  p(99)=17.44ms  max=33.22ms 
+    p95_at_700rps..................: med=33.76ms p(95)=181.45ms p(99)=221.57ms max=473.5ms 
+    reqs_at_1000rps................: 43870   113.340434/s
+    reqs_at_100rps.................: 6001    15.503897/s
+    reqs_at_200rps.................: 12000   31.002626/s
+    reqs_at_400rps.................: 24000   62.005252/s
+    reqs_at_50rps..................: 3000    7.750657/s
+    reqs_at_700rps.................: 42001   108.511775/s
+    HTTP
+    http_req_duration..............: med=33.75ms p(95)=2.19s    p(99)=2.32s    max=2.67s   
+      { expected_response:true }...: med=33.75ms p(95)=2.19s    p(99)=2.32s    max=2.67s   
+    http_req_failed................: 0.00%   0 out of 130873
+    http_reqs......................: 130873  338.117225/s
+    EXECUTION
+    dropped_iterations.............: 16131   41.67528/s
+    iteration_duration.............: med=33.85ms p(95)=2.19s    p(99)=2.32s    max=2.67s   
+    iterations.....................: 130872  338.114641/s
+    vus............................: 206     min=0              max=1500
+    vus_max........................: 1900    min=800            max=1900
+    NETWORK
+    data_received..................: 255 MB  659 kB/s
+    data_sent......................: 52 MB   135 kB/s
+step_50   ✓ [ 100% ] 0000/0050 VUs  1m0s  50.00 iters/s
+step_100  ✓ [ 100% ] 0000/0100 VUs  1m0s  100.00 iters/s
+step_200  ✓ [ 100% ] 0000/0200 VUs  1m0s  200.00 iters/s
+step_400  ✓ [ 100% ] 0000/0400 VUs  1m0s  400.00 iters/s
+step_700  ✓ [ 100% ] 0000/0400 VUs  1m0s  700.00 iters/s
+step_1000 ✓ [ 100% ] 0000/1500 VUs  1m0s  1000.00 iters/s

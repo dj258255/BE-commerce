@@ -1,0 +1,45 @@
+
+
+  █ THRESHOLDS 
+
+    http_req_duration{name:confirm}
+    ✓ 'p(95)<600000' p(95)=5.07s
+
+    http_req_duration{name:webhook}
+    ✓ 'p(95)<600000' p(95)=18.7ms
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 1       0.051565/s
+    checks_succeeded...: 100.00% 1 out of 1
+    checks_failed......: 0.00%   0 out of 1
+
+    ✓ login 200
+
+    CUSTOM
+    browse_2xx.....................: 751    38.725399/s
+    browse_ms......................: avg=31.68ms  min=5.59ms  med=15.03ms max=205.68ms p(90)=78.57ms p(95)=102.53ms
+    webhook_ms.....................: avg=9.4ms    min=4.58ms  med=7.27ms  max=61.05ms  p(90)=16.94ms p(95)=18.7ms  
+    webhook_over_10s...............: 0.00%  0 out of 76
+
+    HTTP
+    http_req_duration..............: avg=559.82ms min=4.58ms  med=14.86ms max=5.15s    p(90)=5.03s   p(95)=5.04s   
+      { expected_response:true }...: avg=574.92ms min=4.58ms  med=14.48ms max=5.15s    p(90)=5.03s   p(95)=5.04s   
+      { name:confirm }.............: avg=4.01s    min=16.35ms med=5.03s   max=5.15s    p(90)=5.06s   p(95)=5.07s   
+      { name:webhook }.............: avg=9.4ms    min=4.58ms  med=7.27ms  max=61.05ms  p(90)=16.94ms p(95)=18.7ms  
+    http_req_failed................: 2.74%  31 out of 1130
+    http_reqs......................: 1130   58.268577/s
+
+    EXECUTION
+    iteration_duration.............: avg=647.03ms min=4.71ms  med=16.32ms max=5.21s    p(90)=5.04s   p(95)=5.05s   
+    iterations.....................: 978    50.43068/s
+    vus............................: 5      min=5          max=45 
+    vus_max........................: 540    min=540        max=540
+
+    NETWORK
+    data_received..................: 3.6 MB 185 kB/s
+    data_sent......................: 264 kB 14 kB/s
+
+
+

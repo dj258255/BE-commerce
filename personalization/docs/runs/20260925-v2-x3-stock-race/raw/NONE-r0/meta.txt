@@ -1,0 +1,8 @@
+mode=NONE
+sellout_rate=0
+users=8
+rate=8
+duration=60
+warmup=8
+model_url=http://localhost:8766
+model_cmd=/private/tmp/claude-501/genpage-venv/bin/python personalization/serving/genpage2_server.py --ckpt /Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/validate/ckpt/b-base-full --mode validate --port 8766 --device cpu

@@ -1,0 +1,14 @@
+140.4 5.9 05-08:15:53 com.apple.Virtualization.VirtualMachine
+100.0 0.0 01-03:19:17 zsh
+90.6 11.6 00:17 Python
+14.8 0.2 06-17:01:20 WindowServer
+8.5 0.1 04-10:23:03 Webex
+6.1 0.5 06-04:02:21 claude
+5.2 0.3 03-15:24:37 Telegram
+3.8 0.6 29:59 Google
+3.6 0.1 06-17:00:14 Application
+3.2 0.0 06-17:01:21 launchservicesd
+2.5 0.0 06-17:01:20 coreaudiod
+1.9 0.0 06-17:01:04 ReportCrash
+Load Avg: 110.65, 126.34, 104.22 
+CPU usage: 21.23% user, 17.3% sys, 61.73% idle 

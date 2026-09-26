@@ -1,0 +1,4 @@
+사용자 8명 · http://localhost:18080 · 홈 8.0/s · 60초 · 모드 NONE
+워밍업 8초 — 128요청(측정에서 뺀다)
+응답 시점 품절 노출률 0.00% (0/16061) · 홈 p95 203.9ms · 규칙 행 폴백 0.21% · 조회 0.00회/0.00ms · 뺀 항목 0.00
+원자료: personalization/docs/runs/20260925-v2-x3-stock-race/raw/NONE-r5/race.json (요청 952 · 오류 0)

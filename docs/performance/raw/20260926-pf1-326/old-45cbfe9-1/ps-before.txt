@@ -1,0 +1,19 @@
+pcpu  pmem  etime        program
+ 99.2   0.0  01-02:28:57  zsh (측정과 무관한 다른 작업 셸)
+ 86.4   0.1  06:43        spotlightknowledged
+ 85.2   0.6  01:31        XProtectRemediatorAdload
+ 35.4   0.1  01:43        XprotectSer
+ 20.5   7.9  05-07:25:33  Mac
+ 15.3   0.3  06-16:11:00  WindowServer
+ 11.9   2.0  01-01:42:39  터미널
+ 11.8   0.1  06-16:10:59  syspolicyd
+  9.9   0.1  04-09:32:43  Webex
+  6.8   0.1  06-16:11:01  launchservicesd
+  6.7   0.0  06-06:17:46  trustd
+  5.2   0.3  03-14:34:17  Telegram
+  4.4   0.1  06-16:10:56  com.apple.DriverKit-AppleBCMWLAN
+  1.6   0.8  01-08:51:26  터미널
+  1.5   0.1  06-16:09:22  Stats
+Load Avg: 5.25, 5.60, 8.16
+CPU usage: 33.25% user, 14.15% sys, 52.59% idle
+PhysMem: 30G used (4387M wired, 2688M compressor), 867M unused.

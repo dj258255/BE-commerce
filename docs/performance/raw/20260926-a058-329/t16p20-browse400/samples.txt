@@ -1,0 +1,20 @@
+1790368692 hikaricp_connections_active=0.0 hikaricp_connections_pending=0.0 tomcat_threads_busy_threads=1.0 
+1790368695 
+1790368698 hikaricp_connections_active=20.0 hikaricp_connections_pending=37.0 tomcat_threads_busy_threads=83.0 
+1790368700 hikaricp_connections_active=20.0 hikaricp_connections_pending=16.0 tomcat_threads_busy_threads=76.0 
+1790368703 hikaricp_connections_active=19.0 hikaricp_connections_pending=14.0 tomcat_threads_busy_threads=79.0 
+1790368705 hikaricp_connections_active=20.0 hikaricp_connections_pending=41.0 tomcat_threads_busy_threads=94.0 
+1790368708 
+1790368711 hikaricp_connections_active=20.0 hikaricp_connections_pending=8.0 tomcat_threads_busy_threads=69.0 
+1790368713 hikaricp_connections_active=19.0 hikaricp_connections_pending=33.0 tomcat_threads_busy_threads=86.0 
+1790368716 hikaricp_connections_active=20.0 hikaricp_connections_pending=11.0 tomcat_threads_busy_threads=70.0 
+1790368718 hikaricp_connections_active=20.0 hikaricp_connections_pending=17.0 tomcat_threads_busy_threads=77.0 
+1790368720 hikaricp_connections_active=20.0 hikaricp_connections_pending=30.0 tomcat_threads_busy_threads=82.0 
+1790368723 hikaricp_connections_active=19.0 hikaricp_connections_pending=9.0 tomcat_threads_busy_threads=70.0 
+1790368725 
+1790368728 hikaricp_connections_active=20.0 hikaricp_connections_pending=41.0 tomcat_threads_busy_threads=94.0 
+1790368731 hikaricp_connections_active=20.0 hikaricp_connections_pending=25.0 tomcat_threads_busy_threads=84.0 
+1790368733 hikaricp_connections_active=20.0 hikaricp_connections_pending=19.0 tomcat_threads_busy_threads=71.0 
+1790368735 hikaricp_connections_active=19.0 hikaricp_connections_pending=12.0 tomcat_threads_busy_threads=71.0 
+1790368738 hikaricp_connections_active=20.0 hikaricp_connections_pending=4.0 tomcat_threads_busy_threads=66.0 
+1790368740 hikaricp_connections_active=2.0 hikaricp_connections_pending=0.0 tomcat_threads_busy_threads=5.0 

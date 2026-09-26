@@ -71,38 +71,40 @@ export const options = {
     },
   ])),
   thresholds: { 'http_req_failed{expected_response:false}': ['rate<0.05'] },
+  setupTimeout: '10m',   // 계정이 많으면 로그인(비밀번호 해싱)만으로 기본 60초를 넘는다(#352)
 };
 
 export function setup() {
-  const run = Date.now();
+  // 시드(bench.sh seed_read_load)가 주문을 넣은 계정(k6-read-{i})으로 로그인한다. 예전에는 여기서 새 계정(k6-read-{시각}-{i})을
+  // 만들어 **주문이 0건인 사용자의 빈 목록**을 쟀다(#352). 그래서 첫 조회가 비어 있으면 멈춘다
   const tokens = [];
   for (let i = 0; i < ACCOUNTS; i++) {
-    const email = `k6-read-${run}-${i}@load.test`;
-    const password = 'k6-load-only-1234';
-    http.post(`${BASE}/api/v1/members/signup`, JSON.stringify({ email, password }),
-      { headers: { 'Content-Type': 'application/json' } });
-    const login = http.post(`${BASE}/api/v1/auth/login`, JSON.stringify({ username: email, password }),
+    const login = http.post(`${BASE}/api/v1/auth/login`,
+      JSON.stringify({ username: `k6-read-${i}@load.test`, password: 'k6-load-only-1234' }),
       { headers: { 'Content-Type': 'application/json' } });
     if (login.status === 200) tokens.push(login.json('token'));
-    sleep(0.3);
   }
-  if (tokens.length === 0) throw new Error('토큰을 하나도 못 받았다 — 앱이 떠 있는지 확인하라');
+  if (tokens.length === 0) throw new Error('시드 계정으로 로그인하지 못했다 — bench.sh 의 seed_read_load 를 먼저 돌려라');
 
   const probe = http.get(`${BASE}/api/v1/orders`, { headers: { Authorization: `Bearer ${tokens[0]}` } });
   if (probe.status === 429) throw new Error('429가 돌아왔다 — 유입 제어를 끄고 다시 띄워라');
   if (probe.status !== 200) throw new Error(`조회가 ${probe.status} 를 냈다 — 앱 상태를 확인하라`);
+  const rows = probe.json();
+  if (!Array.isArray(rows) || rows.length === 0) throw new Error('시드 계정의 주문 목록이 비었다 — 빈 목록을 재게 된다(#352)');
 
   console.log(`계정 ${tokens.length}개. 계단: ${STEPS.join(' → ')} req/s (각 ${STEP_SECONDS}초)`);
   return { tokens };
 }
 
 /**
- * 계정을 VU마다 돌려 쓴다. 한 계정만 두들기면 <b>버퍼 풀에 그 사용자 페이지만 올라가</b>
+ * 계정을 요청마다 무작위로 고른다. 한 계정만 두들기면 <b>버퍼 풀에 그 사용자 페이지만 올라가</b>
  * 실제보다 좋게 나온다. 캐시가 필요한지 판단하려는 측정에서 그건 답을 미리 정해 놓는 셈이다.
+ * 예전에는 VU 번호로 골라 VU 수만큼의 계정만 쓰였다(#352).
  */
 export function load(data) {
   const rate = __ENV.STEP_RATE;
-  const auth = `Bearer ${data.tokens[__VU % data.tokens.length]}`;
+  // 요청마다 계정을 무작위로 고른다. VU 번호로 고르면 VU 수(약 100)만큼의 계정만 쓰여 작업 집합이 작아진다(#352)
+  const auth = `Bearer ${data.tokens[Math.floor(Math.random() * data.tokens.length)]}`;
   const res = http.get(`${BASE}/api/v1/orders`, {
     headers: { Authorization: auth }, tags: { name: 'myOrders' },
   });

@@ -1,0 +1,321 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.2)
+
+2026-09-26T05:56:47.196+09:00  INFO 74211 --- [be-commerce] [           main] c.b.becommerce.BeCommerceApplication     : Starting BeCommerceApplication v0.0.1-SNAPSHOT using Java 21.0.9 with PID 74211 (/private/tmp/claude-501/-Users-beomsu-Desktop-pay/35c4c37b-b9f5-42c6-9a21-4fff361024fe/scratchpad/x5/commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar started by beomsu in /private/tmp/claude-501/-Users-beomsu-Desktop-pay/35c4c37b-b9f5-42c6-9a21-4fff361024fe/scratchpad/x5)
+2026-09-26T05:56:47.203+09:00  INFO 74211 --- [be-commerce] [           main] c.b.becommerce.BeCommerceApplication     : The following 1 profile is active: "kafka"
+2026-09-26T05:56:48.073+09:00  INFO 74211 --- [be-commerce] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-09-26T05:56:48.075+09:00  INFO 74211 --- [be-commerce] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-09-26T05:56:48.266+09:00  INFO 74211 --- [be-commerce] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 185 ms. Found 45 JPA repository interfaces.
+2026-09-26T05:56:48.942+09:00  INFO 74211 --- [be-commerce] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 18090 (http)
+2026-09-26T05:56:49.120+09:00  INFO 74211 --- [be-commerce] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-09-26T05:56:49.120+09:00  INFO 74211 --- [be-commerce] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.34]
+2026-09-26T05:56:49.164+09:00  INFO 74211 --- [be-commerce] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-09-26T05:56:49.165+09:00  INFO 74211 --- [be-commerce] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1933 ms
+2026-09-26T05:56:49.569+09:00  INFO 74211 --- [be-commerce] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-26T05:56:49.802+09:00  INFO 74211 --- [be-commerce] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@6bd8c398
+2026-09-26T05:56:49.803+09:00  INFO 74211 --- [be-commerce] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-09-26T05:56:49.837+09:00  INFO 74211 --- [be-commerce] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:3306/becommerce?serverTimezone=UTC&characterEncoding=UTF-8 (MySQL 8.4)
+2026-09-26T05:56:50.326+09:00  WARN 74211 --- [be-commerce] [           main] o.f.c.internal.database.base.Database    : Flyway upgrade recommended: MySQL 8.4 is newer than this version of Flyway and support has not been tested. The latest supported version of MySQL is 8.1.
+2026-09-26T05:56:50.401+09:00  INFO 74211 --- [be-commerce] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 68 migrations (execution time 00:00.062s)
+2026-09-26T05:56:50.425+09:00  INFO 74211 --- [be-commerce] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `becommerce`: 68
+2026-09-26T05:56:50.430+09:00  INFO 74211 --- [be-commerce] [           main] o.f.core.internal.command.DbMigrate      : Schema `becommerce` is up to date. No migration necessary.
+2026-09-26T05:56:50.551+09:00  INFO 74211 --- [be-commerce] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-09-26T05:56:50.619+09:00  INFO 74211 --- [be-commerce] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.5.Final
+2026-09-26T05:56:50.651+09:00  INFO 74211 --- [be-commerce] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-09-26T05:56:50.936+09:00  INFO 74211 --- [be-commerce] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-09-26T05:56:51.006+09:00  INFO 74211 --- [be-commerce] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 8.4.11
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-09-26T05:56:52.211+09:00  INFO 74211 --- [be-commerce] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-09-26T05:56:52.260+09:00  INFO 74211 --- [be-commerce] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-09-26T05:56:52.693+09:00  INFO 74211 --- [be-commerce] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-09-26T05:56:54.056+09:00  INFO 74211 --- [be-commerce] [           main] c.b.b.auth.HashConcurrencyLimiter        : 비밀번호 해싱 동시 실행 상한 8건 (해시당 약 19.84MB)
+2026-09-26T05:56:54.296+09:00  INFO 74211 --- [be-commerce] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name userDetailsService
+2026-09-26T05:56:54.754+09:00  INFO 74211 --- [be-commerce] [           main] c.b.b.r.internal.GenPageModelClient      : GenPage 모델 클라이언트 http://localhost:8766 · 제한 시간 PT5S
+2026-09-26T05:56:54.757+09:00  INFO 74211 --- [be-commerce] [           main] c.b.b.r.internal.OverloadGate            : 과부하 정책=ADMISSION maxInFlight=24 admissionBudget=100ms 모델용량=4동시/50ms(범위 RANKING) 대기 추정=OBSERVED
+2026-09-26T05:56:54.910+09:00  INFO 74211 --- [be-commerce] [           main] c.b.becommerce.order.catalog.FacetCache  : 패싯 사전 집계=켜짐 TTL=PT1M 상한=200개
+2026-09-26T05:56:55.382+09:00  WARN 74211 --- [be-commerce] [           main] o.a.l.i.v.VectorizationProvider          : Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.
+2026-09-26T05:56:57.328+09:00  INFO 74211 --- [be-commerce] [           main] c.b.b.o.c.search.RefreshingLuceneSearch  : Lucene 색인 105545건 · 2003ms · 6902KB
+2026-09-26T05:56:57.331+09:00  INFO 74211 --- [be-commerce] [           main] c.b.b.o.c.s.ProductSearchConfiguration   : 상품 검색 엔진=lucene 필터·패싯=엔진 안
+2026-09-26T05:56:57.341+09:00  INFO 74211 --- [be-commerce] [           main] c.b.b.r.internal.ItemPoolSource          : 추천 후보 집합=CATALOG (CATALOG=실제 상품 · EXPERIMENT=실험용 합성 풀) · 인기 신호=AUTO 창=recent_7d
+2026-09-26T05:56:57.349+09:00  INFO 74211 --- [be-commerce] [           main] c.b.b.r.internal.RecommendationService   : 제약 확인 정책=AFTER_GENERATION 생성 범위=RANKING (E4·E5) 이력=activity 재구매 우선=false
+2026-09-26T05:56:57.368+09:00  INFO 74211 --- [be-commerce] [           main] c.b.b.home.internal.ImpressionRecorder   : 홈 노출 기록=켜짐 (요청당 한 행)
+2026-09-26T05:56:57.371+09:00  INFO 74211 --- [be-commerce] [           main] c.beomsu.becommerce.home.HomeComposer    : 홈 조립 규칙=FULL 행상한=5 항목상한=8 최소항목=3 카테고리상한=3 후보깊이=16 재고확인=POST
+2026-09-26T05:56:57.664+09:00  INFO 74211 --- [be-commerce] [           main] c.b.b.payment.web.TossWebhookController  : 토스 웹훅 발신 IP 검사 off — payment.webhook.toss-allowed-ips 미설정
+2026-09-26T05:56:57.912+09:00  INFO 74211 --- [be-commerce] [           main] o.s.b.a.w.s.WelcomePageHandlerMapping    : Adding welcome page: class path resource [static/index.html]
+2026-09-26T05:56:58.024+09:00  WARN 74211 --- [be-commerce] [           main] o.s.w.s.resource.ResourceHandlerUtils    : Appended trailing slash to static resource location: file:///private/tmp/claude-501/-Users-beomsu-Desktop-pay/35c4c37b-b9f5-42c6-9a21-4fff361024fe/scratchpad/x5/personalization/data/hm/images/
+2026-09-26T05:56:58.099+09:00  INFO 74211 --- [be-commerce] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 4 endpoints beneath base path '/actuator'
+2026-09-26T05:56:58.591+09:00  INFO 74211 --- [be-commerce] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 18090 (http) with context path '/'
+2026-09-26T05:56:58.614+09:00  INFO 74211 --- [be-commerce] [           main] o.a.k.clients.consumer.ConsumerConfig    : ConsumerConfig values: 
+	allow.auto.create.topics = true
+	auto.commit.interval.ms = 5000
+	auto.include.jmx.reporter = true
+	auto.offset.reset = latest
+	bootstrap.servers = [localhost:9092]
+	check.crcs = true
+	client.dns.lookup = use_all_dns_ips
+	client.id = consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1
+	client.rack = 
+	connections.max.idle.ms = 540000
+	default.api.timeout.ms = 60000
+	enable.auto.commit = false
+	enable.metrics.push = true
+	exclude.internal.topics = true
+	fetch.max.bytes = 52428800
+	fetch.max.wait.ms = 500
+	fetch.min.bytes = 1
+	group.id = catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7
+	group.instance.id = null
+	group.protocol = classic
+	group.remote.assignor = null
+	heartbeat.interval.ms = 3000
+	interceptor.classes = []
+	internal.leave.group.on.close = true
+	internal.throw.on.fetch.stable.offset.unsupported = false
+	isolation.level = read_uncommitted
+	key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+	max.partition.fetch.bytes = 1048576
+	max.poll.interval.ms = 300000
+	max.poll.records = 500
+	metadata.max.age.ms = 300000
+	metadata.recovery.strategy = none
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partition.assignment.strategy = [class org.apache.kafka.clients.consumer.RangeAssignor, class org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retry.backoff.max.ms = 1000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	session.timeout.ms = 45000
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	value.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+
+2026-09-26T05:56:58.637+09:00  INFO 74211 --- [be-commerce] [           main] o.a.k.c.t.i.KafkaMetricsCollector        : initializing Kafka metrics collector
+2026-09-26T05:56:58.675+09:00  INFO 74211 --- [be-commerce] [           main] o.a.kafka.common.utils.AppInfoParser     : Kafka version: 3.8.1
+2026-09-26T05:56:58.675+09:00  INFO 74211 --- [be-commerce] [           main] o.a.kafka.common.utils.AppInfoParser     : Kafka commitId: 70d6ff42debf7e17
+2026-09-26T05:56:58.676+09:00  INFO 74211 --- [be-commerce] [           main] o.a.kafka.common.utils.AppInfoParser     : Kafka startTimeMs: 1790369818674
+2026-09-26T05:56:58.686+09:00  INFO 74211 --- [be-commerce] [           main] o.a.k.c.c.internals.LegacyKafkaConsumer  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Subscribed to topic(s): catalog.change
+2026-09-26T05:56:58.710+09:00  INFO 74211 --- [be-commerce] [           main] c.b.becommerce.BeCommerceApplication     : Started BeCommerceApplication in 11.849 seconds (process running for 12.209)
+2026-09-26T05:56:58.721+09:00  INFO 74211 --- [be-commerce] [           main] c.b.b.a.i.PasswordHashingCapacityCheck   : 비밀번호 해싱 메모리 여유 확인 (최악 1984MB / 힙 8192MB)
+2026-09-26T05:56:58.761+09:00  INFO 74211 --- [be-commerce] [           main] c.b.b.f.internal.FraudBlacklistReloader  : FDS 블랙리스트 재적재 count=0
+2026-09-26T05:56:58.819+09:00  INFO 74211 --- [be-commerce] [io-18090-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-09-26T05:56:58.819+09:00  INFO 74211 --- [be-commerce] [io-18090-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-09-26T05:56:58.821+09:00  INFO 74211 --- [be-commerce] [io-18090-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-09-26T05:56:58.882+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] org.apache.kafka.clients.Metadata        : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Cluster ID: 5L6g3nShT-eMCtK--X86sw
+2026-09-26T05:56:58.883+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-09-26T05:56:58.884+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] (Re-)joining group
+2026-09-26T05:56:58.893+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Request joining group due to: need to re-join with the given member-id: consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1-d441cd47-abfc-4c93-b109-20db227b1b21
+2026-09-26T05:56:58.893+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] (Re-)joining group
+2026-09-26T05:57:01.898+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Successfully joined group with generation Generation{generationId=1, memberId='consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1-d441cd47-abfc-4c93-b109-20db227b1b21', protocol='range'}
+2026-09-26T05:57:01.901+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Finished assignment for group at generation 1: {consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1-d441cd47-abfc-4c93-b109-20db227b1b21=Assignment(partitions=[catalog.change-0, catalog.change-1, catalog.change-2])}
+2026-09-26T05:57:01.905+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Successfully synced group in generation Generation{generationId=1, memberId='consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1-d441cd47-abfc-4c93-b109-20db227b1b21', protocol='range'}
+2026-09-26T05:57:01.905+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Notifying assignor about the new Assignment(partitions=[catalog.change-0, catalog.change-1, catalog.change-2])
+2026-09-26T05:57:01.906+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Adding newly assigned partitions: catalog.change-0, catalog.change-1, catalog.change-2
+2026-09-26T05:57:01.909+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Found no committed offset for partition catalog.change-0
+2026-09-26T05:57:01.909+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Found no committed offset for partition catalog.change-1
+2026-09-26T05:57:01.909+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Found no committed offset for partition catalog.change-2
+2026-09-26T05:57:01.912+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Found no committed offset for partition catalog.change-0
+2026-09-26T05:57:01.912+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Found no committed offset for partition catalog.change-1
+2026-09-26T05:57:01.912+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Found no committed offset for partition catalog.change-2
+2026-09-26T05:57:01.917+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Resetting offset for partition catalog.change-0 to position FetchPosition{offset=28029, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[localhost:9092 (id: 1 rack: null)], epoch=4}}.
+2026-09-26T05:57:01.918+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Resetting offset for partition catalog.change-1 to position FetchPosition{offset=27286, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[localhost:9092 (id: 1 rack: null)], epoch=4}}.
+2026-09-26T05:57:01.918+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Resetting offset for partition catalog.change-2 to position FetchPosition{offset=29794, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[localhost:9092 (id: 1 rack: null)], epoch=4}}.
+2026-09-26T05:57:01.920+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] c.b.b.o.c.search.LuceneChangeListener    : 카탈로그 변경 구독: [catalog.change-0, catalog.change-1, catalog.change-2] 를 2026-09-25T20:56:49.936Z 부터 읽는다
+2026-09-26T05:57:01.923+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7: partitions assigned: [catalog.change-0, catalog.change-1, catalog.change-2]
+2026-09-26T05:57:04.534+09:00  INFO 74211 --- [be-commerce] [         task-2] o.a.k.clients.producer.ProducerConfig    : ProducerConfig values: 
+	acks = -1
+	auto.include.jmx.reporter = true
+	batch.size = 16384
+	bootstrap.servers = [localhost:9092]
+	buffer.memory = 33554432
+	client.dns.lookup = use_all_dns_ips
+	client.id = be-commerce-producer-1
+	compression.gzip.level = -1
+	compression.lz4.level = 9
+	compression.type = none
+	compression.zstd.level = 3
+	connections.max.idle.ms = 540000
+	delivery.timeout.ms = 120000
+	enable.idempotence = true
+	enable.metrics.push = true
+	interceptor.classes = []
+	key.serializer = class org.apache.kafka.common.serialization.StringSerializer
+	linger.ms = 0
+	max.block.ms = 60000
+	max.in.flight.requests.per.connection = 5
+	max.request.size = 1048576
+	metadata.max.age.ms = 300000
+	metadata.max.idle.ms = 300000
+	metadata.recovery.strategy = none
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partitioner.adaptive.partitioning.enable = true
+	partitioner.availability.timeout.ms = 0
+	partitioner.class = null
+	partitioner.ignore.keys = false
+	receive.buffer.bytes = 32768
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retries = 2147483647
+	retry.backoff.max.ms = 1000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	transaction.timeout.ms = 60000
+	transactional.id = null
+	value.serializer = class org.apache.kafka.common.serialization.ByteArraySerializer
+
+2026-09-26T05:57:04.535+09:00  INFO 74211 --- [be-commerce] [         task-2] o.a.k.c.t.i.KafkaMetricsCollector        : initializing Kafka metrics collector
+2026-09-26T05:57:04.541+09:00  INFO 74211 --- [be-commerce] [         task-2] o.a.k.clients.producer.KafkaProducer     : [Producer clientId=be-commerce-producer-1] Instantiated an idempotent producer.
+2026-09-26T05:57:04.553+09:00  INFO 74211 --- [be-commerce] [         task-2] o.a.kafka.common.utils.AppInfoParser     : Kafka version: 3.8.1
+2026-09-26T05:57:04.553+09:00  INFO 74211 --- [be-commerce] [         task-2] o.a.kafka.common.utils.AppInfoParser     : Kafka commitId: 70d6ff42debf7e17
+2026-09-26T05:57:04.553+09:00  INFO 74211 --- [be-commerce] [         task-2] o.a.kafka.common.utils.AppInfoParser     : Kafka startTimeMs: 1790369824553
+2026-09-26T05:57:04.564+09:00  INFO 74211 --- [be-commerce] [erce-producer-1] org.apache.kafka.clients.Metadata        : [Producer clientId=be-commerce-producer-1] Cluster ID: 5L6g3nShT-eMCtK--X86sw
+2026-09-26T05:57:04.565+09:00  INFO 74211 --- [be-commerce] [erce-producer-1] o.a.k.c.p.internals.TransactionManager   : [Producer clientId=be-commerce-producer-1] ProducerId set to 9 with epoch 0
+2026-09-26T05:57:18.260+09:00  INFO 74211 --- [be-commerce] [io-18090-exec-7] c.b.b.r.internal.ItemPoolSource          : 인기 신호를 읽었다 — 창=recent_7d 기준일=2020-09-22 (개수=12)
+2026-09-26T05:57:48.448+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Revoke previously assigned partitions catalog.change-0, catalog.change-1, catalog.change-2
+2026-09-26T05:57:48.450+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7: partitions revoked: [catalog.change-0, catalog.change-1, catalog.change-2]
+2026-09-26T05:57:48.451+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Member consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1-d441cd47-abfc-4c93-b109-20db227b1b21 sending LeaveGroup request to coordinator localhost:9092 (id: 2147483646 rack: null) due to the consumer unsubscribed from all topics
+2026-09-26T05:57:48.451+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Resetting generation and member id due to: consumer pro-actively leaving the group
+2026-09-26T05:57:48.451+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Request joining group due to: consumer pro-actively leaving the group
+2026-09-26T05:57:48.451+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.LegacyKafkaConsumer  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Unsubscribed all topics or patterns and assigned partitions
+2026-09-26T05:57:48.456+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Resetting generation and member id due to: consumer pro-actively leaving the group
+2026-09-26T05:57:48.456+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1, groupId=catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7] Request joining group due to: consumer pro-actively leaving the group
+2026-09-26T05:57:48.718+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.apache.kafka.common.metrics.Metrics    : Metrics scheduler closed
+2026-09-26T05:57:48.718+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.apache.kafka.common.metrics.Metrics    : Closing reporter org.apache.kafka.common.metrics.JmxReporter
+2026-09-26T05:57:48.718+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.apache.kafka.common.metrics.Metrics    : Closing reporter org.apache.kafka.common.telemetry.internals.ClientTelemetryReporter
+2026-09-26T05:57:48.718+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.apache.kafka.common.metrics.Metrics    : Metrics reporters closed
+2026-09-26T05:57:48.726+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.a.kafka.common.utils.AppInfoParser     : App info kafka.consumer for consumer-catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7-1 unregistered
+2026-09-26T05:57:48.729+09:00  INFO 74211 --- [be-commerce] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : catalog-search-lucene-fa55b940-79d6-40b7-a83f-3f353936a1f7: Consumer stopped
+2026-09-26T05:57:48.736+09:00  INFO 74211 --- [be-commerce] [ionShutdownHook] o.s.b.w.e.tomcat.GracefulShutdown        : Commencing graceful shutdown. Waiting for active requests to complete
+2026-09-26T05:57:48.741+09:00  INFO 74211 --- [be-commerce] [tomcat-shutdown] o.s.b.w.e.tomcat.GracefulShutdown        : Graceful shutdown complete
+2026-09-26T05:57:48.775+09:00  INFO 74211 --- [be-commerce] [ionShutdownHook] o.a.k.clients.producer.KafkaProducer     : [Producer clientId=be-commerce-producer-1] Closing the Kafka producer with timeoutMillis = 30000 ms.
+2026-09-26T05:57:48.780+09:00  INFO 74211 --- [be-commerce] [ionShutdownHook] o.apache.kafka.common.metrics.Metrics    : Metrics scheduler closed
+2026-09-26T05:57:48.780+09:00  INFO 74211 --- [be-commerce] [ionShutdownHook] o.apache.kafka.common.metrics.Metrics    : Closing reporter org.apache.kafka.common.metrics.JmxReporter
+2026-09-26T05:57:48.780+09:00  INFO 74211 --- [be-commerce] [ionShutdownHook] o.apache.kafka.common.metrics.Metrics    : Closing reporter org.apache.kafka.common.telemetry.internals.ClientTelemetryReporter
+2026-09-26T05:57:48.780+09:00  INFO 74211 --- [be-commerce] [ionShutdownHook] o.apache.kafka.common.metrics.Metrics    : Metrics reporters closed
+2026-09-26T05:57:48.781+09:00  INFO 74211 --- [be-commerce] [ionShutdownHook] o.a.kafka.common.utils.AppInfoParser     : App info kafka.producer for be-commerce-producer-1 unregistered
+2026-09-26T05:57:48.828+09:00  INFO 74211 --- [be-commerce] [ionShutdownHook] .s.m.e.c.DefaultEventPublicationRegistry : No publications outstanding!
+2026-09-26T05:57:48.859+09:00  INFO 74211 --- [be-commerce] [ionShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-09-26T05:57:48.862+09:00  INFO 74211 --- [be-commerce] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-09-26T05:57:48.965+09:00  INFO 74211 --- [be-commerce] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.

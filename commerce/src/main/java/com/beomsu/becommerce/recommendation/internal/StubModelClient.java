@@ -43,6 +43,9 @@ public class StubModelClient implements ModelClient {
     private final Semaphore capacity;
     /** 실제로 재우는 시간 — 범위(E5)에 따라 달라진다. 생성 구간이 직렬로 붙는다. */
     private final long effectiveLatencyMs;
+    /** 0 보다 크면 {@link #latencyPeriodMs} 마다 지연을 이 값과 번갈아 쓴다(#339, 용량이 자주 바뀌는 환경의 흉내). */
+    private final long altLatencyMs;
+    private final long latencyPeriodMs;
     private final long busyTimeoutMs;
     private final int resultSize;
     /** 무엇을 추천할 수 있는가 — 카탈로그(기본) 또는 실험용 합성 풀. */
@@ -57,6 +60,9 @@ public class StubModelClient implements ModelClient {
                            @Value("${app.recommendation.generation.scope:RANKING}") GenerationScope scope,
                            @Value("${app.recommendation.generation.ar-prefix:4}") int arPrefix,
                            @Value("${app.recommendation.generation.per-item-ms:15}") long perItemMs,
+                           // 오토스케일 흉내(#339): 이 주기마다 지연이 stub-latency-ms 와 stub-latency-alt-ms 를 오간다. 둘 중 하나라도 0 이면 끈다
+                           @Value("${app.recommendation.model.stub-latency-alt-ms:0}") long altLatencyMs,
+                           @Value("${app.recommendation.model.stub-latency-period-ms:0}") long latencyPeriodMs,
                            ItemPoolSource pool) {
         this.pool = pool;
         this.capacity = new Semaphore(Math.max(concurrency, 1), true);
@@ -65,6 +71,8 @@ public class StubModelClient implements ModelClient {
         // 스텁이므로 CPU 가 아니라 <b>대기 시간</b>으로 모델링한다: 재는 것이 처리량(동시성/지연)이라
         // 코어 수가 변수로 끼면 안 된다.
         this.effectiveLatencyMs = scope.estimatedLatencyMs(latencyMs, this.resultSize, arPrefix, perItemMs);
+        this.altLatencyMs = altLatencyMs > 0 ? scope.estimatedLatencyMs(altLatencyMs, this.resultSize, arPrefix, perItemMs) : 0;
+        this.latencyPeriodMs = Math.max(latencyPeriodMs, 0);
         this.busyTimeoutMs = Math.max(busyTimeoutMs, 1);
         log.info("모델 스텁={} 직렬 {}항목 → 지연 {}ms (기준 {}ms, 항목당 {}ms) 용량 {}동시",
                 scope, scope.sequentialItems(this.resultSize, arPrefix), effectiveLatencyMs,
@@ -85,8 +93,9 @@ public class StubModelClient implements ModelClient {
             throw new ModelBusyException("모델 용량 대기 초과: " + busyTimeoutMs + "ms");
         }
         try {
-            if (effectiveLatencyMs > 0) {
-                Thread.sleep(effectiveLatencyMs);
+            long latency = currentLatencyMs();
+            if (latency > 0) {
+                Thread.sleep(latency);
             }
             return rank(userId, recentItemIds, ALLOW_ALL);
         } catch (InterruptedException e) {
@@ -95,6 +104,14 @@ public class StubModelClient implements ModelClient {
         } finally {
             capacity.release();
         }
+    }
+
+    /** 지금 쓸 지연. 번갈아 쓰기를 켜면 주기의 짝수 칸은 기본, 홀수 칸은 대체 지연이다. */
+    long currentLatencyMs() {
+        if (altLatencyMs <= 0 || latencyPeriodMs <= 0) {
+            return effectiveLatencyMs;
+        }
+        return (System.currentTimeMillis() / latencyPeriodMs) % 2 == 0 ? effectiveLatencyMs : altLatencyMs;
     }
 
     /** 제약이 없을 때. 상수로 두어 기존 경로에 분기가 안 생기게 한다. */
@@ -160,8 +177,9 @@ public class StubModelClient implements ModelClient {
             throw new ModelBusyException("모델 용량 대기 초과: " + busyTimeoutMs + "ms");
         }
         try {
-            if (effectiveLatencyMs > 0) {
-                Thread.sleep(effectiveLatencyMs);
+            long latency = currentLatencyMs();
+            if (latency > 0) {
+                Thread.sleep(latency);
             }
             return rank(userId, recentItemIds, allowed);
         } catch (InterruptedException e) {

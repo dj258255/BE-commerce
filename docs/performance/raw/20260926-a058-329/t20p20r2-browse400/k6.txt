@@ -1,0 +1,304 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: k6/webhook-under-browse.js
+        output: -
+
+     scenarios: (100.00%) 3 scenarios, 3900 max VUs, 1m15s max duration (incl. graceful stop):
+              * browse: 400.00 iterations/s for 45s (maxVUs: 300-3000, exec: browseOnce, gracefulStop: 30s)
+              * hook: 10.00 iterations/s for 45s (maxVUs: 40-300, exec: webhookOnce, gracefulStop: 30s)
+              * pay: 50.00 iterations/s for 45s (maxVUs: 200-600, exec: payOnce, gracefulStop: 30s)
+
+
+running (0m00.9s), 0068/0540 VUs, 356 complete and 0 interrupted iterations
+browse   [   2% ] 0020/0300 VUs  00.9s/45s  400.00 iters/s
+hook     [   2% ] 001/040 VUs    00.9s/45s  10.00 iters/s
+pay      [   2% ] 046/200 VUs    00.9s/45s  50.00 iters/s
+
+running (0m02.0s), 0094/0540 VUs, 793 complete and 0 interrupted iterations
+browse   [   4% ] 0023/0300 VUs  01.9s/45s  400.00 iters/s
+hook     [   4% ] 003/040 VUs    01.9s/45s  10.00 iters/s
+pay      [   4% ] 068/200 VUs    01.9s/45s  50.00 iters/s
+
+running (0m02.9s), 0083/0540 VUs, 1261 complete and 0 interrupted iterations
+browse   [   6% ] 0021/0300 VUs  02.9s/45s  400.00 iters/s
+hook     [   6% ] 001/040 VUs    02.9s/45s  10.00 iters/s
+pay      [   6% ] 061/200 VUs    02.9s/45s  50.00 iters/s
+
+running (0m03.9s), 0108/0540 VUs, 1695 complete and 0 interrupted iterations
+browse   [   9% ] 0027/0300 VUs  03.9s/45s  400.00 iters/s
+hook     [   9% ] 002/040 VUs    03.9s/45s  10.00 iters/s
+pay      [   9% ] 079/200 VUs    03.9s/45s  50.00 iters/s
+
+running (0m04.9s), 0201/0540 VUs, 2063 complete and 0 interrupted iterations
+browse   [  11% ] 0099/0300 VUs  04.9s/45s  400.00 iters/s
+hook     [  11% ] 005/040 VUs    04.9s/45s  10.00 iters/s
+pay      [  11% ] 097/200 VUs    04.9s/45s  50.00 iters/s
+
+running (0m05.9s), 0215/0540 VUs, 2509 complete and 0 interrupted iterations
+browse   [  13% ] 0112/0300 VUs  05.9s/45s  400.00 iters/s
+hook     [  13% ] 004/040 VUs    05.9s/45s  10.00 iters/s
+pay      [  13% ] 099/200 VUs    05.9s/45s  50.00 iters/s
+
+running (0m06.9s), 0251/0540 VUs, 2933 complete and 0 interrupted iterations
+browse   [  15% ] 0141/0300 VUs  06.9s/45s  400.00 iters/s
+hook     [  15% ] 007/040 VUs    06.9s/45s  10.00 iters/s
+pay      [  15% ] 104/200 VUs    06.9s/45s  50.00 iters/s
+
+running (0m07.9s), 0294/0540 VUs, 3349 complete and 0 interrupted iterations
+browse   [  18% ] 0171/0300 VUs  07.9s/45s  400.00 iters/s
+hook     [  18% ] 005/040 VUs    07.9s/45s  10.00 iters/s
+pay      [  18% ] 118/200 VUs    07.9s/45s  50.00 iters/s
+
+running (0m08.9s), 0369/0540 VUs, 3735 complete and 0 interrupted iterations
+browse   [  20% ] 0232/0300 VUs  08.9s/45s  400.00 iters/s
+hook     [  20% ] 008/040 VUs    08.9s/45s  10.00 iters/s
+pay      [  20% ] 129/200 VUs    08.9s/45s  50.00 iters/s
+
+running (0m09.9s), 0420/0551 VUs, 4132 complete and 0 interrupted iterations
+browse   [  22% ] 0270/0311 VUs  09.9s/45s  400.00 iters/s
+hook     [  22% ] 008/040 VUs    09.9s/45s  10.00 iters/s
+pay      [  22% ] 142/200 VUs    09.9s/45s  50.00 iters/s
+
+running (0m10.9s), 0462/0552 VUs, 4548 complete and 0 interrupted iterations
+browse   [  24% ] 0306/0312 VUs  10.9s/45s  400.00 iters/s
+hook     [  24% ] 009/040 VUs    10.9s/45s  10.00 iters/s
+pay      [  24% ] 147/200 VUs    10.9s/45s  50.00 iters/s
+
+running (0m11.9s), 0399/0570 VUs, 5051 complete and 0 interrupted iterations
+browse   [  26% ] 0250/0330 VUs  11.9s/45s  400.00 iters/s
+hook     [  26% ] 008/040 VUs    11.9s/45s  10.00 iters/s
+pay      [  26% ] 141/200 VUs    11.9s/45s  50.00 iters/s
+
+running (0m12.9s), 0423/0570 VUs, 5487 complete and 0 interrupted iterations
+browse   [  29% ] 0276/0330 VUs  12.9s/45s  400.00 iters/s
+hook     [  29% ] 008/040 VUs    12.9s/45s  10.00 iters/s
+pay      [  29% ] 139/200 VUs    12.9s/45s  50.00 iters/s
+
+running (0m13.9s), 0292/0570 VUs, 6077 complete and 0 interrupted iterations
+browse   [  31% ] 0166/0330 VUs  13.9s/45s  400.00 iters/s
+hook     [  31% ] 005/040 VUs    13.9s/45s  10.00 iters/s
+pay      [  31% ] 121/200 VUs    13.9s/45s  50.00 iters/s
+
+running (0m14.9s), 0261/0570 VUs, 6569 complete and 0 interrupted iterations
+browse   [  33% ] 0148/0330 VUs  14.9s/45s  400.00 iters/s
+hook     [  33% ] 005/040 VUs    14.9s/45s  10.00 iters/s
+pay      [  33% ] 108/200 VUs    14.9s/45s  50.00 iters/s
+
+running (0m15.9s), 0223/0570 VUs, 7067 complete and 0 interrupted iterations
+browse   [  35% ] 0113/0330 VUs  15.9s/45s  400.00 iters/s
+hook     [  35% ] 004/040 VUs    15.9s/45s  10.00 iters/s
+pay      [  35% ] 106/200 VUs    15.9s/45s  50.00 iters/s
+
+running (0m16.9s), 0195/0570 VUs, 7554 complete and 0 interrupted iterations
+browse   [  38% ] 0090/0330 VUs  16.9s/45s  400.00 iters/s
+hook     [  38% ] 004/040 VUs    16.9s/45s  10.00 iters/s
+pay      [  38% ] 101/200 VUs    16.9s/45s  50.00 iters/s
+
+running (0m17.9s), 0245/0570 VUs, 7965 complete and 0 interrupted iterations
+browse   [  40% ] 0141/0330 VUs  17.9s/45s  400.00 iters/s
+hook     [  40% ] 005/040 VUs    17.9s/45s  10.00 iters/s
+pay      [  40% ] 099/200 VUs    17.9s/45s  50.00 iters/s
+
+running (0m18.9s), 0175/0570 VUs, 8495 complete and 0 interrupted iterations
+browse   [  42% ] 0081/0330 VUs  18.9s/45s  400.00 iters/s
+hook     [  42% ] 003/040 VUs    18.9s/45s  10.00 iters/s
+pay      [  42% ] 091/200 VUs    18.9s/45s  50.00 iters/s
+
+running (0m19.9s), 0132/0570 VUs, 8997 complete and 0 interrupted iterations
+browse   [  44% ] 0047/0330 VUs  19.9s/45s  400.00 iters/s
+hook     [  44% ] 004/040 VUs    19.9s/45s  10.00 iters/s
+pay      [  44% ] 081/200 VUs    19.9s/45s  50.00 iters/s
+
+running (0m21.0s), 0281/0570 VUs, 9310 complete and 0 interrupted iterations
+browse   [  46% ] 0172/0330 VUs  20.9s/45s  400.00 iters/s
+hook     [  46% ] 006/040 VUs    20.9s/45s  10.00 iters/s
+pay      [  46% ] 103/200 VUs    20.9s/45s  50.00 iters/s
+
+running (0m21.9s), 0249/0570 VUs, 9801 complete and 0 interrupted iterations
+browse   [  49% ] 0138/0330 VUs  21.9s/45s  400.00 iters/s
+hook     [  49% ] 003/040 VUs    21.9s/45s  10.00 iters/s
+pay      [  49% ] 108/200 VUs    21.9s/45s  50.00 iters/s
+
+running (0m23.0s), 0211/0570 VUs, 10301 complete and 0 interrupted iterations
+browse   [  51% ] 0107/0330 VUs  22.9s/45s  400.00 iters/s
+hook     [  51% ] 003/040 VUs    22.9s/45s  10.00 iters/s
+pay      [  51% ] 101/200 VUs    22.9s/45s  50.00 iters/s
+
+running (0m23.9s), 0369/0570 VUs, 10601 complete and 0 interrupted iterations
+browse   [  53% ] 0240/0330 VUs  23.9s/45s  400.00 iters/s
+hook     [  53% ] 011/040 VUs    23.9s/45s  10.00 iters/s
+pay      [  53% ] 118/200 VUs    23.9s/45s  50.00 iters/s
+
+running (0m24.9s), 0242/0570 VUs, 11188 complete and 0 interrupted iterations
+browse   [  55% ] 0129/0330 VUs  24.9s/45s  400.00 iters/s
+hook     [  55% ] 003/040 VUs    24.9s/45s  10.00 iters/s
+pay      [  55% ] 110/200 VUs    24.9s/45s  50.00 iters/s
+
+running (0m25.9s), 0196/0570 VUs, 11694 complete and 0 interrupted iterations
+browse   [  58% ] 0089/0330 VUs  25.9s/45s  400.00 iters/s
+hook     [  58% ] 004/040 VUs    25.9s/45s  10.00 iters/s
+pay      [  58% ] 103/200 VUs    25.9s/45s  50.00 iters/s
+
+running (0m26.9s), 0272/0570 VUs, 12078 complete and 0 interrupted iterations
+browse   [  60% ] 0157/0330 VUs  26.9s/45s  400.00 iters/s
+hook     [  60% ] 004/040 VUs    26.9s/45s  10.00 iters/s
+pay      [  60% ] 111/200 VUs    26.9s/45s  50.00 iters/s
+
+running (0m27.9s), 0263/0570 VUs, 12546 complete and 0 interrupted iterations
+browse   [  62% ] 0147/0330 VUs  27.9s/45s  400.00 iters/s
+hook     [  62% ] 007/040 VUs    27.9s/45s  10.00 iters/s
+pay      [  62% ] 109/200 VUs    27.9s/45s  50.00 iters/s
+
+running (0m28.9s), 0228/0570 VUs, 13042 complete and 0 interrupted iterations
+browse   [  64% ] 0123/0330 VUs  28.9s/45s  400.00 iters/s
+hook     [  64% ] 004/040 VUs    28.9s/45s  10.00 iters/s
+pay      [  64% ] 101/200 VUs    28.9s/45s  50.00 iters/s
+
+running (0m29.9s), 0085/0570 VUs, 13645 complete and 0 interrupted iterations
+browse   [  66% ] 0021/0330 VUs  29.9s/45s  400.00 iters/s
+hook     [  66% ] 002/040 VUs    29.9s/45s  10.00 iters/s
+pay      [  66% ] 062/200 VUs    29.9s/45s  50.00 iters/s
+
+running (0m30.9s), 0088/0570 VUs, 14102 complete and 0 interrupted iterations
+browse   [  69% ] 0021/0330 VUs  30.9s/45s  400.00 iters/s
+hook     [  69% ] 002/040 VUs    30.9s/45s  10.00 iters/s
+pay      [  69% ] 065/200 VUs    30.9s/45s  50.00 iters/s
+
+running (0m31.9s), 0093/0570 VUs, 14557 complete and 0 interrupted iterations
+browse   [  71% ] 0021/0330 VUs  31.9s/45s  400.00 iters/s
+hook     [  71% ] 003/040 VUs    31.9s/45s  10.00 iters/s
+pay      [  71% ] 069/200 VUs    31.9s/45s  50.00 iters/s
+
+running (0m32.9s), 0087/0570 VUs, 15023 complete and 0 interrupted iterations
+browse   [  73% ] 0021/0330 VUs  32.9s/45s  400.00 iters/s
+hook     [  73% ] 002/040 VUs    32.9s/45s  10.00 iters/s
+pay      [  73% ] 064/200 VUs    32.9s/45s  50.00 iters/s
+
+running (0m33.9s), 0081/0570 VUs, 15489 complete and 0 interrupted iterations
+browse   [  75% ] 0021/0330 VUs  33.9s/45s  400.00 iters/s
+hook     [  75% ] 002/040 VUs    33.9s/45s  10.00 iters/s
+pay      [  75% ] 058/200 VUs    33.9s/45s  50.00 iters/s
+
+running (0m34.9s), 0079/0570 VUs, 15950 complete and 0 interrupted iterations
+browse   [  78% ] 0022/0330 VUs  34.9s/45s  400.00 iters/s
+hook     [  78% ] 002/040 VUs    34.9s/45s  10.00 iters/s
+pay      [  78% ] 055/200 VUs    34.9s/45s  50.00 iters/s
+
+running (0m35.9s), 0079/0570 VUs, 16411 complete and 0 interrupted iterations
+browse   [  80% ] 0021/0330 VUs  35.9s/45s  400.00 iters/s
+hook     [  80% ] 001/040 VUs    35.9s/45s  10.00 iters/s
+pay      [  80% ] 057/200 VUs    35.9s/45s  50.00 iters/s
+
+running (0m36.9s), 0079/0570 VUs, 16871 complete and 0 interrupted iterations
+browse   [  82% ] 0020/0330 VUs  36.9s/45s  400.00 iters/s
+hook     [  82% ] 002/040 VUs    36.9s/45s  10.00 iters/s
+pay      [  82% ] 057/200 VUs    36.9s/45s  50.00 iters/s
+
+running (0m37.9s), 0076/0570 VUs, 17334 complete and 0 interrupted iterations
+browse   [  84% ] 0021/0330 VUs  37.9s/45s  400.00 iters/s
+hook     [  84% ] 001/040 VUs    37.9s/45s  10.00 iters/s
+pay      [  84% ] 054/200 VUs    37.9s/45s  50.00 iters/s
+
+running (0m38.9s), 0074/0570 VUs, 17797 complete and 0 interrupted iterations
+browse   [  86% ] 0020/0330 VUs  38.9s/45s  400.00 iters/s
+hook     [  86% ] 001/040 VUs    38.9s/45s  10.00 iters/s
+pay      [  86% ] 053/200 VUs    38.9s/45s  50.00 iters/s
+
+running (0m39.9s), 0072/0570 VUs, 18258 complete and 0 interrupted iterations
+browse   [  89% ] 0021/0330 VUs  39.9s/45s  400.00 iters/s
+hook     [  89% ] 000/040 VUs    39.9s/45s  10.00 iters/s
+pay      [  89% ] 051/200 VUs    39.9s/45s  50.00 iters/s
+
+running (0m40.9s), 0083/0570 VUs, 18707 complete and 0 interrupted iterations
+browse   [  91% ] 0021/0330 VUs  40.9s/45s  400.00 iters/s
+hook     [  91% ] 001/040 VUs    40.9s/45s  10.00 iters/s
+pay      [  91% ] 061/200 VUs    40.9s/45s  50.00 iters/s
+
+running (0m41.9s), 0082/0570 VUs, 19168 complete and 0 interrupted iterations
+browse   [  93% ] 0021/0330 VUs  41.9s/45s  400.00 iters/s
+hook     [  93% ] 001/040 VUs    41.9s/45s  10.00 iters/s
+pay      [  93% ] 060/200 VUs    41.9s/45s  50.00 iters/s
+
+running (0m42.9s), 0075/0570 VUs, 19635 complete and 0 interrupted iterations
+browse   [  95% ] 0021/0330 VUs  42.9s/45s  400.00 iters/s
+hook     [  95% ] 002/040 VUs    42.9s/45s  10.00 iters/s
+pay      [  95% ] 052/200 VUs    42.9s/45s  50.00 iters/s
+
+running (0m43.9s), 0077/0570 VUs, 20092 complete and 0 interrupted iterations
+browse   [  98% ] 0020/0330 VUs  43.9s/45s  400.00 iters/s
+hook     [  98% ] 002/040 VUs    43.9s/45s  10.00 iters/s
+pay      [  98% ] 055/200 VUs    43.9s/45s  50.00 iters/s
+
+running (0m44.9s), 0083/0570 VUs, 20547 complete and 0 interrupted iterations
+browse   [ 100% ] 0021/0330 VUs  44.9s/45s  400.00 iters/s
+hook     [ 100% ] 001/040 VUs    44.9s/45s  10.00 iters/s
+pay      [ 100% ] 061/200 VUs    44.9s/45s  50.00 iters/s
+
+running (0m45.9s), 0031/0570 VUs, 20637 complete and 0 interrupted iterations
+browse ✓ [ 100% ] 0000/0330 VUs  45s  400.00 iters/s
+hook   ✓ [ 100% ] 000/040 VUs    45s  10.00 iters/s
+pay    ↓ [ 100% ] 062/200 VUs    45s  50.00 iters/s
+
+running (0m46.9s), 0004/0570 VUs, 20664 complete and 0 interrupted iterations
+browse ✓ [ 100% ] 0000/0330 VUs  45s  400.00 iters/s
+hook   ✓ [ 100% ] 000/040 VUs    45s  10.00 iters/s
+pay    ↓ [ 100% ] 062/200 VUs    45s  50.00 iters/s
+
+
+  █ THRESHOLDS 
+
+    http_req_duration{name:confirm}
+    ✓ 'p(95)<600000' p(95)=5.95s
+
+    http_req_duration{name:webhook}
+    ✓ 'p(95)<600000' p(95)=863.86ms
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 1       0.021201/s
+    checks_succeeded...: 100.00% 1 out of 1
+    checks_failed......: 0.00%   0 out of 1
+
+    ✓ login 200
+
+    CUSTOM
+    browse_2xx.....................: 5318   112.744937/s
+    browse_503.....................: 12648  268.145538/s
+    browse_ms......................: avg=241.48ms med=214.33ms max=1.58s p(90)=587.04ms p(95)=703.39ms p(99)=910.33ms
+    webhook_ms.....................: avg=328.65ms med=256.37ms max=1.31s p(90)=750.3ms  p(95)=863.86ms p(99)=1.13s   
+    webhook_over_10s...............: 0.00%  0 out of 451
+
+    HTTP
+    http_req_duration..............: avg=371.18ms med=247.06ms max=7.5s  p(90)=706.38ms p(95)=888.46ms p(99)=5.51s   
+      { expected_response:true }...: avg=580.28ms med=312.9ms  max=7.5s  p(90)=837.25ms p(95)=1.19s    p(99)=6.02s   
+      { name:confirm }.............: avg=1.42s    med=636.47ms max=7.5s  p(90)=5.51s    p(95)=5.95s    p(99)=6.47s   
+      { name:webhook }.............: avg=328.65ms med=256.37ms max=1.31s p(90)=750.3ms  p(95)=863.86ms p(99)=1.13s   
+    http_req_failed................: 63.43% 14539 out of 22920
+    http_reqs......................: 22920  485.918384/s
+
+    EXECUTION
+    dropped_iterations.............: 34     0.720821/s
+    iteration_duration.............: avg=412.14ms med=251.4ms  max=8.37s p(90)=739.59ms p(95)=1.24s    p(99)=5.8s    
+    iterations.....................: 20668  438.174571/s
+    vus............................: 4      min=4              max=462
+    vus_max........................: 570    min=540            max=570
+
+    NETWORK
+    data_received..................: 30 MB  630 kB/s
+    data_sent......................: 4.6 MB 97 kB/s
+
+
+
+
+running (0m47.2s), 0000/0570 VUs, 20668 complete and 0 interrupted iterations
+browse ✓ [ 100% ] 0000/0330 VUs  45s  400.00 iters/s
+hook   ✓ [ 100% ] 000/040 VUs    45s  10.00 iters/s
+pay    ✓ [ 100% ] 000/200 VUs    45s  50.00 iters/s

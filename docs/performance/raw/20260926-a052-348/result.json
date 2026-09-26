@@ -1,0 +1,279 @@
+{
+ "pages": [
+  {
+   "page": 1,
+   "status": 200,
+   "nextCursorLength": 148,
+   "idsCarried": 13,
+   "rowsCarried": 2,
+   "reencodedMatches": true
+  },
+  {
+   "page": 2,
+   "status": 200,
+   "nextCursorLength": 422,
+   "idsCarried": 37,
+   "rowsCarried": 5,
+   "reencodedMatches": true
+  },
+  {
+   "page": 3,
+   "status": 200
+  }
+ ],
+ "perPageIds": 24.0,
+ "perPageRows": 3.0,
+ "firstPageOverLimit": 16,
+ "projected": [
+  {
+   "afterPage": 3,
+   "cursorLength": 694,
+   "ids": 61,
+   "rows": 8
+  },
+  {
+   "afterPage": 4,
+   "cursorLength": 966,
+   "ids": 85,
+   "rows": 11
+  },
+  {
+   "afterPage": 5,
+   "cursorLength": 1238,
+   "ids": 109,
+   "rows": 14
+  },
+  {
+   "afterPage": 6,
+   "cursorLength": 1510,
+   "ids": 133,
+   "rows": 17
+  },
+  {
+   "afterPage": 7,
+   "cursorLength": 1782,
+   "ids": 157,
+   "rows": 20
+  },
+  {
+   "afterPage": 8,
+   "cursorLength": 2054,
+   "ids": 181,
+   "rows": 23
+  },
+  {
+   "afterPage": 9,
+   "cursorLength": 2327,
+   "ids": 205,
+   "rows": 26
+  },
+  {
+   "afterPage": 10,
+   "cursorLength": 2599,
+   "ids": 229,
+   "rows": 29
+  },
+  {
+   "afterPage": 11,
+   "cursorLength": 2871,
+   "ids": 253,
+   "rows": 32
+  },
+  {
+   "afterPage": 12,
+   "cursorLength": 3143,
+   "ids": 277,
+   "rows": 35
+  },
+  {
+   "afterPage": 13,
+   "cursorLength": 3415,
+   "ids": 301,
+   "rows": 38
+  },
+  {
+   "afterPage": 14,
+   "cursorLength": 3687,
+   "ids": 325,
+   "rows": 41
+  },
+  {
+   "afterPage": 15,
+   "cursorLength": 3959,
+   "ids": 349,
+   "rows": 44
+  },
+  {
+   "afterPage": 16,
+   "cursorLength": 4231,
+   "ids": 373,
+   "rows": 47
+  },
+  {
+   "afterPage": 17,
+   "cursorLength": 4503,
+   "ids": 397,
+   "rows": 50
+  },
+  {
+   "afterPage": 18,
+   "cursorLength": 4775,
+   "ids": 421,
+   "rows": 53
+  },
+  {
+   "afterPage": 19,
+   "cursorLength": 5047,
+   "ids": 445,
+   "rows": 56
+  },
+  {
+   "afterPage": 20,
+   "cursorLength": 5319,
+   "ids": 469,
+   "rows": 59
+  },
+  {
+   "afterPage": 21,
+   "cursorLength": 5591,
+   "ids": 493,
+   "rows": 62
+  },
+  {
+   "afterPage": 22,
+   "cursorLength": 5863,
+   "ids": 517,
+   "rows": 65
+  },
+  {
+   "afterPage": 23,
+   "cursorLength": 6135,
+   "ids": 541,
+   "rows": 68
+  },
+  {
+   "afterPage": 24,
+   "cursorLength": 6407,
+   "ids": 565,
+   "rows": 71
+  },
+  {
+   "afterPage": 25,
+   "cursorLength": 6679,
+   "ids": 589,
+   "rows": 74
+  },
+  {
+   "afterPage": 26,
+   "cursorLength": 6951,
+   "ids": 613,
+   "rows": 77
+  },
+  {
+   "afterPage": 27,
+   "cursorLength": 7223,
+   "ids": 637,
+   "rows": 80
+  },
+  {
+   "afterPage": 28,
+   "cursorLength": 7495,
+   "ids": 661,
+   "rows": 83
+  },
+  {
+   "afterPage": 29,
+   "cursorLength": 7767,
+   "ids": 685,
+   "rows": 86
+  },
+  {
+   "afterPage": 30,
+   "cursorLength": 8039,
+   "ids": 709,
+   "rows": 89
+  },
+  {
+   "afterPage": 31,
+   "cursorLength": 8311,
+   "ids": 733,
+   "rows": 92
+  },
+  {
+   "afterPage": 32,
+   "cursorLength": 8583,
+   "ids": 757,
+   "rows": 95
+  },
+  {
+   "afterPage": 33,
+   "cursorLength": 8855,
+   "ids": 781,
+   "rows": 98
+  },
+  {
+   "afterPage": 34,
+   "cursorLength": 9127,
+   "ids": 805,
+   "rows": 101
+  },
+  {
+   "afterPage": 35,
+   "cursorLength": 9399,
+   "ids": 829,
+   "rows": 104
+  },
+  {
+   "afterPage": 36,
+   "cursorLength": 9671,
+   "ids": 853,
+   "rows": 107
+  },
+  {
+   "afterPage": 37,
+   "cursorLength": 9943,
+   "ids": 877,
+   "rows": 110
+  },
+  {
+   "afterPage": 38,
+   "cursorLength": 10215,
+   "ids": 901,
+   "rows": 113
+  },
+  {
+   "afterPage": 39,
+   "cursorLength": 10487,
+   "ids": 925,
+   "rows": 116
+  },
+  {
+   "afterPage": 40,
+   "cursorLength": 10759,
+   "ids": 949,
+   "rows": 119
+  }
+ ],
+ "probes": [
+  {
+   "cursorLength": 4090,
+   "status": 200
+  },
+  {
+   "cursorLength": 4099,
+   "status": 400
+  },
+  {
+   "cursorLength": 8000,
+   "status": 400
+  },
+  {
+   "cursorLength": 8103,
+   "status": 400
+  },
+  {
+   "cursorLength": 9008,
+   "status": 400
+  }
+ ]
+}

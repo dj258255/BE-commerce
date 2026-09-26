@@ -1,0 +1,1 @@
+/private/tmp/claude-501/genpage-venv/bin/python tools/genpage2_x1_context.py --mode validate --ckpt /Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/validate/ckpt/b-small-full --customers 5000 --device cpu --out /private/tmp/claude-501/-Users-beomsu-Desktop-pay/35c4c37b-b9f5-42c6-9a21-4fff361024fe/scratchpad/c4/personalization/docs/runs/20260925-v2-x1-context
