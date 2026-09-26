@@ -1,0 +1,14 @@
+98.5 0.0 01-06:26:36 zsh
+80.3 4.9 05-11:23:12 com.apple.Virtualization.VirtualMachine
+20.8 0.1 06-21:02:12 launchd
+14.0 0.0 06-20:08:23 ReportCrash
+12.7 0.2 06-20:08:21 NotificationCenter
+10.0 0.0 00:00 mdworker_shared
+8.9 0.2 06-20:08:39 WindowServer
+8.7 0.1 04-13:30:22 Webex
+6.9 0.0 06-20:08:40 launchservicesd
+6.5 1.9 03:16:55 java
+5.9 1.1 03:37:18 Google
+5.3 0.0 06-20:07:44 coresymbolicationd
+Load Avg: 3.22, 3.98, 5.46 
+CPU usage: 14.88% user, 15.36% sys, 69.74% idle 

@@ -235,7 +235,7 @@ public class CacheBenchmark {
      * <p>그래도 <b>이 모양에서의 결과</b>라는 한계는 리포트에 적는다 — 값이 사진·벡터처럼
      * 고엔트로피면 교차점이 훨씬 오른쪽으로 간다.
      */
-    private static String payload(int size) {
+    static String payload(int size) {
         StringBuilder sb = new StringBuilder(size + 256);
         sb.append("{\"seq\":1234567890123,\"updatedAt\":\"2026-09-21T00:00:00Z\",\"items\":[");
         int i = 0;

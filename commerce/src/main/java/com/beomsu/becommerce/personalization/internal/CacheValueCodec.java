@@ -84,9 +84,18 @@ public enum CacheValueCodec {
         }
     };
 
+    /**
+     * <b>스프링 부트 실행 jar 안에서는 JNI 가 아니라 Java 구현이 골라진다</b>(#346). lz4-java 의 {@code fastestInstance()} 는 시스템
+     * 클래스로더가 올린 경우에만 네이티브를 시도하는데, 실행 jar 는 자체 클래스로더로 올린다. 테스트 · 단독 실행에서는 JNI 라
+     * 같은 코드가 환경에 따라 다른 구현으로 돈다. 그래서 무엇이 골라졌는지 기동 때 로그로 밝힌다.
+     */
     private static final LZ4Factory FACTORY = LZ4Factory.fastestInstance();
     private static final LZ4Compressor COMPRESSOR = FACTORY.fastCompressor();
     private static final LZ4FastDecompressor DECOMPRESSOR = FACTORY.fastDecompressor();
+
+    static {
+        org.slf4j.LoggerFactory.getLogger(CacheValueCodec.class).info("캐시 코덱 LZ4 구현={}", FACTORY);
+    }
 
     /** 압축 값임을 알리는 접두어. 이 바이트도 저장량에 포함된다. */
     private final String marker;
