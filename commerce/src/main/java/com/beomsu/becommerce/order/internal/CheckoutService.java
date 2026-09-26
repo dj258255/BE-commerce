@@ -1,5 +1,7 @@
 package com.beomsu.becommerce.order.internal;
 
+import com.beomsu.becommerce.order.catalog.StockReservationService;
+
 import com.beomsu.becommerce.order.recovery.CheckoutRecoveryService;
 import com.beomsu.becommerce.order.catalog.ProductRepository;
 import com.beomsu.becommerce.order.catalog.Product;
@@ -36,6 +38,7 @@ public class CheckoutService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final QueueService queueService;
+    private final StockReservationService stockReservationService;
     private final List<Long> gateProductIds;
     private final String gateEventId;
 
@@ -45,6 +48,7 @@ public class CheckoutService {
                            OrderRepository orderRepository,
                            ProductRepository productRepository,
                            QueueService queueService,
+                           StockReservationService stockReservationService,
                            @Value("${app.queue.gate.product-ids:}") List<Long> gateProductIds,
                            @Value("${app.queue.gate.event-id:drop}") String gateEventId) {
         this.paymentService = paymentService;
@@ -53,6 +57,7 @@ public class CheckoutService {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.queueService = queueService;
+        this.stockReservationService = stockReservationService;
         this.gateProductIds = gateProductIds;
         this.gateEventId = gateEventId;
     }
@@ -82,8 +87,23 @@ public class CheckoutService {
                             product.getPrice(), l.quantity());
                 })
                 .toList();
+        // 재고를 언제 잡을지(#374). 기본(NONE)은 여기서 아무것도 하지 않는다(ADR-003: 승인 뒤 차감).
+        List<StockReservationService.Line> stockLines = items.stream()
+                .map(i -> new StockReservationService.Line(i.getProductId(), i.getQuantity()))
+                .toList();
+        StockReservationService.Strategy strategy = stockReservationService.strategy();
+        if (strategy == StockReservationService.Strategy.CHECK) {
+            stockReservationService.checkAvailable(stockLines);   // 여유만 본다. 잡지 않는다
+        }
         Order order = Order.create(userId, items);
-        orderRepository.save(order);
+        if (strategy == StockReservationService.Strategy.AT_ORDER) {
+            // 먼저 flush 한다. 예약의 조건부 UPDATE 가 영속성 컨텍스트를 비워도 주문 INSERT 가 남게.
+            // 모자라면 OUT_OF_STOCK 이 이 트랜잭션을 롤백해 주문도 만들어지지 않는다
+            orderRepository.saveAndFlush(order);
+            stockReservationService.reserve(order.getOrderNo(), stockLines, "order");
+        } else {
+            orderRepository.save(order);
+        }
         return new CreateOrderResult(order.getOrderNo(), order.getTotalAmount(), order.getExpiresAt());
     }
 

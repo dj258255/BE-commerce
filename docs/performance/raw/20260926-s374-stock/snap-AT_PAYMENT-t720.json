@@ -1,0 +1,55 @@
+{
+ "name": "AT_PAYMENT",
+ "label": "t720",
+ "stock": 4,
+ "orders": {
+  "PAID": 96,
+  "PENDING_PAYMENT": 204
+ },
+ "reservations": {
+  "CLAIMED": 96,
+  "RELEASED": 4
+ },
+ "paid": 96,
+ "held": 0,
+ "net_cancels": 0,
+ "net_cancels_from_unknown": 0,
+ "unsold": 4,
+ "safety": {
+  "paid_le_initial": true,
+  "stock_non_negative": true,
+  "deducted_eq_paid_plus_held": true
+ },
+ "unknown": [
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 640.5377
+  },
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 645.879093
+  },
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 642.760881
+  },
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 659.143941
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAID",
+   "secs_to_last_update": 643.35277
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAID",
+   "secs_to_last_update": 636.115171
+  }
+ ]
+}

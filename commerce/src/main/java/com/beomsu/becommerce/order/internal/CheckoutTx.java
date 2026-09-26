@@ -2,6 +2,7 @@ package com.beomsu.becommerce.order.internal;
 
 import com.beomsu.becommerce.order.compensation.CompensationService;
 import com.beomsu.becommerce.order.catalog.StockDeductionService;
+import com.beomsu.becommerce.order.catalog.StockReservationService;
 import com.beomsu.becommerce.payment.ApprovalOutcome;
 import com.beomsu.becommerce.payment.ConfirmResult;
 import com.beomsu.becommerce.payment.PaymentService;
@@ -39,6 +40,7 @@ public class CheckoutTx {
     private final PointService pointService;
     private final WalletService walletService;
     private final CompensationService compensationService;
+    private final StockReservationService stockReservationService;
 
     /** 예약 결과 — 확정 단계로 넘길 최소 정보. cardAmount==0(전액 포인트)이면 paymentId는 null. */
     record Reservation(Long paymentId) {}
@@ -116,6 +118,14 @@ public class CheckoutTx {
         }
         orderRepository.saveAndFlush(order);
 
+        // 결제 시작에 재고를 잡는다(#374, AT_PAYMENT). PG 호출 전이라 모자라면 OUT_OF_STOCK 으로 이 트랜잭션 전체가
+        // 롤백되고 승인은 나가지 않는다. 주문을 먼저 저장했으므로 조건부 UPDATE 가 컨텍스트를 비워도 전이는 남는다.
+        if (stockReservationService.strategy() == StockReservationService.Strategy.AT_PAYMENT) {
+            stockReservationService.reserve(orderNo, order.getItems().stream()
+                    .map(i -> new StockReservationService.Line(i.getProductId(), i.getQuantity()))
+                    .toList(), "payment");
+        }
+
         // 월렛 차감은 맨 마지막 — 커밋되는 부수효과라 이후 단계 실패로 고아가 되지 않게 한다. orderNo로 멱등.
         if (walletAmount > 0) {
             walletService.use(order.getUserId(), walletAmount, orderNo);
@@ -149,6 +159,8 @@ public class CheckoutTx {
         if (cardApproved) {
             // 승인 성공 시점 재고 차감(ADR-003). tryDeduct(예외 없는 boolean) — 부족해도 tx는 깨끗이 커밋하고 보상.
             List<OrderItem> deducted = new ArrayList<>();
+            // 결제 시작 · 주문 생성 때 잡아 둔 재고가 있으면 확정만 한다(#374). 없으면 지금처럼 승인 뒤에 뺀다.
+            boolean reserved = stockReservationService.claim(orderNo);
             boolean allDeducted = true;
             // 상품 ID 오름차순으로 잠근다 — 잠금 순서를 모든 트랜잭션에서 같게 만들어 데드락을 막는다.
             // 정렬이 없으면 잠금 순서가 주문 항목 순서를 따르므로, 장바구니에 같은 두 상품이 반대 순서로
@@ -157,7 +169,7 @@ public class CheckoutTx {
             List<OrderItem> lockOrdered = order.getItems().stream()
                     .sorted(Comparator.comparing(OrderItem::getProductId))
                     .toList();
-            for (OrderItem item : lockOrdered) {
+            for (OrderItem item : reserved ? List.<OrderItem>of() : lockOrdered) {
                 if (stockDeductionService.tryDeduct(item.getProductId(), item.getQuantity())) {
                     deducted.add(item);
                 } else {
@@ -206,6 +218,11 @@ public class CheckoutTx {
             }
             if (walletAmount > 0) {
                 walletService.restore(order.getUserId(), walletAmount, orderNo);
+            }
+            // 결제 시작에 잡은 재고는 되돌린다(#374). 다시 시도하면 예약 단계가 다시 잡는다.
+            // 주문 생성에 잡은 재고(AT_ORDER)는 두고, 주문 만료가 되돌린다.
+            if (stockReservationService.strategy() == StockReservationService.Strategy.AT_PAYMENT) {
+                stockReservationService.release(orderNo, "payment_declined");
             }
             order.revertToPending();
         }

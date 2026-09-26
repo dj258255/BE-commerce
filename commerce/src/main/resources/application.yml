@@ -385,6 +385,11 @@ app:
     enabled: ${APP_DUNNING_ENABLED:false}
     interval-ms: 3600000
   # 주문 만료 배치 스케줄러 → OrderExpiryService.expireOverdue(now) (PENDING_PAYMENT+만료시각 경과 → EXPIRED)
+  # 재고를 언제 잡을지(#374). CHECK(기본) = 주문 생성 때 여유만 확인하고 승인 뒤 차감(ADR-003 이 적은 흐름),
+  # NONE = 확인 없이 승인 뒤 차감(매진 뒤 결제도 망취소), AT_PAYMENT = 결제 시작(PG 호출 전)에 잡고 승인이면 확정 ·
+  # 거절이면 되돌림(한정 상품용), AT_ORDER = 주문 생성 때 잡고 만료에 되돌림. 한정 상품 부하 결과는 ADR-003.
+  stock:
+    reservation: ${APP_STOCK_RESERVATION:CHECK}
   order:
     expiry:
       enabled: ${APP_ORDER_EXPIRY_ENABLED:false}
