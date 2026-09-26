@@ -398,6 +398,9 @@ app:
   # 멱등키(idempotency_keys) 정리 스케줄러 → 무한 성장 방지. TTL은 15일(토스페이먼츠 정합)로 그대로 두고,
   # 유효기간 지난 레코드만 주기 삭제해 15일치로 크기 유지. 기본 1시간 주기.
   idempotency:
+    # 처리권 만료(#369). 요청 도중 프로세스가 죽어 남은 PROCESSING 을 다음 같은 키 요청이 넘겨받는 시각.
+    # 요청 하나의 최악(약 84초, IdempotencyService 주석)보다 길어야 살아 있는 느린 요청을 가로채지 않는다.
+    processing-lease: ${APP_IDEMPOTENCY_PROCESSING_LEASE:3m}
     cleanup:
       enabled: ${APP_IDEMPOTENCY_CLEANUP_ENABLED:false}
       interval-ms: 3600000
