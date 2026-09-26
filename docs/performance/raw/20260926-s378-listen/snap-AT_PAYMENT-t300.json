@@ -1,0 +1,65 @@
+{
+ "name": "AT_PAYMENT",
+ "label": "t300",
+ "stock": 3,
+ "orders": {
+  "PAID": 97,
+  "PENDING_PAYMENT": 204
+ },
+ "reservations": {
+  "CLAIMED": 97,
+  "RELEASED": 3
+ },
+ "paid": 97,
+ "held": 0,
+ "net_cancels": 0,
+ "net_cancels_from_unknown": 0,
+ "unsold": 3,
+ "safety": {
+  "paid_le_initial": true,
+  "stock_non_negative": true,
+  "deducted_eq_paid_plus_held": true
+ },
+ "unknown": [
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 106.067476
+  },
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 95.613235
+  },
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 116.965411
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAID",
+   "secs_to_last_update": 106.965089
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAID",
+   "secs_to_last_update": 99.62918
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAID",
+   "secs_to_last_update": 110.382247
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAID",
+   "secs_to_last_update": 112.76695
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAID",
+   "secs_to_last_update": 103.78342
+  }
+ ]
+}

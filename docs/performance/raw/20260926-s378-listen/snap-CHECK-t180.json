@@ -1,0 +1,93 @@
+{
+ "name": "CHECK",
+ "label": "t180",
+ "stock": 0,
+ "orders": {
+  "FAILED": 8,
+  "PAID": 100,
+  "PENDING_PAYMENT": 30
+ },
+ "reservations": {},
+ "paid": 100,
+ "held": 0,
+ "net_cancels": 8,
+ "net_cancels_from_unknown": 8,
+ "unsold": 0,
+ "safety": {
+  "paid_le_initial": true,
+  "stock_non_negative": true,
+  "deducted_eq_paid_plus_held": true
+ },
+ "unknown": [
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 108.684404
+  },
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 115.87605
+  },
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 106.892621
+  },
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 93.998841
+  },
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 94.417945
+  },
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 100.615063
+  },
+  {
+   "kind": "ok",
+   "order_status": "FAILED",
+   "secs_to_last_update": 119.828082
+  },
+  {
+   "kind": "ok",
+   "order_status": "FAILED",
+   "secs_to_last_update": 110.722386
+  },
+  {
+   "kind": "ok",
+   "order_status": "FAILED",
+   "secs_to_last_update": 119.497234
+  },
+  {
+   "kind": "ok",
+   "order_status": "FAILED",
+   "secs_to_last_update": 101.6004
+  },
+  {
+   "kind": "ok",
+   "order_status": "FAILED",
+   "secs_to_last_update": 117.092534
+  },
+  {
+   "kind": "ok",
+   "order_status": "FAILED",
+   "secs_to_last_update": 114.646665
+  },
+  {
+   "kind": "ok",
+   "order_status": "FAILED",
+   "secs_to_last_update": 107.36219
+  },
+  {
+   "kind": "ok",
+   "order_status": "FAILED",
+   "secs_to_last_update": 106.601479
+  }
+ ]
+}
