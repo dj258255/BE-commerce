@@ -1,0 +1,14 @@
+107.5 0.4 00:02 node
+100.0 0.0 01-08:22:53 zsh
+19.0 6.3 05-13:19:29 com.apple.Virtualization.VirtualMachine
+14.4 0.1 16:43:37 PerfPowerServices
+12.0 0.1 00:01 mdworker_shared
+11.7 0.2 06-22:04:56 WindowServer
+9.0 0.1 04-15:26:39 Webex
+6.8 0.1 06-22:04:56 runningboardd
+6.6 0.0 01:15:47 sysmond
+6.0 2.2 03-08:13:03 claude
+6.0 0.0 06-22:04:40 ReportCrash
+5.9 0.1 06-22:04:48 ghostty
+Load Avg: 8.13, 9.34, 9.85 
+CPU usage: 20.64% user, 18.14% sys, 61.20% idle 
