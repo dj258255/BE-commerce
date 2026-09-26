@@ -1,0 +1,22 @@
+Query	SET SESSION TRANSACTION READ ONLY
+Query	SET autocommit=0
+Query	select o1_0.id,o1_0.created_at,o1_0.currency,o1_0.expires_at,o1_0.orde
+Query	select i1_0.order_id,i1_0.id,i1_0.product_id,i1_0.product_name,i1_0.qu
+Query	select p1_0.id,p1_0.amount,p1_0.approved_at,p1_0.balance_amount,p1_0.c
+Query	select h1_0.payment_id,h1_0.id,h1_0.created_at,h1_0.from_status,h1_0.r
+Query	select eh1_0.id,eh1_0.amount,eh1_0.auto_release_at,eh1_0.created_at,eh
+Query	select si1_0.id,si1_0.amount,si1_0.confirmed_date,si1_0.last_cancel_se
+Query	select ph1_0.id,ph1_0.amount,ph1_0.created_at,ph1_0.order_no,ph1_0.typ
+Query	select wt1_0.id,wt1_0.amount,wt1_0.balance_after,wt1_0.created_at,wt1_
+Query	select d1_0.id,d1_0.amount,d1_0.chargeback_id,d1_0.created_at,d1_0.evi
+Query	select rr1_0.id,rr1_0.external_amount,rr1_0.internal_amount,rr1_0.orde
+Query	select p1_0.id,p1_0.amount,p1_0.approved_at,p1_0.balance_amount,p1_0.c
+Query	select lt1_0.id,lt1_0.created_at,lt1_0.description,lt1_0.source_id,lt1
+Query	select e1_0.transaction_id,e1_0.id,e1_0.account,e1_0.amount,e1_0.direc
+Query	select p1_0.id,p1_0.amount,p1_0.approved_at,p1_0.balance_amount,p1_0.c
+Query	select rr1_0.id,rr1_0.external_amount,rr1_0.internal_amount,rr1_0.orde
+Query	select al1_0.id,al1_0.action,al1_0.actor,al1_0.created_at,al1_0.detail
+Query	select al1_0.id,al1_0.action,al1_0.actor,al1_0.created_at,al1_0.detail
+Query	COMMIT
+Query	SET autocommit=1
+Query	SET SESSION TRANSACTION READ WRITE
