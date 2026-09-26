@@ -15,7 +15,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** 주문 생성 때 여유만 확인하는 전략(CHECK, #374). ADR-003 이 적은 흐름이다. 잡지 않으므로 사이에 팔릴 수 있다. */
 @Tag("integration")
-@SpringBootTest(properties = "app.stock.reservation=CHECK")
+@SpringBootTest(properties = {
+        "app.stock.reservation=CHECK",
+        "payment.fake-pg.timeout-approved-prefix=unk-ok-",
+        "payment.fake-pg.timeout-lost-prefix=unk-lost-"})
 @DisplayName("재고 CHECK — 여유가 없으면 주문을 거절하고, 있으면 예약 없이 승인 뒤에 뺀다")
 class StockReservationCheckIntegrationTest extends StockReservationTestSupport {
 
@@ -60,6 +63,22 @@ class StockReservationCheckIntegrationTest extends StockReservationTestSupport {
 
         assertThat(r.orderStatus()).isEqualTo(OrderStatus.FAILED);
         assertThat(netCancels(second)).isEqualTo(1);
+        assertThat(stock(p)).isZero();
+    }
+
+    @Test
+    @DisplayName("결제 복구가 승인으로 확정하면 주문이 배치를 기다리지 않고 재고를 빼고 PAID 가 된다(#378)")
+    void recoveryFinishesOrderWithoutBatch() throws Exception {
+        long p = product(1);
+        long u = user();
+        String o = order(u, p);
+        String key = "unk-ok-" + UUID.randomUUID();
+        pay(o, u, key);
+        assertThat(stock(p)).isEqualTo(1);   // CHECK 는 승인 뒤에 뺀다. 결과를 모르는 동안은 안 뺀다
+
+        paymentRecoveryService.resolveByPaymentKey(key);
+
+        assertThat(awaitOrderStatus(o, "PAID")).isEqualTo("PAID");
         assertThat(stock(p)).isZero();
     }
 }

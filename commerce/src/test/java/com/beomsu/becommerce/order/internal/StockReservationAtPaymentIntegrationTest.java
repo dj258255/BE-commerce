@@ -171,4 +171,38 @@ class StockReservationAtPaymentIntegrationTest extends StockReservationTestSuppo
         assertThat(stock(p)).isZero();
         assertThat(cancels).isZero();
     }
+
+    @Test
+    @DisplayName("결제 복구가 PG 에 없음으로 확정하면 주문이 배치를 기다리지 않고 되돌아가고 재고가 풀린다(#378)")
+    void recoveryReleasesWithoutWaitingForBatch() throws Exception {
+        long p = product(1);
+        long u = user();
+        String o = order(u, p);
+        String key = "unk-lost-" + UUID.randomUUID();
+        pay(o, u, key);
+        assertThat(stock(p)).isZero();
+
+        paymentRecoveryService.resolveByPaymentKey(key);   // 웹훅 · 결제 복구 배치가 타는 경로
+
+        assertThat(awaitOrderStatus(o, "PENDING_PAYMENT")).isEqualTo("PENDING_PAYMENT");
+        assertThat(reservations(o)).containsExactly("RELEASED");
+        assertThat(stock(p)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("결제 복구가 승인으로 확정하면 주문이 배치를 기다리지 않고 PAID 가 된다(#378)")
+    void recoveryClaimsWithoutWaitingForBatch() throws Exception {
+        long p = product(1);
+        long u = user();
+        String o = order(u, p);
+        String key = "unk-ok-" + UUID.randomUUID();
+        pay(o, u, key);
+
+        paymentRecoveryService.resolveByPaymentKey(key);
+
+        assertThat(awaitOrderStatus(o, "PAID")).isEqualTo("PAID");
+        assertThat(reservations(o)).containsExactly("CLAIMED");
+        assertThat(stock(p)).isZero();
+        assertThat(netCancels(o)).isZero();
+    }
 }

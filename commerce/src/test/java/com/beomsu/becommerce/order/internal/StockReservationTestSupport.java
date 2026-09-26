@@ -31,6 +31,22 @@ abstract class StockReservationTestSupport {
     @Autowired
     JdbcTemplate jdbc;
 
+    @Autowired
+    com.beomsu.becommerce.payment.recovery.PaymentRecoveryService paymentRecoveryService;
+
+    /** 결제 복구가 PG 조회로 확정한 뒤, 주문이 배치 없이 마무리될 때까지 최대 10초 기다린다(#378). */
+    String awaitOrderStatus(String orderNo, String expected) throws InterruptedException {
+        String status = null;
+        for (int i = 0; i < 100; i++) {
+            status = orderStatus(orderNo);
+            if (expected.equals(status)) {
+                return status;
+            }
+            Thread.sleep(100);
+        }
+        return status;
+    }
+
     @AfterEach
     void resetPg() {
         fakePg.setNextResult(PgApproveResult.success("CARD"));
