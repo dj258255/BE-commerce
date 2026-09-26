@@ -3,14 +3,20 @@ package com.beomsu.becommerce.order.idempotency;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
@@ -47,16 +53,53 @@ import java.util.function.Supplier;
  * <ol style="display:none">
  * </ol>
  * 재시도 동안 PROCESSING 레코드는 유지되므로 동시 중복 요청은 계속 409로 막힌다(의도).
+ *
+ * <p><b>처리권 만료(#369)</b> — PROCESSING 레코드는 작업이 예외로 끝날 때만 지운다. 요청 도중 프로세스가
+ * 죽으면 레코드가 남아 같은 키가 {@code expiresAt}(15일)까지 409 를 받았다. 그래서 처리권에 만료
+ * ({@code leaseUntil})를 두고, 만료된 PROCESSING 레코드는 다음 같은 키 요청 <b>하나</b>가 조건부 UPDATE 로
+ * 넘겨받아 작업을 다시 실행한다(Airbnb Orpheus 의 리스와 같은 자리). 다시 실행해도 이중 결제로 가지 않는
+ * 근거는 작업 쪽에 있다. 결제 확정은 실행하자마자 앞 시도를 PG 조회로 해소하고
+ * {@code ORDER_ALREADY_PAID} · {@code PAYMENT_RESULT_PENDING} 을 돌려준다. 새 승인은 나가지 않는다.
+ *
+ * <p>만료 기본값 {@link #DEFAULT_LEASE} 는 요청 하나의 최악 시간보다 길다. 데드락 재시도 3회 ×
+ * (PG 조회 3회 × 7초(연결 2 + 읽기 5) + 승인 7초) ≈ 84초의 두 배 이상이다. 이보다 짧으면 살아 있는
+ * 느린 요청을 가로챈다. 넘겨받은 뒤 원래 요청이 늦게 끝나면 버전 충돌로 저장이 막히고 새 주인의 응답이 남는다.
  */
+@Slf4j
 @Service
-@RequiredArgsConstructor
 public class IdempotencyService {
 
     private static final int DEADLOCK_MAX_ATTEMPTS = 3;
 
+    /** 처리권 만료 기본값. 근거는 클래스 주석. */
+    static final Duration DEFAULT_LEASE = Duration.ofMinutes(3);
+
     private final IdempotencyRepository repository;
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
+    private final Duration lease;
+    private final Clock clock;
+
+    public IdempotencyService(IdempotencyRepository repository, ObjectMapper objectMapper,
+                              MeterRegistry meterRegistry) {
+        this(repository, objectMapper, meterRegistry, DEFAULT_LEASE, Clock.systemUTC());
+    }
+
+    @Autowired
+    public IdempotencyService(IdempotencyRepository repository, ObjectMapper objectMapper,
+                              MeterRegistry meterRegistry,
+                              @Value("${app.idempotency.processing-lease:3m}") Duration lease) {
+        this(repository, objectMapper, meterRegistry, lease, Clock.systemUTC());
+    }
+
+    IdempotencyService(IdempotencyRepository repository, ObjectMapper objectMapper,
+                       MeterRegistry meterRegistry, Duration lease, Clock clock) {
+        this.repository = repository;
+        this.objectMapper = objectMapper;
+        this.meterRegistry = meterRegistry;
+        this.lease = lease;
+        this.clock = clock;
+    }
 
     public <T> T execute(String key, String apiPath, String httpMethod,
                          Object requestBody, Class<T> responseType, Supplier<T> action) {
@@ -74,14 +117,22 @@ public class IdempotencyService {
                 repository.findByIdempotencyKeyAndApiPathAndHttpMethod(key, apiPath, httpMethod);
         if (existing.isPresent()) {
             meterRegistry.counter("idempotency.existing.request").increment();
-            return handleExisting(existing.get(), requestHash, responseType);
+            IdempotencyRecord current = existing.get();
+            // 처리하던 요청이 죽어 처리권이 만료됐으면 넘겨받아 다시 실행한다(#369). 다른 본문이면 넘겨받지 않고 422.
+            if (current.matches(requestHash)) {
+                Optional<IdempotencyRecord> taken = takeOverIfExpired(current);
+                if (taken.isPresent()) {
+                    return executeAndStore(taken.get(), action);
+                }
+            }
+            return handleExisting(current, requestHash, responseType);
         }
 
         // 2. 신규 — PROCESSING 삽입. 유니크 제약이 동시 요청 중 한 건만 통과시킨다.
         IdempotencyRecord record;
         try {
             record = repository.saveAndFlush(
-                    IdempotencyRecord.start(key, apiPath, httpMethod, requestHash));
+                    IdempotencyRecord.start(key, apiPath, httpMethod, requestHash, clock.instant(), lease));
         } catch (DataIntegrityViolationException race) {
             // 다른 요청이 같은 순간 먼저 삽입함 → 그 레코드로 판정
             IdempotencyRecord other = repository
@@ -91,24 +142,65 @@ public class IdempotencyService {
             return handleExisting(other, requestHash, responseType);
         }
 
-        // 3. 실제 작업 실행 후 응답 저장 — 데드락(transient)은 짧게 재시도한다
+        // 3. 실제 작업 실행 후 응답 저장
+        return executeAndStore(record, action);
+    }
+
+    /**
+     * 작업을 실행하고 응답을 저장한다. 데드락(transient)은 짧게 재시도한다.
+     *
+     * <p>작업이 실패하면 레코드를 지워 클라이언트가 다시 시도할 수 있게 한다.
+     * 주의: action이 하나의 트랜잭션이라고 가정하면 안 된다. 체크아웃은 예약(tx) → PG 승인
+     * (tx 밖) → 확정(tx) 3단계 사가라, 예약이 커밋된 뒤 뒤 단계에서 예외가 나면 롤백되는 것은
+     * 마지막 트랜잭션뿐이다. 주문은 PAYMENT_IN_PROGRESS로, 포인트·월렛은 선점된 채 남는다.
+     * 그래도 안전한 이유는 두 겹이다. 재시도가 들어와도 order.startPayment()의 조건부 전이가
+     * 이미 진행 중인 주문을 막고, 멈춘 주문은 CheckoutRecoveryService가 PG 조회로 완결하거나
+     * 되돌린다. 이 레코드 삭제는 "재시도 허용"이지 "이전 시도 무효화"가 아니다.
+     *
+     * <p>처리권을 이미 넘겨준 뒤라면(버전 충돌) 저장도 삭제도 하지 않는다. 레코드는 새 주인의 것이다.
+     */
+    private <T> T executeAndStore(IdempotencyRecord record, Supplier<T> action) {
+        T result;
+        String body;
         try {
-            T result = executeWithDeadlockRetry(action);
-            record.complete(serialize(result));
-            repository.save(record);
-            return result;
+            result = executeWithDeadlockRetry(action);
+            body = serialize(result);
         } catch (RuntimeException e) {
-            // 재시도 소진/일반 실패 시 레코드를 제거해 클라이언트가 다시 시도할 수 있게 한다.
-            //
-            // 주의: action이 하나의 트랜잭션이라고 가정하면 안 된다. 체크아웃은 예약(tx) → PG 승인
-            // (tx 밖) → 확정(tx) 3단계 사가라, 예약이 커밋된 뒤 뒤 단계에서 예외가 나면 롤백되는 것은
-            // 마지막 트랜잭션뿐이다. 주문은 PAYMENT_IN_PROGRESS로, 포인트·월렛은 선점된 채 남는다.
-            // 그래도 안전한 이유는 두 겹이다. 재시도가 들어와도 order.startPayment()의 조건부 전이가
-            // 이미 진행 중인 주문을 막고, 멈춘 주문은 CheckoutRecoveryService가 PG 조회로 완결하거나
-            // 되돌린다. 이 레코드 삭제는 "재시도 허용"이지 "이전 시도 무효화"가 아니다.
-            repository.delete(record);
+            releaseIfStillOwned(record);
             throw e;
         }
+        record.complete(body);
+        try {
+            repository.save(record);
+        } catch (ObjectOptimisticLockingFailureException lost) {
+            meterRegistry.counter("idempotency.lease.lost").increment();
+            log.warn("멱등 처리권을 잃은 뒤 작업이 끝나 응답을 저장하지 않음 key={}", record.getIdempotencyKey());
+        }
+        return result;
+    }
+
+    private void releaseIfStillOwned(IdempotencyRecord record) {
+        try {
+            repository.delete(record);
+        } catch (ObjectOptimisticLockingFailureException lost) {
+            meterRegistry.counter("idempotency.lease.lost").increment();
+        }
+    }
+
+    /** 처리권이 만료된 PROCESSING 레코드를 넘겨받는다. 같은 순간 여럿이 시도하면 한 요청만 얻는다. */
+    private Optional<IdempotencyRecord> takeOverIfExpired(IdempotencyRecord record) {
+        Instant now = clock.instant();
+        if (!record.leaseExpired(now)) {
+            return Optional.empty();
+        }
+        int updated = repository.takeOverExpiredLease(record.getId(), record.getVersion(),
+                IdempotencyRecord.Status.PROCESSING, now, now.plus(lease));
+        if (updated == 0) {
+            return Optional.empty();   // 다른 요청이 먼저 넘겨받았다 → 처리 중(409)
+        }
+        meterRegistry.counter("idempotency.lease.takeover").increment();
+        log.warn("만료된 멱등 처리권을 넘겨받아 다시 실행 key={}", record.getIdempotencyKey());
+        return repository.findById(record.getId());
     }
 
     /**

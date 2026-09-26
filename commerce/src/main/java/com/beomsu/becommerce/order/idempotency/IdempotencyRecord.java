@@ -61,8 +61,19 @@ public class IdempotencyRecord {
     @Column(nullable = false)
     private Instant expiresAt;
 
-    private IdempotencyRecord(String key, String apiPath, String httpMethod, String requestHash) {
-        Instant now = Instant.now();
+    /**
+     * 처리권 만료 시각(#369). PROCESSING 인 채로 이 시각이 지나면 처리하던 요청이 죽은 것으로 보고
+     * 다음 같은 키 요청이 넘겨받는다. 살아 있는 느린 요청을 가로채지 않도록 요청 하나의 최악 시간보다 길게 둔다.
+     */
+    @Column(nullable = false)
+    private Instant leaseUntil;
+
+    /** 넘겨받기와 저장을 가르는 버전. 처리권을 잃은 원래 요청의 늦은 저장은 여기서 막힌다. */
+    @Version
+    private long version;
+
+    private IdempotencyRecord(String key, String apiPath, String httpMethod, String requestHash,
+                              Instant now, Duration lease) {
         this.idempotencyKey = key;
         this.apiPath = apiPath;
         this.httpMethod = httpMethod;
@@ -70,10 +81,21 @@ public class IdempotencyRecord {
         this.status = Status.PROCESSING;
         this.createdAt = now;
         this.expiresAt = now.plus(TTL);
+        this.leaseUntil = now.plus(lease);
     }
 
     static IdempotencyRecord start(String key, String apiPath, String httpMethod, String requestHash) {
-        return new IdempotencyRecord(key, apiPath, httpMethod, requestHash);
+        return start(key, apiPath, httpMethod, requestHash, Instant.now(), IdempotencyService.DEFAULT_LEASE);
+    }
+
+    static IdempotencyRecord start(String key, String apiPath, String httpMethod, String requestHash,
+                                   Instant now, Duration lease) {
+        return new IdempotencyRecord(key, apiPath, httpMethod, requestHash, now, lease);
+    }
+
+    /** 처리 중인데 처리권이 만료됐나. 처리하던 요청이 죽었다고 볼 수 있는 상태다. */
+    boolean leaseExpired(Instant now) {
+        return status == Status.PROCESSING && leaseUntil.isBefore(now);
     }
 
     void complete(String responseBody) {

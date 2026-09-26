@@ -9,9 +9,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.Optional;
@@ -199,5 +202,80 @@ class IdempotencyServiceTest {
         assertThat(calls.get()).isEqualTo(1);
         assertThat(retryCount()).isZero();
         verify(repository).delete(any(IdempotencyRecord.class));
+    }
+
+    // --- 처리권 만료(#369) ---
+
+    /** 처리하던 요청이 죽어 처리권이 만료된 PROCESSING 레코드. 10분 전에 3분 리스로 시작했다. */
+    private IdempotencyRecord expiredProcessing() throws Exception {
+        return IdempotencyRecord.start(KEY, PATH, "POST", hashOf(REQUEST),
+                Instant.now().minus(Duration.ofMinutes(10)), Duration.ofMinutes(3));
+    }
+
+    @Test
+    @DisplayName("처리권이 만료된 같은 키: 넘겨받아 한 번 다시 실행하고 DONE 으로 저장한다(#369)")
+    void expiredLeaseIsTakenOverAndReExecuted() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        IdempotencyRecord stuck = expiredProcessing();
+        when(repository.findByIdempotencyKeyAndApiPathAndHttpMethod(KEY, PATH, "POST"))
+                .thenReturn(Optional.of(stuck));
+        when(repository.takeOverExpiredLease(any(), anyLong(), any(), any(), any())).thenReturn(1);
+        when(repository.findById(any())).thenReturn(Optional.of(stuck));
+
+        CheckoutResult result = service.execute(KEY, PATH, "POST", REQUEST, CheckoutResult.class,
+                actionReturning(cached(), calls));
+
+        assertThat(calls.get()).isEqualTo(1);
+        assertThat(result.paymentStatus()).isEqualTo(PaymentStatus.DONE);
+        verify(repository).save(argThat(r -> r.isDone()));
+        assertThat(meterRegistry.counter("idempotency.lease.takeover").count()).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("만료된 처리권을 다른 요청이 먼저 넘겨받았으면: 실행하지 않고 409(#369)")
+    void lostTakeoverRaceIsProcessing() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        when(repository.findByIdempotencyKeyAndApiPathAndHttpMethod(KEY, PATH, "POST"))
+                .thenReturn(Optional.of(expiredProcessing()));
+        when(repository.takeOverExpiredLease(any(), anyLong(), any(), any(), any())).thenReturn(0);
+
+        assertThatThrownBy(() -> service.execute(KEY, PATH, "POST", REQUEST, CheckoutResult.class,
+                actionReturning(cached(), calls)))
+                .isInstanceOf(IdempotencyException.class)
+                .satisfies(e -> assertThat(((IdempotencyException) e).code())
+                        .isEqualTo("IDEMPOTENT_REQUEST_PROCESSING"));
+        assertThat(calls.get()).isZero();
+    }
+
+    @Test
+    @DisplayName("처리권이 아직 살아 있으면: 넘겨받기를 시도조차 하지 않고 409(#369)")
+    void liveLeaseIsNotTakenOver() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        when(repository.findByIdempotencyKeyAndApiPathAndHttpMethod(KEY, PATH, "POST"))
+                .thenReturn(Optional.of(IdempotencyRecord.start(KEY, PATH, "POST", hashOf(REQUEST))));
+
+        assertThatThrownBy(() -> service.execute(KEY, PATH, "POST", REQUEST, CheckoutResult.class,
+                actionReturning(cached(), calls)))
+                .isInstanceOf(IdempotencyException.class);
+        assertThat(calls.get()).isZero();
+        verify(repository, never()).takeOverExpiredLease(any(), anyLong(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("처리권을 잃은 뒤 작업이 끝나면: 결과는 돌려주되 저장도 삭제도 하지 않는다(#369)")
+    void lostLeaseDoesNotOverwrite() {
+        AtomicInteger calls = new AtomicInteger();
+        when(repository.findByIdempotencyKeyAndApiPathAndHttpMethod(KEY, PATH, "POST"))
+                .thenReturn(Optional.empty());
+        when(repository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(repository.save(any())).thenThrow(
+                new ObjectOptimisticLockingFailureException(IdempotencyRecord.class, 1L));
+
+        CheckoutResult result = service.execute(KEY, PATH, "POST", REQUEST, CheckoutResult.class,
+                actionReturning(cached(), calls));
+
+        assertThat(result.paymentStatus()).isEqualTo(PaymentStatus.DONE);
+        verify(repository, never()).delete(any(IdempotencyRecord.class));
+        assertThat(meterRegistry.counter("idempotency.lease.lost").count()).isEqualTo(1.0);
     }
 }
