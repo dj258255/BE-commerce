@@ -48,11 +48,12 @@ public class CheckoutTx {
      * → 월렛 차감. PG 콜 <b>전</b>에 커밋되어 커넥션을 반납한다. 크래시 시에도 이 상태(주문 IN_PROGRESS +
      * 결제 IN_PROGRESS + 포인트/월렛 예약)가 남아 복구 배치가 완결/롤백할 수 있다.
      *
-     * <p><b>결제수단별 롤백 계약</b>: 포인트({@link PointService})는 이 tx에 합류하므로(클래스 @Transactional)
-     * 예약 실패 시 자동 롤백된다. 월렛({@link WalletService#use})은 자체 짧은 tx로 <b>커밋되는</b> 부수효과라
-     * 자동 롤백되지 않는다 — 그래서 월렛 차감을 이 메서드의 <b>맨 마지막</b>(order 저장 후)에 두어, 이후 in-tx
-     * 실패로 커밋된 차감이 고아가 되는 창을 없앤다. 월렛 잔액이 부족하면 여기서 예외가 나 이 tx 전체가
-     * 롤백되고(월렛은 아직 안 건드림), 보상은 {@link #settle}의 거절/재고부족 분기가 orderNo 멱등 환불로 한다.
+     * <p><b>결제수단별 롤백 계약</b>: 포인트({@link PointService})와 월렛({@link WalletService#use})의 저장소 호출은
+     * 모두 이 tx에 합류한다. 그래서 예약 단계 어디서 실패해도 주문 전이 · 결제 행 · 포인트 · 월렛이 함께 롤백된다
+     * (#375 에서 실 MySQL 로 확인. 그 전에는 7인자 {@code reserve} 에 {@code @Transactional} 이 없어 각각 커밋됐다).
+     * 월렛 차감을 <b>맨 마지막</b>에 두는 이유는 잔액 부족이 가장 흔한 실패라 앞의 일을 적게 하고 끝내기 위해서다.
+     * 대가: 월렛의 낙관적 락 재시도는 이 tx 안에서는 첫 충돌에 rollback-only 가 되어 소용없다(같은 사용자의
+     * 동시 결제에서만 생긴다). 승인 뒤의 보상은 {@link #settle}의 거절/재고부족 분기가 orderNo 멱등 환불로 한다.
      */
     /**
      * 복구를 시도했다는 사실만 <b>따로 커밋한다.</b> 상태는 안 바꾼다.
@@ -80,7 +81,14 @@ public class CheckoutTx {
                 authenticatedUserId, 0);
     }
 
-    /** 할부 개월을 함께 받는 형태. 0이면 일시불이다. */
+    /**
+     * 할부 개월을 함께 받는 형태. 0이면 일시불이다.
+     *
+     * <p><b>여기에도 {@code @Transactional} 이 있어야 한다(#375).</b> {@code CheckoutService.confirm} 은 이 7인자
+     * 메서드를 프록시로 직접 부른다. 어노테이션이 6인자 쪽에만 있던 동안(#13 ~ #375) 예약 단계가 트랜잭션 없이
+     * 돌아, 월렛 부족 같은 뒤 단계 실패에도 주문 전이 · 결제 행 · 포인트 사용이 따로 커밋된 채 남았다.
+     */
+    @Transactional
     public Reservation reserve(String orderNo, String paymentKey, Money cardAmount,
                                long pointAmount, long walletAmount, long authenticatedUserId,
                                int installmentMonths) {
