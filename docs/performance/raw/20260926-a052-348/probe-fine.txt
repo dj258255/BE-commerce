@@ -1,0 +1,8 @@
+4097 -> 400 | {"timestamp":"2026-09-26T00:27:32.365+00:00","status":400,"error":"Bad Request","path":"/a
+6000 -> 400 | {"timestamp":"2026-09-26T00:27:32.415+00:00","status":400,"error":"Bad Request","path":"/a
+7000 -> 400 | {"timestamp":"2026-09-26T00:27:32.462+00:00","status":400,"error":"Bad Request","path":"/a
+7500 -> 400 | {"timestamp":"2026-09-26T00:27:32.506+00:00","status":400,"error":"Bad Request","path":"/a
+7700 -> 400 | {"timestamp":"2026-09-26T00:27:32.551+00:00","status":400,"error":"Bad Request","path":"/a
+7800 -> 400 | {"timestamp":"2026-09-26T00:27:32.595+00:00","status":400,"error":"Bad Request","path":"/a
+7900 -> 400 | <!doctype html><html lang="en"><head><title>HTTP Status 400 – Bad Request</title><style 
+8000 -> 400 | <!doctype html><html lang="en"><head><title>HTTP Status 400 – Bad Request</title><style 
