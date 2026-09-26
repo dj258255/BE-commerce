@@ -1,0 +1,14 @@
+98.8 0.0 01-08:24:01 zsh
+55.4 2.5 00:05 node
+37.3 0.0 06-22:06:05 fseventsd
+16.0 6.8 05-13:20:37 com.apple.Virtualization.VirtualMachine
+14.7 0.0 01:16:55 sysmond
+14.5 0.2 06-22:06:04 WindowServer
+14.4 0.1 06-22:05:55 Finder
+14.1 0.1 06-22:04:51 MacWidgetExtension
+13.2 0.1 06-22:02:39 com.apple.appkit.xpc.openAndSavePanelService
+10.2 0.1 06-22:06:05 mds
+10.2 0.1 05-14:55:06 com.apple.appkit.xpc.openAndSavePanelService
+8.4 0.0 06-22:05:48 ReportCrash
+Load Avg: 15.96, 10.93, 10.38 
+CPU usage: 26.70% user, 17.33% sys, 55.96% idle 
