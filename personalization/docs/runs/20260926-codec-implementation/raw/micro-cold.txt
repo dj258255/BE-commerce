@@ -1,0 +1,10 @@
+[CODEC-COLD]   51248 B  SNAPPY        median      41.00 µs  p90 50.00
+[CODEC-COLD]   51248 B  LZ4_FASTEST   median      44.00 µs  p90 51.00
+[CODEC-COLD]   51248 B  LZ4_UNSAFE    median      54.00 µs  p90 64.00
+[CODEC-COLD]   51248 B  CODEC_LZ4     median      44.00 µs  p90 52.00
+[CODEC-COLD]   51248 B  CODEC_SNAPPY  median      42.00 µs  p90 50.00
+[CODEC-COLD]  512044 B  SNAPPY        median     278.00 µs  p90 296.00
+[CODEC-COLD]  512044 B  LZ4_FASTEST   median     302.00 µs  p90 322.00
+[CODEC-COLD]  512044 B  LZ4_UNSAFE    median     482.00 µs  p90 505.00
+[CODEC-COLD]  512044 B  CODEC_LZ4     median     306.00 µs  p90 323.00
+[CODEC-COLD]  512044 B  CODEC_SNAPPY  median     282.00 µs  p90 302.00

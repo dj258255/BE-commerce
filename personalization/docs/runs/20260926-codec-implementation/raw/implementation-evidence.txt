@@ -1,0 +1,5 @@
+# 앱 안에서 골라진 구현(기동 로그)
+캐시 코덱 LZ4 구현=LZ4Factory:JavaUnsafe
+# 단독 실행 대조(Probe.java, lz4-java 1.8.0 만 클래스패스)
+factory=LZ4Factory:JNI
+# vmmap: 단독 실행은 liblz4-java-*.dylib 가 매핑됐고, 앱 안(LZ4 코덱으로 20건 압축 뒤)은 LZ4 네이티브가 없었다. 앱 안 Snappy 코덱은 libsnappyjava.dylib 가 매핑됐다
