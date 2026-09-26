@@ -34,13 +34,17 @@ def main():
     ap.add_argument("base")
     ap.add_argument("index", nargs="?", default="products")
     ap.add_argument("--replicate", type=int, default=1, help="규모 실험: 실제 행을 N 번 복제(#244)")
+    ap.add_argument("--shards", type=int, default=None, help="샤드 수(기본은 매핑 파일의 1). 한 노드 안 샤드 분할 실험(#364)")
     ap.add_argument("--live-refresh", action="store_true",
                     help="적재 중에도 refresh 를 켠다(#236 의 절차). 세그먼트가 엔진마다 다르게 생겨 내부 문서 순서가 갈린다(#262)")
     a = ap.parse_args()
     base, index = a.base.rstrip("/"), a.index
     rows = replicate(load_full(), a.replicate)          # 제너레이터 — 300만 행을 메모리에 다 올리지 않는다
     call("DELETE", f"{base}/{index}")
-    call("PUT", f"{base}/{index}", MAPPING)
+    mapping = json.loads(MAPPING)
+    if a.shards:
+        mapping["settings"]["number_of_shards"] = a.shards
+    call("PUT", f"{base}/{index}", json.dumps(mapping))
     if not a.live_refresh:
         call("PUT", f"{base}/{index}/_settings", json.dumps({"index": {"refresh_interval": "-1"}}))   # 적재 중에는 끈다
     started = time.time()
@@ -65,7 +69,7 @@ def main():
     call("POST", f"{base}/{index}/_refresh")
     stats = call("GET", f"{base}/{index}/_stats/store,docs")
     total = stats["indices"][index]["total"]
-    print(json.dumps({"docs": total["docs"]["count"], "index_seconds": round(elapsed, 2),
+    print(json.dumps({"docs": total["docs"]["count"], "shards": mapping["settings"]["number_of_shards"], "index_seconds": round(elapsed, 2),
                       "store_bytes": total["store"]["size_in_bytes"]}))
 
 
