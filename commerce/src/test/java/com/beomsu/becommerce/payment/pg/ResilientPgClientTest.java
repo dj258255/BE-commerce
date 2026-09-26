@@ -68,7 +68,7 @@ class ResilientPgClientTest {
     }
 
     @Test
-    @DisplayName("PG 장애가 지속되면 서킷이 OPEN된다 — 이후엔 PG를 호출하지 않고 즉시 폴백")
+    @DisplayName("PG 장애가 지속되면 승인 서킷이 OPEN된다 — 이후엔 PG를 호출하지 않고 확정 실패(#372)")
     void circuitOpensAfterRepeatedFailures() {
         FlakyPgClient flaky = new FlakyPgClient();
         flaky.approveError = new RuntimeException("PG 다운");
@@ -80,12 +80,13 @@ class ResilientPgClientTest {
         }
         int callsBeforeOpen = flaky.approveCalls.get();
 
-        assertThat(client.circuitBreaker().getState()).isEqualTo(CircuitBreaker.State.OPEN);
+        assertThat(client.approveCircuit().getState()).isEqualTo(CircuitBreaker.State.OPEN);
 
-        // 서킷이 열린 뒤 추가 호출들은 PG에 닿지 않는다(폴백만)
+        // 서킷이 열린 뒤 추가 호출들은 PG에 닿지 않는다. 닿지 않은 것이 보장되므로 미확정이 아니라
+        // 확정 실패다(#372). 예전에는 TIMEOUT(미확정)으로 적어 조회할 대상이 없는 유령 미확정을 만들었다.
         for (int i = 0; i < 3; i++) {
             PgApproveResult r = client.approve(new PgApproveCommand("pkX", "order", 10_000));
-            assertThat(r.outcome()).isEqualTo(PgOutcome.TIMEOUT);
+            assertThat(r.outcome()).isEqualTo(PgOutcome.FAILED);
         }
         assertThat(flaky.approveCalls.get()).isEqualTo(callsBeforeOpen); // 델리게이트 호출 증가 없음
     }
@@ -152,7 +153,7 @@ class ResilientPgClientTest {
         assertThat(result.outcome()).isEqualTo(PgOutcome.SUCCESS);
         assertThat(result.method()).isEqualTo("CARD");
         assertThat(healthy.approveCalls.get()).isEqualTo(1);
-        assertThat(client.circuitBreaker().getState()).isEqualTo(CircuitBreaker.State.CLOSED);
+        assertThat(client.approveCircuit().getState()).isEqualTo(CircuitBreaker.State.CLOSED);
     }
 
     @Test
@@ -246,5 +247,64 @@ class ResilientPgClientTest {
                     .isEqualTo(PgOutcome.SUCCESS);
         }
         assertThat(flaky.approveCalls.get()).isEqualTo(50);
+    }
+
+    // --- 서킷 분리(#372) ---
+
+    @Test
+    @DisplayName("조회만 실패해 조회 서킷이 열려도 승인은 막히지 않는다(#372)")
+    void queryFailuresDoNotBlockApprovals() {
+        FlakyPgClient flaky = new FlakyPgClient();
+        flaky.queryFailuresRemaining = Integer.MAX_VALUE;   // 조회 전면 장애
+        ResilientPgClient client = new ResilientPgClient(flaky, 0, new SimpleMeterRegistry(), 1);
+
+        for (int i = 0; i < 12; i++) {
+            try {
+                client.query("pk" + i);
+            } catch (RuntimeException expected) {
+                // 조회 실패는 호출부(복구 배치)가 다음 주기에 다시 묻는다
+            }
+        }
+        assertThat(client.queryCircuit().getState()).isEqualTo(CircuitBreaker.State.OPEN);
+
+        PgApproveResult approved = client.approve(new PgApproveCommand("pk-new", "order-new", 10_000));
+        assertThat(approved.outcome()).isEqualTo(PgOutcome.SUCCESS);
+        assertThat(client.approveCircuit().getState()).isEqualTo(CircuitBreaker.State.CLOSED);
+    }
+
+    @Test
+    @DisplayName("조회 서킷은 창 20 · 최소 10건이라 실패 몇 건으로는 열리지 않는다(#372)")
+    void queryCircuitNeedsTenCalls() {
+        FlakyPgClient flaky = new FlakyPgClient();
+        flaky.queryFailuresRemaining = 9;
+        ResilientPgClient client = new ResilientPgClient(flaky, 0, new SimpleMeterRegistry(), 1);
+
+        for (int i = 0; i < 9; i++) {
+            try {
+                client.query("pk" + i);
+            } catch (RuntimeException expected) {
+            }
+        }
+        assertThat(client.queryCircuit().getState()).isEqualTo(CircuitBreaker.State.CLOSED);
+    }
+
+    @Test
+    @DisplayName("서킷 오픈으로 보내지 않은 승인은 상한 거절과 같은 지표에 circuit_open 으로 센다(#372)")
+    void circuitRejectionIsCounted() {
+        FlakyPgClient flaky = new FlakyPgClient();
+        flaky.approveError = new RuntimeException("PG 다운");
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        ResilientPgClient client = new ResilientPgClient(flaky, 0, registry);
+        for (int i = 0; i < 3; i++) {   // 최소 3건이 모두 실패하면 열린다
+            client.approve(new PgApproveCommand("pk" + i, "order", 10_000));
+        }
+        int reached = flaky.approveCalls.get();
+        assertThat(client.approveCircuit().getState()).isEqualTo(CircuitBreaker.State.OPEN);
+
+        client.approve(new PgApproveCommand("pk-open", "order", 10_000));
+
+        assertThat(flaky.approveCalls.get()).isEqualTo(reached);
+        assertThat(registry.counter("payment.pg.approval.rejected", "reason", "circuit_open").count()).isEqualTo(1);
+        assertThat(registry.counter("payment.pg.approval.unknown").count()).isEqualTo(reached);
     }
 }

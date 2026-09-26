@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -21,4 +22,20 @@ interface IdempotencyRepository extends JpaRepository<IdempotencyRecord, Long> {
     @Modifying
     @Query("delete from IdempotencyRecord r where r.expiresAt < :threshold")
     int deleteByExpiresAtBefore(@Param("threshold") Instant threshold);
+
+    /**
+     * 만료된 처리권을 넘겨받는다(#369). 조건부 UPDATE 라 같은 순간 여럿이 시도해도 한 요청만 1행을 얻는다.
+     * 버전을 올려 두어, 처리권을 잃은 원래 요청이 뒤늦게 저장하면 버전 충돌로 막힌다.
+     */
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query("""
+            update IdempotencyRecord r
+               set r.leaseUntil = :newLeaseUntil, r.version = r.version + 1
+             where r.id = :id and r.version = :version
+               and r.status = :processing and r.leaseUntil < :now
+            """)
+    int takeOverExpiredLease(@Param("id") Long id, @Param("version") long version,
+                             @Param("processing") IdempotencyRecord.Status processing,
+                             @Param("now") Instant now, @Param("newLeaseUntil") Instant newLeaseUntil);
 }

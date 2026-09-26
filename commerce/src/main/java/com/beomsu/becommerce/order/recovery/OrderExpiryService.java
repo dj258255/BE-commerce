@@ -1,5 +1,7 @@
 package com.beomsu.becommerce.order.recovery;
 
+import com.beomsu.becommerce.order.catalog.StockReservationService;
+
 import com.beomsu.becommerce.payment.va.VirtualAccountService;
 import com.beomsu.becommerce.payment.recovery.PaymentRecoveryService;
 import com.beomsu.becommerce.order.internal.OrderStatus;
@@ -30,6 +32,7 @@ public class OrderExpiryService {
     private static final Logger log = LoggerFactory.getLogger(OrderExpiryService.class);
 
     private final OrderRepository orderRepository;
+    private final StockReservationService stockReservationService;
 
     /**
      * PENDING_PAYMENT이며 만료 예정 시각이 지난 주문을 EXPIRED로 전이한다. 반환값은 처리한 건수.
@@ -45,6 +48,8 @@ public class OrderExpiryService {
                 // 상태 전이(EXPIRED)를 saveAndFlush로 명시 영속한다. dirty-check 자동 flush는 readOnly
                 // 조회로 세션 FlushMode가 MANUAL이거나 detached 엔티티인 경우 신뢰할 수 없어(pay-26 교훈) 확정을 강제한다.
                 orderRepository.saveAndFlush(order);
+                // 잡아 둔 재고가 있으면 되돌린다(#374, 주로 AT_ORDER 의 이탈 주문). 없으면 아무것도 안 한다
+                stockReservationService.release(order.getOrderNo(), "order_expired");
                 processed++;
             } catch (Exception e) {
                 // 한 건 실패가 배치 전체를 멈추지 않게 한다. 다음 주기에 다시 시도된다.

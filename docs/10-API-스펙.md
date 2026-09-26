@@ -31,7 +31,7 @@
 | 400 | `INVALID_INSTALLMENT` | 할부 개월이 범위 밖(0 또는 1~12)이거나, **카드 몫이 5만원 미만인데 할부를 요청** |
 | 409 | `BILLING_KEY_REVOKED` | **폐기된 빌링키**로 구독 생성 시도 — 카드가 죽었거나 이미 해지된 결제 수단이다 |
 | 404 | `PAYMENT_NOT_FOUND` / `ORDER_NOT_FOUND` | 대상 없음 |
-| 409 | `IDEMPOTENT_REQUEST_PROCESSING` | 같은 멱등키의 이전 요청이 아직 처리 중 → **클라이언트는 잠시 후 같은 키로 재시도** |
+| 409 | `IDEMPOTENT_REQUEST_PROCESSING` | 같은 멱등키의 이전 요청이 아직 처리 중 → **클라이언트는 잠시 후 같은 키로 재시도**. 이전 요청이 도중에 죽었으면 처리권 만료(기본 3분) 뒤 같은 키 재요청 **하나**가 넘겨받아 다시 실행한다(#369) |
 | 409 | `INVALID_STATE_TRANSITION` | 상태머신 위반 (예: CANCELED 건 승인 시도) |
 | 409 | `ORDER_ALREADY_PAID` | 앞선 시도가 실제로는 승인돼 있었다 → **재시도하지 말고 주문 내역을 확인** |
 | 409 | `PAYMENT_RESULT_PENDING` | 앞선 결제의 결과를 아직 모른다 → **잠시 후 재시도**. 여기서 새 승인을 내보내면 이중결제가 된다 |

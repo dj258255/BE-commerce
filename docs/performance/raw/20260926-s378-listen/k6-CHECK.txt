@@ -1,0 +1,35 @@
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 1       0.016613/s
+    checks_succeeded...: 100.00% 1 out of 1
+    checks_failed......: 0.00%   0 out of 1
+
+    ✓ login 200
+
+    CUSTOM
+    flash_abandoned................: 24     0.398711/s
+    flash_confirm_paid.............: 100    1.661295/s
+    flash_confirm_unknown..........: 14     0.232581/s
+    flash_order_created............: 138    2.292587/s
+    flash_order_sold_out...........: 162    2.691298/s
+
+    HTTP
+    http_req_duration..............: avg=81.76ms  min=7.93ms med=29.19ms max=1.55s p(90)=135.75ms p(95)=351.45ms
+      { expected_response:true }...: avg=93.16ms  min=7.93ms med=40.57ms max=1.55s p(90)=150.19ms p(95)=398.45ms
+    http_req_failed................: 39.03% 162 out of 415
+    http_reqs......................: 415    6.894373/s
+
+    EXECUTION
+    iteration_duration.............: avg=115.84ms min=8.46ms med=46.25ms max=1.87s p(90)=182.98ms p(95)=402.58ms
+    iterations.....................: 300    4.983884/s
+    vus............................: 0      min=0          max=6 
+    vus_max........................: 40     min=40         max=40
+
+    NETWORK
+    data_received..................: 171 kB 2.8 kB/s
+    data_sent......................: 200 kB 3.3 kB/s
+
+
+

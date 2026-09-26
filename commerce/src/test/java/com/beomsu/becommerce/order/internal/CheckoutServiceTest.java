@@ -13,6 +13,7 @@ import com.beomsu.becommerce.order.internal.CheckoutResult;
 import com.beomsu.becommerce.order.recovery.CheckoutRecoveryService;
 import com.beomsu.becommerce.order.compensation.CompensationService;
 import com.beomsu.becommerce.order.catalog.StockDeductionService;
+import com.beomsu.becommerce.order.catalog.StockReservationService;
 import com.beomsu.becommerce.order.catalog.ProductRepository;
 import com.beomsu.becommerce.order.catalog.Product;
 import com.beomsu.becommerce.payment.ApprovalOutcome;
@@ -73,10 +74,12 @@ class CheckoutServiceTest {
 
     private CheckoutService serviceWithGate(List<Long> gateProductIds) {
         recoveryService = mock(CheckoutRecoveryService.class);
+        // 재고 예약(#374)은 목이다. strategy() 가 null · claim() 이 false 라 기본(NONE)과 같은 경로를 탄다
+        StockReservationService reservation = mock(StockReservationService.class);
         CheckoutTx checkoutTx = new CheckoutTx(paymentService, orderRepository,
-                stockDeductionService, pointService, walletService, compensationService);
+                stockDeductionService, pointService, walletService, compensationService, reservation);
         return new CheckoutService(paymentService, checkoutTx, recoveryService,
-                orderRepository, productRepository, queueService, gateProductIds, GATE_EVENT);
+                orderRepository, productRepository, queueService, reservation, gateProductIds, GATE_EVENT);
     }
 
     private Order orderOf(long productId, int quantity) {

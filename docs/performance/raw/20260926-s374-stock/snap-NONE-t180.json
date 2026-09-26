@@ -1,0 +1,159 @@
+{
+ "name": "NONE",
+ "label": "t180",
+ "stock": 0,
+ "orders": {
+  "FAILED": 100,
+  "PAID": 100,
+  "PAYMENT_IN_PROGRESS": 27,
+  "PENDING_PAYMENT": 73
+ },
+ "reservations": {},
+ "paid": 100,
+ "held": 0,
+ "net_cancels": 100,
+ "net_cancels_from_unknown": 0,
+ "unsold": 0,
+ "safety": {
+  "paid_le_initial": true,
+  "stock_non_negative": true,
+  "deducted_eq_paid_plus_held": true
+ },
+ "unknown": [
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -1.9e-05
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -3e-05
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -2.6e-05
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -5.9e-05
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -7.5e-05
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -3.8e-05
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -1.4e-05
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -0.000261
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -2.8e-05
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -1.6e-05
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -2.9e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -6.8e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -3.1e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -3e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -1.9e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -2.7e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -2e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -1.6e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -3.8e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -2.6e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -1.5e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -9.9e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -2.6e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -2.2e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -1.5e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -1.9e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -2.1e-05
+  }
+ ]
+}
