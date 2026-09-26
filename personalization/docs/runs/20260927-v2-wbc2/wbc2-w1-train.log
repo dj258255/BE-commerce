@@ -1,0 +1,59 @@
+/private/tmp/claude-501/-Users-beomsu-Desktop-pay/35c4c37b-b9f5-42c6-9a21-4fff361024fe/scratchpad/wbc3/personalization/genpage2/model.py:92: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(layer, num_layers=cfg.layers)
+[생성] train 256/10000 · 47.7s · 5.4 p/s · 남은 예상 1816.5s · 위반 0
+[생성] train 512/10000 · 94.8s · 5.4 p/s · 남은 예상 1756.7s · 위반 0
+[생성] train 768/10000 · 140.6s · 5.5 p/s · 남은 예상 1689.9s · 위반 0
+[생성] train 1024/10000 · 187.4s · 5.5 p/s · 남은 예상 1642.4s · 위반 0
+[생성] train 1280/10000 · 234.0s · 5.5 p/s · 남은 예상 1594.1s · 위반 0
+[생성] train 1536/10000 · 281.1s · 5.5 p/s · 남은 예상 1549.1s · 위반 0
+[생성] train 1792/10000 · 327.6s · 5.5 p/s · 남은 예상 1500.5s · 위반 0
+[생성] train 2048/10000 · 374.2s · 5.5 p/s · 남은 예상 1452.9s · 위반 0
+[생성] train 2304/10000 · 420.7s · 5.5 p/s · 남은 예상 1405.2s · 위반 0
+[생성] train 2560/10000 · 466.8s · 5.5 p/s · 남은 예상 1356.6s · 위반 0
+[생성] train 2816/10000 · 513.0s · 5.5 p/s · 남은 예상 1308.8s · 위반 0
+[생성] train 3072/10000 · 559.0s · 5.5 p/s · 남은 예상 1260.6s · 위반 0
+[생성] train 3328/10000 · 606.5s · 5.5 p/s · 남은 예상 1215.9s · 위반 0
+[생성] train 3584/10000 · 653.1s · 5.5 p/s · 남은 예상 1169.1s · 위반 0
+[생성] train 3840/10000 · 700.3s · 5.5 p/s · 남은 예상 1123.4s · 위반 0
+[생성] train 4096/10000 · 746.8s · 5.5 p/s · 남은 예상 1076.4s · 위반 0
+[생성] train 4352/10000 · 793.6s · 5.5 p/s · 남은 예상 1030.0s · 위반 0
+[생성] train 4608/10000 · 840.4s · 5.5 p/s · 남은 예상 983.4s · 위반 0
+[생성] train 4864/10000 · 887.2s · 5.5 p/s · 남은 예상 936.9s · 위반 0
+[생성] train 5120/10000 · 934.4s · 5.5 p/s · 남은 예상 890.6s · 위반 0
+[생성] train 5376/10000 · 981.3s · 5.5 p/s · 남은 예상 844.1s · 위반 0
+[생성] train 5632/10000 · 1028.0s · 5.5 p/s · 남은 예상 797.3s · 위반 0
+[생성] train 5888/10000 · 1075.2s · 5.5 p/s · 남은 예상 750.9s · 위반 0
+[생성] train 6144/10000 · 1122.8s · 5.5 p/s · 남은 예상 704.7s · 위반 0
+[생성] train 6400/10000 · 1169.9s · 5.5 p/s · 남은 예상 658.1s · 위반 0
+[생성] train 6656/10000 · 1217.5s · 5.5 p/s · 남은 예상 611.7s · 위반 0
+[생성] train 6912/10000 · 1264.3s · 5.5 p/s · 남은 예상 564.8s · 위반 0
+[생성] train 7168/10000 · 1310.2s · 5.5 p/s · 남은 예상 517.6s · 위반 0
+[생성] train 7424/10000 · 1356.5s · 5.5 p/s · 남은 예상 470.7s · 위반 0
+[생성] train 7680/10000 · 1403.8s · 5.5 p/s · 남은 예상 424.1s · 위반 0
+[생성] train 7936/10000 · 1450.7s · 5.5 p/s · 남은 예상 377.3s · 위반 0
+[생성] train 8192/10000 · 1497.3s · 5.5 p/s · 남은 예상 330.5s · 위반 0
+[생성] train 8448/10000 · 1544.3s · 5.5 p/s · 남은 예상 283.7s · 위반 0
+[생성] train 8704/10000 · 1591.0s · 5.5 p/s · 남은 예상 236.9s · 위반 0
+[생성] train 8960/10000 · 1639.6s · 5.5 p/s · 남은 예상 190.3s · 위반 0
+[생성] train 9216/10000 · 1686.4s · 5.5 p/s · 남은 예상 143.5s · 위반 0
+[생성] train 9472/10000 · 1733.5s · 5.5 p/s · 남은 예상 96.6s · 위반 0
+[생성] train 9728/10000 · 1781.7s · 5.5 p/s · 남은 예상 49.8s · 위반 0
+[생성] train 9984/10000 · 1829.9s · 5.5 p/s · 남은 예상 2.9s · 위반 0
+[생성] train 10000/10000 · 1833.6s · 5.5 p/s · 남은 예상 0.0s · 위반 0
+[생성] valid 256/2000 · 48.5s · 5.3 p/s · 남은 예상 330.3s · 위반 0
+[생성] valid 512/2000 · 96.1s · 5.3 p/s · 남은 예상 279.4s · 위반 0
+[생성] valid 768/2000 · 143.3s · 5.4 p/s · 남은 예상 229.8s · 위반 0
+[생성] valid 1024/2000 · 190.2s · 5.4 p/s · 남은 예상 181.2s · 위반 0
+[생성] valid 1280/2000 · 237.5s · 5.4 p/s · 남은 예상 133.6s · 위반 0
+[생성] valid 1536/2000 · 286.7s · 5.4 p/s · 남은 예상 86.6s · 위반 0
+[생성] valid 1792/2000 · 333.3s · 5.4 p/s · 남은 예상 38.7s · 위반 0
+[생성] valid 2000/2000 · 372.4s · 5.4 p/s · 남은 예상 0.0s · 위반 0
+{"step": 10, "wbc_loss": 5.542256832122803, "positive_ratio": 0.008422886952757835, "lr": 1.1000000000000001e-05, "elapsed_seconds": 457.3538025000598, "pretrain_loss": 4.615219593048096, "total_loss": 10.157476425170898}
+{"step": 20, "wbc_loss": 5.041728973388672, "positive_ratio": 0.0037884307093918324, "lr": 2.1e-05, "elapsed_seconds": 1290.5302191670053, "pretrain_loss": 4.593957901000977, "total_loss": 9.635686874389648}
+{"step": 30, "wbc_loss": 3.9632906913757324, "positive_ratio": 0.005686789285391569, "lr": 3.1e-05, "elapsed_seconds": 2295.660216083983, "pretrain_loss": 4.724789619445801, "total_loss": 8.688079833984375}
+{"step": 40, "wbc_loss": 2.7407424449920654, "positive_ratio": 0.008719663135707378, "lr": 4.1e-05, "elapsed_seconds": 3330.1189933749847, "pretrain_loss": 4.789989948272705, "total_loss": 7.530732154846191}
+{"step": 50, "wbc_loss": 1.778304934501648, "positive_ratio": 0.005529685877263546, "lr": 5.1000000000000006e-05, "elapsed_seconds": 4403.08460820897, "pretrain_loss": 4.868605613708496, "total_loss": 6.646910667419434}
+{"step": 60, "wbc_loss": 1.2298860549926758, "positive_ratio": 0.00538103561848402, "lr": 6.1e-05, "elapsed_seconds": 5692.54913900001, "pretrain_loss": 4.808472633361816, "total_loss": 6.038358688354492}
+{"step": 70, "wbc_loss": 0.7927892804145813, "positive_ratio": 0.006545454729348421, "lr": 7.1e-05, "elapsed_seconds": 7197.173906499986, "pretrain_loss": 4.867680072784424, "total_loss": 5.6604695320129395}
+{"step": 79, "wbc_loss": 0.6055282950401306, "positive_ratio": 0.011641443707048893, "lr": 8e-05, "elapsed_seconds": 8394.203036042047, "pretrain_loss": 4.497581958770752, "total_loss": 5.103110313415527}
+{"batch": 128, "context": "full", "epochs": 1, "examples": 10000, "gen_temperature": 0.0, "generation_seconds": 1833.5759303329978, "init": "/Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/validate/ckpt/b-base-full", "last_loss": 5.103110313415527, "last_pretrain_loss": 4.497581958770752, "loss_curve": [{"positive_ratio": 0.008422886952757835, "pretrain_loss": 4.615219593048096, "step": 10, "total_loss": 10.157476425170898, "wbc_loss": 5.542256832122803}, {"positive_ratio": 0.0037884307093918324, "pretrain_loss": 4.593957901000977, "step": 20, "total_loss": 9.635686874389648, "wbc_loss": 5.041728973388672}, {"positive_ratio": 0.005686789285391569, "pretrain_loss": 4.724789619445801, "step": 30, "total_loss": 8.688079833984375, "wbc_loss": 3.9632906913757324}, {"positive_ratio": 0.008719663135707378, "pretrain_loss": 4.789989948272705, "step": 40, "total_loss": 7.530732154846191, "wbc_loss": 2.7407424449920654}, {"positive_ratio": 0.005529685877263546, "pretrain_loss": 4.868605613708496, "step": 50, "total_loss": 6.646910667419434, "wbc_loss": 1.778304934501648}, {"positive_ratio": 0.00538103561848402, "pretrain_loss": 4.808472633361816, "step": 60, "total_loss": 6.038358688354492, "wbc_loss": 1.2298860549926758}, {"positive_ratio": 0.006545454729348421, "pretrain_loss": 4.867680072784424, "step": 70, "total_loss": 5.6604695320129395, "wbc_loss": 0.7927892804145813}, {"positive_ratio": 0.011641443707048893, "pretrain_loss": 4.497581958770752, "step": 79, "total_loss": 5.103110313415527, "wbc_loss": 0.6055282950401306}], "lr": 0.0001, "neg_samples": 0, "neg_weight": 1.0, "parameter_count": 47081216, "pin_repeat": true, "positive_ratio": 0.005951007465741699, "pretrain_weight": 1.0, "seed": 7, "steps": 79, "train_seconds": 8394.214723541983, "valid": null, "valid_examples": 2000, "valid_generation_seconds": 372.9632081669988, "violations": 0, "w_neg": 1.0, "w_pos": 1.0}
