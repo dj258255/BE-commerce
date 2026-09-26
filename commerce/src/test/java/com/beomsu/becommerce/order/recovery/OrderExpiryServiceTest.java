@@ -26,7 +26,8 @@ class OrderExpiryServiceTest {
     @BeforeEach
     void setUp() {
         orderRepository = mock(OrderRepository.class);
-        service = new OrderExpiryService(orderRepository);
+        service = new OrderExpiryService(orderRepository,
+                org.mockito.Mockito.mock(com.beomsu.becommerce.order.catalog.StockReservationService.class));
     }
 
     /** PENDING_PAYMENT 상태의 실제 주문 하나. */

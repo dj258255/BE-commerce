@@ -1,0 +1,56 @@
+{
+ "name": "AT_PAYMENT",
+ "label": "t60",
+ "stock": 0,
+ "orders": {
+  "PAID": 94,
+  "PAYMENT_IN_PROGRESS": 6,
+  "PENDING_PAYMENT": 200
+ },
+ "reservations": {
+  "RESERVED": 6,
+  "CLAIMED": 94
+ },
+ "paid": 94,
+ "held": 6,
+ "net_cancels": 0,
+ "net_cancels_from_unknown": 0,
+ "unsold": 6,
+ "safety": {
+  "paid_le_initial": true,
+  "stock_non_negative": true,
+  "deducted_eq_paid_plus_held": true
+ },
+ "unknown": [
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -2.5e-05
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -3.3e-05
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -6.5e-05
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -6.8e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -3.1e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -4.8e-05
+  }
+ ]
+}

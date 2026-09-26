@@ -1,0 +1,61 @@
+{
+ "name": "AT_ORDER",
+ "label": "t240",
+ "stock": 0,
+ "orders": {
+  "PAID": 72,
+  "PAYMENT_IN_PROGRESS": 7,
+  "PENDING_PAYMENT": 21
+ },
+ "reservations": {
+  "RESERVED": 28,
+  "CLAIMED": 72
+ },
+ "paid": 72,
+ "held": 28,
+ "net_cancels": 0,
+ "net_cancels_from_unknown": 0,
+ "unsold": 28,
+ "safety": {
+  "paid_le_initial": true,
+  "stock_non_negative": true,
+  "deducted_eq_paid_plus_held": true
+ },
+ "unknown": [
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -2.4e-05
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -0.000506
+  },
+  {
+   "kind": "lost",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -3.5e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -4.4e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -2.7e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -3.7e-05
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAYMENT_IN_PROGRESS",
+   "secs_to_last_update": -8.6e-05
+  }
+ ]
+}

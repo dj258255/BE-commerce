@@ -154,8 +154,35 @@ public class FakePgClient implements PgClient {
         readTimeoutMillis.set(millis);
     }
 
+    /**
+     * 결제 키가 이 접두어로 시작하면 <b>우리에게는 타임아웃(결과 모름)</b>을 돌려주고 PG 측에는 승인으로 남긴다(#374).
+     * 복구가 조회하면 승인으로 확정된다. 빈 값이면 끈다.
+     */
+    private volatile String timeoutApprovedPrefix = "";
+
+    /** 결제 키가 이 접두어로 시작하면 타임아웃을 돌려주고 PG 측에는 아무것도 남기지 않는다(요청이 PG 에서 사라짐, #374). */
+    private volatile String timeoutLostPrefix = "";
+
+    @Value("${payment.fake-pg.timeout-approved-prefix:}")
+    public void setTimeoutApprovedPrefix(String prefix) {
+        timeoutApprovedPrefix = prefix == null ? "" : prefix;
+    }
+
+    @Value("${payment.fake-pg.timeout-lost-prefix:}")
+    public void setTimeoutLostPrefix(String prefix) {
+        timeoutLostPrefix = prefix == null ? "" : prefix;
+    }
+
     @Override
     public PgApproveResult approve(PgApproveCommand command) {
+        String key = command.paymentKey();
+        if (key != null && !timeoutLostPrefix.isEmpty() && key.startsWith(timeoutLostPrefix)) {
+            return PgApproveResult.timeout("주입: 요청이 PG 에서 사라짐(timeout-lost-prefix)");   // PG 측 기록 없음
+        }
+        if (key != null && !timeoutApprovedPrefix.isEmpty() && key.startsWith(timeoutApprovedPrefix)) {
+            pgSide.put(key, PgPaymentStatus.APPROVED);
+            return PgApproveResult.timeout("주입: 승인됐지만 응답을 못 받음(timeout-approved-prefix)");
+        }
         // 우리에게 무엇을 돌려주든(성공/타임아웃), PG 측에는 지정된 상태를 남긴다.
         pgSide.put(command.paymentKey(), pgSideStatusOnApprove.get());
 

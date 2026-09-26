@@ -1,0 +1,60 @@
+{
+ "name": "AT_ORDER",
+ "label": "t660",
+ "stock": 0,
+ "orders": {
+  "PAID": 76,
+  "PENDING_PAYMENT": 24
+ },
+ "reservations": {
+  "RESERVED": 24,
+  "CLAIMED": 76
+ },
+ "paid": 76,
+ "held": 24,
+ "net_cancels": 0,
+ "net_cancels_from_unknown": 0,
+ "unsold": 24,
+ "safety": {
+  "paid_le_initial": true,
+  "stock_non_negative": true,
+  "deducted_eq_paid_plus_held": true
+ },
+ "unknown": [
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 648.920182
+  },
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 657.02117
+  },
+  {
+   "kind": "lost",
+   "order_status": "PENDING_PAYMENT",
+   "secs_to_last_update": 649.952613
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAID",
+   "secs_to_last_update": 651.871798
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAID",
+   "secs_to_last_update": 656.658907
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAID",
+   "secs_to_last_update": 655.837494
+  },
+  {
+   "kind": "ok",
+   "order_status": "PAID",
+   "secs_to_last_update": 644.5024
+  }
+ ]
+}
