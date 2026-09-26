@@ -1,0 +1,2 @@
+[E3] policy=ADMISSION  rate=6  achieved=7  coverage=0.0%  personalized=0.0%  serving_p95=308.0ms  serving_p99=309.0ms  model_p95=303.0ms  rejected=0  timeout=0  failed=181  zero_ctx=0  req_failed=0.0%  dropped=0
+[PAGE] rate=16  achieved=16  generated=0.0%  page_p95=344.9ms  page_p99=353.9ms  dropped=0
