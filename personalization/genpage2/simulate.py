@@ -24,8 +24,11 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import math
 import random
 import time
+import urllib.error
+import urllib.request
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -249,6 +252,8 @@ class SimUser:
     wanted: list[str]
     device: str
     persona: SimPersona
+    events: list[dict] = field(default_factory=list)
+    profile: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -262,6 +267,8 @@ class PageRequest:
     history: list[str]
     prev_page: list[int] = field(default_factory=list)
     truth_items: list[str] = field(default_factory=list)
+    events: list[dict] = field(default_factory=list)
+    profile: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -352,6 +359,154 @@ class CkptSource:
                 raise ValueError("decoder returned a different number of pages than requests")
             result.extend(rows for rows, _ in decoded)
         return result
+
+
+class HttpSource:
+    """서빙 서버의 HTTP ``/page`` 를 운영 정책으로 쓴다(v1 · v2).
+
+    요청 본문과 응답 행의 뜻은 docs/genpage-v2/BACKEND.md D 절에 고정돼 있다.
+    위반(violations)이 있거나 HTTP 오류면 조용히 빈 페이지로 넘기지 않고 예외를 올린다.
+    """
+
+    def __init__(self, url: str, kind: str, vocab: Vocab, sections: dict[str, Any], *,
+                 rows: int = config.MAX_ROWS, items_per_row: int = config.ITEMS_PER_ROW,
+                 prefix: int = 2, timeout: float = 60.0) -> None:
+        if kind not in ("v1", "v2"):
+            raise ValueError(f"kind 는 'v1' 또는 'v2': {kind!r}")
+        self.url = str(url).rstrip("/")
+        self.kind = kind
+        self.vocab = vocab
+        self.sections = {str(article): section for article, section in sections.items()}
+        self.rows = int(rows)
+        self.items_per_row = int(items_per_row)
+        self.prefix = int(prefix)
+        self.timeout = float(timeout)
+
+    @property
+    def name(self) -> str:
+        return f"http-{self.kind}"
+
+    def _event(self, event: dict) -> dict:
+        return {"item": _article_id(str(event["item"])), "at": str(event["at"]),
+                "action": str(event["action"]), "price": float(event["price"])}
+
+    def _exclude(self, example: PageRequest) -> list[Any]:
+        """앞 쪽에 보여 준 상품 id — v1 은 정수, v2 는 문자열 article id(서버가 `_article_id` 로 맞춘다).
+
+        `prev_page` 는 앞 쪽 응답의 행 토큰 · 상품 토큰이므로, 어휘를 되돌려 상품만 고른다.
+        """
+        articles = list(dict.fromkeys(self.vocab.article_of[token] for token in example.prev_page
+                                      if token in self.vocab.article_of))
+        return [_int_article(article) for article in articles] if self.kind == "v1" else articles
+
+    def _body(self, example: PageRequest) -> dict:
+        if self.kind == "v1":
+            body = {"history": [_int_article(article) for article in example.history],
+                    "rows": self.rows, "items_per_row": self.items_per_row, "prefix": self.prefix}
+        else:
+            body = {"history": [], "events": [self._event(event) for event in example.events],
+                    "profile": _clean_json(example.profile),
+                    "now": pd.Timestamp(example.request_date).isoformat(), "pin_repeat": True,
+                    "rows": self.rows, "items_per_row": self.items_per_row, "prefix": self.prefix}
+        # 2쪽(`prev_page` 가 있는 요청)에만 앞 쪽 상품을 exclude 로 보낸다 — 1쪽에는 넣지 않는다.
+        # 행 제외(`exclude_categories`)는 v1 · v2 의 행 이름 체계가 달라 쓰지 않는다.
+        if example.prev_page:
+            body["exclude"] = self._exclude(example)
+        return body
+
+    def _v1_row(self, items: list[str]) -> int:
+        """그 행 상품들의 섹션 최빈값 → ROW_S<번호>. 없으면 ROW_FALLBACK."""
+        sections: list[Any] = []
+        for article in items:
+            if self.vocab.item(article) is None:
+                continue
+            section = self.sections.get(article)
+            if section is None or pd.isna(section):
+                continue
+            sections.append(section)
+        if not sections:
+            return self.vocab.id("ROW_FALLBACK")
+        best = min(Counter(sections).items(), key=lambda pair: (-pair[1], float(pair[0])))[0]
+        try:
+            return self.vocab.id(f"ROW_S{_section_label(best)}")
+        except KeyError:
+            return self.vocab.id("ROW_FALLBACK")
+
+    def _rows(self, payload: dict) -> list[GeneratedRow]:
+        result: list[GeneratedRow] = []
+        for raw in payload.get("rows") or []:
+            items = [_article_id(str(value)) for value in raw.get("items") or []]
+            token = self.vocab.id(str(raw.get("row"))) if self.kind == "v2" else self._v1_row(items)
+            result.append(GeneratedRow(int(token), items))
+        return result
+
+    def pages(self, examples: list[PageRequest]) -> list[list[GeneratedRow]]:
+        result: list[list[GeneratedRow]] = []
+        for example in examples:
+            body = json.dumps(self._body(example), ensure_ascii=False, allow_nan=False).encode("utf-8")
+            request = urllib.request.Request(self.url + "/page", data=body, method="POST",
+                                             headers={"Content-Type": "application/json"})
+            try:
+                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+            except (urllib.error.HTTPError, urllib.error.URLError, OSError, ValueError) as exc:
+                raise RuntimeError(f"{self.kind} /page 요청 실패: {exc}") from exc
+            violations = int(payload.get("violations", 0))
+            if violations != 0:
+                raise RuntimeError(f"{self.kind} /page 규칙 위반 {violations}건")
+            result.append(self._rows(payload))
+        return result
+
+
+def _int_article(article: Any) -> Any:
+    text = str(article)
+    return int(text) if text.isdigit() else text
+
+
+def _section_label(value: Any) -> str:
+    number = float(value)
+    return str(int(number)) if number.is_integer() else str(number)
+
+
+def _clean_json(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): _clean_json(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_clean_json(item) for item in value]
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, float) and math.isnan(value):
+        return None
+    return value
+
+
+def _events_of(events: dict[str, np.ndarray], stop: int) -> list[dict]:
+    """문맥 이벤트를 v2 요청의 events 모양(오래된 것부터, 최근 HISTORY_EVENTS 개)으로."""
+    stop = max(0, min(int(stop), len(events["dates"])))
+    begin = max(0, stop - config.HISTORY_EVENTS)
+    result: list[dict] = []
+    for article, date, channel, price in zip(events["articles"][begin:stop], events["dates"][begin:stop],
+                                             events["channels"][begin:stop], events["prices"][begin:stop],
+                                             strict=True):
+        result.append({"item": str(article), "at": str(np.datetime64(int(date), "D")),
+                       "action": "STORE" if int(channel) == 1 else "ONLINE", "price": float(price)})
+    return result
+
+
+def _json_profile(profile: Any) -> dict:
+    if profile is None:
+        return {}
+    values = profile if isinstance(profile, dict) else profile._asdict()
+    result: dict[str, Any] = {}
+    for key, value in values.items():
+        if str(key) == "customer_id":
+            continue
+        try:
+            missing = bool(pd.isna(value))
+        except (TypeError, ValueError):
+            missing = False
+        result[str(key)] = None if missing else (value.item() if isinstance(value, np.generic) else value)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -450,7 +605,8 @@ def simulate(users: Sequence[SimUser], source: PageSource, *, vocab: Vocab,
 
     sep_page = int(vocab.id("SEP_PAGE"))
     first = source.pages([PageRequest(user.customer_id, user.request_date, list(user.ctx_tokens),
-                                      list(user.ctx_content), list(user.history), [], list(user.wanted))
+                                      list(user.ctx_content), list(user.history), [], list(user.wanted),
+                                      list(user.events), dict(user.profile))
                           for user in users])
     if len(first) != len(users):
         raise ValueError("page source returned a different number of pages than requests")
@@ -479,7 +635,8 @@ def simulate(users: Sequence[SimUser], source: PageSource, *, vocab: Vocab,
         shown = {article for row in rows for article in row.items}
         request = PageRequest(user.customer_id, user.request_date, ctx_tokens, ctx_content,
                               list(user.history), prev_tokens,
-                              [article for article in user.wanted if article not in shown])
+                              [article for article in user.wanted if article not in shown],
+                              list(user.events), dict(user.profile))
         pending.append((user, request, rng))
 
     if pending:
@@ -618,7 +775,8 @@ def build_users(vocab: Vocab, transactions: pd.DataFrame, customers: pd.DataFram
     profiles = {str(row.customer_id): row._asdict() for row in customers.itertuples(index=False)}
     users: list[SimUser] = []
     for customer_id, events in _customer_event_groups(transactions, vocab, content_rows_map):
-        profile_ids = profile_tokens(vocab, profiles.get(str(customer_id)))
+        profile = profiles.get(str(customer_id))
+        profile_ids = profile_tokens(vocab, profile)
         dates = events["dates"]
         articles = events["articles"]
         for request in request_dates:
@@ -633,8 +791,67 @@ def build_users(vocab: Vocab, transactions: pd.DataFrame, customers: pd.DataFram
                                                     events["content"][:start], events["prices"][:start])
             history = articles[max(0, start - 100):start][::-1].tolist()
             users.append(SimUser(str(customer_id), request, ctx.tolist(), ctx_content.tolist(), history, wanted,
-                                 device_of(customer_id), persona_of(str(customer_id), wanted, attributes)))
+                                 device_of(customer_id), persona_of(str(customer_id), wanted, attributes),
+                                 _events_of(events, start), _json_profile(profile)))
     return users
+
+
+def build_eval_users(vocab: Vocab, transactions: pd.DataFrame, customers: pd.DataFrame,
+                     attributes: dict[str, tuple], content_rows_map: dict[str, int],
+                     request: Any | None = None) -> tuple[list[SimUser], PriceIndex]:
+    """평가 기간(홀드아웃 주) 진입점.
+
+    요청 시각은 final 모드의 요청 시각(2020-09-16)이고, 원하는 것은 [r, r+7) 실제
+    구매다. 문맥은 r 이전 거래만 쓴다. 학습 기간 검사 대신 **요청 시각 이후 거래가
+    문맥 · 가격에 없다**를 검사한다(가격은 r 이전 거래만 본 값과 같은지 확인한다).
+    """
+    request = pd.Timestamp(request if request is not None else config.request_of("final"))
+    window_end = request + pd.Timedelta(days=config.TARGET_DAYS)
+    dates = pd.to_datetime(transactions["t_dat"])
+    context = transactions.loc[dates < request]
+    window = transactions.loc[(dates >= request) & (dates < window_end)]
+    prices = PriceIndex.from_transactions(vocab, transactions, request)
+    context_prices = PriceIndex.from_transactions(vocab, context, request)
+    for article in dict.fromkeys(_article_id(value) for value in window["article_id"].tolist()):
+        if prices.price_as_of(article, request) != context_prices.price_as_of(article, request):
+            raise ValueError("요청 시각 이후 거래가 가격에 섞였다")
+    profiles = {str(row.customer_id): row._asdict() for row in customers.itertuples(index=False)}
+    wanted_by_customer: dict[str, list[str]] = {}
+    for article, customer in zip(window["article_id"], window["customer_id"], strict=True):
+        wanted_by_customer.setdefault(str(customer), []).append(_article_id(article))
+    request_day = _day(request)
+    users: list[SimUser] = []
+    for customer_id, events in _customer_event_groups(transactions, vocab, content_rows_map):
+        wanted = list(dict.fromkeys(wanted_by_customer.get(str(customer_id), [])))
+        if not wanted:
+            continue
+        start = int(events["dates"].searchsorted(request_day, side="left"))
+        profile = profiles.get(str(customer_id))
+        ctx, ctx_content = _context_from_arrays(vocab, request, profile_tokens(vocab, profile),
+                                                events["dates"][:start], events["articles"][:start],
+                                                events["item_tokens"][:start], events["channels"][:start],
+                                                events["content"][:start], events["prices"][:start])
+        history = events["articles"][max(0, start - 100):start][::-1].tolist()
+        user = SimUser(str(customer_id), request, ctx.tolist(), ctx_content.tolist(), history, wanted,
+                       device_of(customer_id), persona_of(str(customer_id), wanted, attributes),
+                       _events_of(events, start), _json_profile(profile))
+        if any(_day(event["at"]) >= request_day for event in user.events):
+            raise ValueError("요청 시각 이후 거래가 문맥에 섞였다")
+        users.append(user)
+    return users, prices
+
+
+def eval_buyers(path: Path, request: Any | None = None) -> list[str]:
+    """평가 창([r, r + 7))에 실제로 산 고객 id(정렬)."""
+    request = pd.Timestamp(request if request is not None else config.request_of("final"))
+    return sorted(_window_buyers(Path(path), request, request + pd.Timedelta(days=config.TARGET_DAYS)))
+
+
+def eval_transactions(path: Path, customers: Sequence[str], request: Any | None = None) -> pd.DataFrame:
+    """고른 고객의 평가 창 이전 거래(문맥 + 정답 창)."""
+    request = pd.Timestamp(request if request is not None else config.request_of("final"))
+    return _customer_transactions(Path(path), {str(value) for value in customers},
+                                  request + pd.Timedelta(days=config.TARGET_DAYS))
 
 
 def _window_buyers(path: Path, start: Any, end: Any) -> set[str]:
