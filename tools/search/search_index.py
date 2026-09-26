@@ -35,11 +35,13 @@ def main():
     ap.add_argument("index", nargs="?", default="products")
     ap.add_argument("--replicate", type=int, default=1, help="규모 실험: 실제 행을 N 번 복제(#244)")
     ap.add_argument("--shards", type=int, default=None, help="샤드 수(기본은 매핑 파일의 1). 한 노드 안 샤드 분할 실험(#364)")
+    ap.add_argument("--from-json", default=None, help="DB 대신 이 파일(카탈로그 행 목록 JSON)에서 읽는다. 같은 데이터로 여러 번 색인할 때(#365)")
     ap.add_argument("--live-refresh", action="store_true",
                     help="적재 중에도 refresh 를 켠다(#236 의 절차). 세그먼트가 엔진마다 다르게 생겨 내부 문서 순서가 갈린다(#262)")
     a = ap.parse_args()
     base, index = a.base.rstrip("/"), a.index
-    rows = replicate(load_full(), a.replicate)          # 제너레이터 — 300만 행을 메모리에 다 올리지 않는다
+    source = json.loads(pathlib.Path(a.from_json).read_text()) if a.from_json else load_full()
+    rows = replicate(source, a.replicate)          # 제너레이터 — 300만 행을 메모리에 다 올리지 않는다
     call("DELETE", f"{base}/{index}")
     mapping = json.loads(MAPPING)
     if a.shards:
