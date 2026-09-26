@@ -36,6 +36,10 @@ import java.util.function.Supplier;
  *       대신 실패/서킷 오픈 시 {@link PgApproveResult#timeout}(=UNKNOWN)으로 돌려, 복구 배치가
  *       나중에 조회로 확정하게 한다.</li>
  *   <li><b>조회(query)는 읽기라 재시도가 안전하다.</b> 지수 백오프 + 지터로 일시 장애를 흡수한다.</li>
+ *   <li><b>서킷은 승인 · 취소 · 조회가 따로 쓴다(#372).</b> 하나를 같이 쓰면 조회만 실패해도 서킷이 열려
+ *       새 승인이 PG 에 가지 못했다(ADR-057 대가). 조회 서킷은 창을 넓혀 무작위 실패로는 거의 열리지 않게 한다.</li>
+ *   <li><b>서킷이 열려 보내지 않은 승인은 확정 실패다(#372).</b> PG 에 닿지 않은 것이 보장되므로 동시 호출
+ *       상한과 같은 규칙을 따른다. 미확정으로 적으면 조회할 대상이 없는 유령 미확정이 생긴다.</li>
  * </ul>
  * {@code @Primary}라 {@code PaymentService}는 이 구현을 주입받는다. 실제 PG 어댑터가 생기기 전까지
  * {@link FakePgClient}를 위임 대상으로 감싼다.
@@ -47,7 +51,9 @@ public class ResilientPgClient implements PgClient {
     private static final Logger log = LoggerFactory.getLogger(ResilientPgClient.class);
 
     private final PgClient delegate;
-    private final CircuitBreaker circuitBreaker;
+    private final CircuitBreaker approveCircuit;
+    private final CircuitBreaker cancelCircuit;
+    private final CircuitBreaker queryCircuit;
     private final Retry queryRetry;
 
     /**
@@ -61,6 +67,7 @@ public class ResilientPgClient implements PgClient {
      */
     private final Semaphore pgCallLimit;
     private final Counter pgConcurrencyRejected;
+    private final Counter pgCircuitRejected;
     private final Counter pgUnknownFallback;
     private final Counter pgQueryRetries;
     private final Counter pgQueryRetryExhausted;
@@ -105,6 +112,10 @@ public class ResilientPgClient implements PgClient {
                 .tag("reason", "concurrency_limit")
                 .description("PG 동시 호출 상한으로 승인 전에 거절된 요청 수")
                 .register(meterRegistry);
+        this.pgCircuitRejected = Counter.builder("payment.pg.approval.rejected")
+                .tag("reason", "circuit_open")
+                .description("승인 서킷이 열려 PG 에 보내지 않고 거절한 요청 수")
+                .register(meterRegistry);
         this.pgUnknownFallback = Counter.builder("payment.pg.approval.unknown")
                 .description("PG 승인 결과를 알 수 없어 UNKNOWN으로 보존한 요청 수")
                 .register(meterRegistry);
@@ -119,14 +130,26 @@ public class ResilientPgClient implements PgClient {
                 .publishPercentiles(0.5, 0.95, 0.99)
                 .register(meterRegistry);
 
-        CircuitBreakerConfig cbConfig = CircuitBreakerConfig.custom()
+        // 승인 · 취소: 창 5 · 최소 3건. 쓰기 경로라 전면 장애를 빨리(3건) 알아채는 쪽을 둔다.
+        CircuitBreakerConfig writeConfig = CircuitBreakerConfig.custom()
                 .slidingWindowType(CircuitBreakerConfig.SlidingWindowType.COUNT_BASED)
                 .slidingWindowSize(5)
                 .minimumNumberOfCalls(3)
                 .failureRateThreshold(50)                       // 절반 이상 실패하면 OPEN
                 .waitDurationInOpenState(Duration.ofSeconds(5))
                 .build();
-        this.circuitBreaker = CircuitBreaker.of("pg", cbConfig);
+        // 조회: 창 20 · 최소 10건. 창 5 는 독립 실패 10% 에서도 열려 복구 한 틱을 막았다(#334). 창 20 에서
+        // 무작위 실패 10% 가 10건 이상 겹칠 확률은 약 7×10⁻⁶ 이다. 대가는 전면 장애에서 여는 데 10건이 든다.
+        CircuitBreakerConfig queryConfig = CircuitBreakerConfig.custom()
+                .slidingWindowType(CircuitBreakerConfig.SlidingWindowType.COUNT_BASED)
+                .slidingWindowSize(20)
+                .minimumNumberOfCalls(10)
+                .failureRateThreshold(50)
+                .waitDurationInOpenState(Duration.ofSeconds(5))
+                .build();
+        this.approveCircuit = CircuitBreaker.of("pg-approve", writeConfig);
+        this.cancelCircuit = CircuitBreaker.of("pg-cancel", writeConfig);
+        this.queryCircuit = CircuitBreaker.of("pg-query", queryConfig);
 
         RetryConfig retryConfig = RetryConfig.custom()
                 .maxAttempts(queryMaxAttempts >= 1 ? queryMaxAttempts : 3)
@@ -157,15 +180,17 @@ public class ResilientPgClient implements PgClient {
             return result;
         }
         try {
-            PgApproveResult result = circuitBreaker.executeSupplier(() -> delegate.approve(command));
+            PgApproveResult result = approveCircuit.executeSupplier(() -> delegate.approve(command));
             if (result.outcome() == PgOutcome.TIMEOUT) {
                 pgUnknownFallback.increment();
             }
             return result;
         } catch (CallNotPermittedException open) {
-            pgUnknownFallback.increment();
-            log.warn("PG 서킷 오픈 — 승인 미확정 처리: {}", command.orderNo());
-            return PgApproveResult.timeout("서킷 오픈: PG 장애로 승인 미확정");
+            // 서킷이 열려 호출이 나가지 않았다 → PG 에 닿지 않은 것이 보장된다 → 확정 실패(상한과 같은 규칙, #372).
+            // 예전에는 미확정으로 적어 조회할 대상이 없는 유령 미확정을 만들었다.
+            pgCircuitRejected.increment();
+            log.warn("PG 서킷 오픈 — 승인을 보내지 않고 확정 실패: {}", command.orderNo());
+            return PgApproveResult.failed("PG 승인 서킷 오픈: 요청을 보내지 않았다");
         } catch (RuntimeException ex) {
             pgUnknownFallback.increment();
             // 예외를 실패로 단정하지 않는다 — PG에서 처리됐을 수도 있다 → UNKNOWN
@@ -182,18 +207,22 @@ public class ResilientPgClient implements PgClient {
     @Override
     public PgCancelResult cancel(PgCancelCommand command) {
         // 취소도 서킷으로 보호하되 재시도는 하지 않는다(호출부가 실패를 처리).
-        return circuitBreaker.executeSupplier(() -> delegate.cancel(command));
+        return cancelCircuit.executeSupplier(() -> delegate.cancel(command));
     }
 
     @Override
     public PgQueryResult query(String paymentKey) {
         Supplier<PgQueryResult> guarded = Retry.decorateSupplier(queryRetry,
-                () -> circuitBreaker.executeSupplier(() -> delegate.query(paymentKey)));
+                () -> queryCircuit.executeSupplier(() -> delegate.query(paymentKey)));
         // 조회 실패는 예외로 전파 — 복구 배치가 건별로 잡아 다음 주기에 다시 시도한다.
         return guarded.get();
     }
 
-    CircuitBreaker circuitBreaker() {
-        return circuitBreaker;
+    CircuitBreaker approveCircuit() {
+        return approveCircuit;
+    }
+
+    CircuitBreaker queryCircuit() {
+        return queryCircuit;
     }
 }

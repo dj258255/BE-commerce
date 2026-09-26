@@ -219,6 +219,8 @@ tasks.register('experimentTest', Test) {
         includeTags 'experiment'
     }
     testLogging { showStandardStreams = true }
+    // 실험 설정(-Dcircuit.exp.*)을 테스트 JVM 에 넘긴다(#372). Gradle 은 -D 를 넘기지 않는다
+    System.properties.findAll { k, v -> k.toString().startsWith('circuit.exp.') }.each { k, v -> systemProperty k.toString(), v }
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     shouldRunAfter('test')
