@@ -1,0 +1,14 @@
+98.4 0.0 01-09:04:59 zsh
+38.6 27.0 05-14:01:35 com.apple.Virtualization.VirtualMachine
+17.4 0.2 06-22:47:02 WindowServer
+8.8 0.1 04-16:08:45 Webex
+7.9 0.0 06-22:47:03 launchservicesd
+4.2 0.3 03-21:10:19 Telegram
+3.7 1.0 06:15:41 Google
+2.9 1.6 01-08:18:41 claude
+2.0 0.0 06-22:47:02 coreaudiod
+1.9 0.0 06-22:46:53 ContinuityCaptureAgent
+1.8 0.2 06-22:46:08 Google
+1.6 0.0 06-22:47:02 backgroundtaskmanagementd
+Load Avg: 5.30, 4.94, 4.76 
+CPU usage: 15.15% user, 13.72% sys, 71.11% idle 
