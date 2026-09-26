@@ -4,6 +4,7 @@ import com.beomsu.becommerce.payment.PaymentStatus;
 import com.beomsu.becommerce.payment.internal.PaymentRepository;
 import com.beomsu.becommerce.payment.PaymentException;
 import com.beomsu.becommerce.payment.PaymentConfirmedEvent;
+import com.beomsu.becommerce.payment.PaymentRecoveredEvent;
 import com.beomsu.becommerce.payment.internal.Payment;
 import com.beomsu.becommerce.payment.pg.PgClient;
 import com.beomsu.becommerce.payment.pg.PgQueryResult;
@@ -160,14 +161,17 @@ public class PaymentRecoveryService {
                 events.publishEvent(new PaymentConfirmedEvent(
                         payment.getOrderNo(), payment.getId(),
                         payment.getAmount(), payment.getApprovedAt()));
+                events.publishEvent(new PaymentRecoveredEvent(payment.getOrderNo(), payment.getId(), payment.getStatus()));
             }
             case NOT_FOUND -> {
                 payment.abortByRecovery("복구: PG에 결제 정보 없음(승인 미완료)");
                 paymentRepository.saveAndFlush(payment);
+                events.publishEvent(new PaymentRecoveredEvent(payment.getOrderNo(), payment.getId(), payment.getStatus()));
             }
             case CANCELED -> {
                 payment.markCanceledByPg("복구: PG에서 이미 취소됨");
                 paymentRepository.saveAndFlush(payment);
+                events.publishEvent(new PaymentRecoveredEvent(payment.getOrderNo(), payment.getId(), payment.getStatus()));
             }
             // PG가 아직 진행 중이라고 답하면 확정하지 않는다. 여기서 실패로 단정하면
             // 승인이 곧 끝날 결제를 우리만 실패로 기록하는 사고가 된다 → 다음 주기에 다시 묻는다

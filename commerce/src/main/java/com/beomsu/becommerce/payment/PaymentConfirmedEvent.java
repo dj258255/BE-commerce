@@ -5,7 +5,8 @@ import org.springframework.modulith.events.Externalized;
 import java.time.Instant;
 
 /**
- * 결제 승인 완료 이벤트. ledger(분개)·order(주문 확정)·settlement가 구독한다.
+ * 결제 승인 완료 이벤트. ledger(분개)·settlement가 구독한다. 주문은 이 이벤트를 듣지 않는다(정상 결제는 같은
+ * 요청 안에서 확정한다). 결제 복구가 확정한 결과는 {@link PaymentRecoveredEvent} 로 주문에 알린다(#378).
  * Zero-Payload 지향 — 식별자와 최소 정보만 담아 순서 역전·스키마 결합을 피한다.
  *
  * <p>{@code @Externalized}로 프로세스 밖(분석/DW/별도 서비스) 소비자를 위해 Kafka로도 외부화한다.
