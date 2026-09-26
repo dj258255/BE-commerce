@@ -1,0 +1,2 @@
+before Innodb_buffer_pool_read_requests	2096017 Innodb_buffer_pool_reads	1088 Innodb_data_reads	8267 
+after Innodb_buffer_pool_read_requests	35117883 Innodb_buffer_pool_reads	1092 Innodb_data_reads	8271 
