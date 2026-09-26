@@ -1,0 +1,22 @@
+{
+ "keyed": {
+  "records": 0,
+  "expected": 2000,
+  "read_seconds": 180.0,
+  "users": 0,
+  "users_in_one_partition": 0,
+  "partitions_per_user_hist": {},
+  "inversions_within_partition": 0,
+  "sample_keys": []
+ },
+ "nokey": {
+  "records": 0,
+  "expected": 2000,
+  "read_seconds": 180.2,
+  "users": 0,
+  "users_in_one_partition": 0,
+  "partitions_per_user_hist": {},
+  "inversions_within_partition": 0,
+  "sample_keys": []
+ }
+}
