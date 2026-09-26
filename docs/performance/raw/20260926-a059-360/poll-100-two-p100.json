@@ -1,0 +1,768 @@
+{
+ "poll_ms": 100,
+ "tag": "-two-p100",
+ "rate": 50,
+ "activity_rate": 50.0,
+ "activity_sent": 3001,
+ "containers": [
+  "cdcexp-debezium-1",
+  "cdcexp-mysql-1"
+ ],
+ "sent": 3001,
+ "received": 3001,
+ "lag_p50_ms": 50,
+ "lag_p95_ms": 97,
+ "lag_max_ms": 107,
+ "cpu": {
+  "idle.cdcexp-debezium-1": 1.19,
+  "idle.cdcexp-mysql-1": 0.75,
+  "load.cdcexp-debezium-1": 5.51,
+  "load.cdcexp-mysql-1": 10.77
+ },
+ "samples": [
+  {
+   "t": 1790389897.817047,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.04
+  },
+  {
+   "t": 1790389897.817047,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.44
+  },
+  {
+   "t": 1790389899.832451,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.13
+  },
+  {
+   "t": 1790389899.832451,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.6
+  },
+  {
+   "t": 1790389901.860652,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.32
+  },
+  {
+   "t": 1790389901.860652,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.63
+  },
+  {
+   "t": 1790389903.868135,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.4
+  },
+  {
+   "t": 1790389903.868135,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 1.24
+  },
+  {
+   "t": 1790389905.886115,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.09
+  },
+  {
+   "t": 1790389905.886115,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.63
+  },
+  {
+   "t": 1790389907.8952909,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 0.84
+  },
+  {
+   "t": 1790389907.8952909,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.46
+  },
+  {
+   "t": 1790389909.9142468,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.01
+  },
+  {
+   "t": 1790389909.9142468,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.61
+  },
+  {
+   "t": 1790389911.947783,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.35
+  },
+  {
+   "t": 1790389911.947783,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.66
+  },
+  {
+   "t": 1790389913.960042,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.12
+  },
+  {
+   "t": 1790389913.960042,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 1.22
+  },
+  {
+   "t": 1790389915.968317,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.17
+  },
+  {
+   "t": 1790389915.968317,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.63
+  },
+  {
+   "t": 1790389917.9761019,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 0.99
+  },
+  {
+   "t": 1790389917.9761019,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 1.47
+  },
+  {
+   "t": 1790389919.993631,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.07
+  },
+  {
+   "t": 1790389919.993631,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.43
+  },
+  {
+   "t": 1790389922.021308,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.13
+  },
+  {
+   "t": 1790389922.021308,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.63
+  },
+  {
+   "t": 1790389924.029599,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.13
+  },
+  {
+   "t": 1790389924.029599,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 1.19
+  },
+  {
+   "t": 1790389926.048984,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.1
+  },
+  {
+   "t": 1790389926.048984,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.57
+  },
+  {
+   "t": 1790389928.056957,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 4.96
+  },
+  {
+   "t": 1790389928.056957,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.75
+  },
+  {
+   "t": 1790389930.071622,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 0.71
+  },
+  {
+   "t": 1790389930.071622,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.39
+  },
+  {
+   "t": 1790389932.097274,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 0.94
+  },
+  {
+   "t": 1790389932.097274,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.64
+  },
+  {
+   "t": 1790389934.106445,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.73
+  },
+  {
+   "t": 1790389934.106445,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 1.18
+  },
+  {
+   "t": 1790389936.118004,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 0.95
+  },
+  {
+   "t": 1790389936.118004,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.69
+  },
+  {
+   "t": 1790389938.132596,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.13
+  },
+  {
+   "t": 1790389938.132596,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.75
+  },
+  {
+   "t": 1790389940.138943,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 0.64
+  },
+  {
+   "t": 1790389940.138943,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.41
+  },
+  {
+   "t": 1790389942.1659222,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 0.68
+  },
+  {
+   "t": 1790389942.1659222,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.51
+  },
+  {
+   "t": 1790389944.176756,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.06
+  },
+  {
+   "t": 1790389944.176756,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 1.22
+  },
+  {
+   "t": 1790389946.1893718,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.04
+  },
+  {
+   "t": 1790389946.1893718,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.67
+  },
+  {
+   "t": 1790389948.2028139,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.14
+  },
+  {
+   "t": 1790389948.2028139,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.81
+  },
+  {
+   "t": 1790389950.224886,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 0.84
+  },
+  {
+   "t": 1790389950.224886,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.56
+  },
+  {
+   "t": 1790389952.239743,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 0.65
+  },
+  {
+   "t": 1790389952.239743,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.4
+  },
+  {
+   "t": 1790389954.254155,
+   "phase": "idle",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.05
+  },
+  {
+   "t": 1790389954.254155,
+   "phase": "idle",
+   "name": "cdcexp-mysql-1",
+   "cpu": 1.26
+  },
+  {
+   "t": 1790389956.267135,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 5.35
+  },
+  {
+   "t": 1790389956.267135,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 5.72
+  },
+  {
+   "t": 1790389958.2777002,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 8.01
+  },
+  {
+   "t": 1790389958.2777002,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 12.31
+  },
+  {
+   "t": 1790389960.3091168,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 7.07
+  },
+  {
+   "t": 1790389960.3091168,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 11.64
+  },
+  {
+   "t": 1790389962.3257139,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 4.95
+  },
+  {
+   "t": 1790389962.3257139,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 8.58
+  },
+  {
+   "t": 1790389964.332632,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 4.22
+  },
+  {
+   "t": 1790389964.332632,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 8.42
+  },
+  {
+   "t": 1790389966.3363898,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 7.59
+  },
+  {
+   "t": 1790389966.3363898,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 11.62
+  },
+  {
+   "t": 1790389968.346956,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 6.68
+  },
+  {
+   "t": 1790389968.346956,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 12.22
+  },
+  {
+   "t": 1790389970.360589,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 5.89
+  },
+  {
+   "t": 1790389970.360589,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 11.17
+  },
+  {
+   "t": 1790389972.384812,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 6.1
+  },
+  {
+   "t": 1790389972.384812,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 11.61
+  },
+  {
+   "t": 1790389974.387896,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 3.71
+  },
+  {
+   "t": 1790389974.387896,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 8.03
+  },
+  {
+   "t": 1790389976.397409,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 6.31
+  },
+  {
+   "t": 1790389976.397409,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 12.0
+  },
+  {
+   "t": 1790389978.409482,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 5.64
+  },
+  {
+   "t": 1790389978.409482,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 10.72
+  },
+  {
+   "t": 1790389980.42336,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 5.29
+  },
+  {
+   "t": 1790389980.42336,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 10.48
+  },
+  {
+   "t": 1790389982.4439209,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 5.24
+  },
+  {
+   "t": 1790389982.4439209,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 10.07
+  },
+  {
+   "t": 1790389984.455721,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 4.69
+  },
+  {
+   "t": 1790389984.455721,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 10.82
+  },
+  {
+   "t": 1790389986.460953,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 3.13
+  },
+  {
+   "t": 1790389986.460953,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 7.66
+  },
+  {
+   "t": 1790389988.471872,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 5.79
+  },
+  {
+   "t": 1790389988.471872,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 12.58
+  },
+  {
+   "t": 1790389990.493449,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 5.1
+  },
+  {
+   "t": 1790389990.493449,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 14.75
+  },
+  {
+   "t": 1790389992.510994,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 5.75
+  },
+  {
+   "t": 1790389992.510994,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 12.51
+  },
+  {
+   "t": 1790389994.524517,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 4.97
+  },
+  {
+   "t": 1790389994.524517,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 11.21
+  },
+  {
+   "t": 1790389996.529155,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 3.78
+  },
+  {
+   "t": 1790389996.529155,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 7.9
+  },
+  {
+   "t": 1790389998.541891,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 5.53
+  },
+  {
+   "t": 1790389998.541891,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 11.8
+  },
+  {
+   "t": 1790390000.562368,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 5.03
+  },
+  {
+   "t": 1790390000.562368,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 12.32
+  },
+  {
+   "t": 1790390002.576875,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 5.85
+  },
+  {
+   "t": 1790390002.576875,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 12.95
+  },
+  {
+   "t": 1790390004.5843232,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 9.42
+  },
+  {
+   "t": 1790390004.5843232,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 12.09
+  },
+  {
+   "t": 1790390006.59071,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 5.59
+  },
+  {
+   "t": 1790390006.59071,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 10.03
+  },
+  {
+   "t": 1790390008.600085,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 3.48
+  },
+  {
+   "t": 1790390008.600085,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 7.9
+  },
+  {
+   "t": 1790390010.62323,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 4.64
+  },
+  {
+   "t": 1790390010.62323,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 10.06
+  },
+  {
+   "t": 1790390012.631754,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 4.71
+  },
+  {
+   "t": 1790390012.631754,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 10.89
+  },
+  {
+   "t": 1790390014.63669,
+   "phase": "load",
+   "name": "cdcexp-debezium-1",
+   "cpu": 5.69
+  },
+  {
+   "t": 1790390014.63669,
+   "phase": "load",
+   "name": "cdcexp-mysql-1",
+   "cpu": 13.11
+  },
+  {
+   "t": 1790390016.652282,
+   "phase": "drain",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.94
+  },
+  {
+   "t": 1790390016.652282,
+   "phase": "drain",
+   "name": "cdcexp-mysql-1",
+   "cpu": 3.31
+  },
+  {
+   "t": 1790390018.656694,
+   "phase": "drain",
+   "name": "cdcexp-debezium-1",
+   "cpu": 0.69
+  },
+  {
+   "t": 1790390018.656694,
+   "phase": "drain",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.39
+  },
+  {
+   "t": 1790390020.685291,
+   "phase": "drain",
+   "name": "cdcexp-debezium-1",
+   "cpu": 1.14
+  },
+  {
+   "t": 1790390020.685291,
+   "phase": "drain",
+   "name": "cdcexp-mysql-1",
+   "cpu": 0.65
+  }
+ ]
+}
