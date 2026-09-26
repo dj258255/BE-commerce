@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import math
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -299,6 +302,30 @@ class WbcTest(unittest.TestCase):
         self.assertEqual(violations, 0)
         self.assertEqual([item.page_tokens for item in greedy], [item.page_tokens for item in seeded])
 
+    def test_generation_progress_logs_every_batch_to_stderr(self):
+        """배치마다 [생성] 한 줄이 표준 오류로 나오고 마지막 줄이 전체를 다 센다."""
+        vocab = wide_vocab()
+        ctx, ctx_content = base_context(vocab)
+        page = [vocab.id("EOS")]
+        data = ExampleData([(np.asarray(ctx), np.asarray(ctx_content), np.asarray(page)) for _ in range(6)])
+        histories = [MANY_ARTICLES[:10] for _ in range(6)]
+        truths = [[MANY_ARTICLES[0]] for _ in range(6)]
+        content_rows = {article: index for index, article in enumerate(MANY_ARTICLES)}
+        decoder = PageDecoder(small_model(vocab, seed=0), vocab, content_rows, "cpu", level="full")
+        stream = io.StringIO()
+        with contextlib.redirect_stderr(stream):
+            _generate_exposures(decoder, data, list(range(6)), histories, truths, vocab=vocab,
+                                pin_repeat=True, gen_batch=3, w_pos=1.0, w_neg=1.0, label="valid")
+        lines = [line for line in stream.getvalue().splitlines() if "[생성]" in line]
+        self.assertEqual(len(lines), 2)  # 6개를 3개씩 → 두 배치
+        counted = [re.search(r"\[생성\] (\S+) (\d+)/(\d+)", line) for line in lines]
+        self.assertTrue(all(match is not None for match in counted))
+        self.assertTrue(all(match.group(1) == "valid" for match in counted))
+        self.assertEqual(counted[-1].group(2), counted[-1].group(3))
+        self.assertEqual(counted[-1].group(3), "6")
+        self.assertIn("p/s", lines[-1])
+        self.assertIn("위반 0", lines[-1])
+
     def test_negative_samples_exclude_purchased_and_exposed_products(self):
         vocab = wide_vocab()
         ctx, ctx_content = base_context(vocab)
@@ -498,6 +525,29 @@ class WbcTest(unittest.TestCase):
         self.assertTrue(curve)
         self.assertTrue(all("neg_loss" in entry for entry in curve))
         self.assertAlmostEqual(curve[-1]["wbc_loss"] + curve[-1]["neg_loss"], result["last_loss"], places=6)
+
+    def test_train_log_records_elapsed_seconds_and_echoes_to_stderr(self):
+        """학습 기록에 elapsed_seconds 가 있고, 같은 줄이 표준 오류로도 즉시 나온다."""
+        vocab = wide_vocab()
+        ctx, ctx_content = base_context(vocab)
+        rows = [GeneratedRow(vocab.id("ROW_S1"), MANY_ARTICLES[:3])]
+        exposure = exposure_from_rows(rows, [MANY_ARTICLES[0]], vocab, ctx, ctx_content)
+        model = small_model(vocab, seed=0)
+        with tempfile.TemporaryDirectory() as temporary:
+            stream = io.StringIO()
+            with contextlib.redirect_stderr(stream):
+                train(model, [exposure] * 8, vocab=vocab, level="full", maxlen=64, device="cpu",
+                      epochs=1, batch=4, lr=0.01, warmup=1, log_every=1, eval_every=0, seed=7,
+                      output=temporary)
+            records = [json.loads(line) for line in
+                       (Path(temporary) / "train_log.jsonl").read_text(encoding="utf-8").splitlines()]
+        self.assertTrue(records)
+        self.assertTrue(all("elapsed_seconds" in record for record in records))
+        self.assertTrue(all(record["elapsed_seconds"] >= 0.0 for record in records))
+        logged = [json.loads(line) for line in stream.getvalue().splitlines() if line.startswith("{")]
+        self.assertEqual([record["step"] for record in logged], [record["step"] for record in records])
+        for record, echoed in zip(records, logged):
+            self.assertEqual(echoed["elapsed_seconds"], record["elapsed_seconds"])
 
     def test_same_seed_repeats_negatives_and_sampled_exposures(self):
         vocab = wide_vocab()

@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -408,6 +409,9 @@ def train(model: Any, exposures: Sequence[Exposure], *, vocab: Any, level: str, 
     ``pretrain_weight`` > 0 이면 WBC 배치마다 학습 기간 예제에서 같은 크기의
     사전학습 배치를 뽑아 ``train_pretrain`` 의 페이지 토큰 손실을 계산하고
     ``loss = wbc + λ · pretrain`` 로 더한다. 두 손실은 로그 · 곡선에 따로 남는다.
+
+    ``log_every`` 마다 쓰는 기록은 경과 초(``elapsed_seconds``)를 담고, 같은 줄을
+    표준 오류로도 즉시 내보낸다(멈출지 판단할 수 있게).
     """
     torch.manual_seed(seed)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
@@ -493,6 +497,7 @@ def train(model: Any, exposures: Sequence[Exposure], *, vocab: Any, level: str, 
                         curve_record["total_loss"] = last_loss
                     handle.write(json.dumps(record) + "\n")
                     handle.flush()
+                    print(json.dumps(record), file=sys.stderr, flush=True)
                     curve.append(curve_record)
                 if valid_exposures and eval_every and step % eval_every == 0:
                     valid = evaluate_wbc(model, valid_exposures, vocab=vocab, level=level, maxlen=maxlen,
@@ -513,13 +518,17 @@ def _generate_exposures(decoder: Any, data: NpzExamples, indices: Sequence[int],
                         pin_repeat: bool, gen_batch: int, w_pos: float, w_neg: float,
                         temperature: float = 0.0, generator: torch.Generator | None = None,
                         neg_samples: int = 0, neg_weight: float = 1.0,
-                        neg_generator: np.random.Generator | None = None) -> tuple[list[Exposure], int]:
+                        neg_generator: np.random.Generator | None = None,
+                        label: str = "train") -> tuple[list[Exposure], int]:
     """디코더로 노출 페이지를 만들고 실제 구매로 라벨을 붙인다.
 
     ``temperature`` > 0 이면 ``generator`` 로 표본 추출한다(0 이면 탐욕).
+    ``label`` 은 진행 로그에서 학습용 · 검증용 생성을 가른다(``train`` / ``valid``).
+    배치마다 진행 한 줄을 표준 오류로 즉시 내보낸다.
     """
     exposures: list[Exposure] = []
     violations = 0
+    started = time.monotonic()
     for begin in range(0, len(indices), gen_batch):
         stop = min(begin + gen_batch, len(indices))
         examples = []
@@ -542,6 +551,11 @@ def _generate_exposures(decoder: Any, data: NpzExamples, indices: Sequence[int],
                                           neg_weight=neg_weight, neg_generator=neg_generator)
             if exposure.page_tokens:
                 exposures.append(exposure)
+        elapsed = time.monotonic() - started
+        rate = stop / elapsed if elapsed > 0 else 0.0
+        remaining = (len(indices) - stop) / rate if rate > 0 else 0.0
+        print(f"[생성] {label} {stop}/{len(indices)} · {elapsed:.1f}s · {rate:.1f} p/s · "
+              f"남은 예상 {remaining:.1f}s · 위반 {violations}", file=sys.stderr, flush=True)
     return exposures, violations
 
 
@@ -581,7 +595,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         pin_repeat=bool(args.pin_repeat), gen_batch=int(args.gen_batch),
         w_pos=float(args.w_pos), w_neg=float(args.w_neg), temperature=temperature,
         generator=gen_generator, neg_samples=neg_samples, neg_weight=neg_weight,
-        neg_generator=neg_generator)
+        neg_generator=neg_generator, label="train")
     generation_seconds = time.monotonic() - started
     if not train_exposures:
         raise ValueError("학습 노출이 하나도 만들어지지 않았습니다")
@@ -603,7 +617,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             pin_repeat=bool(args.pin_repeat), gen_batch=int(args.gen_batch),
             w_pos=float(args.w_pos), w_neg=float(args.w_neg), temperature=temperature,
             generator=gen_generator, neg_samples=neg_samples, neg_weight=neg_weight,
-            neg_generator=neg_generator)
+            neg_generator=neg_generator, label="valid")
         violations += valid_violations
         valid_generation_seconds = time.monotonic() - valid_started
 
