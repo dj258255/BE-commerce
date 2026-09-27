@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 /**
  * 아웃박스(event_publication) 적체 게이지.
@@ -54,11 +56,28 @@ public class OutboxMetrics {
     /**
      * 가장 오래된 미소비 이벤트의 나이(초). 없으면 0 — "적체 없음"을 0으로 표현해야
      * 알람 임계식({@code > N})이 빈 상태에서 오발화하지 않는다.
+     *
+     * <p><b>{@code LocalDateTime} 으로 읽는다(#393).</b> {@code queryForObject(..., Instant.class)} 로
+     * 읽던 예전 코드는 미소비 이벤트가 <b>없을 때만</b> 통과했다 — {@code min()} 이 SQL {@code NULL} 이라
+     * 타입 변환 자체가 일어나지 않기 때문이다. 이벤트가 <b>있으면</b> 드라이버가 {@code DATETIME} 을
+     * {@code LocalDateTime} 으로 돌려주는데 이를 {@code Instant} 로 강제 변환하려다
+     * {@code TypeMismatchDataAccessException} 이 났다(#392 측정 중 실 MySQL 8.4 에서 발견, 앱 로그는
+     * debug 로 내려가 조용히 묻혔다). 게이지는 그 순간 NaN 이 되고, {@code outbox_pending_oldest_age_seconds
+     * > N} 알림은 NaN 에서 절대 참이 되지 않는다 — <b>적체가 실제로 있을 때만, 그 알림이 안 울렸다.</b>
+     * 컬럼이 {@code hibernate.jdbc.time_zone=UTC} 로 저장되므로 {@code LocalDateTime} 을 UTC 로 해석해
+     * {@code Instant} 로 바꾼다.
+     *
+     * <p><b>대가</b>: 이 0은 여전히 "적체 없음"과 "발행 자체가 멈춤"을 구분하지 못한다. 발행이 애초에
+     * 일어나지 않으면(리스너 등록이 빠지는 등) {@code event_publication}이 처음부터 끝까지 비어 있어
+     * 이 값도, {@link #pendingCount()}도 계속 0이다 — 둘 다 정상으로 보인다. 그 사각지대는 DB 게이지가
+     * 아니라 애플리케이션에서 직접 세는 {@code OutboxPublishMetrics}(payment 모듈, {@code outbox.published}
+     * 카운터)가 메운다. {@code PersonalizationContextApplyStalled}/{@code PersonalizationContextNeverApplied}
+     * 와 같은 짝 구조다(monitoring/alert-rules.yml 의 {@code OutboxPublishingStalled}).
      */
     double oldestPendingAgeSeconds() {
-        Instant oldest = jdbcTemplate.queryForObject(
+        LocalDateTime oldest = jdbcTemplate.queryForObject(
                 "select min(publication_date) from event_publication where completion_date is null",
-                Instant.class);
-        return oldest == null ? 0 : Duration.between(oldest, Instant.now()).toSeconds();
+                LocalDateTime.class);
+        return oldest == null ? 0 : Duration.between(oldest.toInstant(ZoneOffset.UTC), Instant.now()).toSeconds();
     }
 }
