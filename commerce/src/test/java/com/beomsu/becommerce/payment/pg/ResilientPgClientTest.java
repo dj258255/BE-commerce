@@ -267,6 +267,73 @@ class ResilientPgClientTest {
         assertThat(registry.counter("payment.pg.approval.resent").count()).isZero();
     }
 
+    // --- 재전송 예산(#404) ---
+    // 상한(Semaphore) 중 빈 자리가 approve-resend-min-headroom 보다 적으면 재전송하지 않는다.
+    // permit 자체는 있어도(tryAcquire 는 성공할 수 있어도) 여유가 모자라면 물러난다는 점에서
+    // 위 resendSkippedWhenConcurrencyLimitIsFull(꽉 참) 과 다른 조건이다.
+
+    @Test
+    @DisplayName("빈 자리가 예산보다 적으면 permit 이 남아 있어도 재전송하지 않는다(#404)")
+    void resendSkippedWhenHeadroomBelowBudget() throws InterruptedException {
+        FlakyPgClient flaky = new FlakyPgClient();
+        flaky.nextApproveResult = PgApproveResult.timeout("최초 타임아웃");
+        var registry = new SimpleMeterRegistry();
+        // 상한 5, 예산 2 — 미리 4자리를 점유해 1자리만 남긴다(예산 2 미만).
+        ResilientPgClient client = new ResilientPgClient(flaky, 5, registry, 3, 1, 2);
+        for (int i = 0; i < 4; i++) {
+            client.concurrencyLimit().acquire();
+        }
+
+        PgApproveResult result = client.approve(new PgApproveCommand("pk", "order-1", 10_000));
+
+        assertThat(result.outcome()).isEqualTo(PgOutcome.TIMEOUT);
+        assertThat(flaky.approveCalls.get()).isEqualTo(1); // 재전송이 나가지 않았다
+        assertThat(registry.counter("payment.pg.approval.resent").count()).isZero();
+        assertThat(registry.counter("payment.pg.approval.resent.skipped", "reason", "budget").count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("빈 자리가 예산 이상이면 재전송한다(#404)")
+    void resendProceedsWhenHeadroomMeetsBudget() throws InterruptedException {
+        FlakyPgClient flaky = new FlakyPgClient();
+        flaky.scriptedResults = List.of(
+                PgApproveResult.timeout("최초 타임아웃"),
+                PgApproveResult.success("CARD"));
+        var registry = new SimpleMeterRegistry();
+        // 상한 5, 예산 2 — 2자리만 점유해 3자리를 남긴다(예산 2 이상).
+        ResilientPgClient client = new ResilientPgClient(flaky, 5, registry, 3, 1, 2);
+        for (int i = 0; i < 2; i++) {
+            client.concurrencyLimit().acquire();
+        }
+
+        PgApproveResult result = client.approve(new PgApproveCommand("pk", "order-1", 10_000));
+
+        assertThat(result.outcome()).isEqualTo(PgOutcome.SUCCESS);
+        assertThat(flaky.approveCalls.get()).isEqualTo(2); // 최초 + 재전송
+        assertThat(registry.counter("payment.pg.approval.resent").count()).isEqualTo(1);
+        assertThat(registry.counter("payment.pg.approval.resent.skipped", "reason", "budget").count()).isZero();
+    }
+
+    @Test
+    @DisplayName("예산을 0으로 두면 이전 동작 그대로다 — 빈 자리가 적어도 permit 만 있으면 재전송한다(#404)")
+    void zeroBudgetKeepsOldBehavior() throws InterruptedException {
+        FlakyPgClient flaky = new FlakyPgClient();
+        flaky.scriptedResults = List.of(
+                PgApproveResult.timeout("최초 타임아웃"),
+                PgApproveResult.success("CARD"));
+        var registry = new SimpleMeterRegistry();
+        // 상한 5, 예산 0(없음) — 4자리를 점유해도(1자리만 남아도) 재전송한다.
+        ResilientPgClient client = new ResilientPgClient(flaky, 5, registry, 3, 1, 0);
+        for (int i = 0; i < 4; i++) {
+            client.concurrencyLimit().acquire();
+        }
+
+        PgApproveResult result = client.approve(new PgApproveCommand("pk", "order-1", 10_000));
+
+        assertThat(result.outcome()).isEqualTo(PgOutcome.SUCCESS);
+        assertThat(flaky.approveCalls.get()).isEqualTo(2);
+    }
+
     @Test
     @DisplayName("PG 장애가 지속되면 승인 서킷이 OPEN된다 — 이후엔 PG를 호출하지 않고 확정 실패(#372)")
     void circuitOpensAfterRepeatedFailures() {
