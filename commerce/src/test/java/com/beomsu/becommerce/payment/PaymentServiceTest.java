@@ -131,6 +131,55 @@ class PaymentServiceTest {
     }
 
     @Test
+    @DisplayName("데드라인 전파(#407): 이미 지난 클라이언트 데드라인이면 PG를 부르지 않고 바로 확정 실패")
+    void pgApproveSkipsPgCallWhenClientDeadlineAlreadyPassed() {
+        PgClient mockPg = mock(PgClient.class);
+        PaymentService svc = new PaymentService(repository, mockPg,
+                new PaymentCancelTx(repository, events), events, meterRegistry);
+        long pastDeadline = System.currentTimeMillis() - 1_000;
+
+        ApprovalOutcome outcome = svc.pgApprove("order-1", "pk-1", Money.krw(10_000), 0, 1L, pastDeadline);
+
+        assertThat(outcome.result()).isEqualTo(ApprovalOutcome.Result.FAILED);
+        // PG 슬롯을 아예 쓰지 않는다는 것이 이 기능의 핵심 — delegate가 호출되지 않았음을 직접 확인한다.
+        verify(mockPg, never()).approve(any());
+        assertThat(meterRegistry.counter("payment.pg.approval.deadline_skipped").count()).isEqualTo(1.0);
+        assertThat(meterRegistry.counter("payment.confirm", "outcome", "failed").count()).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("데드라인 전파(#407): 데드라인이 아직 안 지났으면 평소대로 PG를 부른다")
+    void pgApproveCallsPgWhenClientDeadlineNotYetPassed() {
+        PgClient mockPg = mock(PgClient.class);
+        when(mockPg.approve(any())).thenReturn(PgApproveResult.success("CARD"));
+        PaymentService svc = new PaymentService(repository, mockPg,
+                new PaymentCancelTx(repository, events), events, meterRegistry);
+        long futureDeadline = System.currentTimeMillis() + 60_000;
+
+        ApprovalOutcome outcome = svc.pgApprove("order-1", "pk-1", Money.krw(10_000), 0, 1L, futureDeadline);
+
+        assertThat(outcome.result()).isEqualTo(ApprovalOutcome.Result.SUCCESS);
+        verify(mockPg).approve(any());
+    }
+
+    @Test
+    @DisplayName("데드라인 전파(#407): payment.deadline-check.enabled=false면 데드라인이 지나도 PG를 부른다(대조군)")
+    void pgApproveIgnoresDeadlineWhenCheckDisabled() {
+        PgClient mockPg = mock(PgClient.class);
+        when(mockPg.approve(any())).thenReturn(PgApproveResult.success("CARD"));
+        PaymentService svc = new PaymentService(repository, mockPg,
+                new PaymentCancelTx(repository, events), events, meterRegistry);
+        org.springframework.test.util.ReflectionTestUtils.setField(svc, "deadlineCheckEnabled", false);
+        long pastDeadline = System.currentTimeMillis() - 1_000;
+
+        ApprovalOutcome outcome = svc.pgApprove("order-1", "pk-1", Money.krw(10_000), 0, 1L, pastDeadline);
+
+        assertThat(outcome.result()).isEqualTo(ApprovalOutcome.Result.SUCCESS);
+        verify(mockPg).approve(any());
+        assertThat(meterRegistry.counter("payment.pg.approval.deadline_skipped").count()).isEqualTo(0.0);
+    }
+
+    @Test
     @DisplayName("applyResult(Phase 3) 성공: DONE + PaymentConfirmedEvent 발행 + saveAndFlush")
     void applyResultSuccessMarksDoneAndPublishes() {
         Payment p = inProgress("order-1", "pk-1", 10_000, 1L);

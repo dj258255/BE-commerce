@@ -20,6 +20,10 @@ import java.security.Principal;
  * <p>모든 승인 요청은 {@code Idempotency-Key} 헤더로 멱등 처리된다 — "따닥" 중복결제와
  * 타임아웃 후 재시도를 안전하게 만든다.
  *
+ * <p>선택적으로 {@code X-Client-Deadline-Ms} 헤더(밀리초 epoch)를 받는다. 클라이언트가 이 시각까지만
+ * 응답을 기다리겠다고 알리는 값이다 — 헤더가 없으면(옛 클라이언트) 데드라인을 확인하지 않는다(#407
+ * 데드라인 전파, 27절⑦).
+ *
  * <p>어느 PG로 갈지는 <b>결제창을 띄우기 전에</b> {@code PgSelectionController}가 정한다
  * (payment 모듈 소유). 승인 단계에서는 PG를 넘길 수 없기 때문이다.
  */
@@ -40,6 +44,7 @@ public class CheckoutController {
     @PostMapping("/confirm")
     public ResponseEntity<CheckoutResult> confirm(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader(value = "X-Client-Deadline-Ms", required = false) Long clientDeadlineMs,
             @RequestBody ConfirmRequest request,
             Principal principal) {
 
@@ -50,7 +55,7 @@ public class CheckoutController {
                 () -> checkoutService.confirm(
                         request.orderNo(), request.paymentKey(),
                         Money.krw(request.amount()), request.pointAmount(), request.walletAmount(),
-                        userId, request.installmentMonths()));
+                        userId, request.installmentMonths(), clientDeadlineMs));
 
         HttpStatus status = switch (result.paymentStatus()) {
             case DONE -> HttpStatus.OK;               // 승인 완료

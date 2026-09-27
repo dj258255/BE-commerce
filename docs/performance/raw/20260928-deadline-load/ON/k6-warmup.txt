@@ -1,0 +1,45 @@
+
+
+  █ THRESHOLDS 
+
+    http_req_duration{name:confirm}
+    ✓ 'p(95)<60000' p(95)=4.1s
+
+    http_req_duration{name:read}
+    ✓ 'p(95)<60000' p(95)=13.83ms
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 1       0.051917/s
+    checks_succeeded...: 100.00% 1 out of 1
+    checks_failed......: 0.00%   0 out of 1
+
+    ✓ login 200
+
+    CUSTOM
+    checkout_late_rejected_4xx.....: 54     2.803532/s
+    checkout_normal_pending_202....: 97     5.035975/s
+    checkout_pending_202...........: 97     5.035975/s
+    checkout_rejected_4xx..........: 54     2.803532/s
+
+    HTTP
+    http_req_duration..............: avg=665.46ms min=5.64ms  med=11.17ms max=4.12s   p(90)=4.07s   p(95)=4.08s  
+      { expected_response:true }...: avg=728.37ms min=5.64ms  med=10.72ms max=4.12s   p(90)=4.07s   p(95)=4.08s  
+      { name:confirm }.............: avg=2.62s    min=17.76ms med=4.06s   max=4.12s   p(90)=4.09s   p(95)=4.1s   
+      { name:read }................: avg=9.95ms   min=5.64ms  med=9.5ms   max=26.27ms p(90)=12.53ms p(95)=13.83ms
+    http_req_failed................: 8.94%  54 out of 604
+    http_reqs......................: 604    31.35803/s
+
+    EXECUTION
+    iteration_duration.............: avg=889.25ms min=5.72ms  med=11.36ms max=4.19s   p(90)=4.09s   p(95)=4.1s   
+    iterations.....................: 452    23.466605/s
+    vus............................: 3      min=3         max=32 
+    vus_max........................: 220    min=220       max=220
+
+    NETWORK
+    data_received..................: 1.9 MB 98 kB/s
+    data_sent......................: 265 kB 14 kB/s
+
+
+
