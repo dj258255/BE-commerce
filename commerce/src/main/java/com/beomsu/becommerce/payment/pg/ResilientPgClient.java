@@ -90,10 +90,36 @@ public class ResilientPgClient implements PgClient {
     @Autowired
     public ResilientPgClient(@Qualifier("pgDelegate") PgClient delegate,
                              @Value("${payment.pg.max-concurrent-calls:40}") int maxConcurrentCalls,
+                             @Value("${payment.pg.merchant-concurrency-limit:0}") int merchantConcurrencyLimit,
+                             @Value("${payment.pg.instances:1}") int instances,
                              @Value("${payment.pg.query-max-attempts:3}") int queryMaxAttempts,
                              ObjectProvider<MeterRegistry> meterRegistryProvider) {
-        this(delegate, maxConcurrentCalls, meterRegistryProvider.getIfAvailable(
-                io.micrometer.core.instrument.simple.SimpleMeterRegistry::new), queryMaxAttempts);
+        this(delegate, perInstanceLimit(maxConcurrentCalls, merchantConcurrencyLimit, instances),
+                meterRegistryProvider.getIfAvailable(io.micrometer.core.instrument.simple.SimpleMeterRegistry::new),
+                queryMaxAttempts);
+        log.info("PG 동시 호출 상한 {} (워커 보호 {}, PG 계약 한도 {}, 대수 {})",
+                perInstanceLimit(maxConcurrentCalls, merchantConcurrencyLimit, instances),
+                maxConcurrentCalls, merchantConcurrencyLimit, instances);
+    }
+
+    /**
+     * 인스턴스 하나의 PG 동시 호출 상한(#387). 워커 보호 상한(ADR-022, 40)은 인스턴스마다 맞지만 여러 대면 PG 가 받는 합이
+     * 40 × 대수가 된다. PG 계약 한도를 알면 대수로 나눈 몫과 워커 보호 상한 중 작은 쪽을 쓴다.
+     *
+     * <p>Redis 전역 한도와 관측 지연 기반 적응형 한도도 쟀다. 전역 한도는 Redis 가 죽으면 결제를 전부 거절했고(닫힘)
+     * 적응형은 PG 의 느림을 혼잡으로 읽어 성공이 절반이었다. 대수로 나누면 한 대가 빠졌을 때 합이 줄어 덜 받지만
+     * 결과 모름은 만들지 않는다.
+     *
+     * @param workerCap     워커 보호 상한. 0 이하면 없음
+     * @param merchantLimit PG 계약 동시 한도. 0 이하면 모름(나누지 않는다)
+     * @param instances     API 인스턴스 수
+     */
+    static int perInstanceLimit(int workerCap, int merchantLimit, int instances) {
+        if (merchantLimit <= 0) {
+            return workerCap;
+        }
+        int share = Math.max(1, merchantLimit / Math.max(1, instances));
+        return workerCap > 0 ? Math.min(workerCap, share) : share;
     }
 
     /** 공통 초기화 경로. 테스트가 운영과 동일한 계측 구성을 주입할 때 사용한다. 조회는 최대 3회. */
