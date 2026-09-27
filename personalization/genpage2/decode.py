@@ -268,19 +268,35 @@ class PageDecoder:
                                                if a in self._item_of_article)),
                             dtype=torch.long, device=self.device)
 
+    def _allowed_mask(self, allowed_items: set[str] | None) -> torch.Tensor | None:
+        """Turn a candidate article set into a vocab-wide boolean tensor once.
+
+        The caller builds this per user/example; every row and every step then
+        filters items with ``mask[item_ids]`` instead of testing each token
+        against the Python set, which explodes on sections with thousands of
+        products.
+        """
+        if allowed_items is None:
+            return None
+        mask = torch.zeros(len(self.vocab.tokens), dtype=torch.bool, device=self.device)
+        tokens = [self._item_of_article[a] for a in allowed_items if a in self._item_of_article]
+        if tokens:
+            mask[torch.tensor(tokens, dtype=torch.long, device=self.device)] = True
+        return mask
+
     def _row_candidates(self, history_articles: list[str], used: torch.Tensor,
                         used_per_row: dict[int, int], used_rows: set[int],
                         excluded_rows: set[int], min_items: int,
-                        allowed_items: set[str] | None = None) -> list[int]:
+                        allowed_mask: torch.Tensor | None = None) -> list[int]:
         history_ids = self._history_ids(history_articles)
         out: list[int] = []
         for row in self._row_ids:
             if row in used_rows or row in excluded_rows:
                 continue
-            if allowed_items is not None:
+            if allowed_mask is not None:
                 # 후보 집합을 켠 경우 행 자격도 그 집합 안의 아직 쓰지 않은
                 # 상품 수로 판단한다. 그렇지 않으면 빈 행을 고를 수 있다.
-                if self._items_for_row(row, history_articles, used, allowed_items).numel() < min_items:
+                if self._items_for_row(row, history_articles, used, allowed_mask).numel() < min_items:
                     continue
                 out.append(row)
                 continue
@@ -296,16 +312,14 @@ class PageDecoder:
         return out
 
     def _items_for_row(self, row: int, history_articles: list[str], used: torch.Tensor,
-                       allowed_items: set[str] | None = None) -> torch.Tensor:
+                       allowed_mask: torch.Tensor | None = None) -> torch.Tensor:
         if row == self._row_repeat:
             history_ids = self._history_ids(history_articles)
             item_ids = history_ids
         else:
             item_ids = self._row_item_ids.get(row, torch.empty(0, dtype=torch.long, device=self.device))
-        if allowed_items is not None and item_ids.numel():
-            keep = torch.tensor([self._article_of[int(token)] in allowed_items for token in item_ids],
-                                dtype=torch.bool, device=self.device)
-            item_ids = item_ids[keep]
+        if allowed_mask is not None and item_ids.numel():
+            item_ids = item_ids[allowed_mask[item_ids]]
         return item_ids[~used[item_ids]] if item_ids.numel() else item_ids
 
     def _mark_used(self, used: torch.Tensor, used_per_row: dict[int, int], token: int) -> None:
@@ -317,7 +331,7 @@ class PageDecoder:
 
     def _violations(self, rows: list[GeneratedRow], *, history_articles: list[str],
                     prev_page: list[int] | None, exclude_items: set[str],
-                    exclude_rows: set[int], allowed_items: set[str] | None = None) -> int:
+                    exclude_rows: set[int], allowed_mask: torch.Tensor | None = None) -> int:
         previous_tokens = set(prev_page or [])
         previous_articles = {self._article_of[t] for t in previous_tokens if t in self._article_of}
         previous_rows = previous_tokens & set(self._row_ids)
@@ -339,7 +353,7 @@ class PageDecoder:
                 bad += int(article in seen_items)
                 bad += int(article in previous_articles)
                 bad += int(article in exclude_items)
-                bad += int(allowed_items is not None and article not in allowed_items)
+                bad += int(allowed_mask is not None and token is not None and not bool(allowed_mask[token]))
                 bad += int(token is None or generated.row_token not in valid_rows)
                 seen_items.add(article)
         return bad
@@ -390,11 +404,12 @@ class PageDecoder:
         rows: list[GeneratedRow] = []
         min_items = 3
         pinned = pinned or {}
+        allowed_mask = self._allowed_mask(allowed_items)
         next_logits, cache = self._next_logits(tokens, content, use_cache=use_cache)
 
         for row_pos in range(n_rows):
             candidates = self._row_candidates(history_articles, used, used_per_row, used_rows, excluded_rows,
-                                              min_items, allowed_items)
+                                              min_items, allowed_mask)
             if row_pos in pinned:
                 wanted = pinned[row_pos]
                 candidates = [wanted] if wanted in candidates else []
@@ -408,7 +423,7 @@ class PageDecoder:
                 next_logits, cache = self._next_logits([row_token], [-1], cache, use_cache=True)
             else:
                 next_logits, cache = self._next_logits(tokens, content, use_cache=False)
-            allowed = self._items_for_row(row_token, history_articles, used, allowed_items).clone()
+            allowed = self._items_for_row(row_token, history_articles, used, allowed_mask).clone()
             chosen: list[int] = []
 
             # A pinned row may start with an explicit, caller-supplied prefix.
@@ -461,7 +476,7 @@ class PageDecoder:
 
         return rows, self._violations(rows, history_articles=history_articles, prev_page=prev_page,
                                       exclude_items=excluded_items, exclude_rows=excluded_rows,
-                                      allowed_items=allowed_items)
+                                      allowed_mask=allowed_mask)
 
     def generate_batch(self, examples: list[dict[str, Any]], **same_kwargs: Any) -> list[tuple[list[GeneratedRow], int]]:
         """Generate a ragged right-padded batch with single-page-equivalent rules."""
@@ -494,6 +509,7 @@ class PageDecoder:
             states.append({"args": args, "tokens": tokens, "content": content, "previous": previous,
                            "excluded_items": excluded_items, "excluded_rows": excluded_rows,
                            "used_rows": used_rows, "used": used, "used_per_row": used_per_row,
+                           "allowed_mask": self._allowed_mask(args.get("allowed_items")),
                            "rows": [], "done": False,
                            "use_cache": bool(args.get("use_cache", True) and hasattr(self.model, "forward_cached"))})
 
@@ -515,7 +531,7 @@ class PageDecoder:
                     continue
                 candidates = self._row_candidates(args["history_articles"], state["used"], state["used_per_row"],
                                                   state["used_rows"], state["excluded_rows"], 3,
-                                                  args.get("allowed_items"))
+                                                  state["allowed_mask"])
                 pinned = args.get("pinned") or {}
                 if row_pos in pinned:
                     wanted = pinned[row_pos]
@@ -533,7 +549,7 @@ class PageDecoder:
                 row = self._choose(logits, candidates, args.get("temperature", 0.0), args.get("generator"))[0]
                 state["row"] = row
                 state["allowed"] = self._items_for_row(row, args["history_articles"], state["used"],
-                                                         args.get("allowed_items")).clone()
+                                                         state["allowed_mask"]).clone()
                 state["chosen"] = []
                 state["tokens"].append(row)
                 state["content"].append(-1)
@@ -643,4 +659,4 @@ class PageDecoder:
         return [(s["rows"], self._violations(s["rows"], history_articles=s["args"]["history_articles"],
                                                 prev_page=s["previous"], exclude_items=s["excluded_items"],
                                                 exclude_rows=s["excluded_rows"],
-                                                allowed_items=s["args"].get("allowed_items"))) for s in states]
+                                                allowed_mask=s["allowed_mask"])) for s in states]

@@ -109,6 +109,46 @@ class DecodeTest(unittest.TestCase):
         )
         self.assertEqual(rows, [])
 
+    def test_allowed_mask_matches_python_set_membership_filtering(self):
+        # 후보 집합을 켠 경로는 종전에 상품 토큰마다 파이썬 반복으로
+        # ``article in allowed_items`` 를 셌다. 어휘 크기 마스크 인덱싱이
+        # 모든 행에서 그 결과와 같아야 한다.
+        allowed = {"A", "C", "D", "F"}
+        mask = self.decoder._allowed_mask(allowed)
+        self.assertIsNone(self.decoder._allowed_mask(None))
+        used = torch.zeros(len(self.vocab.tokens), dtype=torch.bool, device="cpu")
+        used[6] = True                                   # A 는 허용이지만 이미 썼다.
+        history = ["A", "D", "F"]
+        for row in self.vocab.row_ids:
+            item_ids = (self.decoder._history_ids(history) if row == self.decoder._row_repeat
+                        else self.decoder._row_item_ids[row])
+            keep = torch.tensor([self.vocab.article_of[int(token)] in allowed for token in item_ids],
+                                dtype=torch.bool)
+            expected = item_ids[keep]
+            expected = expected[~used[expected]] if expected.numel() else expected
+            self.assertEqual(self.decoder._items_for_row(row, history, used, mask).tolist(),
+                             expected.tolist())
+
+    def test_candidate_generation_unchanged_single_and_batch(self):
+        # 고치기 전 코드로 뽑은 정확한 결과를 고정한다(작은 실제 모델 예).
+        cfg = ModelConfig(vocab_size=len(self.vocab.tokens), dim=8, layers=1, heads=2,
+                          ffn=16, dropout=0.0, maxlen=64, content_dim=384)
+        torch.manual_seed(17)
+        model = GenPageV2(cfg, torch.zeros((6, 384)), tokens=self.vocab.tokens).eval()
+        decoder = PageDecoder(model, self.vocab, {a: n for n, a in enumerate("ABCDEF")}, "cpu")
+        examples = [
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": [],
+             "allowed_items": {"A", "B", "C"}},
+            {"ctx_tokens": [1, 3, 4, 5, 2], "ctx_content": [-1] * 5, "history_articles": ["A", "D"],
+             "allowed_items": {"A", "B", "D", "E", "F"}},
+        ]
+        kwargs = {"n_rows": 2, "items_per_row": 3, "prefix": 1}
+        expected = [([GeneratedRow(4, ["B", "C", "A"])], 0),
+                    ([GeneratedRow(5, ["F", "E", "D"])], 0)]
+        singles = [decoder.generate(**example, **kwargs) for example in examples]
+        self.assertEqual(singles, expected)
+        self.assertEqual(decoder.generate_batch(examples, **kwargs), expected)
+
     def test_hybrid_bulk_uses_last_prefix_distribution(self):
         rows, _ = self.decoder.generate(self.context, self.content, history_articles=[], pinned={0: 4},
                                         n_rows=1, items_per_row=3, prefix=1)
