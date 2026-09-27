@@ -1,0 +1,61 @@
+{
+  "mode": "validate",
+  "ckpt": "/Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/validate/ckpt/wbc2-w1",
+  "args": {
+    "mode": "validate",
+    "ckpt": "/Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/validate/ckpt/wbc2-w1",
+    "limit": 10000,
+    "data_dir": null,
+    "batch": 256,
+    "device": "auto",
+    "baselines_only": false,
+    "pin_repeat": true,
+    "out": "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/35c4c37b-b9f5-42c6-9a21-4fff361024fe/scratchpad/wbc3/personalization/docs/runs/20260927-v2-wbc2-run3/wbc2-w1-eval.json"
+  },
+  "elapsed_seconds": 2611.0345386241097,
+  "results": {
+    "repeat_last": {
+      "map_at_12": 0.023456881230101468,
+      "map_at_12_has_vocab_history": 0.025257759481104196,
+      "page_recall": 0.039963099662777335,
+      "row_recall": 0.0,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 10.0526,
+      "ms_per_page": null,
+      "customers": 10000,
+      "device": "cpu"
+    },
+    "popular_last_week": {
+      "map_at_12": 0.005989454395402176,
+      "map_at_12_has_vocab_history": 0.005982405749452282,
+      "page_recall": 0.019291943314238873,
+      "row_recall": 0.0,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 12.0,
+      "ms_per_page": null,
+      "customers": 10000,
+      "device": "cpu"
+    },
+    "model": {
+      "map_at_12": 0.017118115589256824,
+      "map_at_12_has_vocab_history": 0.017981038774100296,
+      "page_recall": 0.0332107844796915,
+      "row_recall": 0.08094143535899448,
+      "diversity": 0.16776470569670202,
+      "violations": 0,
+      "rows_mean": 6.0,
+      "items_mean": 47.7429,
+      "ms_per_page": 259.7298873040825,
+      "customers": 10000,
+      "device": "mps"
+    }
+  },
+  "options": {
+    "pin_repeat": true,
+    "candidates": null
+  }
+}
