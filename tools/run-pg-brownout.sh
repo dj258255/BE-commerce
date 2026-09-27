@@ -55,17 +55,19 @@ echo "== 앱 기동 완료"
 sample() {
   curl -s "$BASE/actuator/prometheus" | python3 -c '
 import sys, re
-h = t = ""
+h = t = p = ""
 for line in sys.stdin:
     if line.startswith("hikaricp_connections_active"):
         h = line.rsplit(" ", 1)[1].strip()
     elif line.startswith("tomcat_threads_busy_threads"):
         t = line.rsplit(" ", 1)[1].strip()
-print(f"{h},{t}")'
+    elif line.startswith("payment_pg_approval_inflight"):
+        p = line.rsplit(" ", 1)[1].strip()
+print(f"{h},{t},{p}")'
 }
 START_SAMPLER() {
 {
-  echo "t,hikari_active,tomcat_busy"
+  echo "t,hikari_active,tomcat_busy,pg_inflight"
   while true; do
     echo "$(date +%s),$(sample)"
     sleep 1
@@ -86,7 +88,7 @@ k6 run -e BASE_URL="$BASE" -e RATE="$RATE" -e DURATION="$DUR" k6/pg-brownout.js 
 kill "$SAMPLER" 2>/dev/null || true
 
 # 미확정이 얼마나 쌓였는지는 앱이 살아 있을 때 지표로 받는다.
-curl -s "$BASE/actuator/prometheus" | grep -E "^payment_|^hikaricp_connections|^tomcat_threads" > "$OUT/prometheus-final.txt" 2>/dev/null || true
+curl -s "$BASE/actuator/prometheus" | grep -E "^payment_|^hikaricp_connections|^tomcat_threads|^fake_" > "$OUT/prometheus-final.txt" 2>/dev/null || true
 
 if [ "$DRAIN_S" -gt 0 ]; then
   # 브라운아웃이 끝난 뒤 복구 배치가 미확정을 얼마 만에 다 확정하는지. 지표의 미확정 건수와 가장 오래된 나이를 1초마다 적는다
@@ -99,7 +101,7 @@ if [ "$DRAIN_S" -gt 0 ]; then
     [ "$u" = "0" ] && break
     sleep 1
   done
-  curl -s "$BASE/actuator/prometheus" | grep -E "^payment_" > "$OUT/prometheus-drained.txt" 2>/dev/null || true
+  curl -s "$BASE/actuator/prometheus" | grep -E "^payment_|^fake_" > "$OUT/prometheus-drained.txt" 2>/dev/null || true
 fi
 
 python3 - "$OUT/resources.csv" <<'PY'
@@ -107,9 +109,10 @@ import csv, sys
 rows = list(csv.DictReader(open(sys.argv[1])))
 def col(k):
     return [float(r[k]) for r in rows if r.get(k)]
-h, t = col('hikari_active'), col('tomcat_busy')
+h, t, p = col('hikari_active'), col('tomcat_busy'), col('pg_inflight')
 if h: print(f"hikari active  max={max(h):.0f} avg={sum(h)/len(h):.1f}")
 if t: print(f"tomcat busy    max={max(t):.0f} avg={sum(t)/len(t):.1f}")
+if p: print(f"pg inflight    max={max(p):.0f} avg={sum(p)/len(p):.1f}")
 PY
 
 echo "== 끝: $OUT"
