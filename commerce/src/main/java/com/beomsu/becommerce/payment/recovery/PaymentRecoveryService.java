@@ -52,6 +52,17 @@ public class PaymentRecoveryService {
     @org.springframework.beans.factory.annotation.Value("${app.recovery.backoff-cap:10m}")
     private Duration backoffCap = BACKOFF_CAP;
 
+    /**
+     * 곱셈 지터 비율. 0 이면 지금 동작(결정적 backoffDelay) 그대로다. {@link
+     * com.beomsu.becommerce.payment.pg.ResilientPgClient} 가 조회 재시도에 쓰는
+     * {@code IntervalFunction.ofExponentialRandomBackoff} 와 같은 방식(#399): 같은 attempts 의
+     * 다음 시각을 [간격 × (1 − jitter), 간격 × (1 + jitter)] 로 흩어 재시도 폭풍을 줄인다.
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.recovery.backoff-jitter:0}")
+    private double backoffJitter = 0.0;
+
+    private final java.util.Random backoffRandom = new java.util.Random();
+
     private final PaymentRepository paymentRepository;
     private final PgClient pgClient;
     private final ApplicationEventPublisher events;
@@ -103,14 +114,38 @@ public class PaymentRecoveryService {
     }
 
     /**
-     * 시도 횟수 {@code attempts} 뒤의 간격: 첫 간격 × 2^attempts, 상한에서 멈춘다.
+     * 시도 횟수 {@code attempts} 뒤의 간격: 첫 간격 × 2^attempts, 상한에서 멈춘다. {@link #backoffJitter}
+     * 가 0 보다 크면 그 간격에 곱셈 지터를 입혀 같은 attempts 의 여러 건이 같은 초로 몰리지 않게 한다.
      * 설정이 0 이나 음수여도 배치를 죽이지 않고 기본값으로 돈다({@link #chunk()} 와 같은 이유).
      */
     Duration backoffDelay(int attempts) {
+        Duration nominal = nominalBackoffDelay(attempts);
+        return applyJitter(nominal);
+    }
+
+    private Duration nominalBackoffDelay(int attempts) {
         Duration base = backoffBase != null && backoffBase.isPositive() ? backoffBase : Duration.ofMinutes(1);
         Duration cap = backoffCap != null && backoffCap.isPositive() ? backoffCap : BACKOFF_CAP;
         Duration delay = base.multipliedBy(1L << Math.min(Math.max(attempts, 0), 20));
         return delay.compareTo(cap) > 0 ? cap : delay;
+    }
+
+    /**
+     * {@code nominal} 에 [1 − jitter, 1 + jitter] 사이의 배율을 곱한다(ResilientPgClient 의
+     * {@code ofExponentialRandomBackoff} 와 같은 식). 결과는 항상 상한을 다시 넘지 않게 자르고, 0 밑으로
+     * 내려가지 않게 한다. jitter 가 0 이거나 설정 밖(음수)이면 nominal 을 그대로 돌려준다(지금 동작).
+     */
+    private Duration applyJitter(Duration nominal) {
+        double jitter = backoffJitter;
+        if (!(jitter > 0)) {
+            return nominal;
+        }
+        double factor = Math.min(jitter, 1.0);
+        double multiplier = (1 - factor) + backoffRandom.nextDouble() * factor * 2;
+        long jitteredMillis = Math.round(nominal.toMillis() * multiplier);
+        Duration cap = backoffCap != null && backoffCap.isPositive() ? backoffCap : BACKOFF_CAP;
+        Duration jittered = Duration.ofMillis(Math.max(0, jitteredMillis));
+        return jittered.compareTo(cap) > 0 ? cap : jittered;
     }
 
     /**

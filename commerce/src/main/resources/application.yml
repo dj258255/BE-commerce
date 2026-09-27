@@ -368,6 +368,9 @@ app:
     # 상한 2분은 지연 평균 178 → 60초 대신 오래 막힌 건 한 건의 조회가 시간당 6 → 30번. 첫 간격 15초는 풀리는 건 해소가 1.56배로 늘었다.
     backoff-base: ${APP_RECOVERY_BACKOFF_BASE:1m}
     backoff-cap: ${APP_RECOVERY_BACKOFF_CAP:10m}
+    # 곱셈 지터(#399). 0 이면 지금 동작 그대로(결정적). ResilientPgClient 의 조회 재시도(ofExponentialRandomBackoff)와
+    # 같은 방식으로 같은 attempts 의 다음 시각을 흩어 같은 초 재시도 충돌을 줄인다.
+    backoff-jitter: ${APP_RECOVERY_BACKOFF_JITTER:0}
   # 멈춘 체크아웃 사가 복구 스케줄러(ADR-007) → CheckoutRecoveryService.recoverStuckCheckouts().
   # 예약(Phase1) 후 확정(Phase3) 전에 크래시로 PAYMENT_IN_PROGRESS로 멈춘 주문을 PG 조회로 완결/롤백.
   checkout:
