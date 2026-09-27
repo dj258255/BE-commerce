@@ -95,6 +95,8 @@ dependencies {
     // 네트워크 카오스(@Tag("chaos")) — 실제 장애 주입. 기본 스위트에서는 제외하고 chaosTest로만 실행.
     testImplementation 'org.testcontainers:toxiproxy'
     testImplementation 'eu.rekawek.toxiproxy:toxiproxy-java:2.1.7'
+    // 여러 인스턴스의 PG 상한 실험(#387): 관측 지연으로 동시 한도를 조절하는 Netflix 구현과 비교한다
+    testImplementation 'com.netflix.concurrency-limits:concurrency-limits-core:0.5.3'
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -187,6 +189,10 @@ tasks.register('integrationTest', Test) {
     def skipReasons = layout.buildDirectory.file('test-results/integrationTest-skip-reasons.txt').get().asFile
     systemProperty 'test.skip-reasons.file', skipReasons.absolutePath
     doFirst { skipReasons.delete() }
+    // 통합 테스트는 SharedContainers.register 로 클래스마다 새 DB 를 받으니 컨텍스트 캐시 키가 클래스마다 다르다.
+    // 다시 쓰일 일이 없는 컨텍스트를 기본 상한(32)까지 쥐고 있으면 클래스가 늘 때 기본 힙 512MB 를 넘는다
+    // (#405 에서 컨텍스트 21개째에 Argon2 해시 할당 자리에서 OutOfMemoryError). 오래된 것부터 닫게 상한을 낮춘다.
+    systemProperty 'spring.test.context.cache.maxSize', '4'
     ['spring.modulith.test.reference-commit', 'spring.modulith.test.skip-optimizations'].each { key ->
         def value = System.getProperty(key)
         if (value) {

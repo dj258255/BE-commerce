@@ -8,6 +8,7 @@ import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
@@ -32,9 +34,20 @@ import java.util.function.Supplier;
  *
  * <p>설계 원칙:
  * <ul>
- *   <li><b>승인(approve)은 재시도하지 않는다.</b> 멱등키 없이 승인을 재시도하면 이중결제가 난다.
- *       대신 실패/서킷 오픈 시 {@link PgApproveResult#timeout}(=UNKNOWN)으로 돌려, 복구 배치가
- *       나중에 조회로 확정하게 한다.</li>
+ *   <li><b>승인(approve)이 타임아웃이면 같은 멱등키로 최대 1회(설정값) 재전송한다.</b>
+ *       {@code TossPgClient}가 승인 요청에 시도(paymentId)별 값을 {@code Idempotency-Key}로 싣고
+ *       있어(토스 문서: 타임아웃 응답 미수신 시 동일 키 재전송이 안전하다, #402) 재전송해도 이중결제가
+ *       나지 않는다. 여기서 재전송은 <b>같은 커맨드를 그대로 재사용</b>하므로 같은 시도 안에서는 키가
+ *       바뀌지 않는다 — 키가 시도마다 갈리는 것은 새 승인 시도(새 {@code paymentId}) 사이에서다.
+ *       재전송도 동시 호출 상한(ADR-022)과 이 승인 서킷을 그대로 거친다 — 상한을 못 채우거나
+ *       서킷이 열려 있으면 재전송하지 않고 원래 {@link PgApproveResult#timeout}(=UNKNOWN)을 그대로
+ *       돌려, 복구 배치가 나중에 조회로 확정하게 한다. 재전송도 타임아웃이거나 PG가 "처리 중"(토스
+ *       409 {@code IDEMPOTENT_REQUEST_PROCESSING})으로 답해도 같은 UNKNOWN 경로로 넘긴다.
+ *       명시적 거절(4xx 확정 실패)은 재전송하지 않는다 — 다시 보내도 같은 답이 온다.</li>
+ *   <li><b>재전송 예산(#404).</b> {@code payment.pg.approve-resend-min-headroom}(기본 0=없음)을 두면
+ *       상한 중 빈 자리가 이 수보다 적을 때 재전송을 걸러 기존 UNKNOWN을 유지한다. 상한이 이미 포화된
+ *       구간(느린 PG)에서 재전송이 새 승인이 쓸 자리를 끌어다 쓰지 않게 하는 조건이다(ADR-022
+ *       "2026-09-29" 절).</li>
  *   <li><b>조회(query)는 읽기라 재시도가 안전하다.</b> 지수 백오프 + 지터로 일시 장애를 흡수한다.</li>
  *   <li><b>서킷은 승인 · 취소 · 조회가 따로 쓴다(#372).</b> 하나를 같이 쓰면 조회만 실패해도 서킷이 열려
  *       새 승인이 PG 에 가지 못했다(ADR-057 대가). 조회 서킷은 창을 넓혀 무작위 실패로는 거의 열리지 않게 한다.</li>
@@ -56,6 +69,18 @@ public class ResilientPgClient implements PgClient {
     private final CircuitBreaker queryCircuit;
     private final Retry queryRetry;
 
+    /** 승인 타임아웃 시 같은 멱등키로 다시 보낼 최대 횟수. 0이면 재전송하지 않는다(이전 동작). */
+    private final int approveResendMaxAttempts;
+    /**
+     * 재전송 예산(#404). 재전송 시점에 상한({@link #pgCallLimit}) 중 이 수만큼 빈 자리가 없으면
+     * 재전송하지 않고 기존 UNKNOWN을 유지한다. 0이면 예산 없음(이전 동작) — permit 하나만 있으면
+     * {@link #resendIfPossible}의 {@code tryAcquire}가 그대로 재전송을 허용한다.
+     */
+    private final int approveResendMinHeadroom;
+    private final Counter pgApprovalResent;
+    private final Counter pgApprovalResendSucceeded;
+    private final Counter pgApprovalResendSkippedBudget;
+
     /**
      * PG 동시 호출 상한. {@code null} 이면 상한 없음(기본값)이다.
      *
@@ -66,6 +91,7 @@ public class ResilientPgClient implements PgClient {
      * 아래였다. 사가가 푼 것은 커넥션이고, 마르는 자리는 워커로 옮겨간 것이다.
      */
     private final Semaphore pgCallLimit;
+    private final AtomicInteger pgApprovalsInFlight = new AtomicInteger();
     private final Counter pgConcurrencyRejected;
     private final Counter pgCircuitRejected;
     private final Counter pgUnknownFallback;
@@ -90,24 +116,77 @@ public class ResilientPgClient implements PgClient {
     @Autowired
     public ResilientPgClient(@Qualifier("pgDelegate") PgClient delegate,
                              @Value("${payment.pg.max-concurrent-calls:40}") int maxConcurrentCalls,
+                             @Value("${payment.pg.merchant-concurrency-limit:0}") int merchantConcurrencyLimit,
+                             @Value("${payment.pg.instances:1}") int instances,
                              @Value("${payment.pg.query-max-attempts:3}") int queryMaxAttempts,
+                             @Value("${payment.pg.approve-resend-max-attempts:1}") int approveResendMaxAttempts,
+                             @Value("${payment.pg.approve-resend-min-headroom:0}") int approveResendMinHeadroom,
                              ObjectProvider<MeterRegistry> meterRegistryProvider) {
-        this(delegate, maxConcurrentCalls, meterRegistryProvider.getIfAvailable(
-                io.micrometer.core.instrument.simple.SimpleMeterRegistry::new), queryMaxAttempts);
+        this(delegate, perInstanceLimit(maxConcurrentCalls, merchantConcurrencyLimit, instances),
+                meterRegistryProvider.getIfAvailable(io.micrometer.core.instrument.simple.SimpleMeterRegistry::new),
+                queryMaxAttempts, approveResendMaxAttempts, approveResendMinHeadroom);
+        log.info("PG 동시 호출 상한 {} (워커 보호 {}, PG 계약 한도 {}, 대수 {}), 승인 재전송 최대 {}회, 재전송 예산(빈 자리) {}",
+                perInstanceLimit(maxConcurrentCalls, merchantConcurrencyLimit, instances),
+                maxConcurrentCalls, merchantConcurrencyLimit, instances, approveResendMaxAttempts, approveResendMinHeadroom);
     }
 
-    /** 공통 초기화 경로. 테스트가 운영과 동일한 계측 구성을 주입할 때 사용한다. 조회는 최대 3회. */
+    /**
+     * 인스턴스 하나의 PG 동시 호출 상한(#387). 워커 보호 상한(ADR-022, 40)은 인스턴스마다 맞지만 여러 대면 PG 가 받는 합이
+     * 40 × 대수가 된다. PG 계약 한도를 알면 대수로 나눈 몫과 워커 보호 상한 중 작은 쪽을 쓴다.
+     *
+     * <p>Redis 전역 한도와 관측 지연 기반 적응형 한도도 쟀다. 전역 한도는 Redis 가 죽으면 결제를 전부 거절했고(닫힘)
+     * 적응형은 PG 의 느림을 혼잡으로 읽어 성공이 절반이었다. 대수로 나누면 한 대가 빠졌을 때 합이 줄어 덜 받지만
+     * 결과 모름은 만들지 않는다.
+     *
+     * @param workerCap     워커 보호 상한. 0 이하면 없음
+     * @param merchantLimit PG 계약 동시 한도. 0 이하면 모름(나누지 않는다)
+     * @param instances     API 인스턴스 수
+     */
+    static int perInstanceLimit(int workerCap, int merchantLimit, int instances) {
+        if (merchantLimit <= 0) {
+            return workerCap;
+        }
+        int share = Math.max(1, merchantLimit / Math.max(1, instances));
+        return workerCap > 0 ? Math.min(workerCap, share) : share;
+    }
+
+    /** 공통 초기화 경로. 테스트가 운영과 동일한 계측 구성을 주입할 때 사용한다. 조회는 최대 3회, 승인 재전송은 최대 1회. */
     public ResilientPgClient(PgClient delegate, int maxConcurrentCalls, MeterRegistry meterRegistry) {
-        this(delegate, maxConcurrentCalls, meterRegistry, 3);
+        this(delegate, maxConcurrentCalls, meterRegistry, 3, 1);
     }
 
     /**
      * 조회 시도 횟수까지 정한다(#334). 1 이면 재시도하지 않는다. 1 보다 작으면 기본값 3 으로 돈다.
+     * 승인 재전송은 기본값 1회를 쓴다.
      */
     public ResilientPgClient(PgClient delegate, int maxConcurrentCalls, MeterRegistry meterRegistry, int queryMaxAttempts) {
+        this(delegate, maxConcurrentCalls, meterRegistry, queryMaxAttempts, 1);
+    }
+
+    /**
+     * 승인 재전송 횟수까지 정한다(#395). 0 이면 재전송하지 않는다(이전 동작). 음수는 0 으로 취급한다.
+     * 재전송 예산은 0(없음)을 쓴다.
+     */
+    public ResilientPgClient(PgClient delegate, int maxConcurrentCalls, MeterRegistry meterRegistry,
+                              int queryMaxAttempts, int approveResendMaxAttempts) {
+        this(delegate, maxConcurrentCalls, meterRegistry, queryMaxAttempts, approveResendMaxAttempts, 0);
+    }
+
+    /**
+     * 재전송 예산까지 정한다(#404). {@code approveResendMinHeadroom}은 재전송 시점에 상한 중 이 수만큼
+     * 빈 자리가 있어야 재전송한다. 0 이면 예산 없음(이전 동작) — permit 하나만 있으면 재전송한다.
+     */
+    public ResilientPgClient(PgClient delegate, int maxConcurrentCalls, MeterRegistry meterRegistry,
+                              int queryMaxAttempts, int approveResendMaxAttempts, int approveResendMinHeadroom) {
         this.delegate = delegate;
+        this.approveResendMaxAttempts = Math.max(0, approveResendMaxAttempts);
+        this.approveResendMinHeadroom = Math.max(0, approveResendMinHeadroom);
         // 0 이하면 상한을 걸지 않는다. 운영 기본값 40의 근거는 application.yml과 ADR-022에 있다.
         this.pgCallLimit = maxConcurrentCalls > 0 ? new Semaphore(maxConcurrentCalls) : null;
+        // PG 로 실제로 나가 있는 승인 호출 수(#392). 상한이 없거나 가상 스레드로 워커 수가 사라지면 이 값이 곧 PG 가 받는 동시 호출이다
+        Gauge.builder("payment.pg.approval.inflight", pgApprovalsInFlight, AtomicInteger::get)
+                .description("PG 로 나가 응답을 기다리는 승인 호출 수")
+                .register(meterRegistry);
         this.pgConcurrencyRejected = Counter.builder("payment.pg.approval.rejected")
                 .tag("reason", "concurrency_limit")
                 .description("PG 동시 호출 상한으로 승인 전에 거절된 요청 수")
@@ -118,6 +197,16 @@ public class ResilientPgClient implements PgClient {
                 .register(meterRegistry);
         this.pgUnknownFallback = Counter.builder("payment.pg.approval.unknown")
                 .description("PG 승인 결과를 알 수 없어 UNKNOWN으로 보존한 요청 수")
+                .register(meterRegistry);
+        this.pgApprovalResent = Counter.builder("payment.pg.approval.resent")
+                .description("승인 타임아웃 뒤 같은 멱등키로 재전송을 실제로 시도한 횟수(#395)")
+                .register(meterRegistry);
+        this.pgApprovalResendSucceeded = Counter.builder("payment.pg.approval.resent.succeeded")
+                .description("재전송으로 UNKNOWN이 아닌 결과(SUCCESS/FAILED)를 받은 횟수 — 복구 배치를 기다리지 않고 그 자리에서 확정된 건수")
+                .register(meterRegistry);
+        this.pgApprovalResendSkippedBudget = Counter.builder("payment.pg.approval.resent.skipped")
+                .tag("reason", "budget")
+                .description("재전송 예산(빈 자리 부족)으로 재전송을 걸러 기존 UNKNOWN을 유지한 횟수(#404)")
                 .register(meterRegistry);
         this.pgQueryRetries = Counter.builder("payment.pg.query.retry")
                 .description("PG 상태 조회에서 실제로 실행된 추가 재시도 횟수")
@@ -179,28 +268,99 @@ public class ResilientPgClient implements PgClient {
             timer.stop(pgApprovalLatency);
             return result;
         }
+        pgApprovalsInFlight.incrementAndGet();
+        PgApproveResult result;
         try {
-            PgApproveResult result = approveCircuit.executeSupplier(() -> delegate.approve(command));
-            if (result.outcome() == PgOutcome.TIMEOUT) {
-                pgUnknownFallback.increment();
-            }
-            return result;
+            result = approveCircuit.executeSupplier(() -> delegate.approve(command));
         } catch (CallNotPermittedException open) {
             // 서킷이 열려 호출이 나가지 않았다 → PG 에 닿지 않은 것이 보장된다 → 확정 실패(상한과 같은 규칙, #372).
             // 예전에는 미확정으로 적어 조회할 대상이 없는 유령 미확정을 만들었다.
             pgCircuitRejected.increment();
             log.warn("PG 서킷 오픈 — 승인을 보내지 않고 확정 실패: {}", command.orderNo());
-            return PgApproveResult.failed("PG 승인 서킷 오픈: 요청을 보내지 않았다");
+            result = PgApproveResult.failed("PG 승인 서킷 오픈: 요청을 보내지 않았다");
         } catch (RuntimeException ex) {
-            pgUnknownFallback.increment();
             // 예외를 실패로 단정하지 않는다 — PG에서 처리됐을 수도 있다 → UNKNOWN
             log.warn("PG 승인 호출 예외 — 미확정 처리: {}", ex.getMessage());
-            return PgApproveResult.timeout("PG 오류로 승인 미확정: " + ex.getMessage());
+            result = PgApproveResult.timeout("PG 오류로 승인 미확정: " + ex.getMessage());
         } finally {
-            timer.stop(pgApprovalLatency);
+            pgApprovalsInFlight.decrementAndGet();
             if (pgCallLimit != null) {
                 pgCallLimit.release();
             }
+        }
+        // 최초 시도가 타임아웃(UNKNOWN)이면 같은 멱등키로 재전송을 시도한다(#395). permit 을 반납한
+        // 뒤에 독립적으로 다시 거치므로, 재전송도 상한·서킷 규칙을 최초 시도와 똑같이 받는다.
+        if (result.outcome() == PgOutcome.TIMEOUT) {
+            result = resendIfPossible(command, result);
+        }
+        if (result.outcome() == PgOutcome.TIMEOUT) {
+            pgUnknownFallback.increment();
+        }
+        timer.stop(pgApprovalLatency);
+        return result;
+    }
+
+    /**
+     * 최초 시도가 타임아웃이면 같은 커맨드(=같은 멱등키)로 최대 {@link #approveResendMaxAttempts}번
+     * 다시 보낸다(#395, 이슈 참고). 재전송도 동시 호출 상한과 승인 서킷을 그대로 거친다 — 상한을 못
+     * 채우거나 서킷이 열려 있으면 재전송하지 않고 원래 UNKNOWN을 그대로 돌려준다. 재전송이 PG에
+     * 닿아 SUCCESS/FAILED로 확정되면 그 결과를 쓰고, 재전송도 타임아웃이거나 PG가 아직 처리 중이라고
+     * 답하면(토스 409 {@code IDEMPOTENT_REQUEST_PROCESSING}은 {@link TossErrorCodes}가 RETRYABLE로
+     * 분류해 예외로 던지므로 여기 {@code catch (RuntimeException)}로 들어온다) UNKNOWN을 유지한다.
+     */
+    private PgApproveResult resendIfPossible(PgApproveCommand command, PgApproveResult original) {
+        PgApproveResult current = original;
+        for (int attempt = 1;
+             attempt <= approveResendMaxAttempts && current.outcome() == PgOutcome.TIMEOUT;
+             attempt++) {
+            // 지터는 permit 을 잡기 전에 쉰다 — 쉬는 동안 자리를 묵혀 두지 않는다. 그 사이 다른 요청이
+            // 상한을 채우면 아래 tryAcquire 가 그걸 그대로 반영한다.
+            sleepBeforeResend();
+            if (pgCallLimit != null && approveResendMinHeadroom > 0
+                    && pgCallLimit.availablePermits() < approveResendMinHeadroom) {
+                // 재전송 예산(#404): 빈 자리가 이 수보다 적으면 permit 을 잡지 않고 물러난다. 신규 승인이
+                // 쓸 자리까지 재전송이 끌어다 쓰지 않게 하는 조건 — availablePermits() 는 tryAcquire 전
+                // 스냅샷이라 근사값이지만(TOCTOU), 상한을 넘는 재전송이 나가는 일은 없다: 실제 진입은
+                // 바로 아래 tryAcquire 가 한 번 더 확정한다.
+                pgApprovalResendSkippedBudget.increment();
+                log.info("PG 재전송 보류 — 재전송 예산(빈 자리 {} 미만), 기존 UNKNOWN 유지: {}",
+                        approveResendMinHeadroom, command.orderNo());
+                break;
+            }
+            if (pgCallLimit != null && !pgCallLimit.tryAcquire()) {
+                log.info("PG 재전송 보류 — 동시 호출 상한, 기존 UNKNOWN 유지: {}", command.orderNo());
+                break;
+            }
+            pgApprovalsInFlight.incrementAndGet();
+            try {
+                pgApprovalResent.increment();
+                current = approveCircuit.executeSupplier(() -> delegate.approve(command));
+                if (current.outcome() != PgOutcome.TIMEOUT) {
+                    pgApprovalResendSucceeded.increment();
+                }
+            } catch (CallNotPermittedException open) {
+                // 재전송 시점에 서킷이 열려 있다 → 재전송 없이 기존 UNKNOWN 유지(원래 시도는 이미 PG 에 닿았을 수 있다).
+                log.info("PG 재전송 보류 — 서킷 오픈, 기존 UNKNOWN 유지: {}", command.orderNo());
+                break;
+            } catch (RuntimeException ex) {
+                log.warn("PG 재전송도 실패 — 미확정 유지: {}", ex.getMessage());
+                current = PgApproveResult.timeout("재전송 후에도 미확정: " + ex.getMessage());
+            } finally {
+                pgApprovalsInFlight.decrementAndGet();
+                if (pgCallLimit != null) {
+                    pgCallLimit.release();
+                }
+            }
+        }
+        return current;
+    }
+
+    /** 재전송 전 짧은 지터. 같은 순간 몰린 타임아웃들이 한꺼번에 PG를 다시 두드리는 것을 피한다. */
+    private void sleepBeforeResend() {
+        try {
+            Thread.sleep(java.util.concurrent.ThreadLocalRandom.current().nextInt(20, 60));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -224,5 +384,10 @@ public class ResilientPgClient implements PgClient {
 
     CircuitBreaker queryCircuit() {
         return queryCircuit;
+    }
+
+    /** 테스트 전용. 재전송이 동시 호출 상한을 실제로 거치는지 확인할 때 직접 점유해 본다. */
+    Semaphore concurrencyLimit() {
+        return pgCallLimit;
     }
 }

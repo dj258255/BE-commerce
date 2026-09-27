@@ -57,4 +57,24 @@ class FakePgClientQuerySwitchTest {
 
         assertThat(registry.get("fake.pg.query.calls").functionCounter().count()).isEqualTo(3.0);
     }
+
+    @Test
+    @DisplayName("timeout-approved-prefix 는 같은 결제키의 두 번째 요청부터 최초 처리 결과를 그대로 돌려준다(#395 재전송 재현)")
+    void timeoutApprovedPrefixReplaysFirstOutcomeOnSameKey() {
+        FakePgClient pg = new FakePgClient();
+        pg.setTimeoutApprovedPrefix("to-");
+
+        // 최초 요청 — 우리에겐 타임아웃, PG 측엔 승인 기록.
+        PgApproveResult first = pg.approve(new PgApproveCommand("to-1", "order-1", 10_000));
+        assertThat(first.outcome()).isEqualTo(PgOutcome.TIMEOUT);
+        assertThat(pg.query("to-1").status()).isEqualTo(PgPaymentStatus.APPROVED);
+
+        // 같은 결제키의 재요청(=재전송) — 실 PG처럼 최초 처리 결과(승인)를 그대로 돌려준다.
+        PgApproveResult resend = pg.approve(new PgApproveCommand("to-1", "order-1", 10_000));
+        assertThat(resend.outcome()).isEqualTo(PgOutcome.SUCCESS);
+
+        // 다른 결제키는 각자 최초 1회는 여전히 타임아웃이다.
+        PgApproveResult otherKeyFirst = pg.approve(new PgApproveCommand("to-2", "order-2", 10_000));
+        assertThat(otherKeyFirst.outcome()).isEqualTo(PgOutcome.TIMEOUT);
+    }
 }

@@ -1,0 +1,27 @@
+{
+ "name": "Q20L10",
+ "admit_limit": 20,
+ "lease": 10,
+ "arrivals": 300,
+ "outcomes": {
+  "paid": 87,
+  "lease_lost": 72,
+  "unknown": 13,
+  "abandoned": 60,
+  "sold_out_at_payment": 68
+ },
+ "paid": 94,
+ "stock": 6,
+ "held": 0,
+ "unsold": 6,
+ "net_cancels": 0,
+ "fair_first100": 63,
+ "first100_size": 100,
+ "wasted": 68,
+ "gave_up": 0,
+ "lease_lost": 72,
+ "wait_p50": 47.417,
+ "wait_p95": 92.849,
+ "wait_max": 97.766,
+ "oversell": false
+}

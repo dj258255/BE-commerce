@@ -76,12 +76,18 @@ public class TossPgClient implements PgClient {
         this.objectMapper = objectMapper;
     }
 
+    /** 테스트 전용 — 이미 구성된 {@link RestClient} 를 그대로 쓴다(MockRestServiceServer로 헤더 검증, #402). */
+    TossPgClient(RestClient restClient, ObjectMapper objectMapper) {
+        this.restClient = restClient;
+        this.objectMapper = objectMapper;
+    }
+
     @Override
     public PgApproveResult approve(PgApproveCommand command) {
         try {
             TossPayment resp = restClient.post()
                     .uri("/v1/payments/confirm")
-                    .header("Idempotency-Key", command.orderNo())   // 주문번호로 PG 멱등 보장
+                    .header("Idempotency-Key", command.idempotencyKey())  // 시도(paymentId)별 PG 멱등 보장(#402)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of(
                             "paymentKey", command.paymentKey(),
