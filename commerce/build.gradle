@@ -95,6 +95,8 @@ dependencies {
     // 네트워크 카오스(@Tag("chaos")) — 실제 장애 주입. 기본 스위트에서는 제외하고 chaosTest로만 실행.
     testImplementation 'org.testcontainers:toxiproxy'
     testImplementation 'eu.rekawek.toxiproxy:toxiproxy-java:2.1.7'
+    // 여러 인스턴스의 PG 상한 실험(#387): 관측 지연으로 동시 한도를 조절하는 Netflix 구현과 비교한다
+    testImplementation 'com.netflix.concurrency-limits:concurrency-limits-core:0.5.3'
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

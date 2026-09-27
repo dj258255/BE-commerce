@@ -771,6 +771,12 @@ payment:
     # <b>이 값은 PG 응답시간의 함수다.</b> PG 를 바꾸거나 p99 가 달라지면 위 계산을 다시 한다.
     # 0 이하면 상한 없음(이전 동작).
     max-concurrent-calls: ${PAYMENT_PG_MAX_CONCURRENT_CALLS:40}
+    # <b>여러 대일 때.</b> 위 40 은 인스턴스마다 걸려 PG 가 받는 합은 40 × 대수다. PG 계약 동시 한도를 알면 적는다.
+    # 인스턴스 상한은 min(40, 계약 한도 ÷ 대수)가 된다(#387). PG 한도 60 을 가정하고 3대로 느린 PG 를 쟀을 때
+    # 인스턴스별 40 은 PG 에 126 이 몰려 결과 모름 252건, 나누면(20) 0건이었다. 0 이면 모름(나누지 않음).
+    merchant-concurrency-limit: ${PAYMENT_PG_MERCHANT_CONCURRENCY_LIMIT:0}
+    # API 인스턴스 수. 배포가 대수를 바꿀 때 같이 바꾼다. 한 대가 빠지면 합이 줄어 덜 받지만 결과 모름은 생기지 않는다.
+    instances: ${PAYMENT_PG_INSTANCES:1}
     # 조회(query) 시도 횟수. 1 이면 재시도 없음(#334). 일시 장애 1·5·10% 에서 3회가 1회보다 전량 확정이 빨랐고(100 대 158초,
     # 102 대 249초, 207 대 966초) 건당 PG 조회는 시도 횟수와 무관하게 같았다(1/(1−실패율)). 승인은 재시도하지 않는다.
     query-max-attempts: ${PAYMENT_PG_QUERY_MAX_ATTEMPTS:3}
