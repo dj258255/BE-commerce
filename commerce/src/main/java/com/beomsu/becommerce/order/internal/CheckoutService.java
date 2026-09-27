@@ -135,6 +135,17 @@ public class CheckoutService {
     public CheckoutResult confirm(String orderNo, String paymentKey, Money cardAmount,
                                   long pointAmount, long walletAmount, long authenticatedUserId,
                                   int installmentMonths) {
+        return confirm(orderNo, paymentKey, cardAmount, pointAmount, walletAmount,
+                authenticatedUserId, installmentMonths, null);
+    }
+
+    /**
+     * 클라이언트 데드라인(밀리초 epoch, {@code null}이면 확인 안 함)을 함께 받는 형태(#407 데드라인
+     * 전파, 27절⑦). 컨트롤러가 {@code X-Client-Deadline-Ms} 요청 헤더에서 뽑아 넘긴다.
+     */
+    public CheckoutResult confirm(String orderNo, String paymentKey, Money cardAmount,
+                                  long pointAmount, long walletAmount, long authenticatedUserId,
+                                  int installmentMonths, Long clientDeadlineMs) {
         // 0. 음수 방어 — 음수 금액으로 검증 우회·오버플로를 시도할 수 없게 한다. (DB 없음)
         if (pointAmount < 0 || walletAmount < 0 || cardAmount.minorUnit() < 0) {
             throw new OrderException("INVALID_REQUEST", "결제 금액은 음수일 수 없습니다.");
@@ -156,9 +167,19 @@ public class CheckoutService {
 
         // Phase 2 (tx 밖) — PG 승인: 외부 HTTP 콜을 트랜잭션 밖에서 한다. 이 동안 DB 커넥션 0개 점유
         // → 느린 PG가 커넥션 풀을 마르게 하지 않는다(ADR-007). 카드 몫이 0이면(포인트+월렛 전액) PG 콜을 생략한다.
-        ApprovalOutcome outcome = (cardAmount.minorUnit() > 0)
-                ? paymentService.pgApprove(orderNo, paymentKey, cardAmount, installmentMonths, reservation.paymentId())
-                : null;
+        //
+        // clientDeadlineMs가 null이면(옛 클라이언트, 데드라인 헤더 없음) 데드라인 인자가 없는 옛 오버로드를
+        // 그대로 호출한다 — CheckoutServiceTest의 기존 스텁·검증(5-인자 pgApprove)이 그대로 통과한다.
+        ApprovalOutcome outcome;
+        if (cardAmount.minorUnit() <= 0) {
+            outcome = null;
+        } else if (clientDeadlineMs != null) {
+            outcome = paymentService.pgApprove(orderNo, paymentKey, cardAmount, installmentMonths,
+                    reservation.paymentId(), clientDeadlineMs);
+        } else {
+            outcome = paymentService.pgApprove(orderNo, paymentKey, cardAmount, installmentMonths,
+                    reservation.paymentId());
+        }
 
         // Phase 3 (tx) — 확정/보상: PG 결과를 결제·주문에 반영하고 재고 차감/보상까지 마친다.
         return checkoutTx.settle(orderNo, reservation.paymentId(), cardAmount, pointAmount, walletAmount, outcome);

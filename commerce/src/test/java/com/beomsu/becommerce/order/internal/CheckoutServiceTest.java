@@ -149,6 +149,37 @@ class CheckoutServiceTest {
     }
 
     @Test
+    @DisplayName("데드라인 전파(#407): 헤더로 받은 클라이언트 데드라인을 pgApprove에 그대로 넘긴다")
+    void confirmPassesClientDeadlineToPgApprove() {
+        Order order = orderOf(100L, 2);
+        when(paymentService.beginApproval(anyString(), anyString(), any(Money.class), anyInt())).thenReturn(123L);
+        when(paymentService.pgApprove(anyString(), anyString(), any(Money.class), anyInt(), eq(123L), anyLong()))
+                .thenReturn(new ApprovalOutcome(ApprovalOutcome.Result.SUCCESS, "CARD", null));
+        when(paymentService.applyResult(anyLong(), any(ApprovalOutcome.class))).thenReturn(approved());
+        long deadline = System.currentTimeMillis() + 3_000;
+
+        service.confirm(order.getOrderNo(), "pk-1", Money.krw(20_000), 0, 0, 1L, 0, deadline);
+
+        verify(paymentService).pgApprove(eq(order.getOrderNo()), eq("pk-1"), eq(Money.krw(20_000)), eq(0),
+                eq(123L), eq(deadline));
+        // 데드라인 인자가 없는 옛 오버로드는 호출되지 않는다 — 새 경로로만 나간다.
+        verify(paymentService, never()).pgApprove(anyString(), anyString(), any(Money.class), anyInt(), eq(123L));
+    }
+
+    @Test
+    @DisplayName("데드라인 전파(#407): 헤더가 없으면(null) 옛 pgApprove 오버로드를 그대로 호출한다")
+    void confirmWithoutDeadlineUsesLegacyOverload() {
+        Order order = orderOf(100L, 2);
+        cardApproved();
+
+        service.confirm(order.getOrderNo(), "pk-1", Money.krw(20_000), 0, 0, 1L);
+
+        verify(paymentService).pgApprove(eq(order.getOrderNo()), eq("pk-1"), eq(Money.krw(20_000)), eq(0), eq(123L));
+        verify(paymentService, never())
+                .pgApprove(anyString(), anyString(), any(Money.class), anyInt(), anyLong(), anyLong());
+    }
+
+    @Test
     @DisplayName("금액 불일치 시 AMOUNT_MISMATCH 예외 + PG 승인은 호출되지 않는다")
     void confirmAmountMismatchDoesNotCallPayment() {
         Order order = orderOf(100L, 2); // total 20,000

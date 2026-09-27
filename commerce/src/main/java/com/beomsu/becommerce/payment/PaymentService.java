@@ -17,6 +17,9 @@ import com.beomsu.becommerce.payment.pg.PgQueryResult;
 import com.beomsu.becommerce.shared.Money;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,11 +38,21 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class PaymentService {
 
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
+
     private final PaymentRepository paymentRepository;
     private final PgClient pgClient;
     private final PaymentCancelTx cancelTx;
     private final ApplicationEventPublisher events;
     private final MeterRegistry meterRegistry;
+
+    /**
+     * 데드라인 전파(#407, 27절⑦) 켬/끔. 필드에 기본값을 둔다 — {@code @Value}는 스프링이 빈을 만들 때만
+     * 채워지고, {@code @RequiredArgsConstructor}는 final 필드만 생성자에 넣으므로 이 필드를 final로 두면
+     * 기존 테스트의 생성자 호출이 모두 깨진다(OrderExpiryService와 같은 패턴).
+     */
+    @Value("${payment.deadline-check.enabled:true}")
+    private boolean deadlineCheckEnabled = true;
 
     /**
      * 승인 1단계 — 결제를 IN_PROGRESS로 적재한다(예약). PG 콜 <b>전</b>에 짧은 트랜잭션으로 커밋된다.
@@ -88,6 +101,30 @@ public class PaymentService {
      */
     public ApprovalOutcome pgApprove(String orderNo, String paymentKey, Money amount, int installmentMonths,
                                       Long paymentId) {
+        return pgApprove(orderNo, paymentKey, amount, installmentMonths, paymentId, null);
+    }
+
+    /**
+     * 클라이언트 데드라인(밀리초 epoch)을 함께 받는 형태(#407 데드라인 전파, 27절⑦). {@code null}이면
+     * 데드라인을 확인하지 않는다(옛 동작, 호출부가 아직 데드라인을 안 넘기는 경로용).
+     *
+     * <p>PG를 부르기 <b>직전</b>, 즉 {@link com.beomsu.becommerce.payment.pg.ResilientPgClient}가 상한
+     * 세마포어를 잡기 전에 확인한다. 이미 지난 데드라인이면 PG 콜 자체를 생략하고 확정 실패로 돌린다 —
+     * 상한 세마포어를 잡지 않으므로(닿지 않은 것이 보장되므로) FAILED가 맞다(ADR-020의 failover 판정과
+     * 같은 규칙). 고객이 이미 화면을 떠났거나 재시도한 요청이 PG 슬롯을 붙잡고 있는 것을 막는다.
+     *
+     * <p>{@code payment.deadline-check.enabled}(기본 true)로 끌 수 있다 — 측정에서 "넣기 전" 대조군을
+     * 같은 코드로 재현할 때 쓴다.
+     */
+    public ApprovalOutcome pgApprove(String orderNo, String paymentKey, Money amount, int installmentMonths,
+                                      Long paymentId, Long clientDeadlineMs) {
+        if (deadlineCheckEnabled && clientDeadlineMs != null && System.currentTimeMillis() > clientDeadlineMs) {
+            meterRegistry.counter("payment.pg.approval.deadline_skipped").increment();
+            meterRegistry.counter("payment.confirm", "outcome", "failed").increment();
+            log.info("클라이언트 데드라인 경과 — PG 호출 생략, 확정 실패로 처리: {}", orderNo);
+            return new ApprovalOutcome(ApprovalOutcome.Result.FAILED, null,
+                    "고객이 이미 응답을 기다리지 않는 요청이라 PG를 호출하지 않았습니다");
+        }
         String idempotencyKey = paymentId != null ? orderNo + ":" + paymentId : orderNo;
         PgApproveResult result = pgClient.approve(
                 new PgApproveCommand(paymentKey, orderNo, amount.minorUnit(), installmentMonths, idempotencyKey));

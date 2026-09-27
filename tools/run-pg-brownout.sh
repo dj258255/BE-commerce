@@ -15,6 +15,8 @@ LIMIT=${5:-0}     # PG 동시 호출 상한. 0 이면 상한 없음(기본 동�
 EXTRA=${EXTRA:-}  # 앱에 더 넘길 인자(예: --server.tomcat.threads.max=200). #335
 DRAIN_S=${DRAIN_S:-0}  # 0 보다 크면 측정 뒤 앱을 살려 두고 미확정이 0 이 될 때까지(최대 이 초) 1초마다 센다. #335
 MYSQL=${MYSQL:-"docker exec pay-mysql-1 mysql -N -B -ubecommerce -pbecommerce becommerce"}  # 미확정 건수를 셀 DB
+K6_SCRIPT=${K6_SCRIPT:-k6/pg-brownout.js}  # 다른 실험이 이 하네스를 넓혀 쓸 때 k6 스크립트만 바꾼다(#407)
+K6_EXTRA_ARGS=${K6_EXTRA_ARGS:-}  # 위 스크립트가 받는 추가 -e 인자를 그대로 넘긴다(예: "-e LATE_FRACTION=0.3")
 
 JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
 # 기본 java 가 17 이면 21 로 빌드한 jar 가 안 뜬다. 8080 은 다른 것이 쓰고 있을 수 있어 비켜 둔다.
@@ -79,11 +81,11 @@ SAMPLER=$!
 # 워밍업. 기동 직후 첫 요청은 JIT·커넥션 생성·Flyway 뒤끝이 섞여 p95 가 튄다.
 # 이걸 빼지 않으면 "지연 0 이 200ms 보다 느리다" 같은 값이 나온다.
 echo "== 워밍업 15s"
-k6 run --quiet -e BASE_URL="$BASE" -e RATE=10 -e DURATION=15s k6/pg-brownout.js > "$OUT/k6-warmup.txt" 2>&1 || true
+k6 run --quiet -e BASE_URL="$BASE" -e RATE=10 -e DURATION=15s $K6_EXTRA_ARGS "$K6_SCRIPT" > "$OUT/k6-warmup.txt" 2>&1 || true
 
 START_SAMPLER
 echo "== 본 측정"
-k6 run -e BASE_URL="$BASE" -e RATE="$RATE" -e DURATION="$DUR" k6/pg-brownout.js 2>&1 | tee "$OUT/k6.txt"
+k6 run -e BASE_URL="$BASE" -e RATE="$RATE" -e DURATION="$DUR" $K6_EXTRA_ARGS "$K6_SCRIPT" 2>&1 | tee "$OUT/k6.txt"
 
 kill "$SAMPLER" 2>/dev/null || true
 
