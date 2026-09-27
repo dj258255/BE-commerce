@@ -17,7 +17,7 @@ import pandas as pd
 from .config import data_dir, request_of
 from .decode import GeneratedRow
 from .evaluate import (_load_examples, evaluate_pages, load_eval_assets, popular_last_week,
-                       repeat_last_pages, v1_engine_pages)
+                       repeat_gate_first_row_ratio, repeat_last_pages, v1_engine_pages)
 
 # 조각마다 다를 수밖에 없는 실행 인자(출력 경로 · 스레드)는 합칠 때 비교하지 않는다.
 _SHARD_LOCAL_ARGS = ("shard", "out", "threads")
@@ -136,6 +136,9 @@ def merge_reports(shards: list[dict[str, Any]], *, meta: pd.DataFrame, vocab: An
     }
     if ordered[0].get("options") is not None:
         report["options"] = ordered[0]["options"]
+        # 게이트 비율은 이력만 보는 값이라 조각의 가중 평균 대신 전체 meta 로 다시 센다.
+        if report["options"].get("repeat_gate"):
+            report["repeat_gate_first_row_ratio"] = repeat_gate_first_row_ratio(meta, vocab)
     if any("candidates_mean" in shard for shard in ordered):
         counts = [int(shard["shard"]["customers"]) for shard in ordered]
         means = [float(shard.get("candidates_mean", 0.0)) for shard in ordered]

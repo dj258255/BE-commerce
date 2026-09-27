@@ -109,10 +109,89 @@ class DecodeTest(unittest.TestCase):
         )
         self.assertEqual(rows, [])
 
+    def test_allowed_mask_matches_python_set_membership_filtering(self):
+        # 후보 집합을 켠 경로는 종전에 상품 토큰마다 파이썬 반복으로
+        # ``article in allowed_items`` 를 셌다. 어휘 크기 마스크 인덱싱이
+        # 모든 행에서 그 결과와 같아야 한다.
+        allowed = {"A", "C", "D", "F"}
+        mask = self.decoder._allowed_mask(allowed)
+        self.assertIsNone(self.decoder._allowed_mask(None))
+        used = torch.zeros(len(self.vocab.tokens), dtype=torch.bool, device="cpu")
+        used[6] = True                                   # A 는 허용이지만 이미 썼다.
+        history = ["A", "D", "F"]
+        for row in self.vocab.row_ids:
+            item_ids = (self.decoder._history_ids(history) if row == self.decoder._row_repeat
+                        else self.decoder._row_item_ids[row])
+            keep = torch.tensor([self.vocab.article_of[int(token)] in allowed for token in item_ids],
+                                dtype=torch.bool)
+            expected = item_ids[keep]
+            expected = expected[~used[expected]] if expected.numel() else expected
+            self.assertEqual(self.decoder._items_for_row(row, history, used, mask).tolist(),
+                             expected.tolist())
+
+    def test_candidate_generation_unchanged_single_and_batch(self):
+        # 고치기 전 코드로 뽑은 정확한 결과를 고정한다(작은 실제 모델 예).
+        cfg = ModelConfig(vocab_size=len(self.vocab.tokens), dim=8, layers=1, heads=2,
+                          ffn=16, dropout=0.0, maxlen=64, content_dim=384)
+        torch.manual_seed(17)
+        model = GenPageV2(cfg, torch.zeros((6, 384)), tokens=self.vocab.tokens).eval()
+        decoder = PageDecoder(model, self.vocab, {a: n for n, a in enumerate("ABCDEF")}, "cpu")
+        examples = [
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": [],
+             "allowed_items": {"A", "B", "C"}},
+            {"ctx_tokens": [1, 3, 4, 5, 2], "ctx_content": [-1] * 5, "history_articles": ["A", "D"],
+             "allowed_items": {"A", "B", "D", "E", "F"}},
+        ]
+        kwargs = {"n_rows": 2, "items_per_row": 3, "prefix": 1}
+        expected = [([GeneratedRow(4, ["B", "C", "A"])], 0),
+                    ([GeneratedRow(5, ["F", "E", "D"])], 0)]
+        singles = [decoder.generate(**example, **kwargs) for example in examples]
+        self.assertEqual(singles, expected)
+        self.assertEqual(decoder.generate_batch(examples, **kwargs), expected)
+
     def test_hybrid_bulk_uses_last_prefix_distribution(self):
         rows, _ = self.decoder.generate(self.context, self.content, history_articles=[], pinned={0: 4},
                                         n_rows=1, items_per_row=3, prefix=1)
         self.assertEqual(rows[0].items, ["A", "C", "B"])
+
+    def test_pinned_items_fill_repeat_row_in_order_then_model_fills(self):
+        rows, violations = self.decoder.generate(
+            self.context, self.content, history_articles=["D", "E", "F", "C"], pinned={0: 3},
+            pinned_items={0: ["F", "E"]}, n_rows=1, items_per_row=4, prefix=1,
+        )
+        self.assertEqual(violations, 0)
+        self.assertEqual(rows[0].row_token, 3)
+        # 주어진 순서가 앞에 오고, 남은 칸은 모델이 이력 안에서 채운다.
+        self.assertEqual(rows[0].items[:2], ["F", "E"])
+        self.assertEqual(set(rows[0].items), {"C", "D", "E", "F"})
+        self.assertEqual(len(rows[0].items), 4)
+
+    def test_pinned_items_short_prefix_is_topped_up_to_items_per_row(self):
+        rows, violations = self.decoder.generate(
+            self.context, self.content, history_articles=["D", "E", "F"], pinned={0: 3},
+            pinned_items={0: ["F"]}, n_rows=1, items_per_row=3, prefix=1,
+        )
+        self.assertEqual(violations, 0)
+        self.assertEqual(rows[0].items[0], "F")
+        self.assertEqual(len(rows[0].items), 3)
+
+    def test_pinned_items_are_ignored_when_default_is_none(self):
+        baseline = self.decoder.generate(self.context, self.content, history_articles=["D", "E", "F"],
+                                         pinned={0: 3}, n_rows=1, items_per_row=3, prefix=1)
+        self.assertEqual(self.decoder.generate(self.context, self.content, history_articles=["D", "E", "F"],
+                                               pinned={0: 3}, pinned_items=None, n_rows=1, items_per_row=3,
+                                               prefix=1), baseline)
+
+    def test_batch_equals_single_with_pinned_items(self):
+        examples = [
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": ["D", "E", "F", "C"],
+             "pinned": {0: 3}, "pinned_items": {0: ["F", "E"]}},
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": ["A", "B", "C"],
+             "pinned": {0: 3}, "pinned_items": {0: ["C", "A"]}},
+        ]
+        kwargs = {"n_rows": 1, "items_per_row": 4, "prefix": 1}
+        self.assertEqual(self.decoder.generate_batch(examples, **kwargs),
+                         [self.decoder.generate(**example, **kwargs) for example in examples])
 
     def test_batch_equals_single_and_seeded_sampling(self):
         examples = [
@@ -202,6 +281,31 @@ class DecodeTest(unittest.TestCase):
                          [decoder.generate(**example, **kwargs) for example in examples])
         self.assertEqual(decoder.generate(**examples[1], **kwargs, use_cache=True),
                          decoder.generate(**examples[1], **kwargs, use_cache=False))
+
+    def test_real_model_batch_equals_single_with_ragged_pinned_items(self):
+        cfg = ModelConfig(vocab_size=len(self.vocab.tokens), dim=8, layers=1, heads=2,
+                          ffn=16, dropout=0.0, maxlen=64, content_dim=384)
+        torch.manual_seed(11)
+        model = GenPageV2(cfg, torch.zeros((6, 384)), tokens=self.vocab.tokens).eval()
+        decoder = PageDecoder(model, self.vocab, {a: n for n, a in enumerate("ABCDEF")}, "cpu")
+        # 고정 목록 길이가 사용자마다 다르다: 2개 · 1개 · 0개.
+        examples = [
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": ["D", "E", "F", "C"],
+             "pinned": {0: 3}, "pinned_items": {0: ["F", "E"]}},
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": ["A", "B", "C"],
+             "pinned": {0: 3}, "pinned_items": {0: ["C"]}},
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": ["D", "E", "F"],
+             "pinned": {0: 3}, "pinned_items": {0: []}},
+        ]
+        # 두 번째 행부터는 앞 행의 캐시를 이어 쓰므로, 패딩이 캐시 길이에 남으면
+        # 여기서 결과가 갈린다.
+        kwargs = {"n_rows": 3, "items_per_row": 3, "prefix": 1}
+        batched = decoder.generate_batch(examples, **kwargs)
+        singles = [decoder.generate(**example, **kwargs) for example in examples]
+        self.assertEqual(batched, singles)
+        for example in examples:
+            self.assertEqual(decoder.generate(**example, **kwargs, use_cache=True),
+                             decoder.generate(**example, **kwargs, use_cache=False))
 
     def test_real_forward_cached_matches_forward_with_ragged_batch(self):
         cfg = ModelConfig(vocab_size=len(self.vocab.tokens), dim=8, layers=1, heads=2,

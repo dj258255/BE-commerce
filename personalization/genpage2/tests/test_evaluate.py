@@ -13,8 +13,9 @@ import numpy as np
 import pandas as pd
 
 from genpage2.decode import GeneratedRow
-from genpage2.evaluate import (_load_decoder, _repeat_pin, evaluate_pages, map_at_12, parse_shard,
-                               repeat_last_pages, run, shard_bounds)
+from genpage2.evaluate import (_candidates_for, _load_decoder, _repeat_pin, evaluate_pages, map_at_12,
+                               parse_shard, parse_similar, repeat_gate_first_row_ratio, repeat_last_pages,
+                               run, shard_bounds)
 from genpage2.merge_eval import merge, merge_reports
 
 
@@ -81,6 +82,147 @@ class EvaluateTest(unittest.TestCase):
         vocab = FakeVocab()
         self.assertEqual(_repeat_pin(["A", "B", "C", "A"], vocab), {0: 2})
         self.assertIsNone(_repeat_pin(["A", "B", "not-in-vocab"], vocab))
+
+    def test_repeat_pin_gate_first_or_third_row(self):
+        vocab = FakeVocab()
+        self.assertEqual(_repeat_pin(["A", "B", "C", "A"], vocab, gate=True), {0: 2})
+        self.assertEqual(_repeat_pin(["A", "B", "C"], vocab, gate=True), {2: 2})
+        self.assertEqual(_repeat_pin(["A", "B", "C"], vocab), {0: 2})
+        self.assertIsNone(_repeat_pin(["A", "B"], vocab, gate=True))
+
+    def test_repeat_gate_first_row_ratio_counts_only_pinned_first_row(self):
+        vocab = FakeVocab()
+        meta = pd.DataFrame({"customer_id": ["r", "n", "s"],
+                             "history": [["A", "B", "C", "A"], ["A", "B", "C"], ["A"]]})
+        self.assertAlmostEqual(repeat_gate_first_row_ratio(meta, vocab), 1 / 3)
+
+    def test_parse_similar(self):
+        self.assertIsNone(parse_similar(None))
+        self.assertEqual(parse_similar("5,20"), (5, 20))
+        self.assertEqual(parse_similar((1, 2)), (1, 2))
+        for bad in ("5", "a,2", "1,-1"):
+            with self.assertRaises(ValueError):
+                parse_similar(bad)
+
+    def test_new_and_repeat_item_recall_hand_calculated(self):
+        meta = pd.DataFrame({
+            "customer_id": ["one", "two"],
+            "truth": [["A", "B", "N"], ["R"]],
+            "history": [["A", "X", "A"], ["R", "R"]],
+        })
+        report = evaluate_pages(meta, {"one": ["A", "B"], "two": []})
+        # one: 새 정답 {B,N} 중 B, 재구매 정답 {A} 중 A / two: 새 정답 없음, 재구매 {R} 놓침
+        self.assertAlmostEqual(report["new_item_recall"], (0.5 + 0.0) / 2)
+        self.assertAlmostEqual(report["repeat_item_recall"], (1.0 + 0.0) / 2)
+        self.assertAlmostEqual(report["page_recall"], (2 / 3 + 0.0) / 2)
+
+    def test_repeat_last_new_item_recall_is_zero(self):
+        self.assertEqual(evaluate_pages(self.meta, repeat_last_pages(self.meta))["new_item_recall"], 0.0)
+
+    def _run_capturing(self, meta, **overrides):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            mode = base / "hm" / "model" / "genpage2" / "validate"
+            mode.mkdir(parents=True)
+            meta.to_parquet(mode / "eval_meta.parquet")
+            np.savez(mode / "eval.npz", ctx_tokens=np.array([1, 1]), ctx_content=np.array([-1, -1]),
+                     ctx_offsets=np.array([0, 1, 2]))
+            normal = base / "hm" / "normalized"
+            normal.mkdir(parents=True)
+            pd.DataFrame({"t_dat": ["2020-09-08", "2020-09-10"], "article_id": ["B", "C"]}).to_parquet(
+                normal / "transactions.parquet"
+            )
+            decoder = MagicMock()
+            captured = []
+
+            def generate_batch(examples, **_kwargs):
+                captured.extend(examples)
+                return [([GeneratedRow(3, ["A"])], 0) for _ in examples]
+
+            decoder.generate_batch.side_effect = generate_batch
+            with patch("genpage2.evaluate._load_decoder", return_value=(
+                decoder, FakeVocab(), np.array([[1.0, 0.0], [0.9, 0.1], [0.0, 1.0]]),
+                {"A": 0, "B": 1, "C": 2}, "cpu",
+            )):
+                report = run(argparse.Namespace(
+                    mode="validate", ckpt="checkpoint", limit=None, data_dir=str(base), out=None,
+                    batch=256, device="cpu", baselines_only=False, **overrides,
+                ))
+        return captured, report
+
+    def test_repeat_order_recency_uses_recent_history_order(self):
+        meta = pd.DataFrame({
+            "customer_id": ["one", "two"],
+            "truth": [["A"], ["C"]],
+            "history": [["C", "B", "A", "C"], ["A", "B", "C"]],
+            "has_vocab_history": [True, True],
+        })
+        captured, report = self._run_capturing(meta, pin_repeat=True, repeat_order="recency")
+        self.assertEqual(captured[0]["pinned"], {0: 2})
+        self.assertEqual(captured[0]["pinned_items"], {0: ["C", "B", "A"]})
+        self.assertEqual(captured[1]["pinned_items"], {0: ["A", "B", "C"]})
+        self.assertEqual(report["options"]["repeat_order"], "recency")
+        self.assertNotIn("pinned_items", report["args"])
+
+    def test_repeat_gate_pins_first_row_only_for_repeat_buyers(self):
+        meta = pd.DataFrame({
+            "customer_id": ["one", "two"],
+            "truth": [["A"], ["C"]],
+            "history": [["C", "B", "A", "C"], ["A", "B", "C"]],
+            "has_vocab_history": [True, True],
+        })
+        captured, report = self._run_capturing(meta, pin_repeat=True, repeat_gate=True)
+        self.assertEqual(captured[0]["pinned"], {0: 2})
+        self.assertEqual(captured[1]["pinned"], {2: 2})
+        self.assertIsNone(captured[0]["pinned_items"])
+        self.assertAlmostEqual(report["repeat_gate_first_row_ratio"], 0.5)
+        self.assertTrue(report["options"]["repeat_gate"])
+
+    def test_repeat_gate_alone_enables_pinning(self):
+        meta = pd.DataFrame({
+            "customer_id": ["one"],
+            "truth": [["A"]],
+            "history": [["C", "B", "A", "C"]],
+            "has_vocab_history": [True],
+        })
+        captured, report = self._run_capturing(meta, repeat_gate=True)
+        self.assertEqual(captured[0]["pinned"], {0: 2})
+        self.assertTrue(report["options"]["pin_repeat"])
+        self.assertTrue(report["options"]["repeat_gate"])
+
+    def test_similar_alone_restricts_model_rows_to_neighbors(self):
+        meta = pd.DataFrame({
+            "customer_id": ["one", "two"],
+            "truth": [["A"], ["C"]],
+            "history": [["A", "B", "C"], ["Z"]],
+            "has_vocab_history": [True, False],
+        })
+        captured, report = self._run_capturing(meta, similar="1,1")
+        # A 와 가장 가까운 어휘 상품은 B 다(자기 자신은 뺀다).
+        self.assertEqual(captured[0]["allowed_items"], {"B"})
+        self.assertEqual(captured[1]["allowed_items"], set())
+        self.assertEqual(report["options"]["similar"], [1, 1])
+
+    def test_default_run_keeps_report_shape(self):
+        captured, report = self._run_capturing(self.meta)
+        self.assertNotIn("options", report)
+        for key in ("repeat_order", "similar", "repeat_gate"):
+            self.assertNotIn(key, report["args"])
+        self.assertIsNone(captured[0]["pinned"])
+        self.assertIsNone(captured[0]["pinned_items"])
+
+    def test_candidates_and_similar_are_unioned(self):
+        vocab = FakeVocab()
+        meta = pd.DataFrame({"customer_id": ["one"], "history": [["A"]]})
+        tx = pd.DataFrame({"t_dat": pd.Series([], dtype="object"), "article_id": pd.Series([], dtype="object")})
+        content = np.array([[1.0, 0.0], [0.9, 0.1], [0.0, 1.0]])
+        rows = {"A": 0, "B": 1, "C": 2}
+        only_similar = _candidates_for(meta, tx, pd.Timestamp("2020-09-09"), vocab=vocab, content=content,
+                                       content_rows=rows, candidate_config=None, similar_config=(1, 1))
+        self.assertEqual(only_similar["one"], {"B"})
+        unioned = _candidates_for(meta, tx, pd.Timestamp("2020-09-09"), vocab=vocab, content=content,
+                                  content_rows=rows, candidate_config=(1, 1), similar_config=(1, 1))
+        self.assertEqual(unioned["one"], {"A", "B"})
 
     def test_run_passes_per_customer_pin_and_candidates_to_decoder(self):
         meta = self.meta.copy()
@@ -271,6 +413,30 @@ class ShardEvaluateTest(unittest.TestCase):
         self.assertAlmostEqual(merged["candidates_mean"], baseline["candidates_mean"], places=9)
         for name, metrics in baseline["results"].items():
             self._assert_metrics_equal(metrics, merged["results"][name])
+
+    def test_merged_new_and_repeat_recalls_match_single_run(self):
+        baseline = self._run()
+        shards = [self._run(shard=f"{index}/3") for index in (1, 2, 3)]
+        paths = self._write_shards(shards, "metrics")
+        with patch("genpage2.merge_eval.load_eval_assets",
+                   return_value=(self.vocab, self.content, self.content_rows)):
+            merged = merge([str(path) for path in paths], base=str(self.base))
+        for name in ("model", "repeat_last", "popular_last_week"):
+            self.assertAlmostEqual(merged["results"][name]["new_item_recall"],
+                                   baseline["results"][name]["new_item_recall"], places=12, msg=name)
+            self.assertAlmostEqual(merged["results"][name]["repeat_item_recall"],
+                                   baseline["results"][name]["repeat_item_recall"], places=12, msg=name)
+
+    def test_merged_repeat_gate_ratio_matches_single_run(self):
+        baseline = self._run(pin_repeat=True, repeat_gate=True)
+        shards = [self._run(shard=f"{index}/3", pin_repeat=True, repeat_gate=True) for index in (1, 2, 3)]
+        paths = self._write_shards(shards, "gate")
+        with patch("genpage2.merge_eval.load_eval_assets",
+                   return_value=(self.vocab, self.content, self.content_rows)):
+            merged = merge([str(path) for path in paths], base=str(self.base))
+        self.assertTrue(merged["options"]["repeat_gate"])
+        self.assertAlmostEqual(merged["repeat_gate_first_row_ratio"],
+                               baseline["repeat_gate_first_row_ratio"], places=12)
 
     def test_missing_shard_raises(self):
         shards = [self._run(shard=f"{index}/3") for index in (1, 2)]
