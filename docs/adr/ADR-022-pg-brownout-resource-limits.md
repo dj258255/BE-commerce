@@ -344,7 +344,10 @@ PR #396(213b46c)이 승인 타임아웃 재전송(`payment.pg.approve-resend-max
 
 재현: `bash tools/run-approve-resend-load.sh`(약 35분, 여섯 조건). 원자료: [`performance/raw/20260928-approve-resend-budget-load/`](../performance/raw/20260928-approve-resend-budget-load/)
 
-## 2026-09-28 데드라인 전파: 이미 떠난 고객이 PG 슬롯을 얼마나 차지하는가 (#407)
+
+**기본값 정정(2026-09-28).** #407 은 설정 스위치만 넣고 `approve-resend-min-headroom` 기본을 0(예산 없음)으로 두어, 이 절의 결정(빈 자리 4)이 운영 기본값에 들어가지 않았다. 기본을 4 로 바꿨다. 0 으로 두면 예산 없이 재전송한다.
+
+## 2026-09-28 데드라인 전파: 이미 떠난 고객이 PG 슬롯을 얼마나 차지하는가 (#409)
 
 지금까지 절은 전부 PG 슬롯(위 상한)을 **어떻게 나눌지**를 다뤘다. 이 절은 그 슬롯의 **수요 자체**를 줄일 수 있는지를 본다. 클라이언트가 이미 타임아웃해 화면을 떠났거나 다른 수단으로 재시도했어도, 서버는 그것을 모른 채 PG 승인 호출을 끝까지 붙잡고 있다(Google SRE 데드라인 전파가 다루는 바로 그 낭비). 요청에 `X-Client-Deadline-Ms`(절대 epoch ms) 헤더가 있고 PG를 부르기 <b>직전</b>(상한 세마포어를 잡기 전, `PaymentService.pgApprove`) 이미 지났으면 PG 콜 자체를 생략하고 바로 확정 실패로 돌린다. `payment.deadline-check.enabled`(기본 true)로 끄면 헤더를 받아도 무시한다 — 같은 코드로 "넣기 전" 대조군을 잰다.
 

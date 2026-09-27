@@ -44,10 +44,10 @@ import java.util.function.Supplier;
  *       돌려, 복구 배치가 나중에 조회로 확정하게 한다. 재전송도 타임아웃이거나 PG가 "처리 중"(토스
  *       409 {@code IDEMPOTENT_REQUEST_PROCESSING})으로 답해도 같은 UNKNOWN 경로로 넘긴다.
  *       명시적 거절(4xx 확정 실패)은 재전송하지 않는다 — 다시 보내도 같은 답이 온다.</li>
- *   <li><b>재전송 예산(#404).</b> {@code payment.pg.approve-resend-min-headroom}(기본 0=없음)을 두면
+ *   <li><b>재전송 예산(#404).</b> {@code payment.pg.approve-resend-min-headroom}(기본 4, 0이면 없음)을 두면
  *       상한 중 빈 자리가 이 수보다 적을 때 재전송을 걸러 기존 UNKNOWN을 유지한다. 상한이 이미 포화된
  *       구간(느린 PG)에서 재전송이 새 승인이 쓸 자리를 끌어다 쓰지 않게 하는 조건이다(ADR-022
- *       "2026-09-29" 절).</li>
+ *       "2026-09-28 재전송에 상한 여유 기반 예산을 둔다" 절).</li>
  *   <li><b>조회(query)는 읽기라 재시도가 안전하다.</b> 지수 백오프 + 지터로 일시 장애를 흡수한다.</li>
  *   <li><b>서킷은 승인 · 취소 · 조회가 따로 쓴다(#372).</b> 하나를 같이 쓰면 조회만 실패해도 서킷이 열려
  *       새 승인이 PG 에 가지 못했다(ADR-057 대가). 조회 서킷은 창을 넓혀 무작위 실패로는 거의 열리지 않게 한다.</li>
@@ -120,7 +120,7 @@ public class ResilientPgClient implements PgClient {
                              @Value("${payment.pg.instances:1}") int instances,
                              @Value("${payment.pg.query-max-attempts:3}") int queryMaxAttempts,
                              @Value("${payment.pg.approve-resend-max-attempts:1}") int approveResendMaxAttempts,
-                             @Value("${payment.pg.approve-resend-min-headroom:0}") int approveResendMinHeadroom,
+                             @Value("${payment.pg.approve-resend-min-headroom:4}") int approveResendMinHeadroom,
                              ObjectProvider<MeterRegistry> meterRegistryProvider) {
         this(delegate, perInstanceLimit(maxConcurrentCalls, merchantConcurrencyLimit, instances),
                 meterRegistryProvider.getIfAvailable(io.micrometer.core.instrument.simple.SimpleMeterRegistry::new),
