@@ -1,0 +1,24 @@
+{
+ "name": "Q20",
+ "admit_limit": 20,
+ "arrivals": 300,
+ "outcomes": {
+  "paid": 70,
+  "unknown": 10,
+  "abandoned": 20,
+  "gave_up": 200
+ },
+ "paid": 75,
+ "stock": 25,
+ "held": 0,
+ "unsold": 25,
+ "net_cancels": 0,
+ "fair_first100": 75,
+ "first100_size": 100,
+ "wasted": 0,
+ "gave_up": 200,
+ "wait_p50": 2.031,
+ "wait_p95": 10.109,
+ "wait_max": 14.122,
+ "oversell": false
+}

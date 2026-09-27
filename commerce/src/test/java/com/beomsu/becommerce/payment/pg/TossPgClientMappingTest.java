@@ -159,6 +159,15 @@ class TossPgClientMappingTest {
     }
 
     @Test
+    @DisplayName("409 IDEMPOTENT_REQUEST_PROCESSING은 최초 요청이 처리 중이라는 뜻이다 — 미확정으로 남긴다(#395)")
+    void idempotentRequestProcessingIsRetryable() {
+        // 같은 Idempotency-Key로 재전송했는데 최초 요청이 아직 끝나지 않았을 때 오는 코드다.
+        // 승인 여부를 모르므로 실패로 단정하지 않고 UNKNOWN으로 남겨 조회로 확정한다.
+        assertThat(TossErrorCodes.classify("IDEMPOTENT_REQUEST_PROCESSING"))
+                .isEqualTo(TossErrorCodes.Kind.RETRYABLE);
+    }
+
+    @Test
     @DisplayName("모르는 코드는 미확정으로 본다 — 결제에서 모르는 것을 실패로 단정하면 더 비싸다")
     void unknownCodeIsConservative() {
         assertThat(TossErrorCodes.classify("SOME_NEW_CODE_2027"))

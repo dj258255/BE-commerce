@@ -1,0 +1,26 @@
+{
+ "name": "Q0",
+ "admit_limit": 0,
+ "lease": 0,
+ "arrivals": 300,
+ "outcomes": {
+  "paid": 19,
+  "sold_out_at_payment": 220,
+  "abandoned": 60,
+  "unknown": 1
+ },
+ "paid": 19,
+ "stock": 1,
+ "held": 0,
+ "unsold": 1,
+ "net_cancels": 0,
+ "fair_first100": 19,
+ "first100_size": 100,
+ "wasted": 220,
+ "gave_up": 0,
+ "lease_lost": 0,
+ "wait_p50": null,
+ "wait_p95": null,
+ "wait_max": null,
+ "oversell": false
+}

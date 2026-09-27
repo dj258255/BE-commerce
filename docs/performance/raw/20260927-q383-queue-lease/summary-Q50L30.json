@@ -1,0 +1,26 @@
+{
+ "name": "Q50L30",
+ "admit_limit": 50,
+ "lease": 30,
+ "arrivals": 300,
+ "outcomes": {
+  "paid": 88,
+  "unknown": 12,
+  "abandoned": 60,
+  "sold_out_at_payment": 140
+ },
+ "paid": 95,
+ "stock": 5,
+ "held": 0,
+ "unsold": 5,
+ "net_cancels": 0,
+ "fair_first100": 88,
+ "first100_size": 100,
+ "wasted": 140,
+ "gave_up": 0,
+ "lease_lost": 0,
+ "wait_p50": 28.227,
+ "wait_p95": 57.405,
+ "wait_max": 58.587,
+ "oversell": false
+}

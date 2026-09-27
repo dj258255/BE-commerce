@@ -80,6 +80,19 @@ groups:
           summary: "대사 미해결(PENDING) 적체"
           description: "가장 오래된 PENDING 대사 예외가 15분 넘게 남아 있습니다. 어드민에서 예외 큐를 검토·종결하세요."
 
+      # 5-1) 결제 정합성 불변식 위반(#389) — 승인된 결제에 분개 · 대사 기록이 없거나 주문 상태가 어긋난 채로 남음.
+      #      점검은 1분마다 돌고 유예는 0초다(부하에서 잘못 센 건 0). 분개 · 대사 기록은 커밋 뒤 이벤트로 따라와
+      #      처리량이 늘면 진행 중인 건이 한 번쯤 걸릴 수 있어 10분 지속으로 거른다. 불변식별로 울린다.
+      - alert: PaymentIntegrityViolation
+        expr: max by (invariant) (integrity_violations) > 0
+        for: 10m
+        labels:
+          severity: critical
+          domain: payment
+        annotations:
+          summary: "결제 정합성 불변식 위반: {{ $labels.invariant }}"
+          description: "{{ $labels.invariant }} 위반이 10분 넘게 남아 있습니다. /api/v1/admin/integrity?samples=5 로 주문 번호를 확인하세요."
+
       # 6) AI 후보 제안이 조용히 멈춤 — 모델이 틀린 게 아니라 아무 답도 안 내는 상태.
       #    핀테크에서 LLM 사고는 대부분 "모델이 틀려서"가 아니라 "틀린 걸 아무도 못 봐서" 난다.
       #    가드에 다 걸려 제안이 0이 되면 기능이 꺼진 것과 같은데, 에러는 한 건도 안 난다.
@@ -224,6 +237,30 @@ groups:
         annotations:
           summary: "아웃박스 소비 정체 (최고령 {{ $value }}초)"
           description: "5분 넘게 소비되지 않은 이벤트가 있습니다. 비동기 실행기 스레드 고갈, 리스너 예외 반복, DB 잠금을 확인하세요. 재기동 시에는 republish-outstanding-events-on-restart로 재발행됩니다."
+
+      # 7-b) 아웃박스 발행 자체가 멈춤 — 위 규칙의 사각지대를 메운다(#393).
+      #    outbox_pending_oldest_age_seconds는 미소비 이벤트가 없으면 0을 낸다(OutboxMetrics). 발행이
+      #    애초에 일어나지 않으면(리스너 등록이 빠지는 등) event_publication이 처음부터 끝까지 비어
+      #    있어 이 값도 outbox_pending_count도 계속 0이다 — "적체 없음"과 "발행 자체가 멈춤"이 같은
+      #    모양으로 보인다. PersonalizationContextApplyStalled/PersonalizationContextNeverApplied와
+      #    같은 사각지대이자 같은 해법이다: 나이·개수 게이지가 아니라 발행을 직접 세는 카운터
+      #    (outbox_published_total, OutboxPublishMetrics)로 "발행이 실제로 일어났는가"를 본다.
+      #
+      #    결제 확정 트래픽(payment_confirm_total{outcome="success"})은 있는데 대표 아웃박스 이벤트
+      #    (PaymentConfirmedEvent) 발행이 10분간 0건이면 발행 경로가 죽은 것이다. 트래픽이 없는
+      #    한가한 시간대에는 발행도 0인 것이 정상이라 트래픽 게이트를 함께 건다(PersonalizationContext
+      #    NeverApplied와 같은 이유).
+      - alert: OutboxPublishingStalled
+        expr: |
+          sum(increase(outbox_published_total[10m])) == 0
+          and sum(rate(payment_confirm_total{outcome="success"}[10m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+          domain: payment
+        annotations:
+          summary: "결제는 확정되는데 아웃박스 발행이 0건"
+          description: "10분간 PaymentConfirmedEvent 발행이 0건인데 결제 확정 트래픽은 있습니다. outbox_pending 게이지가 잡지 못하는 구간입니다(발행 자체가 없으면 pending·age 둘 다 0을 냅니다). 리스너 등록이 빠졌는지, 이벤트 발행 경로에서 예외가 나는지 확인하세요."
 
       # 8) 전역 유입 제한이 지속적으로 걸림 — 상한이 실제 처리 능력보다 낮거나, 정말로 포화다.
       #    scope로 갈린다: global이 오르면 시스템 차원 문제이고, user/ip만 오르면 특정 클라이언트

@@ -152,6 +152,82 @@ class PaymentRecoveryServiceTest {
     }
 
     @Test
+    @DisplayName("backoff-jitter 가 0(기본값)이면 같은 attempts 는 언제나 같은 간격이다(#399)")
+    void backoffJitterZeroIsDeterministic() {
+        ReflectionTestUtils.setField(service, "backoffBase", Duration.ofMinutes(1));
+        ReflectionTestUtils.setField(service, "backoffCap", Duration.ofMinutes(10));
+        Duration first = service.backoffDelay(2);
+        for (int i = 0; i < 20; i++) {
+            assertThat(service.backoffDelay(2)).isEqualTo(first);
+        }
+        assertThat(first).isEqualTo(Duration.ofMinutes(4));
+    }
+
+    @Test
+    @DisplayName("backoff-jitter 를 켜면 같은 attempts 도 간격이 [간격×(1−jitter), 간격×(1+jitter)] 안에서 흩어진다(#399)")
+    void backoffJitterSpreadsWithinBounds() {
+        ReflectionTestUtils.setField(service, "backoffBase", Duration.ofMinutes(1));
+        ReflectionTestUtils.setField(service, "backoffCap", Duration.ofMinutes(10));
+        ReflectionTestUtils.setField(service, "backoffJitter", 0.5);
+
+        Duration nominal = Duration.ofMinutes(4); // attempts=2: 1분 × 2^2
+        Duration lowerBound = nominal.dividedBy(2);      // × (1 − 0.5)
+        Duration upperBound = nominal.plus(lowerBound);  // × (1 + 0.5)
+
+        java.util.Set<Duration> seen = new java.util.HashSet<>();
+        for (int i = 0; i < 200; i++) {
+            Duration delay = service.backoffDelay(2);
+            assertThat(delay).isBetween(lowerBound, upperBound);
+            seen.add(delay);
+        }
+        assertThat(seen.size()).isGreaterThan(50); // 결정적이면 1이다. 흩어짐을 본다
+    }
+
+    @Test
+    @DisplayName("backoff-jitter 가 상한을 다시 넘기지 않는다(#399)")
+    void backoffJitterNeverExceedsCap() {
+        ReflectionTestUtils.setField(service, "backoffBase", Duration.ofMinutes(1));
+        ReflectionTestUtils.setField(service, "backoffCap", Duration.ofMinutes(10));
+        ReflectionTestUtils.setField(service, "backoffJitter", 0.9);
+
+        // attempts 가 크면 nominal 이 이미 상한(10분)에서 잘린다. jitter 를 더해도 상한을 넘으면 안 된다.
+        for (int i = 0; i < 100; i++) {
+            assertThat(service.backoffDelay(30)).isLessThanOrEqualTo(Duration.ofMinutes(10));
+        }
+    }
+
+    @Test
+    @DisplayName("시뮬레이션: 막힌 건 다수가 같은 attempts 로 같은 초에 다시 몰리는 수를 지터 전후로 센다(#399)")
+    void backoffJitterReducesSameSecondCollisions() {
+        ReflectionTestUtils.setField(service, "backoffBase", Duration.ofMinutes(1));
+        ReflectionTestUtils.setField(service, "backoffCap", Duration.ofMinutes(10));
+        Instant now = Instant.parse("2026-09-28T00:00:00Z");
+        int stuckCount = 200;
+        int attempts = 2; // nominal 4분, 상한 밖이라 jitter 효과가 온전히 보인다
+
+        ReflectionTestUtils.setField(service, "backoffJitter", 0.0);
+        int worstBucketWithoutJitter = worstSameSecondBucket(now, attempts, stuckCount);
+        assertThat(worstBucketWithoutJitter).isEqualTo(stuckCount); // 지터 0: 전부 같은 초
+
+        ReflectionTestUtils.setField(service, "backoffJitter", 0.5);
+        int worstBucketWithJitter = worstSameSecondBucket(now, attempts, stuckCount);
+        System.out.println("[#399] 같은 초 재시도 몰림(최대 버킷): jitter=0 → " + worstBucketWithoutJitter
+                + "/" + stuckCount + ", jitter=0.5 → " + worstBucketWithJitter + "/" + stuckCount);
+
+        assertThat(worstBucketWithJitter).isLessThan(worstBucketWithoutJitter);
+    }
+
+    /** 막힌 건 {@code count}개가 전부 {@code attempts} 번째 시도라 할 때 다음 시각을 초 단위로 묶어 최대 버킷 크기를 센다. */
+    private int worstSameSecondBucket(Instant now, int attempts, int count) {
+        java.util.Map<Instant, Integer> bySecond = new java.util.HashMap<>();
+        for (int i = 0; i < count; i++) {
+            Instant next = now.plus(service.backoffDelay(attempts)).truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+            bySecond.merge(next, 1, Integer::sum);
+        }
+        return bySecond.values().stream().max(Integer::compareTo).orElse(0);
+    }
+
+    @Test
     @DisplayName("oldest 는 오래된 순을 명시한 쿼리를 쓴다")
     void oldestUsesOrderedQuery() {
         ReflectionTestUtils.setField(service, "policy", "oldest");
