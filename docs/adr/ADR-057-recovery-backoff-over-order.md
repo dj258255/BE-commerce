@@ -3,7 +3,7 @@
 - 상태: **채택**. 기본값 `app.recovery.policy=backoff`
 - 날짜: 2026-09-24
 - 관련: `PaymentRecoveryService`, `PaymentRepository.findRecoverableUnknown`, `V67__payment_recovery_attempts.sql`,
-  [실측 리포트](../performance/recovery-order.md), [간격 실측](../performance/recovery-backoff.md), [성능 §14.5](../performance/README.md), [ADR-022](ADR-022-pg-brownout-resource-limits.md)(미확정이 생기는 쪽), 이슈 #248 · #330
+  [실측 리포트](../performance/recovery-order.md), [간격 실측](../performance/recovery-backoff.md), [성능 §14.5](../performance/README.md), [ADR-022](ADR-022-pg-brownout-resource-limits.md)(미확정이 생기는 쪽), 이슈 #248 · #330 · #399
 
 ## 맥락
 
@@ -52,6 +52,22 @@
 - **정렬을 명시하는 것(`oldest`)으로는 풀리지 않았다.** 인덱스 순서로 이미 오래된 순이었다. 순서가 아니라 자리 문제다
 - 조회 실패(예외)도 같이 미룬다. 실패한 건이 앞자리를 차지하는 것은 "진행 중"과 같다
 - "진행 중"은 더 이상 복구 건수에 세지 않는다. 전에는 예외 없이 끝나면 셌다
+
+### 지터를 더했다 (#399, 2026-09-28)
+
+`backoffDelay(attempts)` 는 결정적이라 같은 attempts 로 막힌 건은 다음 시도 시각이 정확히 같은 초로 겹친다. `ResilientPgClient`
+가 조회 재시도에 쓰는 `IntervalFunction.ofExponentialRandomBackoff(20ms, 2.0, 0.5)` 와 같은 방식으로 곱셈 지터를 더했다:
+간격에 `[1 − jitter, 1 + jitter]` 사이의 배율을 곱하고, 결과는 상한을 다시 넘지 않게 자른다. 기본값은 0(지금 동작 그대로)이고
+`app.recovery.backoff-jitter` 로 켠다.
+
+측정 대신 시뮬레이션 단위 테스트(`PaymentRecoveryServiceTest#backoffJitterReducesSameSecondCollisions`)로 확인했다: 막힌 건
+200개가 attempts=2(간격 4분)로 같은 시각에 몰렸다고 두고 다음 시도 시각을 초 단위로 묶었을 때, 가장 큰 버킷이 jitter=0 이면
+200/200(전부 같은 초), jitter=0.5 면 4/200 이었다.
+
+- 지터는 nominal(상한 적용 전 아님, 상한까지 적용된) 간격에 곱한다. attempts 가 커서 이미 상한(10분)에서 잘린 건은 지터를 더해도
+  상한을 넘길 수 없어 상한 근처에서는 몰림이 남는다. 상한은 "이보다 오래 묻지 않는다"는 약속이라 지터로 깨지 않았다
+- 실 PG 부하로는 재지 않았다. 복구 배치의 재시도 폭풍이 실제로 PG 나 DB 커넥션 풀에 부담이 됐다는 관측은 아직 없다. 같은 초로
+  겹치는 것 자체가 문제라기보다 `ResilientPgClient` 가 이미 쓰는 방어를 복구 배치에도 맞춰 둔 선제 조치다
 
 ## 버린 것
 
