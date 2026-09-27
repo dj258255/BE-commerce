@@ -37,7 +37,10 @@ final class TossErrorCodes {
             "FAILED_PAYMENT_INTERNAL_SYSTEM_PROCESSING",   // 500
             "UNKNOWN_PAYMENT_ERROR",                       // 500
             "FAILED_INTERNAL_SYSTEM_PROCESSING",
-            "FAILED_REFUND_PROCESS");                      // 취소: 은행 지연·일시 오류
+            "FAILED_REFUND_PROCESS",                       // 취소: 은행 지연·일시 오류
+            // 409. 같은 Idempotency-Key 의 최초 요청이 아직 처리 중일 때 온다(#395 재전송 도중 겹칠 수
+            // 있음). 최초 요청이 진행 중이라는 뜻이라 승인 여부를 모른다 — 미확정으로 남겨 조회로 확정한다.
+            "IDEMPOTENT_REQUEST_PROCESSING");
 
     /** 이미 승인된 결제. 실패가 아니므로 조회로 실제 상태를 확정해야 한다. */
     private static final Set<String> ALREADY_APPROVED = Set.of(

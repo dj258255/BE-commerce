@@ -46,6 +46,16 @@ public class FakePgClient implements PgClient {
     private final Map<String, PgPaymentStatus> pgSide = new ConcurrentHashMap<>();
 
     /**
+     * {@code timeout-approved-prefix}로 이미 한 번 "타임아웃, PG 측엔 승인 남김"을 응답한 결제 키(#395).
+     *
+     * <p>실 PG(토스)는 같은 {@code Idempotency-Key}로 다시 오면 최초 요청의 처리 결과를 그대로
+     * 돌려준다(재전송이 안전한 이유). 여기서도 같은 키의 두 번째 approve부터는 매번 타임아웃을
+     * 다시 주입하지 않고 PG 측에 이미 남긴 승인 결과를 돌려줘, {@code ResilientPgClient}의
+     * 재전송이 확정되는 흐름을 재현한다.
+     */
+    private final java.util.Set<String> timeoutApprovedSeen = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /**
      * 다음 approve 가 붙일 카드 지문. <b>기본은 null 이다.</b>
      *
      * <p>여기서 아무 값이나 기본으로 깔면 로컬의 모든 결제가 <b>같은 카드 한 장</b>이 된다.
@@ -79,6 +89,7 @@ public class FakePgClient implements PgClient {
         pgSideStatusOnApprove.set(PgPaymentStatus.APPROVED);
         nextCardFingerprint.set(null);
         pgSide.clear();
+        timeoutApprovedSeen.clear();
         firstInProgressAt.set(0);
         firstFailAt.set(0);
     }
@@ -180,8 +191,13 @@ public class FakePgClient implements PgClient {
             return PgApproveResult.timeout("주입: 요청이 PG 에서 사라짐(timeout-lost-prefix)");   // PG 측 기록 없음
         }
         if (key != null && !timeoutApprovedPrefix.isEmpty() && key.startsWith(timeoutApprovedPrefix)) {
-            pgSide.put(key, PgPaymentStatus.APPROVED);
-            return PgApproveResult.timeout("주입: 승인됐지만 응답을 못 받음(timeout-approved-prefix)");
+            if (timeoutApprovedSeen.add(key)) {
+                // 최초 요청 — PG 측엔 승인을 남기되 우리에겐 타임아웃으로 돌려준다.
+                pgSide.put(key, PgPaymentStatus.APPROVED);
+                return PgApproveResult.timeout("주입: 승인됐지만 응답을 못 받음(timeout-approved-prefix)");
+            }
+            // 같은 멱등키의 재요청(#395 재전송) — 실 PG라면 최초 처리 결과를 그대로 돌려준다.
+            return PgApproveResult.success("CARD");
         }
         // 우리에게 무엇을 돌려주든(성공/타임아웃), PG 측에는 지정된 상태를 남긴다.
         pgSide.put(command.paymentKey(), pgSideStatusOnApprove.get());

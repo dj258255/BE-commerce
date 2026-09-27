@@ -5,6 +5,8 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,14 +18,24 @@ class ResilientPgClientTest {
     static class FlakyPgClient implements PgClient {
         final AtomicInteger approveCalls = new AtomicInteger();
         final AtomicInteger queryCalls = new AtomicInteger();
+        final List<PgApproveCommand> receivedCommands = new CopyOnWriteArrayList<>();
         RuntimeException approveError;
+        /** 설정돼 있으면 예외 대신 이 결과를 그대로 돌려준다(승인 재전송 시나리오 재현용). */
+        PgApproveResult nextApproveResult;
+        /** 설정돼 있으면 호출 순서대로(마지막 값은 반복) 이 결과들을 돌려준다 — 최초/재전송을 각각 다르게 흉내 낼 때 쓴다. */
+        List<PgApproveResult> scriptedResults;
         int queryFailuresRemaining;
         PgPaymentStatus queryStatus = PgPaymentStatus.APPROVED;
 
         @Override
         public PgApproveResult approve(PgApproveCommand c) {
-            approveCalls.incrementAndGet();
+            int n = approveCalls.incrementAndGet();
+            receivedCommands.add(c);
             if (approveError != null) throw approveError;
+            if (scriptedResults != null && !scriptedResults.isEmpty()) {
+                return scriptedResults.get(Math.min(n - 1, scriptedResults.size() - 1));
+            }
+            if (nextApproveResult != null) return nextApproveResult;
             return PgApproveResult.success("CARD");
         }
 
@@ -55,16 +67,204 @@ class ResilientPgClientTest {
         assertThat(result.outcome()).isEqualTo(PgOutcome.TIMEOUT);
     }
 
+    // --- 승인 타임아웃 재전송(#395) ---
+    // TossPgClient 는 주문번호를 Idempotency-Key 로 싣고 있어(토스 문서), 승인 타임아웃 뒤
+    // 같은 커맨드로 다시 보내도 이중결제가 나지 않는다. 그래서 재전송(기본 1회)을 한다.
+
     @Test
-    @DisplayName("승인은 재시도하지 않는다 — 멱등키 없는 재시도는 이중결제 위험")
-    void approveIsNotRetried() {
+    @DisplayName("타임아웃 뒤 재전송이 성공하면 그 결과로 확정한다 — UNKNOWN 이 아니다(#395)")
+    void resendAfterTimeoutConfirmsSuccess() {
         FlakyPgClient flaky = new FlakyPgClient();
-        flaky.approveError = new RuntimeException("PG 오류");
+        flaky.scriptedResults = List.of(
+                PgApproveResult.timeout("최초 타임아웃"),
+                PgApproveResult.success("CARD"));
+        var registry = new SimpleMeterRegistry();
+        ResilientPgClient client = new ResilientPgClient(flaky, 0, registry); // 재전송 기본 1회
+
+        PgApproveResult result = client.approve(new PgApproveCommand("pk", "order-1", 10_000));
+
+        assertThat(result.outcome()).isEqualTo(PgOutcome.SUCCESS);
+        assertThat(flaky.approveCalls.get()).isEqualTo(2); // 최초 + 재전송 1회
+        assertThat(registry.counter("payment.pg.approval.unknown").count()).isZero(); // 확정됐으니 UNKNOWN 으로 안 남는다
+        assertThat(registry.counter("payment.pg.approval.resent").count()).isEqualTo(1);
+        assertThat(registry.counter("payment.pg.approval.resent.succeeded").count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("재전송이 같은 멱등키(주문번호·결제키)를 쓴다 — 다른 결제로 둔갑하지 않는다(#395)")
+    void resendUsesSameIdempotencyKey() {
+        FlakyPgClient flaky = new FlakyPgClient();
+        flaky.scriptedResults = List.of(
+                PgApproveResult.timeout("최초 타임아웃"),
+                PgApproveResult.success("CARD"));
         ResilientPgClient client = new ResilientPgClient(flaky);
 
-        client.approve(new PgApproveCommand("pk", "order-1", 10_000));
+        client.approve(new PgApproveCommand("pk-idem", "order-idem", 10_000));
 
-        assertThat(flaky.approveCalls.get()).isEqualTo(1); // 딱 한 번만 호출
+        assertThat(flaky.receivedCommands).hasSize(2);
+        assertThat(flaky.receivedCommands.get(0).orderNo()).isEqualTo("order-idem");
+        assertThat(flaky.receivedCommands.get(0).paymentKey()).isEqualTo("pk-idem");
+        assertThat(flaky.receivedCommands.get(1)).isEqualTo(flaky.receivedCommands.get(0));
+    }
+
+    @Test
+    @DisplayName("재전송도 타임아웃이면 여전히 UNKNOWN 이고, 설정된 최대 횟수(기본 1회)만 보낸다(#395)")
+    void resendAlsoTimingOutStaysUnknown() {
+        FlakyPgClient flaky = new FlakyPgClient();
+        flaky.nextApproveResult = PgApproveResult.timeout("계속 타임아웃");
+        var registry = new SimpleMeterRegistry();
+        ResilientPgClient client = new ResilientPgClient(flaky, 0, registry);
+
+        PgApproveResult result = client.approve(new PgApproveCommand("pk", "order-1", 10_000));
+
+        assertThat(result.outcome()).isEqualTo(PgOutcome.TIMEOUT);
+        assertThat(flaky.approveCalls.get()).isEqualTo(2); // 최초 + 재전송 1회, 그 이상은 보내지 않는다
+        assertThat(registry.counter("payment.pg.approval.unknown").count()).isEqualTo(1); // 최종 1건만 센다(시도마다 세지 않는다)
+        assertThat(registry.counter("payment.pg.approval.resent").count()).isEqualTo(1);
+        assertThat(registry.counter("payment.pg.approval.resent.succeeded").count()).isZero();
+    }
+
+    @Test
+    @DisplayName("PG 가 처리 중(토스 409 IDEMPOTENT_REQUEST_PROCESSING류)이라고 답해도 미확정으로 남는다(#395)")
+    void resendHittingInProgressResponseStaysUnknown() {
+        // TossErrorCodes 는 이 코드를 RETRYABLE 로 분류해 TossPgClient 가 예외로 던지고,
+        // ResilientPgClient 는 그 예외를 실패로 단정하지 않고 미확정으로 옮긴다 — 여기서는
+        // 그 경계를 FlakyPgClient 의 예외로 흉내 낸다(토스 응답 매핑 자체는 TossErrorCodesTest 가 검증).
+        FlakyPgClient flaky = new FlakyPgClient();
+        flaky.approveError = new RuntimeException("409 IDEMPOTENT_REQUEST_PROCESSING: 처리 중");
+        var registry = new SimpleMeterRegistry();
+        ResilientPgClient client = new ResilientPgClient(flaky, 0, registry);
+
+        PgApproveResult result = client.approve(new PgApproveCommand("pk", "order-1", 10_000));
+
+        assertThat(result.outcome()).isEqualTo(PgOutcome.TIMEOUT);
+        assertThat(flaky.approveCalls.get()).isEqualTo(2);
+        assertThat(registry.counter("payment.pg.approval.unknown").count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("명시적 거절은 재전송하지 않는다 — 다시 보내도 같은 답이 온다(#395)")
+    void explicitDeclineIsNotResent() {
+        FlakyPgClient flaky = new FlakyPgClient();
+        flaky.nextApproveResult = PgApproveResult.failed("카드사 거절");
+        var registry = new SimpleMeterRegistry();
+        ResilientPgClient client = new ResilientPgClient(flaky, 0, registry);
+
+        PgApproveResult result = client.approve(new PgApproveCommand("pk", "order-1", 10_000));
+
+        assertThat(result.outcome()).isEqualTo(PgOutcome.FAILED);
+        assertThat(flaky.approveCalls.get()).isEqualTo(1); // 재전송 없음
+        assertThat(registry.counter("payment.pg.approval.resent").count()).isZero();
+    }
+
+    @Test
+    @DisplayName("재전송도 동시 호출 상한을 그대로 거친다 — 상한이 꽉 차 있으면 재전송하지 않고 UNKNOWN 을 유지한다(#395)")
+    void resendSkippedWhenConcurrencyLimitIsFull() throws Exception {
+        var clientRef = new java.util.concurrent.atomic.AtomicReference<ResilientPgClient>();
+        var occupierReady = new java.util.concurrent.CountDownLatch(1);
+        var releaseOccupier = new java.util.concurrent.CountDownLatch(1);
+        var delegateCalls = new AtomicInteger();
+
+        PgClient delegate = new PgClient() {
+            @Override
+            public PgApproveResult approve(PgApproveCommand c) {
+                int n = delegateCalls.incrementAndGet();
+                if (n != 1) {
+                    throw new IllegalStateException("재전송이 상한을 뚫고 PG 까지 닿았다 — 있으면 안 된다");
+                }
+                // 첫 시도가 permit 을 반납하는 순간, 경쟁 스레드가 상한(1)의 유일한 자리를 채우도록
+                // 미리 대기시켜 둔다. Semaphore.acquire() 는 반납 즉시 깨어나므로 재전송의 지터
+                // (수십 ms)보다 훨씬 먼저 자리를 잡는다.
+                new Thread(() -> {
+                    try {
+                        occupierReady.countDown();
+                        clientRef.get().concurrencyLimit().acquire();
+                        releaseOccupier.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        clientRef.get().concurrencyLimit().release();
+                    }
+                }).start();
+                try {
+                    occupierReady.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return PgApproveResult.timeout("최초 타임아웃");
+            }
+
+            @Override
+            public PgCancelResult cancel(PgCancelCommand c) {
+                return new PgCancelResult("tx");
+            }
+
+            @Override
+            public PgQueryResult query(String k) {
+                return new PgQueryResult(PgPaymentStatus.APPROVED, "CARD");
+            }
+        };
+
+        ResilientPgClient client = new ResilientPgClient(delegate, 1); // 상한 1
+        clientRef.set(client);
+
+        PgApproveResult result = client.approve(new PgApproveCommand("pk", "order-1", 10_000));
+        releaseOccupier.countDown();
+
+        assertThat(result.outcome()).isEqualTo(PgOutcome.TIMEOUT);
+        assertThat(delegateCalls.get()).isEqualTo(1); // 재전송이 델리게이트까지 닿지 않았다
+    }
+
+    @Test
+    @DisplayName("재전송 시점에 서킷이 열려 있으면 재전송하지 않고 UNKNOWN 을 유지한다(#395)")
+    void resendSkippedWhenCircuitOpensBetweenAttempts() {
+        var clientRef = new java.util.concurrent.atomic.AtomicReference<ResilientPgClient>();
+        var delegateCalls = new AtomicInteger();
+        PgClient delegate = new PgClient() {
+            @Override
+            public PgApproveResult approve(PgApproveCommand c) {
+                int n = delegateCalls.incrementAndGet();
+                if (n == 1) {
+                    // 최초 시도와 재전송 사이에 다른 요청들 때문에 서킷이 열렸다고 가정하고 직접 재현한다.
+                    clientRef.get().approveCircuit().transitionToOpenState();
+                    return PgApproveResult.timeout("최초 타임아웃");
+                }
+                throw new IllegalStateException("재전송이 열린 서킷을 뚫고 PG 까지 닿았다 — 있으면 안 된다");
+            }
+
+            @Override
+            public PgCancelResult cancel(PgCancelCommand c) {
+                return new PgCancelResult("tx");
+            }
+
+            @Override
+            public PgQueryResult query(String k) {
+                return new PgQueryResult(PgPaymentStatus.APPROVED, "CARD");
+            }
+        };
+        ResilientPgClient client = new ResilientPgClient(delegate); // 상한 없음
+        clientRef.set(client);
+
+        PgApproveResult result = client.approve(new PgApproveCommand("pk", "order-1", 10_000));
+
+        assertThat(result.outcome()).isEqualTo(PgOutcome.TIMEOUT);
+        assertThat(delegateCalls.get()).isEqualTo(1); // 재전송이 델리게이트까지 닿지 않았다
+        assertThat(client.approveCircuit().getState()).isEqualTo(CircuitBreaker.State.OPEN);
+    }
+
+    @Test
+    @DisplayName("재전송 횟수를 0으로 두면 이전 동작 그대로다 — 타임아웃을 즉시 UNKNOWN으로 돌린다(#395)")
+    void zeroResendAttemptsKeepsOldBehavior() {
+        FlakyPgClient flaky = new FlakyPgClient();
+        flaky.nextApproveResult = PgApproveResult.timeout("타임아웃");
+        var registry = new SimpleMeterRegistry();
+        ResilientPgClient client = new ResilientPgClient(flaky, 0, registry, 3, 0);
+
+        PgApproveResult result = client.approve(new PgApproveCommand("pk", "order-1", 10_000));
+
+        assertThat(result.outcome()).isEqualTo(PgOutcome.TIMEOUT);
+        assertThat(flaky.approveCalls.get()).isEqualTo(1);
+        assertThat(registry.counter("payment.pg.approval.resent").count()).isZero();
     }
 
     @Test
@@ -295,16 +495,35 @@ class ResilientPgClientTest {
         flaky.approveError = new RuntimeException("PG 다운");
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
         ResilientPgClient client = new ResilientPgClient(flaky, 0, registry);
-        for (int i = 0; i < 3; i++) {   // 최소 3건이 모두 실패하면 열린다
+        // 서킷이 열릴 때까지 실패를 흘린다. 최소 3건이면 열리지만, 재전송(#395)이 있어 호출당
+        // 델리게이트 호출 수가 고정이 아니므로 반복 횟수는 고정하지 않고 상태로 멈춘다.
+        for (int i = 0; i < 10 && client.approveCircuit().getState() != CircuitBreaker.State.OPEN; i++) {
             client.approve(new PgApproveCommand("pk" + i, "order", 10_000));
         }
-        int reached = flaky.approveCalls.get();
         assertThat(client.approveCircuit().getState()).isEqualTo(CircuitBreaker.State.OPEN);
+        int callsWhenOpened = flaky.approveCalls.get();
+        double rejectedBeforeExtraCall = registry.counter("payment.pg.approval.rejected", "reason", "circuit_open").count();
 
         client.approve(new PgApproveCommand("pk-open", "order", 10_000));
 
-        assertThat(flaky.approveCalls.get()).isEqualTo(reached);
-        assertThat(registry.counter("payment.pg.approval.rejected", "reason", "circuit_open").count()).isEqualTo(1);
-        assertThat(registry.counter("payment.pg.approval.unknown").count()).isEqualTo(reached);
+        // 서킷이 열린 뒤에는 델리게이트에 더 닿지 않고, 그 한 번의 거절만큼만 지표가 는다.
+        assertThat(flaky.approveCalls.get()).isEqualTo(callsWhenOpened);
+        assertThat(registry.counter("payment.pg.approval.rejected", "reason", "circuit_open").count())
+                .isEqualTo(rejectedBeforeExtraCall + 1);
+    }
+
+    @Test
+    @DisplayName("FakePgClient 로 실 PG 흐름을 재현해도 재전송이 이중 결제를 만들지 않는다(#395)")
+    void resendAgainstFakePgClientDoesNotDoublePay() {
+        FakePgClient fake = new FakePgClient();
+        fake.setTimeoutApprovedPrefix("to-");
+        ResilientPgClient client = new ResilientPgClient(fake);
+
+        PgApproveResult result = client.approve(new PgApproveCommand("to-1", "order-1", 10_000));
+
+        // 최초 시도는 타임아웃, 재전송이 PG 측에 이미 남아 있던 승인 결과를 그대로 받아 확정한다.
+        assertThat(result.outcome()).isEqualTo(PgOutcome.SUCCESS);
+        // PG 측에 남은 결제는 여전히 하나뿐이다 — 재전송이 새 승인을 또 만들지 않았다.
+        assertThat(fake.query("to-1").status()).isEqualTo(PgPaymentStatus.APPROVED);
     }
 }
