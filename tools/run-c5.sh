@@ -30,8 +30,9 @@ variant() {  # 이름, 추가 인자
   note "평가 $name 끝"
 }
 
-variant m0 &&
-variant m1 --repeat-order recency &&
-variant m2 --repeat-order recency --candidates 200,20 --similar 5,20 &&
-variant m3 --repeat-order recency --candidates 200,20 --similar 5,20 --repeat-gate
+want() { case " ${VARIANTS:-m0 m1 m2 m3} " in *" $1 "*) return 0;; *) return 1;; esac; }
+{ ! want m0 || variant m0; } &&
+{ ! want m1 || variant m1 --repeat-order recency; } &&
+{ ! want m2 || variant m2 --repeat-order recency --candidates 200,20 --similar 5,20; } &&
+{ ! want m3 || variant m3 --repeat-order recency --candidates 200,20 --similar 5,20 --repeat-gate; }
 note "끝"
