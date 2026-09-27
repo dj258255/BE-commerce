@@ -70,13 +70,27 @@ public class PaymentService {
      * 내부 PG 타입은 모듈 노출용 {@link ApprovalOutcome}로 매핑해 돌려준다(order가 불투명하게 전달).
      */
     public ApprovalOutcome pgApprove(String orderNo, String paymentKey, Money amount) {
-        return pgApprove(orderNo, paymentKey, amount, 0);
+        return pgApprove(orderNo, paymentKey, amount, 0, null);
     }
 
     /** 할부 개월을 함께 보내는 형태. 0이면 일시불이다. */
     public ApprovalOutcome pgApprove(String orderNo, String paymentKey, Money amount, int installmentMonths) {
+        return pgApprove(orderNo, paymentKey, amount, installmentMonths, null);
+    }
+
+    /**
+     * 결제 시도 id({@code paymentId})를 함께 받는 형태. PG {@code Idempotency-Key}를 시도마다 다르게
+     * 만드는 데 쓴다(#402): {@link #beginApproval}이 시도마다 새 {@link Payment}를 만들고 id를 돌려주므로,
+     * 그 id를 orderNo와 묶어 키로 쓴다. 토스 멱등키는 15일 유효하고 같은 키로 다시 요청하면 첫 응답을
+     * 그대로 돌려주는데(토스 문서, using-api/idempotency-key), 주문번호만 키로 쓰면 거절 뒤 같은
+     * 주문으로 재시도했을 때 이전 거절 응답이 그대로 돌아올 위험이 있다. {@code paymentId}가 없으면
+     * (null) 주문번호만 키로 쓴다(옛 동작, 호출부가 시도 id를 아직 안 넘기는 경로용).
+     */
+    public ApprovalOutcome pgApprove(String orderNo, String paymentKey, Money amount, int installmentMonths,
+                                      Long paymentId) {
+        String idempotencyKey = paymentId != null ? orderNo + ":" + paymentId : orderNo;
         PgApproveResult result = pgClient.approve(
-                new PgApproveCommand(paymentKey, orderNo, amount.minorUnit(), installmentMonths));
+                new PgApproveCommand(paymentKey, orderNo, amount.minorUnit(), installmentMonths, idempotencyKey));
         // 관측성: 승인 결과를 결과별로 계측한다. Grafana의 "결제 성공률" 패널의 소스.
         meterRegistry.counter("payment.confirm", "outcome", result.outcome().name().toLowerCase())
                 .increment();
