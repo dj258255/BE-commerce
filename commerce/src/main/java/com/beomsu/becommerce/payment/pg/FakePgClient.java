@@ -151,6 +151,7 @@ public class FakePgClient implements PgClient {
     @Autowired(required = false)
     void registerMetrics(MeterRegistry registry) {
         FunctionCounter.builder("fake.pg.query.calls", queryCalls, AtomicLong::get).register(registry);
+        FunctionCounter.builder("fake.pg.approve.calls", approveCalls, AtomicLong::get).register(registry);
         Gauge.builder("fake.pg.query.in.progress.first.epoch.ms", firstInProgressAt, AtomicLong::get).register(registry);
         Gauge.builder("fake.pg.query.fail.first.epoch.ms", firstFailAt, AtomicLong::get).register(registry);
     }
@@ -174,6 +175,19 @@ public class FakePgClient implements PgClient {
     /** 결제 키가 이 접두어로 시작하면 타임아웃을 돌려주고 PG 측에는 아무것도 남기지 않는다(요청이 PG 에서 사라짐, #374). */
     private volatile String timeoutLostPrefix = "";
 
+    /**
+     * 0 보다 크면 <b>모든</b> 승인 요청이 이 확률로 독립적으로 PG 에서 완전히 사라진다(#398).
+     *
+     * <p>{@link #timeoutLostPrefix}는 특정 키 접두어에만 걸려 k6 가 무작위로 만드는 {@code paymentKey}
+     * (예: {@code brownout-<uuid>})로는 "PG 가 일부 응답만 잃는다"를 재현할 수 없다. 이 확률은 접두어와
+     * 무관하게 approve 호출마다(재전송 포함) 새로 뽑는다 — 재전송(#395)이 손실을 흡수하는지 재는 축이다.
+     * {@code query-fail-rate}와 같은 스타일이고, PG 측 기록을 남기지 않는 점은 {@link #timeoutLostPrefix}와 같다.
+     */
+    private volatile double approveTimeoutLostRate = 0;
+
+    /** 이 가짜 PG 까지 approve 가 실제로 닿은 횟수(#398). 재전송이 PG 승인 호출을 몇 배로 늘리는지 본다. */
+    private final AtomicLong approveCalls = new AtomicLong();
+
     @Value("${payment.fake-pg.timeout-approved-prefix:}")
     public void setTimeoutApprovedPrefix(String prefix) {
         timeoutApprovedPrefix = prefix == null ? "" : prefix;
@@ -184,8 +198,18 @@ public class FakePgClient implements PgClient {
         timeoutLostPrefix = prefix == null ? "" : prefix;
     }
 
+    @Value("${payment.fake-pg.approve-timeout-lost-rate:0}")
+    public void setApproveTimeoutLostRate(double rate) {
+        approveTimeoutLostRate = rate;
+    }
+
     @Override
     public PgApproveResult approve(PgApproveCommand command) {
+        approveCalls.incrementAndGet();
+        if (approveTimeoutLostRate > 0
+                && java.util.concurrent.ThreadLocalRandom.current().nextDouble() < approveTimeoutLostRate) {
+            return PgApproveResult.timeout("주입: 요청이 PG 에서 사라짐(approve-timeout-lost-rate)");  // PG 측 기록 없음
+        }
         String key = command.paymentKey();
         if (key != null && !timeoutLostPrefix.isEmpty() && key.startsWith(timeoutLostPrefix)) {
             return PgApproveResult.timeout("주입: 요청이 PG 에서 사라짐(timeout-lost-prefix)");   // PG 측 기록 없음
