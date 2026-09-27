@@ -79,6 +79,58 @@ class PaymentServiceTest {
     }
 
     @Test
+    @DisplayName("pgApprove(paymentId 포함): Idempotency-Key를 orderNo와 paymentId로 만든다(#402)")
+    void pgApproveBuildsPerAttemptIdempotencyKey() {
+        PgClient mockPg = mock(PgClient.class);
+        when(mockPg.approve(any())).thenReturn(PgApproveResult.success("CARD"));
+        PaymentService svc = new PaymentService(repository, mockPg,
+                new PaymentCancelTx(repository, events), events, meterRegistry);
+        ArgumentCaptor<com.beomsu.becommerce.payment.pg.PgApproveCommand> captor =
+                ArgumentCaptor.forClass(com.beomsu.becommerce.payment.pg.PgApproveCommand.class);
+
+        svc.pgApprove("order-1", "pk-1", Money.krw(10_000), 0, 42L);
+
+        verify(mockPg).approve(captor.capture());
+        assertThat(captor.getValue().idempotencyKey()).isEqualTo("order-1:42");
+    }
+
+    @Test
+    @DisplayName("거절 뒤 재시도(다른 paymentId)는 다른 Idempotency-Key다 — 이전 응답을 받지 않는다(#402)")
+    void retryWithDifferentPaymentIdUsesDifferentKey() {
+        PgClient mockPg = mock(PgClient.class);
+        when(mockPg.approve(any())).thenReturn(PgApproveResult.failed("카드 거절"));
+        PaymentService svc = new PaymentService(repository, mockPg,
+                new PaymentCancelTx(repository, events), events, meterRegistry);
+        ArgumentCaptor<com.beomsu.becommerce.payment.pg.PgApproveCommand> captor =
+                ArgumentCaptor.forClass(com.beomsu.becommerce.payment.pg.PgApproveCommand.class);
+
+        svc.pgApprove("order-1", "pk-1", Money.krw(10_000), 0, 1L);   // 1차 시도(거절)
+        svc.pgApprove("order-1", "pk-2", Money.krw(10_000), 0, 2L);   // 같은 주문, 새 시도(paymentId 2)
+
+        verify(mockPg, times(2)).approve(captor.capture());
+        var commands = captor.getAllValues();
+        assertThat(commands.get(0).idempotencyKey()).isEqualTo("order-1:1");
+        assertThat(commands.get(1).idempotencyKey()).isEqualTo("order-1:2");
+        assertThat(commands.get(0).idempotencyKey()).isNotEqualTo(commands.get(1).idempotencyKey());
+    }
+
+    @Test
+    @DisplayName("paymentId 없이 부르면(옛 호출부) 주문번호만 키로 쓴다")
+    void withoutPaymentIdFallsBackToOrderNoKey() {
+        PgClient mockPg = mock(PgClient.class);
+        when(mockPg.approve(any())).thenReturn(PgApproveResult.success("CARD"));
+        PaymentService svc = new PaymentService(repository, mockPg,
+                new PaymentCancelTx(repository, events), events, meterRegistry);
+        ArgumentCaptor<com.beomsu.becommerce.payment.pg.PgApproveCommand> captor =
+                ArgumentCaptor.forClass(com.beomsu.becommerce.payment.pg.PgApproveCommand.class);
+
+        svc.pgApprove("order-9", "pk-9", Money.krw(1_000));
+
+        verify(mockPg).approve(captor.capture());
+        assertThat(captor.getValue().idempotencyKey()).isEqualTo("order-9");
+    }
+
+    @Test
     @DisplayName("applyResult(Phase 3) 성공: DONE + PaymentConfirmedEvent 발행 + saveAndFlush")
     void applyResultSuccessMarksDoneAndPublishes() {
         Payment p = inProgress("order-1", "pk-1", 10_000, 1L);

@@ -96,7 +96,7 @@ class CheckoutServiceTest {
     /** 카드 승인 성공 경로 스텁 — beginApproval→id, pgApprove→SUCCESS, applyResult→DONE. */
     private void cardApproved() {
         when(paymentService.beginApproval(anyString(), anyString(), any(Money.class), anyInt())).thenReturn(123L);
-        when(paymentService.pgApprove(anyString(), anyString(), any(Money.class), anyInt()))
+        when(paymentService.pgApprove(anyString(), anyString(), any(Money.class), anyInt(), eq(123L)))
                 .thenReturn(new ApprovalOutcome(ApprovalOutcome.Result.SUCCESS, "CARD", null));
         when(paymentService.applyResult(anyLong(), any(ApprovalOutcome.class))).thenReturn(approved());
     }
@@ -109,7 +109,7 @@ class CheckoutServiceTest {
             default -> ApprovalOutcome.Result.FAILED;
         };
         when(paymentService.beginApproval(anyString(), anyString(), any(Money.class), anyInt())).thenReturn(123L);
-        when(paymentService.pgApprove(anyString(), anyString(), any(Money.class), anyInt()))
+        when(paymentService.pgApprove(anyString(), anyString(), any(Money.class), anyInt(), eq(123L)))
                 .thenReturn(new ApprovalOutcome(pg, null, msg));
         when(paymentService.applyResult(anyLong(), any(ApprovalOutcome.class)))
                 .thenReturn(new ConfirmResult(123L, finalStatus, null, msg));
@@ -144,7 +144,7 @@ class CheckoutServiceTest {
 
         // 예약(beginApproval) → PG(pgApprove, tx 밖) → 확정(applyResult) 순으로 배선됨.
         verify(paymentService).beginApproval(eq(order.getOrderNo()), eq("pk-1"), eq(Money.krw(20_000)), eq(0));
-        verify(paymentService).pgApprove(eq(order.getOrderNo()), eq("pk-1"), eq(Money.krw(20_000)), eq(0));
+        verify(paymentService).pgApprove(eq(order.getOrderNo()), eq("pk-1"), eq(Money.krw(20_000)), eq(0), eq(123L));
         verify(paymentService).applyResult(eq(123L), any(ApprovalOutcome.class));
     }
 
@@ -281,7 +281,7 @@ class CheckoutServiceTest {
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
         verify(pointService).use(1L, 6_000, order.getOrderNo());          // 포인트 선점(카드보다 먼저)
-        verify(paymentService).pgApprove(eq(order.getOrderNo()), eq("pk-1"), eq(Money.krw(14_000)), eq(0));
+        verify(paymentService).pgApprove(eq(order.getOrderNo()), eq("pk-1"), eq(Money.krw(14_000)), eq(0), eq(123L));
         verify(stockDeductionService).tryDeduct(100L, 2);
         verify(pointService, never()).restore(anyLong(), anyLong(), anyString());
         // 적립은 실결제액(카드 14,000, 포인트 사용분 제외)의 1% = 140
@@ -330,7 +330,7 @@ class CheckoutServiceTest {
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
         verify(walletService).use(1L, 6_000, order.getOrderNo());              // 월렛 선점(예약)
-        verify(paymentService).pgApprove(eq(order.getOrderNo()), eq("pk-1"), eq(Money.krw(14_000)), eq(0));
+        verify(paymentService).pgApprove(eq(order.getOrderNo()), eq("pk-1"), eq(Money.krw(14_000)), eq(0), eq(123L));
         verify(walletService, never()).restore(anyLong(), anyLong(), anyString());
         // 적립은 실결제액(카드 14,000 + 월렛 6,000 = 20,000)의 1% = 200
         verify(pointService).earn(1L, 200, order.getOrderNo());

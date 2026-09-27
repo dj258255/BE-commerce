@@ -157,7 +157,7 @@ public class CheckoutService {
         // Phase 2 (tx 밖) — PG 승인: 외부 HTTP 콜을 트랜잭션 밖에서 한다. 이 동안 DB 커넥션 0개 점유
         // → 느린 PG가 커넥션 풀을 마르게 하지 않는다(ADR-007). 카드 몫이 0이면(포인트+월렛 전액) PG 콜을 생략한다.
         ApprovalOutcome outcome = (cardAmount.minorUnit() > 0)
-                ? paymentService.pgApprove(orderNo, paymentKey, cardAmount, installmentMonths)
+                ? paymentService.pgApprove(orderNo, paymentKey, cardAmount, installmentMonths, reservation.paymentId())
                 : null;
 
         // Phase 3 (tx) — 확정/보상: PG 결과를 결제·주문에 반영하고 재고 차감/보상까지 마친다.
