@@ -119,13 +119,19 @@ class PageDecoder:
         for layer in range(len(caches[0]["layers"])):
             keys = [cache["layers"][layer][0] for cache in caches]
             values = [cache["layers"][layer][1] for cache in caches]
-            width = max(key.shape[2] for key in keys)
+            # Trim every row to its real length before pooling into a rectangle.
+            # A right-padded row may carry tokens beyond its length from an
+            # earlier, wider batch; leaving them in a merged cache makes it
+            # wider than the real lengths, which ``forward_cached`` rejects when
+            # it sizes the new cache by the batch's true lengths.
+            lengths = [int(cache["lengths"][0]) for cache in caches]
+            width = max(lengths)
             shape = (len(keys), keys[0].shape[1], width, keys[0].shape[3])
             merged_key = torch.zeros(shape, dtype=keys[0].dtype, device=self.device)
             merged_value = torch.zeros_like(merged_key)
-            for row, (key, value) in enumerate(zip(keys, values, strict=True)):
-                merged_key[row, :, :key.shape[2]] = key[0]
-                merged_value[row, :, :value.shape[2]] = value[0]
+            for row, (key, value, length) in enumerate(zip(keys, values, lengths, strict=True)):
+                merged_key[row, :, :length] = key[0, :, :length]
+                merged_value[row, :, :length] = value[0, :, :length]
             layers.append((merged_key, merged_value))
         return {"layers": layers,
                 "lengths": torch.cat([cache["lengths"] for cache in caches]).to(self.device)}
@@ -167,7 +173,18 @@ class PageDecoder:
                 next_caches = None
             else:
                 prepared = sequences
-                next_caches = self._merge_caches([cache for cache in caches if cache is not None])
+                chunks = [cache for cache in caches if cache is not None]
+                widths = [len(tokens) for tokens, _ in prepared]
+                previous = [int(cache["lengths"][0]) for cache in chunks]
+                span = max(previous[index] + widths[index] for index in range(len(prepared)))
+                if any(previous[index] + max(widths) > span for index in range(len(prepared))):
+                    # ``forward_cached`` writes each row's full (right-padded)
+                    # width into a cache sized by the batch's real lengths, so a
+                    # single ragged call can overrun a row whose cache is longer.
+                    # ``_append_ragged`` falls back to one call per append width,
+                    # which is always safe.
+                    return self._append_ragged(prepared, chunks)
+                next_caches = self._merge_caches(chunks)
             width = max(len(tokens) for tokens, _ in prepared)
             x = torch.zeros((len(prepared), width), dtype=torch.long, device=self.device)
             ci = torch.full((len(prepared), width), -1, dtype=torch.long, device=self.device)
@@ -201,6 +218,29 @@ class PageDecoder:
             last_hidden = hidden[batch_index, torch.tensor(lengths, device=self.device)].unsqueeze(1)
             logits = self.model.logits(last_hidden)
         return [logits[index, 0].detach() for index in range(len(lengths))], [None] * len(lengths)
+
+    def _append_ragged(self, sequences: list[tuple[list[int], list[int]]],
+                       caches: list[dict[str, Any]]
+                       ) -> tuple[list[torch.Tensor], list[dict[str, Any]]]:
+        """Append ragged cache suffixes one equal-width group at a time.
+
+        A single ``forward_cached`` call over rows with different cache lengths
+        and different append widths writes each row's full (right-padded) width
+        into a cache sized by the batch's real lengths, which can overrun a row
+        whose cache is longer.  Rows that append the same number of tokens never
+        overrun, so grouping by that width keeps one batched call per width and
+        leaves no padding inside any cache.
+        """
+        logits: list[torch.Tensor | None] = [None] * len(sequences)
+        updated: list[dict[str, Any] | None] = [None] * len(sequences)
+        for size in sorted({len(tokens) for tokens, _ in sequences}):
+            rows = [index for index, (tokens, _) in enumerate(sequences) if len(tokens) == size]
+            chunk = [(list(sequences[index][0]), list(sequences[index][1])) for index in rows]
+            chunk_logits, chunk_caches = self._next_logits_batch(
+                chunk, [caches[index] for index in rows], use_cache=True)
+            for index, value, cache in zip(rows, chunk_logits, chunk_caches, strict=True):
+                logits[index], updated[index] = value, cache
+        return logits, updated  # type: ignore[return-value]
 
     @staticmethod
     def _choose(logits: torch.Tensor, allowed: Iterable[int] | torch.Tensor, temperature: float,
@@ -309,9 +349,16 @@ class PageDecoder:
                  exclude_items: set[str] = frozenset(), exclude_rows: set[int] = frozenset(),
                  pinned: dict[int, int] | None = None, n_rows: int = 3,
                  allowed_items: set[str] | None = None,
+                 pinned_items: dict[int, list[str]] | None = None,
                  items_per_row: int = 8, prefix: int = 2, temperature: float = 0.0,
                  generator: torch.Generator | None = None, use_cache: bool = True) -> tuple[list[GeneratedRow], int]:
-        """Generate up to ``n_rows`` rows and return them with violation count."""
+        """Generate up to ``n_rows`` rows and return them with violation count.
+
+        ``pinned_items`` optionally starts a row position with caller-supplied
+        articles in the given order (for example the customer's recent purchases
+        in a pinned repeat row).  Anything left over is filled by the model from
+        the row's allowed items, so ``None`` keeps the previous behaviour.
+        """
         if len(ctx_tokens) != len(ctx_content):
             raise ValueError("ctx_tokens 와 ctx_content 길이는 같아야 합니다")
         if items_per_row < 1 or n_rows < 1:
@@ -364,8 +411,27 @@ class PageDecoder:
             allowed = self._items_for_row(row_token, history_articles, used, allowed_items).clone()
             chosen: list[int] = []
 
+            # A pinned row may start with an explicit, caller-supplied prefix.
+            # Invalid, duplicate or row-ineligible articles are skipped so the
+            # rule bookkeeping still sees only legal tokens.
+            for article in (pinned_items or {}).get(row_pos, ()):
+                if len(chosen) >= items_per_row:
+                    break
+                token = self._item_of_article.get(article)
+                if token is None or bool(used[token]) or not bool((allowed == token).any()):
+                    continue
+                chosen.append(token)
+                allowed = allowed[allowed != token]
+                self._mark_used(used, used_per_row, token)
+                tokens.append(token)
+                content.append(self._content_for(token))
+                if use_cache:
+                    next_logits, cache = self._next_logits([token], [self._content_for(token)], cache, use_cache=True)
+                else:
+                    next_logits, cache = self._next_logits(tokens, content, use_cache=False)
+
             # Prefix tokens each affect the distribution for their successor.
-            for _ in range(min(prefix, items_per_row, len(allowed))):
+            for _ in range(min(prefix, items_per_row - len(chosen), len(allowed))):
                 token = self._choose(next_logits, allowed, temperature, generator)[0]
                 chosen.append(token)
                 allowed = allowed[allowed != token]
@@ -480,10 +546,48 @@ class PageDecoder:
             for state, logits, cache in zip(active, step_logits, step_new_caches, strict=True):
                 state["logits"], state["cache"] = logits, cache
 
-            max_prefix = max(min(int(s["args"].get("prefix", 2)), int(s["args"].get("items_per_row", 8))) for s in active)
+            # Explicit pinned prefix (per example, per row) goes before the model
+            # prefix; the rest of the row still comes from the model.
+            placed_states: list[tuple[dict[str, Any], list[int]]] = []
+            for state in active:
+                items = (state["args"].get("pinned_items") or {}).get(row_pos) or []
+                placed: list[int] = []
+                for article in items:
+                    if len(state["chosen"]) >= int(state["args"].get("items_per_row", 8)):
+                        break
+                    token = self._item_of_article.get(article)
+                    if token is None or bool(state["used"][token]) or not bool((state["allowed"] == token).any()):
+                        continue
+                    state["allowed"] = state["allowed"][state["allowed"] != token]
+                    state["chosen"].append(token)
+                    placed.append(token)
+                    self._mark_used(state["used"], state["used_per_row"], token)
+                    state["tokens"].append(token)
+                    state["content"].append(self._content_for(token))
+                if placed:
+                    placed_states.append((state, placed))
+            if placed_states:
+                if active[0]["use_cache"]:
+                    append_sequences = [([*placed], [self._content_for(token) for token in placed])
+                                        for _, placed in placed_states]
+                    append_logits, append_caches = self._next_logits_batch(
+                        append_sequences, [state["cache"] for state, _ in placed_states], use_cache=True)
+                    for (state, _), logits, cache in zip(placed_states, append_logits, append_caches, strict=True):
+                        state["logits"], state["cache"] = logits, cache
+                else:
+                    for state, _ in placed_states:
+                        state["logits"], state["cache"] = self._next_logits(
+                            state["tokens"], state["content"], use_cache=False)
+
+            # The model prefix fills positions left by a pinned prefix, so its
+            # cap is the row's remaining room, matching the single-page path.
+            for state in active:
+                items_per_row = int(state["args"].get("items_per_row", 8))
+                state["prefix_limit"] = min(len(state["chosen"]) + int(state["args"].get("prefix", 2)),
+                                            items_per_row)
+            max_prefix = max(state["prefix_limit"] - len(state["chosen"]) for state in active)
             for _ in range(max_prefix):
-                prefix_active = [s for s in active if s["allowed"].numel() and len(s["chosen"]) < min(
-                    int(s["args"].get("prefix", 2)), int(s["args"].get("items_per_row", 8)))]
+                prefix_active = [s for s in active if s["allowed"].numel() and len(s["chosen"]) < s["prefix_limit"]]
                 if not prefix_active:
                     break
                 for state in prefix_active:
@@ -511,21 +615,23 @@ class PageDecoder:
                     args = state["args"]
                     count = min(int(args.get("items_per_row", 8)) - len(state["chosen"]), int(state["allowed"].numel()))
                     bulk = self._choose(state["logits"], state["allowed"], args.get("temperature", 0.0), args.get("generator"), count)
+                    state["bulk"] = bulk
                     state["chosen"].extend(bulk)
                     for token in bulk:
                         self._mark_used(state["used"], state["used_per_row"], token)
                     state["tokens"].extend(bulk)
                     state["content"].extend(self._content_for(t) for t in bulk)
-                if bulk_active[0]["use_cache"]:
-                    append_sequences = [([*state["chosen"][-(len(state["chosen"]) - min(
-                        int(state["args"].get("prefix", 2)), int(state["args"].get("items_per_row", 8)))):]],
-                                         [self._content_for(t) for t in state["chosen"][-(len(state["chosen"]) - min(
-                                             int(state["args"].get("prefix", 2)), int(state["args"].get("items_per_row", 8)))):]])
-                                       for state in bulk_active]
-                    # The slice above is exactly the newly sampled bulk suffix.
+                fed = [(state, state["bulk"]) for state in bulk_active if state["bulk"]]
+                if fed and fed[0][0]["use_cache"]:
+                    # Feed exactly the newly sampled bulk tokens.  Deriving them
+                    # from the row's chosen prefix would double-feed tokens that
+                    # a pinned prefix or a short candidate list already appended
+                    # to the cache, corrupting the next row's distribution.
+                    append_sequences = [(list(bulk), [self._content_for(t) for t in bulk])
+                                        for _, bulk in fed]
                     append_logits, append_caches = self._next_logits_batch(
-                        append_sequences, [state["cache"] for state in bulk_active], use_cache=True)
-                    for state, logits, cache in zip(bulk_active, append_logits, append_caches, strict=True):
+                        append_sequences, [state["cache"] for state, _ in fed], use_cache=True)
+                    for (state, _), logits, cache in zip(fed, append_logits, append_caches, strict=True):
                         state["logits"], state["cache"] = logits, cache
                 else:
                     for state in bulk_active:
