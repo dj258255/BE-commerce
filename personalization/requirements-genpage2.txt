@@ -1,0 +1,10 @@
+# GenPage v2 의존성. D2 랭커(genpage2.ranker)가 LightGBM 을 쓴다.
+#   VIRTUAL_ENV=.venv-genpage uv pip install -r personalization/serving/requirements.txt
+#   VIRTUAL_ENV=.venv-genpage uv pip install -r personalization/requirements-genpage2.txt
+# torch 는 serving/requirements.txt 에 있다. 랭커는 torch 없이 돌아야 한다
+# (torch 의 번들 libomp 와 LightGBM 의 libomp 가 같은 프로세스에서 충돌한다).
+lightgbm==4.7.0
+numpy
+pandas
+pyarrow
+transformers
