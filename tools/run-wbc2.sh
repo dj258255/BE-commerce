@@ -15,7 +15,7 @@ D=$GENPAGE_DATA/hm/model/genpage2/validate
 INIT=$D/ckpt/b-base-full
 mkdir -p "$OUT"
 cd personalization
-START=$(date +%s)
+START=${START:-$(date +%s)}
 note() { echo "== $* $(date +%H:%M) (경과 $(( ($(date +%s) - START) / 60 ))분)" | tee -a "$OUT/progress.txt"; }
 
 # 예산 안에서만 돈다. 예산이 다하면 프로세스를 멈추고 1 을 돌려준다.
@@ -44,10 +44,14 @@ variant() {  # 이름, 노출 수, 추가 인자
   note "학습 $name 끝"
   fi
   note "평가 $name 시작"
-  local k
+  # 평가 조각 하나가 실제로 약 9.7GB 를 쓴다(2026-09-27 측정). 5개를 동시에 띄우면 32GB 노트북이
+  # 스왑으로 멈춘다. EVAL_PARALLEL 개씩(기본 2) 돌린다.
+  local k running=0
   for k in 1 2 3 4 5; do
     limited "$PY" -m genpage2.evaluate --mode validate --ckpt "$D/ckpt/$name" --limit 10000 --pin-repeat \
       --shard "$k/5" --out "$OUT/$name-eval-$k.json" > "$OUT/$name-eval-$k.log" 2>&1 &
+    running=$((running + 1))
+    if [ "$running" -ge "${EVAL_PARALLEL:-2}" ]; then wait; running=0; fi
   done
   wait
   if ! ls "$OUT"/$name-eval-[1-5].json >/dev/null 2>&1 || [ "$(ls "$OUT"/$name-eval-[1-5].json | wc -l)" -ne 5 ]; then
