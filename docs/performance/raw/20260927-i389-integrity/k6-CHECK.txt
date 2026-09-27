@@ -1,0 +1,36 @@
+time="2026-09-27T22:28:15+09:00" level=warning msg="Error from API server" error="listen tcp 127.0.0.1:6565: bind: address already in use"
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 1       0.016641/s
+    checks_succeeded...: 100.00% 1 out of 1
+    checks_failed......: 0.00%   0 out of 1
+
+    ✓ login 200
+
+    CUSTOM
+    flash_abandoned................: 20     0.332828/s
+    flash_confirm_paid.............: 100    1.664138/s
+    flash_confirm_unknown..........: 11     0.183055/s
+    flash_order_created............: 131    2.18002/s
+    flash_order_sold_out...........: 169    2.812393/s
+
+    HTTP
+    http_req_duration..............: avg=24.28ms min=6.11ms med=12.21ms max=202.99ms p(90)=53.35ms p(95)=67.52ms
+      { expected_response:true }...: avg=33.71ms min=9.18ms med=22.8ms  max=202.99ms p(90)=61.75ms p(95)=88.13ms
+    http_req_failed................: 41.01% 169 out of 412
+    http_reqs......................: 412    6.856247/s
+
+    EXECUTION
+    iteration_duration.............: avg=33.41ms min=6.29ms med=12.2ms  max=295.25ms p(90)=72.39ms p(95)=97.76ms
+    iterations.....................: 300    4.992413/s
+    vus............................: 0      min=0          max=1 
+    vus_max........................: 40     min=40         max=40
+
+    NETWORK
+    data_received..................: 169 kB 2.8 kB/s
+    data_sent......................: 198 kB 3.3 kB/s
+
+
+
