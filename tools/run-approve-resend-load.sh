@@ -3,7 +3,12 @@
 #
 #   bash tools/run-approve-resend-load.sh
 #
-# 조건 넷: {재전송 0,1} × {PG 느림, PG 일부 손실}. 순서대로 하나씩 돈다(동시에 두 조건을 돌리지 않는다).
+# 조건 여섯: {재전송 0,1} × {PG 느림, PG 일부 손실} 에 "재전송 1 + 예산" 을 두 모드에 더한다(#404).
+# 순서대로 하나씩 돈다(동시에 두 조건을 돌리지 않는다).
+#
+# 예산 조건(payment.pg.approve-resend-min-headroom)은 재전송 시점에 상한 중 빈 자리가 이 수보다
+# 적으면 재전송을 걸러 기존 UNKNOWN 을 유지한다. 기본값 4(상한 40 의 10%) — 토큰 버킷 후보였던
+# "최근 승인 대비 재전송 10%" 와 자릿수를 맞췄다.
 #
 # 느림 조건은 기존 하네스 tools/run-pg-brownout.sh 의 지연 주입(payment.fake-pg.approve-latency-ms +
 # read-timeout-ms)을 그대로 쓴다. TossPgClient 는 실 PG 라 지연을 주입할 수 없어 Toxiproxy 로 소켓
@@ -25,8 +30,10 @@ RATE=${RATE:-30}; DUR=${DUR:-60s}; DRAIN_S=${DRAIN_S:-300}
 LAT=${LAT:-5000}; RTO=${RTO:-2000}          # 느림: 지연이 read-timeout 을 항상 넘겨 첫 시도가 결정적으로 타임아웃
 LOSS_RATE=${LOSS_RATE:-0.15}                 # 손실: 승인마다 15% 확률로 완전히 사라짐
 LIMIT=${LIMIT:-40}                            # PG 동시 호출 상한. 운영 기본값(ADR-022)
+BUDGET=${BUDGET:-4}                           # 재전송 예산: 빈 자리가 이 수보다 적으면 재전송하지 않음(#404)
 DB_PORT=${DB_PORT:-13398}; REDIS_PORT=${REDIS_PORT:-16398}; PORT=${PORT:-18398}
-CONDITIONS=${CONDITIONS:-"R0-SLOW:0:slow R1-SLOW:1:slow R0-LOSS:0:loss R1-LOSS:1:loss"}
+# name:resend:mode:headroom  (headroom 은 payment.pg.approve-resend-min-headroom, 0=예산 없음)
+CONDITIONS=${CONDITIONS:-"R0-SLOW:0:slow:0 R1-SLOW:1:slow:0 RB-SLOW:1:slow:$BUDGET R0-LOSS:0:loss:0 R1-LOSS:1:loss:0 RB-LOSS:1:loss:$BUDGET"}
 mkdir -p "$OUT"
 
 df -h / | tail -1 > "$OUT/df-before.txt"
@@ -43,17 +50,17 @@ for _ in $(seq 1 90); do
 done
 
 for c in $CONDITIONS; do
-  IFS=: read -r name resend mode <<< "$c"
+  IFS=: read -r name resend mode headroom <<< "$c"
   db="ars_$(echo "$name" | tr 'A-Z-' 'a-z_')"
   $MYSQL -e "CREATE DATABASE $db" 2>/dev/null || true
   if [ "$mode" = "slow" ]; then
     lat=$LAT; rto=$RTO
-    extra="--app.recovery.enabled=true --payment.pg.approve-resend-max-attempts=$resend"
+    extra="--app.recovery.enabled=true --payment.pg.approve-resend-max-attempts=$resend --payment.pg.approve-resend-min-headroom=$headroom"
   else
     lat=0; rto=5000
-    extra="--app.recovery.enabled=true --payment.pg.approve-resend-max-attempts=$resend --payment.fake-pg.approve-timeout-lost-rate=$LOSS_RATE"
+    extra="--app.recovery.enabled=true --payment.pg.approve-resend-max-attempts=$resend --payment.pg.approve-resend-min-headroom=$headroom --payment.fake-pg.approve-timeout-lost-rate=$LOSS_RATE"
   fi
-  echo "== 조건 $name: 재전송=$resend 모드=$mode"
+  echo "== 조건 $name: 재전송=$resend 모드=$mode 예산=$headroom"
   SPRING_DATASOURCE_URL="jdbc:mysql://localhost:$DB_PORT/$db?serverTimezone=UTC&characterEncoding=UTF-8" \
   SPRING_DATASOURCE_USERNAME=root SPRING_DATASOURCE_PASSWORD=root SPRING_DATA_REDIS_PORT=$REDIS_PORT \
   PORT=$PORT OUT="$OUT/$name" EXTRA="$extra" DRAIN_S=$DRAIN_S \
