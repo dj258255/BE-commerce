@@ -171,6 +171,39 @@ tests:
               summary: "대사 미해결(PENDING) 적체"
               description: "가장 오래된 PENDING 대사 예외가 15분 넘게 남아 있습니다. 어드민에서 예외 큐를 검토·종결하세요."
 
+  # ── 결제 정합성 불변식(#389) ──────────────────────────────────────
+  # 한 번 섰다 사라지는 위반(진행 중인 건)은 울리지 않는다.
+  - interval: 1m
+    input_series:
+      - series: 'integrity_violations{invariant="APPROVED_WITHOUT_LEDGER"}'
+        values: '0 1 0 0 0 1 0 0 0 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: PaymentIntegrityViolation
+        exp_alerts: []
+
+  # 남아 있으면 10분 뒤 불변식 이름을 달고 울린다.
+  - interval: 1m
+    input_series:
+      - series: 'integrity_violations{invariant="APPROVED_WITHOUT_LEDGER"}'
+        values: '0 1x15'
+      - series: 'integrity_violations{invariant="STOCK_NEGATIVE"}'
+        values: '0x15'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PaymentIntegrityViolation
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: PaymentIntegrityViolation
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              domain: payment
+              invariant: APPROVED_WITHOUT_LEDGER
+            exp_annotations:
+              summary: "결제 정합성 불변식 위반: APPROVED_WITHOUT_LEDGER"
+              description: "APPROVED_WITHOUT_LEDGER 위반이 10분 넘게 남아 있습니다. /api/v1/admin/integrity?samples=5 로 주문 번호를 확인하세요."
+
   # ── CDC 커넥터(#252) ─────────────────────────────────────────────
   # 태스크가 멈추면 1분 뒤 울린다.
   - interval: 30s

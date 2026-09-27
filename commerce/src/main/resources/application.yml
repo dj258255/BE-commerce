@@ -464,6 +464,18 @@ app:
     # 처리량이 상한보다 한참 낮으면 상한이 낮은 것이고, 상한 근처에서 평평하면 진짜 포화다.
     global-per-sec: ${APP_RATELIMIT_GLOBAL:100}
 
+  # 결제 한 건이 주문 · 원장 · 대사 내부 기록 · 재고를 건너며 맞는지 세는 점검(#389). 위반 건수는
+  # integrity.violations{invariant} 게이지로 나간다. 유예보다 최근에 움직인 건은 아직 진행 중일 수 있어 세지 않는다.
+  # 유예가 짧으면 진행 중인 건을 위반으로 세고 길면 진짜 위반을 늦게 잡는다. 값은 부하로 잰 것이다(#389).
+  integrity:
+    # 다른 배치와 같이 기본 꺼짐. 켜면 1분마다 세 게이지로 내고 PaymentIntegrityViolation 알림이 본다(ADR-069).
+    # 꺼져 있으면 게이지도 없다(0 을 내보내면 "안 셈"과 "위반 없음"이 같은 모양이 된다). 관리자 API 는 늘 쓸 수 있다.
+    enabled: ${APP_INTEGRITY_ENABLED:false}
+    # 부하에서 분개 · 대사 기록은 승인 뒤 0.14초 안에 모두 생겼다. 초당 승인이 10건을 넘으면 1 로 올린다.
+    grace-seconds: ${APP_INTEGRITY_GRACE_SECONDS:0}
+    check-interval-ms: ${APP_INTEGRITY_CHECK_INTERVAL_MS:60000}
+    initial-delay-ms: ${APP_INTEGRITY_INITIAL_DELAY_MS:60000}
+
   # 선착순 대기열(Redis ZSET) — 순간 트래픽 폭증 시 DB 유입을 제어한다.
   queue:
     # 앞에서부터 이 인원(rank < admit-limit)만 "입장"시켜 결제로 보낸다 — DB 유입 제어의 상한.
