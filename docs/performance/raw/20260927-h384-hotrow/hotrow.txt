@@ -1,0 +1,29 @@
+=== MySQL 8.4.11 · flush_log_at_trx_commit=1 · 풀 80 ===
+HOTROW-SELLOUT shape=A sold=200 left=0 updates_per_sale=1.32 deadlocks=0
+HOTROW-SELLOUT shape=B sold=200 left=0 updates_per_sale=1.32 deadlocks=0
+HOTROW-SELLOUT shape=C4 sold=200 left=0 updates_per_sale=2.28 deadlocks=230
+HOTROW-SELLOUT shape=C16 sold=200 left=0 updates_per_sale=6.18 deadlocks=1181
+HOTROW shape=A conc=1 tps=206 tps_min=202 tps_max=231 p50_ms=4.23 p99_ms=16.49 hold_p50_ms=3.010 hold_p99_ms=11.655 errors=0
+HOTROW shape=A conc=4 tps=281 tps_min=275 tps_max=303 p50_ms=13.62 p99_ms=31.58 hold_p50_ms=3.277 hold_p99_ms=7.464 errors=0
+HOTROW shape=A conc=8 tps=281 tps_min=241 tps_max=303 p50_ms=26.76 p99_ms=52.86 hold_p50_ms=3.216 hold_p99_ms=7.501 errors=0
+HOTROW shape=A conc=16 tps=294 tps_min=285 tps_max=317 p50_ms=50.67 p99_ms=112.53 hold_p50_ms=2.993 hold_p99_ms=8.493 errors=0
+HOTROW shape=A conc=20 tps=301 tps_min=288 tps_max=316 p50_ms=64.15 p99_ms=119.77 hold_p50_ms=2.989 hold_p99_ms=6.205 errors=0
+HOTROW shape=A conc=64 tps=290 tps_min=278 tps_max=291 p50_ms=209.50 p99_ms=340.05 hold_p50_ms=3.089 hold_p99_ms=6.976 errors=0
+HOTROW shape=B conc=1 tps=228 tps_min=225 tps_max=231 p50_ms=4.11 p99_ms=8.74 hold_p50_ms=1.452 hold_p99_ms=4.176 errors=0
+HOTROW shape=B conc=4 tps=395 tps_min=387 tps_max=442 p50_ms=8.58 p99_ms=40.72 hold_p50_ms=2.019 hold_p99_ms=11.339 errors=0
+HOTROW shape=B conc=8 tps=418 tps_min=365 tps_max=439 p50_ms=17.75 p99_ms=39.09 hold_p50_ms=2.041 hold_p99_ms=5.460 errors=0
+HOTROW shape=B conc=16 tps=450 tps_min=425 tps_max=461 p50_ms=34.42 p99_ms=62.16 hold_p50_ms=1.933 hold_p99_ms=4.877 errors=0
+HOTROW shape=B conc=20 tps=444 tps_min=431 tps_max=492 p50_ms=40.48 p99_ms=97.24 hold_p50_ms=1.863 hold_p99_ms=6.514 errors=0
+HOTROW shape=B conc=64 tps=490 tps_min=480 tps_max=501 p50_ms=128.16 p99_ms=173.92 hold_p50_ms=1.771 hold_p99_ms=4.597 errors=0
+HOTROW shape=C4 conc=1 tps=235 tps_min=222 tps_max=256 p50_ms=3.91 p99_ms=10.16 hold_p50_ms=2.677 hold_p99_ms=8.363 errors=0
+HOTROW shape=C4 conc=4 tps=575 tps_min=544 tps_max=577 p50_ms=6.27 p99_ms=16.80 hold_p50_ms=3.714 hold_p99_ms=9.441 errors=0
+HOTROW shape=C4 conc=8 tps=579 tps_min=501 tps_max=589 p50_ms=11.75 p99_ms=42.87 hold_p50_ms=4.763 hold_p99_ms=15.196 errors=0
+HOTROW shape=C4 conc=16 tps=704 tps_min=683 tps_max=724 p50_ms=19.01 p99_ms=65.81 hold_p50_ms=4.711 hold_p99_ms=13.005 errors=0
+HOTROW shape=C4 conc=20 tps=718 tps_min=646 tps_max=732 p50_ms=24.71 p99_ms=79.16 hold_p50_ms=4.743 hold_p99_ms=13.002 errors=0
+HOTROW shape=C4 conc=64 tps=694 tps_min=643 tps_max=698 p50_ms=91.19 p99_ms=228.99 hold_p50_ms=5.087 hold_p99_ms=16.482 errors=0
+HOTROW shape=C16 conc=1 tps=243 tps_min=233 tps_max=253 p50_ms=3.75 p99_ms=8.74 hold_p50_ms=2.575 hold_p99_ms=6.324 errors=0
+HOTROW shape=C16 conc=4 tps=583 tps_min=539 tps_max=632 p50_ms=5.96 p99_ms=22.97 hold_p50_ms=4.127 hold_p99_ms=18.845 errors=0
+HOTROW shape=C16 conc=8 tps=775 tps_min=761 tps_max=864 p50_ms=8.77 p99_ms=40.18 hold_p50_ms=5.848 hold_p99_ms=24.187 errors=0
+HOTROW shape=C16 conc=16 tps=936 tps_min=832 tps_max=1075 p50_ms=13.31 p99_ms=65.64 hold_p50_ms=7.692 hold_p99_ms=37.921 errors=0
+HOTROW shape=C16 conc=20 tps=1245 tps_min=1094 tps_max=1252 p50_ms=13.25 p99_ms=47.56 hold_p50_ms=7.425 hold_p99_ms=20.703 errors=0
+HOTROW shape=C16 conc=64 tps=1266 tps_min=1199 tps_max=1418 p50_ms=35.89 p99_ms=219.77 hold_p50_ms=9.113 hold_p99_ms=36.102 errors=0
