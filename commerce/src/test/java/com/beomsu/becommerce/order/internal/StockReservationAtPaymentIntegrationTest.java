@@ -27,6 +27,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest(properties = {
         "app.stock.reservation=AT_PAYMENT",
         "payment.fake-pg.timeout-approved-prefix=unk-ok-",
+        // 이 테스트는 결과 모름을 복구 배치 · 주문 리스너가 확정하는 경로를 본다. 승인 재전송(#395)이 켜져 있으면
+        // 가짜 PG 가 같은 멱등키에 승인을 돌려줘 결과 모름까지 가지 않으므로 재전송을 끈다
+        "payment.pg.approve-resend-max-attempts=0",
         "payment.fake-pg.timeout-lost-prefix=unk-lost-"})
 @DisplayName("재고 예약 AT_PAYMENT — 결제 시작에 잡고 승인에 확정, 거절 · PG 에 없음이면 되돌린다")
 class StockReservationAtPaymentIntegrationTest extends StockReservationTestSupport {
