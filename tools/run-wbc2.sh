@@ -32,13 +32,18 @@ limited() {
 
 variant() {  # 이름, 노출 수, 추가 인자
   local name=$1 examples=$2; shift 2
+  if [ -f "$D/ckpt/$name/model.pt" ]; then
+    note "학습 $name 건너뜀(체크포인트가 이미 있다)"
+  else
   note "학습 $name 시작"
   if ! limited "$PY" -m genpage2.wbc --mode validate --init "$INIT" --examples "$examples" --pin-repeat \
        --epochs 1 --batch 128 --lr 1e-4 --seed 7 --log-every 10 --name "$name" "$@" \
        > "$OUT/$name-train.log" 2>&1; then
     note "학습 $name 중단(예산 초과 또는 실패)"; return 1
   fi
-  note "학습 $name 끝 · 평가 시작"
+  note "학습 $name 끝"
+  fi
+  note "평가 $name 시작"
   local k
   for k in 1 2 3 4 5; do
     limited "$PY" -m genpage2.evaluate --mode validate --ckpt "$D/ckpt/$name" --limit 10000 --pin-repeat \
