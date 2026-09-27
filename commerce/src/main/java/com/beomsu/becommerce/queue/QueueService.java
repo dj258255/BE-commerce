@@ -47,6 +47,13 @@ import java.util.Map;
  * (한정 상품 부하: 입장 20명에서 200명이 3분 기다리다 포기, 재고 25개를 못 팜). 그래서 입장 시각을
  * {@code queue:{eventId}:admitted} 해시에 적고, 누군가 순번을 물을 때 {@code admission-lease-seconds} 가 지난
  * 입장자의 칸과 입장권을 회수한다. 입장 칸은 입장 인원 이하라 훑는 비용이 작다. 0 이면 끈다.
+ *
+ * <p><b>매진 시 대기열 닫기(#385)</b>: 대기열은 재고를 몰라 매진 뒤에도 계속 입장시켰다(헛걸음의 원인).
+ * 이제 rank가 admitLimit 안이라 입장할 차례가 온 사람에 한해 {@link QueueSoldOutGate}로 진짜 매진인지
+ * 묻는다 — 매진이면 입장권을 주지 않고 {@code soldOut=true} 로 알린다. 영속적인 "닫힘" 상태를 두지 않고
+ * 매번 실제 재고를 보므로, 결과 모름 결제가 풀려 재고가 돌아오면 다음 폴링에서 곧바로 다시 열린다. 아직
+ * 입장 차례가 아닌 사람(rank ≥ admitLimit)에게는 묻지 않는다 — 입장 칸 회수와 같은 이유로 훑는(여기서는
+ * 묻는) 비용을 입장 인원 규모로 묶어 둔다.
  */
 @Service
 public class QueueService {
@@ -57,11 +64,12 @@ public class QueueService {
     private final int admitLimit;
     private final long passTtlSeconds;
     private final long admissionLeaseSeconds;
+    private final QueueSoldOutGate soldOutGate;
     private final Clock clock;
 
-    /** 입장 칸 만료 없이 만든다(기존 단위 테스트용). */
+    /** 입장 칸 만료 없이, 매진 판정 없이 만든다(기존 단위 테스트용). */
     public QueueService(StringRedisTemplate redis, int admitLimit, long passTtlSeconds) {
-        this(redis, admitLimit, passTtlSeconds, 0, Clock.systemUTC());
+        this(redis, admitLimit, passTtlSeconds, 0, QueueSoldOutGate.NEVER, Clock.systemUTC());
     }
 
     /** 입장 칸 만료 기본값은 입장권 만료와 같다. 입장권이 끝났는데 칸만 남을 이유가 없어서다. */
@@ -69,16 +77,18 @@ public class QueueService {
     public QueueService(StringRedisTemplate redis,
                         @Value("${app.queue.admit-limit:100}") int admitLimit,
                         @Value("${app.queue.pass-ttl-seconds:600}") long passTtlSeconds,
-                        @Value("${app.queue.admission-lease-seconds:${app.queue.pass-ttl-seconds:600}}") long admissionLeaseSeconds) {
-        this(redis, admitLimit, passTtlSeconds, admissionLeaseSeconds, Clock.systemUTC());
+                        @Value("${app.queue.admission-lease-seconds:${app.queue.pass-ttl-seconds:600}}") long admissionLeaseSeconds,
+                        QueueSoldOutGate soldOutGate) {
+        this(redis, admitLimit, passTtlSeconds, admissionLeaseSeconds, soldOutGate, Clock.systemUTC());
     }
 
     QueueService(StringRedisTemplate redis, int admitLimit, long passTtlSeconds,
-                 long admissionLeaseSeconds, Clock clock) {
+                 long admissionLeaseSeconds, QueueSoldOutGate soldOutGate, Clock clock) {
         this.redis = redis;
         this.admitLimit = admitLimit;
         this.passTtlSeconds = passTtlSeconds;
         this.admissionLeaseSeconds = admissionLeaseSeconds;
+        this.soldOutGate = soldOutGate;
         this.clock = clock;
     }
 
@@ -188,7 +198,10 @@ public class QueueService {
         }
         long waitingAhead = rank;               // 내 앞의 인원 = rank
         long position = rank + 1;               // 1-based 순번
-        boolean admitted = rank < admitLimit;   // 앞에서부터 admitLimit명만 입장
+        boolean rankAdmitted = rank < admitLimit;   // 앞에서부터 admitLimit명만 입장
+        // 매진 판정(#385)은 입장 차례가 온 사람만 묻는다 — 입장 칸 회수처럼 비용을 입장 인원 규모로 묶는다.
+        boolean soldOut = rankAdmitted && soldOutGate.isSoldOut(eventId);
+        boolean admitted = rankAdmitted && !soldOut;
         if (admitted) {
             // 입장 확인 순간(enter/status 모두) 입장권 발급 — TTL 동안 게이트 상품을 주문할 수 있다.
             // SET은 멱등이라 폴링마다 다시 와도 TTL만 연장될 뿐 문제 없다.
@@ -198,6 +211,6 @@ public class QueueService {
                 redis.opsForHash().putIfAbsent(admittedKey(eventId), userId, String.valueOf(clock.millis()));
             }
         }
-        return new QueuePosition(eventId, position, waitingAhead, admitted, total);
+        return new QueuePosition(eventId, position, waitingAhead, admitted, total, soldOut);
     }
 }

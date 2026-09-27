@@ -77,10 +77,17 @@ export default function (data) {
 
   if (QUEUE) {
     let admitted = false;
+    let closed = false;
     let res = http.post(`${BASE}/api/v1/queue/${EVENT}/enter`, null, { headers, tags: { name: 'enter' } });
     while (true) {
       if (res.status === 200 && res.json('admitted') === true) {
         admitted = true;
+        break;
+      }
+      // 매진 통보(#385): 입장 차례가 왔지만 진짜로 매진이면 서버가 알려 준다. 더 기다리지 않고 그만둔다
+      // (재고가 돌아오면 서버가 다음 폴링에서 다시 admitted=true를 줄 수 있으므로 한 번 봤다고 영영 끊지는 않는다).
+      if (res.status === 200 && res.json('soldOut') === true) {
+        closed = true;
         break;
       }
       if (Date.now() - arrivedAt > MAX_WAIT * 1000) {
@@ -90,6 +97,11 @@ export default function (data) {
       res = http.get(`${BASE}/api/v1/queue/${EVENT}/status`, { headers, tags: { name: 'status' } });
     }
     result.waitMs = Date.now() - arrivedAt;
+    if (closed) {
+      result.outcome = 'closed_in_queue';   // 헛걸음이 아니다 — 주문 단계까지 가지 않았다
+      log(result);
+      return;
+    }
     if (!admitted) {
       result.outcome = 'gave_up';
       log(result);
