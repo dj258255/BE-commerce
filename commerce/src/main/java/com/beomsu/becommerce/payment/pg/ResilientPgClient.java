@@ -8,6 +8,7 @@ import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
@@ -66,6 +68,7 @@ public class ResilientPgClient implements PgClient {
      * 아래였다. 사가가 푼 것은 커넥션이고, 마르는 자리는 워커로 옮겨간 것이다.
      */
     private final Semaphore pgCallLimit;
+    private final AtomicInteger pgApprovalsInFlight = new AtomicInteger();
     private final Counter pgConcurrencyRejected;
     private final Counter pgCircuitRejected;
     private final Counter pgUnknownFallback;
@@ -134,6 +137,10 @@ public class ResilientPgClient implements PgClient {
         this.delegate = delegate;
         // 0 이하면 상한을 걸지 않는다. 운영 기본값 40의 근거는 application.yml과 ADR-022에 있다.
         this.pgCallLimit = maxConcurrentCalls > 0 ? new Semaphore(maxConcurrentCalls) : null;
+        // PG 로 실제로 나가 있는 승인 호출 수(#392). 상한이 없거나 가상 스레드로 워커 수가 사라지면 이 값이 곧 PG 가 받는 동시 호출이다
+        Gauge.builder("payment.pg.approval.inflight", pgApprovalsInFlight, AtomicInteger::get)
+                .description("PG 로 나가 응답을 기다리는 승인 호출 수")
+                .register(meterRegistry);
         this.pgConcurrencyRejected = Counter.builder("payment.pg.approval.rejected")
                 .tag("reason", "concurrency_limit")
                 .description("PG 동시 호출 상한으로 승인 전에 거절된 요청 수")
@@ -205,6 +212,7 @@ public class ResilientPgClient implements PgClient {
             timer.stop(pgApprovalLatency);
             return result;
         }
+        pgApprovalsInFlight.incrementAndGet();
         try {
             PgApproveResult result = approveCircuit.executeSupplier(() -> delegate.approve(command));
             if (result.outcome() == PgOutcome.TIMEOUT) {
@@ -223,6 +231,7 @@ public class ResilientPgClient implements PgClient {
             log.warn("PG 승인 호출 예외 — 미확정 처리: {}", ex.getMessage());
             return PgApproveResult.timeout("PG 오류로 승인 미확정: " + ex.getMessage());
         } finally {
+            pgApprovalsInFlight.decrementAndGet();
             timer.stop(pgApprovalLatency);
             if (pgCallLimit != null) {
                 pgCallLimit.release();
