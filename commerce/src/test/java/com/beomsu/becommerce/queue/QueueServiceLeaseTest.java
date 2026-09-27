@@ -46,7 +46,7 @@ class QueueServiceLeaseTest {
     HashOperations<String, Object, Object> hash;
 
     private QueueService service() {
-        return new QueueService(redis, 2, 600, LEASE, Clock.fixed(NOW, ZoneOffset.UTC));
+        return new QueueService(redis, 2, 600, LEASE, QueueSoldOutGate.NEVER, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Test
@@ -99,7 +99,7 @@ class QueueServiceLeaseTest {
     @Test
     @DisplayName("만료가 0 이면 해시를 건드리지 않는다(기존 동작)")
     void zeroLeaseDoesNotTouchHash() {
-        QueueService noLease = new QueueService(redis, 2, 600, 0, Clock.fixed(NOW, ZoneOffset.UTC));
+        QueueService noLease = new QueueService(redis, 2, 600, 0, QueueSoldOutGate.NEVER, Clock.fixed(NOW, ZoneOffset.UTC));
         when(redis.opsForZSet()).thenReturn(zset);
         when(zset.rank(QUEUE_KEY, "u1")).thenReturn(5L);
         when(zset.zCard(QUEUE_KEY)).thenReturn(6L);

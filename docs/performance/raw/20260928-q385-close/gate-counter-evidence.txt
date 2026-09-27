@@ -1,0 +1,20 @@
+매진 판정이 실제로 몇 번 불렸는지 증거로 남긴다(#385). Q50L30(입장 50 · 만료 30초, 재고 100)과 같은
+설정으로 앱을 하나 더 띄워 k6 부하를 그대로 걸고, k6 가 끝난 뒤 60초를 더 기다렸다가(대기 중인 사람이
+계속 폴링하며 판정을 보게) 공개 엔드포인트(/actuator/prometheus, ADMIN 인증이 필요한 /actuator/metrics와
+달리 공개다)에서 카운터를 읽었다.
+
+queue_sold_out_gate_checked_total{application="be-commerce"} 300.0
+queue_sold_out_gate_depleted_but_held_total{application="be-commerce"} 151.0
+(queue_sold_out_gate_closed_total 은 없음 — 한 번도 안 찍혔다는 뜻)
+
+DB 최종 상태: stock.quantity=5, stock_reservations(CLAIMED=95, RELEASED=5), orders(PAID=95, PENDING_PAYMENT=145)
+
+읽는 법: 입장 차례가 온 사람이 300번 물었고(checked), 그중 151번은 "재고는 0인데 아직 결과를 기다리는
+예약이 있어서" 닫지 못했다(depleted_but_held). 나머지 149번은 재고가 아직 남아 있어(quantities>0) 물어볼
+필요조차 없었던 것과 같은 상태다(둘을 로그만으로는 못 나누지만, 매진(closed)이 한 번도 없었다는 사실은
+분명하다). 즉 게이트 자체는 정확히 동작하지만(재고 0 + 예약 있음 → 안 닫음, 단위 테스트로 별도 검증),
+이 하네스에서는 "재고 0 이고 잡힌 예약도 0"인 순간이 대기 중인 사람의 폴링과 겹친 적이 단 한 번도 없었다.
+
+재현: bash tools/run-flash-queue.sh 를 새로 만든 verify-gate.sh 로 감쌌다(커밋 안 함, 임시 스크립트).
+동일한 앱 설정을 --app.queue.admit-limit=50 --app.queue.admission-lease-seconds=30 으로 띄우고
+k6 부하 뒤 60초를 더 기다린 채로 /actuator/prometheus 를 읽었다.

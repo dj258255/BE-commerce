@@ -6,12 +6,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 
 /** 재고 예약(#374). 상태 전이는 조건부 UPDATE 라 같은 전이를 두 번 해도 한 번만 성공한다. */
 interface StockReservationRepository extends JpaRepository<StockReservation, Long> {
 
     List<StockReservation> findByOrderNo(String orderNo);
+
+    /** 대기열 매진 판정(#385) — 이 상품들 중 아직 결과가 안 갈린(RESERVED) 예약이 하나라도 있는지. */
+    boolean existsByProductIdInAndStatus(Collection<Long> productIds, StockReservation.Status status);
 
     /** 이 주문의 RESERVED 를 모두 CLAIMED 로. 재고는 예약 때 이미 빠져 있다. */
     @Modifying(flushAutomatically = true)
