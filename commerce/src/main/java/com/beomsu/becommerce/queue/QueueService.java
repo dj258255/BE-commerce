@@ -3,11 +3,14 @@ package com.beomsu.becommerce.queue;
 import com.beomsu.becommerce.auth.TokenStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.util.Map;
 
 /**
  * 선착순 대기열 — Redis Sorted Set(ZSET)으로 FIFO 줄을 세우고, 앞에서부터 admit-limit명만 입장시킨다.
@@ -38,6 +41,12 @@ import java.time.Duration;
  * fail-soft 처리한다(TokenStore의 fail-open과 같은 취지) — 순번 폴링이 500으로 터지지 않게 한다.
  * 입장권 검증({@link #hasEntryPass})도 Redis 장애 시 fail-open(통과)이다 — 대기열 인프라 장애가
  * 결제 전면 중단으로 번지지 않게 한다(가용성 우선).
+ *
+ * <p><b>입장 칸 만료(#383)</b>: 입장한 사람이 떠나도(브라우저를 닫음) 줄에서 나가지 않으면 그 칸을 계속 차지한다.
+ * 입장권은 {@code pass-ttl} 로 만료되지만 줄 자리는 만료되지 않아, 이탈자가 입장 인원만큼 쌓이면 대기열이 멈췄다
+ * (한정 상품 부하: 입장 20명에서 200명이 3분 기다리다 포기, 재고 25개를 못 팜). 그래서 입장 시각을
+ * {@code queue:{eventId}:admitted} 해시에 적고, 누군가 순번을 물을 때 {@code admission-lease-seconds} 가 지난
+ * 입장자의 칸과 입장권을 회수한다. 입장 칸은 입장 인원 이하라 훑는 비용이 작다. 0 이면 끈다.
  */
 @Service
 public class QueueService {
@@ -47,13 +56,34 @@ public class QueueService {
     private final StringRedisTemplate redis;
     private final int admitLimit;
     private final long passTtlSeconds;
+    private final long admissionLeaseSeconds;
+    private final Clock clock;
 
+    /** 입장 칸 만료 없이 만든다(기존 단위 테스트용). */
+    public QueueService(StringRedisTemplate redis, int admitLimit, long passTtlSeconds) {
+        this(redis, admitLimit, passTtlSeconds, 0, Clock.systemUTC());
+    }
+
+    /** 입장 칸 만료 기본값은 입장권 만료와 같다. 입장권이 끝났는데 칸만 남을 이유가 없어서다. */
+    @Autowired
     public QueueService(StringRedisTemplate redis,
                         @Value("${app.queue.admit-limit:100}") int admitLimit,
-                        @Value("${app.queue.pass-ttl-seconds:600}") long passTtlSeconds) {
+                        @Value("${app.queue.pass-ttl-seconds:600}") long passTtlSeconds,
+                        @Value("${app.queue.admission-lease-seconds:${app.queue.pass-ttl-seconds:600}}") long admissionLeaseSeconds) {
+        this(redis, admitLimit, passTtlSeconds, admissionLeaseSeconds, Clock.systemUTC());
+    }
+
+    QueueService(StringRedisTemplate redis, int admitLimit, long passTtlSeconds,
+                 long admissionLeaseSeconds, Clock clock) {
         this.redis = redis;
         this.admitLimit = admitLimit;
         this.passTtlSeconds = passTtlSeconds;
+        this.admissionLeaseSeconds = admissionLeaseSeconds;
+        this.clock = clock;
+    }
+
+    private static String admittedKey(String eventId) {
+        return "queue:" + eventId + ":admitted";
     }
 
     private static String queueKey(String eventId) {
@@ -103,6 +133,32 @@ public class QueueService {
     public void leave(String eventId, String userId) {
         redis.opsForZSet().remove(queueKey(eventId), userId);
         redis.delete(passKey(eventId, userId));
+        if (admissionLeaseSeconds > 0) {
+            redis.opsForHash().delete(admittedKey(eventId), userId);
+        }
+    }
+
+    /**
+     * 입장 칸 만료가 지난 입장자의 줄 자리와 입장권을 회수한다(#383). 뒷사람의 rank 가 당겨져 입장한다.
+     * 회수된 사람이 아직 주문하지 않았으면 주문 때 입장권이 없어 게이트에 막힌다(만료를 짧게 둔 대가).
+     */
+    private void evictExpiredAdmissions(String eventId, String key) {
+        long now = clock.millis();
+        Map<Object, Object> admitted = redis.opsForHash().entries(admittedKey(eventId));
+        int evicted = 0;
+        for (Map.Entry<Object, Object> e : admitted.entrySet()) {
+            String user = String.valueOf(e.getKey());
+            long admittedAt = Long.parseLong(String.valueOf(e.getValue()));
+            if (now - admittedAt > admissionLeaseSeconds * 1000) {
+                redis.opsForZSet().remove(key, user);
+                redis.opsForHash().delete(admittedKey(eventId), user);
+                redis.delete(passKey(eventId, user));
+                evicted++;
+            }
+        }
+        if (evicted > 0) {
+            log.info("입장 칸 만료로 회수 eventId={} evicted={}", eventId, evicted);
+        }
     }
 
     /**
@@ -121,6 +177,9 @@ public class QueueService {
     }
 
     private QueuePosition positionOf(String eventId, String key, String userId) {
+        if (admissionLeaseSeconds > 0) {
+            evictExpiredAdmissions(eventId, key);
+        }
         Long rank = redis.opsForZSet().rank(key, userId);   // 0-based 오름차순(작은 score가 앞)
         Long card = redis.opsForZSet().zCard(key);
         long total = card == null ? 0 : card;
@@ -134,6 +193,10 @@ public class QueueService {
             // 입장 확인 순간(enter/status 모두) 입장권 발급 — TTL 동안 게이트 상품을 주문할 수 있다.
             // SET은 멱등이라 폴링마다 다시 와도 TTL만 연장될 뿐 문제 없다.
             redis.opsForValue().set(passKey(eventId, userId), "1", Duration.ofSeconds(passTtlSeconds));
+            if (admissionLeaseSeconds > 0) {
+                // 처음 입장한 시각만 남긴다(폴링마다 늦추면 만료가 영영 오지 않는다)
+                redis.opsForHash().putIfAbsent(admittedKey(eventId), userId, String.valueOf(clock.millis()));
+            }
         }
         return new QueuePosition(eventId, position, waitingAhead, admitted, total);
     }

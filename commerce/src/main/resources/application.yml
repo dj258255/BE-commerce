@@ -471,6 +471,9 @@ app:
     # 입장권(admit:{eventId}:{userId}) TTL — admitted 판정 순간 발급되고, 이 시간 안에 주문까지
     # 마쳐야 한다. 만료되면 다시 status 폴링으로 재발급받으면 된다(줄에 있으면 즉시).
     pass-ttl-seconds: ${APP_QUEUE_PASS_TTL:600}
+    # 입장 칸 만료(#383). 입장 뒤 이 시간이 지나도 줄에서 나가지 않은 사람의 칸과 입장권을 회수한다. 없으면 떠난
+    # 사람이 칸을 놓지 않아 대기열이 멈췄다. 기본은 입장권 만료와 같다. 0 이면 끈다.
+    admission-lease-seconds: ${APP_QUEUE_ADMISSION_LEASE:${app.queue.pass-ttl-seconds}}
     # 대기열 게이트(옵트인): 아래 상품이 주문에 포함되면 서버가 입장권을 강제한다(권고→강제).
     # 기본 빈 목록 = 게이트 비활성 — 기존 주문 경로 100% 불변, 대상 없으면 무비용.
     gate:
