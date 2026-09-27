@@ -248,3 +248,47 @@ tests:
             exp_annotations:
               summary: "CDC 커넥터 catalog-cdc 의 하트비트가 240초째 없음"
               description: "상태는 정상이어도 변경이 흐르지 않는다. 커넥터 로그에서 재연결 반복·DB 접속 오류를 보십시오."
+
+  # ── 아웃박스 발행 자체가 멈춤(#393) ───────────────────────────────
+  # outbox_pending_oldest_age_seconds는 미소비 이벤트가 없으면 0을 낸다. 결제 확정은 계속 도는데
+  # 아웃박스 발행이 0건이면(리스너 등록이 빠지는 등) 그 0과 구분되지 않는다 — 여기가 그 사각지대다.
+  - interval: 1m
+    input_series:
+      - series: 'payment_confirm_total{outcome="success"}'
+        values: '0+2x20'      # 결제 확정은 분당 2건씩 꾸준히 발생
+      - series: 'outbox_published_total'
+        values: '0x20'        # 아웃박스 발행은 0건 그대로 — 발행 경로가 죽음
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: OutboxPublishingStalled
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              domain: payment
+            exp_annotations:
+              summary: "결제는 확정되는데 아웃박스 발행이 0건"
+              description: "10분간 PaymentConfirmedEvent 발행이 0건인데 결제 확정 트래픽은 있습니다. outbox_pending 게이지가 잡지 못하는 구간입니다(발행 자체가 없으면 pending·age 둘 다 0을 냅니다). 리스너 등록이 빠졌는지, 이벤트 발행 경로에서 예외가 나는지 확인하세요."
+
+  # 반대 방향 — 발행이 결제 확정과 같이 늘면 조용해야 한다(정상).
+  - interval: 1m
+    input_series:
+      - series: 'payment_confirm_total{outcome="success"}'
+        values: '0+2x20'
+      - series: 'outbox_published_total'
+        values: '0+2x20'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: OutboxPublishingStalled
+        exp_alerts: []
+
+  # 트래픽 자체가 없는 한가한 시간대 — 발행도 0인 것이 정상이라 울리면 안 된다(트래픽 게이트).
+  - interval: 1m
+    input_series:
+      - series: 'payment_confirm_total{outcome="success"}'
+        values: '0x20'
+      - series: 'outbox_published_total'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: OutboxPublishingStalled
+        exp_alerts: []
