@@ -14,6 +14,7 @@ STATUS.md 의 "D2 GenPage 대 업계 표준" 절에 **측정 전에** 적은 후
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import time
 from collections import Counter, defaultdict
@@ -606,8 +607,14 @@ def rank_customers(model: Any, meta: pd.DataFrame, txn: Transactions, request: o
 
 def run_ranker(mode: str, txn: Transactions, meta: pd.DataFrame, *, vocab: Any, content: np.ndarray,
                content_rows: dict[str, int], ages: dict[str, float], cfg: dict[str, Any],
-               train_limit: int | None = None, top: int = 48) -> dict[str, Any]:
-    """학습 세 주와 평가를 한 번에 돌려 보고서 dict 를 만든다(파일 입출력 없음)."""
+               train_limit: int | None = None, top: int = 48,
+               pages_sink: dict[str, list[str]] | None = None) -> dict[str, Any]:
+    """학습 세 주와 평가를 한 번에 돌려 보고서 dict 를 만든다(파일 입출력 없음).
+
+    ``pages_sink`` 를 주면 고객별 페이지(상위 ``top`` 개, 순위 순)를 그 dict 에
+    채운다(짝 비교용 ``pages.json.gz`` 를 위해 ``run`` 이 넘긴다). 보고서는 건드리지
+    않는다.
+    """
     started = time.perf_counter()
     request = config.request_of(mode)
     rng = np.random.default_rng(cfg["seed"])
@@ -620,6 +627,8 @@ def run_ranker(mode: str, txn: Transactions, meta: pd.DataFrame, *, vocab: Any, 
     rank_started = time.perf_counter()
     pages, candidates = rank_customers(model, meta, txn, request, vocab=vocab, content=content,
                                        content_rows=content_rows, ages=ages, cfg=cfg, top=top)
+    if pages_sink is not None:
+        pages_sink.update(pages)
     ranking_seconds = time.perf_counter() - rank_started
     metrics = evaluate_pages(meta, pages, content=content, content_rows=content_rows,
                              elapsed=ranking_seconds, device="cpu")
@@ -652,6 +661,21 @@ def run_ranker(mode: str, txn: Transactions, meta: pd.DataFrame, *, vocab: Any, 
     }
 
 
+def write_pages(path: Path, meta: pd.DataFrame, pages: dict[str, list[str]]) -> Path:
+    """고객별 페이지(상위 상품, 순위 순)를 ``pages.json.gz`` 로 따로 쓴다.
+
+    결과 JSON 을 키우지 않으려고 gzip 으로 나눠 둔다. 형식은
+    ``[{customer_id, items}]`` 이고 순서는 ``meta`` 순서다. 짝 비교
+    (:mod:`genpage2.paired_compare`)의 A 입력이 이 파일이다.
+    """
+    records = [{"customer_id": str(customer), "items": list(pages.get(str(customer), []))}
+               for customer in meta["customer_id"]]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with gzip.open(path, "wt", encoding="utf-8") as handle:
+        json.dump(records, handle, ensure_ascii=False)
+    return path
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     began = time.perf_counter()
     base = Path(args.data_dir) if args.data_dir else config.data_dir()
@@ -672,8 +696,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     del frame
     vocab, content, content_rows = load_eval_assets(mode_dir)
     ages = _load_ages(base, txn)
+    pages: dict[str, list[str]] = {}
     report = run_ranker(mode, txn, meta, vocab=vocab, content=content, content_rows=content_rows,
-                        ages=ages, cfg=cfg, train_limit=args.train_customers)
+                        ages=ages, cfg=cfg, train_limit=args.train_customers, pages_sink=pages)
     report["config"] = args.config
     report["limit"] = args.limit
     report["train_customers"] = args.train_customers
@@ -682,6 +707,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     destination.mkdir(parents=True, exist_ok=True)
     path = destination / f"ranker_{args.config}_{mode}.json"
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2, default=float), encoding="utf-8")
+    write_pages(destination / "pages.json.gz", meta, pages)
     print(json.dumps(report, ensure_ascii=False, indent=2, default=float))
     return report
 
