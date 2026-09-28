@@ -10,7 +10,7 @@
 #
 # 느린 PG는 기존 하네스 tools/run-pg-brownout.sh 의 지연 주입을 그대로 쓴다(PG 슬롯이 귀해야
 # "PG 슬롯을 아꼈는가"가 드러난다). k6 스크립트는 k6/pg-brownout-deadline.js — 요청의
-# LATE_FRACTION 만큼 이미 지난 X-Client-Deadline-Ms 를 보내 "이미 떠난 고객"을 흉내낸다.
+# LATE_FRACTION 만큼 남은 시간 0 의 X-Request-Timeout-Ms 를 보내 "이미 떠난 고객"을 흉내낸다.
 #
 # 일회용 MySQL(tmpfs)·Redis 를 쓰고 조건마다 DB 를 새로 만든다(tools/run-approve-resend-load.sh 의 패턴과 같다).
 set -euo pipefail
@@ -20,8 +20,8 @@ RATE=${RATE:-30}; DUR=${DUR:-60s}
 LAT=${LAT:-5000}; RTO=${RTO:-2000}          # 느림: 지연이 read-timeout 을 항상 넘겨 승인이 오래 걸림 확정
 LIMIT=${LIMIT:-40}                            # PG 동시 호출 상한. 운영 기본값(ADR-022)
 LATE_FRACTION=${LATE_FRACTION:-0.3}
-LATE_DEADLINE_OFFSET_MS=${LATE_DEADLINE_OFFSET_MS:--1000}
-NORMAL_DEADLINE_OFFSET_MS=${NORMAL_DEADLINE_OFFSET_MS:-30000}
+LATE_TIMEOUT_MS=${LATE_TIMEOUT_MS:-0}
+NORMAL_TIMEOUT_MS=${NORMAL_TIMEOUT_MS:-30000}
 DB_PORT=${DB_PORT:-13399}; REDIS_PORT=${REDIS_PORT:-16399}; PORT=${PORT:-18399}
 # name:enabled
 CONDITIONS=${CONDITIONS:-"OFF:false ON:true"}
@@ -50,7 +50,7 @@ for c in $CONDITIONS; do
   SPRING_DATASOURCE_USERNAME=root SPRING_DATASOURCE_PASSWORD=root SPRING_DATA_REDIS_PORT=$REDIS_PORT \
   PORT=$PORT OUT="$OUT/$name" EXTRA="$extra" \
   K6_SCRIPT=k6/pg-brownout-deadline.js \
-  K6_EXTRA_ARGS="-e LATE_FRACTION=$LATE_FRACTION -e LATE_DEADLINE_OFFSET_MS=$LATE_DEADLINE_OFFSET_MS -e NORMAL_DEADLINE_OFFSET_MS=$NORMAL_DEADLINE_OFFSET_MS" \
+  K6_EXTRA_ARGS="-e LATE_FRACTION=$LATE_FRACTION -e LATE_TIMEOUT_MS=$LATE_TIMEOUT_MS -e NORMAL_TIMEOUT_MS=$NORMAL_TIMEOUT_MS" \
   MYSQL="$MYSQL -N -B $db" \
     bash tools/run-pg-brownout.sh "$LAT" "$RATE" "$DUR" "$RTO" "$LIMIT" > "$OUT/run-$name.log" 2>&1 || echo "실패: $name (로그: $OUT/run-$name.log)" >&2
   $MYSQL -N -B "$db" -e "SELECT status, COUNT(*) FROM payments GROUP BY status" > "$OUT/payments-$name.tsv" 2>/dev/null || true
