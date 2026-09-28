@@ -4,7 +4,7 @@ import { Counter } from 'k6/metrics';
 import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
 
 /**
- * 데드라인 전파(#407, 27절⑦) 실측 — 이미 떠난 고객의 결제가 PG 슬롯을 얼마나 차지하는가.
+ * 데드라인 전파(#409, 27절⑦) 실측 — 이미 떠난 고객의 결제가 PG 슬롯을 얼마나 차지하는가.
  *
  * tools/run-pg-brownout.sh 를 그대로 넓혀 쓴다(k6 스크립트만 이걸로 바꿔 부른다). 다른 점은
  * 요청의 일부(LATE_FRACTION)에 <b>이미 지난</b> {@code X-Client-Deadline-Ms} 헤더를 실어 보낸다는
