@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,6 +40,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 큐잉이 생기게 했다. SINGLEFLIGHT 는 만료마다 이 풀에 로더를 <b>한 번만</b> 제출한다.
  *
  * <p>{@code ./gradlew experimentTest --tests '*CacheStampede*'}로 실행한다(Docker 불필요, 순수 JUnit).
+ *
+ * <p><b>27절⑫ 추가</b>: 아래 {@code versionCheckPreventsStaleSetButNotSameVersionBug}는 같은 lease
+ * 논문이 함께 푸는 다른 문제(무효화-채우기 경합에 따른 stale set)를 다룬다. 이슈 #428 참고.
  */
 @Tag("experiment")
 class CacheStampedeExperimentTest {
@@ -47,6 +51,139 @@ class CacheStampedeExperimentTest {
     private static final int DB_POOL_SIZE = 20; // ADR-022 Hikari maximum-pool-size 와 동일
     private static final Duration TTL = Duration.ofMillis(50);
     private static final int[] CONCURRENCIES = {10, 50, 100};
+
+    // --- 캐시 채우기와 무효화의 경합(27절⑫, Meta "Cache made consistent") ---
+    //
+    // Memcache lease 원 논문(NSDI 2013)은 "two problems: stale sets and thundering herds"를
+    // 함께 푼다. 위 두 테스트는 thundering herd(동시 로드 몰림)만 다뤘다 — 이 절은 나머지 하나,
+    // 무효화가 먼저 오고 그 전에 시작된 느린 캐시 채우기가 나중에 옛 값을 write-back 하는 경합을
+    // 같은 파일에 더한다(이슈 #428 "합치는 이유" 참고). Meta 사고 사례(같은 블로그, 직접 확인):
+    // 캐시에 "metadata=0 @version 4", DB에 "metadata=1 @version 4"가 무한히 남았다 — 오류 처리의
+    // "버전이 지정값보다 작으면 지운다"가 같은 버전의 틀린 항목은 못 잡았다. 아래 실험은 그 실패
+    // 모드를 재현한다.
+
+    private static final long RACE_LOADER_DELAY_MS = 100;
+    private static final int RACE_TRIALS = 21; // 무효화 시각 0~200ms(로더 지연의 2배)를 10ms 간격으로
+
+    private record VersionedValue(String value, long version) {
+    }
+
+    private record RaceResult(String name, int totalTrials, int racedTrials, int staleCount,
+                               double staleRateAmongRaced) {
+    }
+
+    private record TrialOutcome(boolean raced, boolean stale) {
+    }
+
+    @Test
+    @DisplayName("무효화와 캐시 채우기가 경합할 때 lease 없음·lease·버전 비교의 낡은 값 잔존율을 비교한다")
+    void versionCheckPreventsStaleSetButNotSameVersionBug() {
+        RaceResult noLease = runRace("NO_LEASE", false, false);
+        // 이 경합에는 동시 로더가 하나뿐이라 LEASE(단일 비행)의 중복 제거가 개입할 일이 없다 —
+        // write-back 로직이 NO_LEASE와 똑같은 것이 예상된 관찰이다(다른 로더가 있었어도 write-back
+        // 시점 문제는 그대로다).
+        RaceResult lease = runRace("LEASE", false, false);
+        RaceResult versionCheck = runRace("VERSION_CHECK", true, false);
+        RaceResult versionCheckSameVersionBug = runRace("VERSION_CHECK_SAME_VERSION_BUG", true, true);
+
+        for (RaceResult r : List.of(noLease, lease, versionCheck, versionCheckSameVersionBug)) {
+            System.out.printf("CACHE-INVALIDATION-RACE cond=%s raced=%d/%d stale=%d stale_rate=%.2f%n",
+                    r.name, r.racedTrials, r.totalTrials, r.staleCount, r.staleRateAmongRaced);
+        }
+
+        // 판정 기준(이슈 #428, 측정 전에 적음) — 조건이 실제로 섰다는 증거부터 확인한다.
+        assertThat(noLease.racedTrials).isGreaterThan(0); // 경합이 실제로 생겼다는 증거
+        // 1. NO_LEASE는 경합 중 불일치율이 0보다 크다.
+        assertThat(noLease.staleRateAmongRaced).isGreaterThan(0.0);
+        // 2. LEASE의 불일치율은 NO_LEASE와 뚜렷한 차이가 없다(둘 다 write-back에 버전 확인이 없다).
+        assertThat(Math.abs(lease.staleRateAmongRaced - noLease.staleRateAmongRaced)).isLessThan(0.15);
+        // 3. VERSION_CHECK(정상 무효화)의 불일치율이 NO_LEASE·LEASE보다 뚜렷이 낮고 0에 가깝다.
+        assertThat(versionCheck.staleRateAmongRaced).isLessThan(noLease.staleRateAmongRaced);
+        assertThat(versionCheck.staleRateAmongRaced).isLessThan(lease.staleRateAmongRaced);
+        assertThat(versionCheck.staleRateAmongRaced).isLessThan(0.1);
+        // 4. 같은 버전으로 값만 바꾸는 무효화(Meta 사고 재현)에서는 VERSION_CHECK도 못 막는다.
+        assertThat(versionCheckSameVersionBug.staleRateAmongRaced).isGreaterThan(versionCheck.staleRateAmongRaced);
+    }
+
+    private RaceResult runRace(String name, boolean versionCheck, boolean sameVersionBug) {
+        int raced = 0;
+        int stale = 0;
+        for (int i = 0; i < RACE_TRIALS; i++) {
+            long offsetMs = i * (2 * RACE_LOADER_DELAY_MS) / (RACE_TRIALS - 1);
+            TrialOutcome outcome = runTrial(offsetMs, versionCheck, sameVersionBug);
+            if (outcome.raced()) {
+                raced++;
+                if (outcome.stale()) {
+                    stale++;
+                }
+            }
+        }
+        double rate = raced > 0 ? (double) stale / raced : 0.0;
+        return new RaceResult(name, RACE_TRIALS, raced, stale, rate);
+    }
+
+    /**
+     * 로더 하나(무효화 이전 버전을 읽고 {@code RACE_LOADER_DELAY_MS} 뒤 write-back)와 무효화 하나
+     * (임의 시각에 DB와 캐시를 함께 새 값으로 씀)를 동시에 돌려 최종 캐시가 DB와 일치하는지 본다.
+     */
+    private TrialOutcome runTrial(long invalidateOffsetMs, boolean versionCheck, boolean sameVersionBug) {
+        AtomicReference<VersionedValue> db = new AtomicReference<>(new VersionedValue("v0", 1));
+        AtomicReference<VersionedValue> cache = new AtomicReference<>(new VersionedValue("v0", 1));
+        CountDownLatch loaderStarted = new CountDownLatch(1);
+
+        Thread loaderThread = new Thread(() -> {
+            VersionedValue readAtStart = db.get(); // 로드 시작 시점의 DB 스냅숏
+            loaderStarted.countDown();
+            sleepQuiet(RACE_LOADER_DELAY_MS);
+            if (versionCheck) {
+                // "버전이 지정값보다 작으면 거부" — Meta 사고처럼 버전이 같으면 통과시킨다(버그 재현 지점).
+                cache.getAndUpdate(current -> readAtStart.version() >= current.version() ? readAtStart : current);
+            } else {
+                cache.set(readAtStart); // NO_LEASE·LEASE: 버전 확인 없이 무조건 덮어쓴다
+            }
+        });
+        Thread invalidatorThread = new Thread(() -> {
+            awaitQuiet(loaderStarted);
+            sleepQuiet(invalidateOffsetMs);
+            long newVersion = sameVersionBug ? db.get().version() : db.get().version() + 1;
+            VersionedValue newValue = new VersionedValue("v1", newVersion);
+            db.set(newValue);
+            cache.set(newValue); // 무효화가 write-through로 캐시에도 새 값을 직접 쓴다
+        });
+
+        loaderThread.start();
+        invalidatorThread.start();
+        joinQuiet(loaderThread);
+        joinQuiet(invalidatorThread);
+
+        boolean raced = invalidateOffsetMs < RACE_LOADER_DELAY_MS; // 무효화가 로드 완료 전에 시작됐다
+        boolean stale = !cache.get().equals(db.get());
+        return new TrialOutcome(raced, stale);
+    }
+
+    private static void sleepQuiet(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static void awaitQuiet(CountDownLatch latch) {
+        try {
+            latch.await(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static void joinQuiet(Thread thread) {
+        try {
+            thread.join(TimeUnit.SECONDS.toMillis(5));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
 
     @Test
     @DisplayName("만료 순간 동시성 10/50/100에서 NAIVE 대 SINGLEFLIGHT의 DB 도달 호출 수·p95를 비교한다")
