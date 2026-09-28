@@ -131,7 +131,7 @@ class PaymentServiceTest {
     }
 
     @Test
-    @DisplayName("데드라인 전파(#407): 이미 지난 클라이언트 데드라인이면 PG를 부르지 않고 바로 확정 실패")
+    @DisplayName("데드라인 전파(#409): 이미 지난 클라이언트 데드라인이면 PG를 부르지 않고 바로 확정 실패")
     void pgApproveSkipsPgCallWhenClientDeadlineAlreadyPassed() {
         PgClient mockPg = mock(PgClient.class);
         PaymentService svc = new PaymentService(repository, mockPg,
@@ -148,7 +148,7 @@ class PaymentServiceTest {
     }
 
     @Test
-    @DisplayName("데드라인 전파(#407): 데드라인이 아직 안 지났으면 평소대로 PG를 부른다")
+    @DisplayName("데드라인 전파(#409): 데드라인이 아직 안 지났으면 평소대로 PG를 부른다")
     void pgApproveCallsPgWhenClientDeadlineNotYetPassed() {
         PgClient mockPg = mock(PgClient.class);
         when(mockPg.approve(any())).thenReturn(PgApproveResult.success("CARD"));
@@ -163,7 +163,7 @@ class PaymentServiceTest {
     }
 
     @Test
-    @DisplayName("데드라인 전파(#407): payment.deadline-check.enabled=false면 데드라인이 지나도 PG를 부른다(대조군)")
+    @DisplayName("데드라인 전파(#409): payment.deadline-check.enabled=false면 데드라인이 지나도 PG를 부른다(대조군)")
     void pgApproveIgnoresDeadlineWhenCheckDisabled() {
         PgClient mockPg = mock(PgClient.class);
         when(mockPg.approve(any())).thenReturn(PgApproveResult.success("CARD"));

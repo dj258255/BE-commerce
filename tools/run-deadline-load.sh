@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 데드라인 전파(#407, 27절⑦) 실측 — 이미 떠난 고객의 결제가 PG 슬롯을 얼마나 차지하는지,
+# 데드라인 전파(#409, 27절⑦) 실측 — 이미 떠난 고객의 결제가 PG 슬롯을 얼마나 차지하는지,
 # 넣은 뒤(payment.deadline-check.enabled=true) 얼마나 줄어드는지 잰다.
 #
 #   bash tools/run-deadline-load.sh

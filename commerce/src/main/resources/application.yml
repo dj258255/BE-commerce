@@ -814,7 +814,7 @@ payment:
     # 쥐고 있는 Semaphore.availablePermits() 를 그대로 읽는 이 조건을 골랐다(ADR-022 "2026-09-28" 절 뒷부분).
     approve-resend-min-headroom: ${PAYMENT_PG_APPROVE_RESEND_MIN_HEADROOM:4}
 
-  # <b>데드라인 전파(#407, 27절⑦).</b> 클라이언트가 X-Client-Deadline-Ms 헤더로 "이 시각까지만
+  # <b>데드라인 전파(#409, 27절⑦).</b> 클라이언트가 X-Client-Deadline-Ms 헤더로 "이 시각까지만
   # 기다린다"를 알려오면, PG를 부르기 직전에 이미 지났는지 본다. 이미 지났으면 PG 콜(상한 세마포어
   # 포함) 자체를 생략하고 바로 확정 실패로 돌린다 — 화면을 떠난 고객의 재시도가 PG 슬롯을 붙잡는
   # 것을 막는다(Google SRE 데드라인 전파). false로 끄면 헤더를 받아도 무시한다(옛 동작) — 측정에서

@@ -47,7 +47,7 @@ public class PaymentService {
     private final MeterRegistry meterRegistry;
 
     /**
-     * 데드라인 전파(#407, 27절⑦) 켬/끔. 필드에 기본값을 둔다 — {@code @Value}는 스프링이 빈을 만들 때만
+     * 데드라인 전파(#409, 27절⑦) 켬/끔. 필드에 기본값을 둔다 — {@code @Value}는 스프링이 빈을 만들 때만
      * 채워지고, {@code @RequiredArgsConstructor}는 final 필드만 생성자에 넣으므로 이 필드를 final로 두면
      * 기존 테스트의 생성자 호출이 모두 깨진다(OrderExpiryService와 같은 패턴).
      */
@@ -105,7 +105,7 @@ public class PaymentService {
     }
 
     /**
-     * 클라이언트 데드라인(밀리초 epoch)을 함께 받는 형태(#407 데드라인 전파, 27절⑦). {@code null}이면
+     * 클라이언트 데드라인(밀리초 epoch)을 함께 받는 형태(#409 데드라인 전파, 27절⑦). {@code null}이면
      * 데드라인을 확인하지 않는다(옛 동작, 호출부가 아직 데드라인을 안 넘기는 경로용).
      *
      * <p>PG를 부르기 <b>직전</b>, 즉 {@link com.beomsu.becommerce.payment.pg.ResilientPgClient}가 상한

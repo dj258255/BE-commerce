@@ -149,7 +149,7 @@ class CheckoutServiceTest {
     }
 
     @Test
-    @DisplayName("데드라인 전파(#407): 헤더로 받은 클라이언트 데드라인을 pgApprove에 그대로 넘긴다")
+    @DisplayName("데드라인 전파(#409): 헤더로 받은 클라이언트 데드라인을 pgApprove에 그대로 넘긴다")
     void confirmPassesClientDeadlineToPgApprove() {
         Order order = orderOf(100L, 2);
         when(paymentService.beginApproval(anyString(), anyString(), any(Money.class), anyInt())).thenReturn(123L);
@@ -167,7 +167,7 @@ class CheckoutServiceTest {
     }
 
     @Test
-    @DisplayName("데드라인 전파(#407): 헤더가 없으면(null) 옛 pgApprove 오버로드를 그대로 호출한다")
+    @DisplayName("데드라인 전파(#409): 헤더가 없으면(null) 옛 pgApprove 오버로드를 그대로 호출한다")
     void confirmWithoutDeadlineUsesLegacyOverload() {
         Order order = orderOf(100L, 2);
         cardApproved();
