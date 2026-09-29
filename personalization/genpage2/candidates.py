@@ -27,12 +27,12 @@ def _ranked_items(counts: Counter[str], limit: int) -> list[str]:
     return [article for article, _ in sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))[:limit]]
 
 
-def build_candidates(meta: pd.DataFrame, transactions: pd.DataFrame, request: object, *,
-                     top_n: int, per_section_m: int, vocab: Any) -> dict[str, set[str]]:
-    """고객별 운영 후보 집합을 만든다.
+def popular_candidates(transactions: pd.DataFrame, request: object, *,
+                       top_n: int, per_section_m: int, vocab: Any) -> tuple[list[str], dict[int, list[str]]]:
+    """요청 직전 7일의 전체 인기 상위와 섹션별 인기 상위를 만든다.
 
-    후보 판매량은 요청 시각 직전 7일만 사용한다. 특히 그 뒤 거래가 들어 있는
-    전체 parquet을 받더라도 절대로 후보에 섞이지 않게 여기에서 시간 조건을 둔다.
+    랭커의 C2 · C3 와 운영 후보가 같은 계산을 쓰도록 여기서 한 번만 구현한다.
+    그 뒤 거래가 들어 있는 전체 parquet을 받더라도 시간 조건으로 걸러 낸다.
     """
     if top_n < 0 or per_section_m < 0:
         raise ValueError("top_n 과 per_section_m 은 0 이상이어야 합니다")
@@ -40,8 +40,6 @@ def build_candidates(meta: pd.DataFrame, transactions: pd.DataFrame, request: ob
     missing = required.difference(transactions.columns)
     if missing:
         raise ValueError(f"transactions 에 필요한 열이 없습니다: {sorted(missing)}")
-    if "customer_id" not in meta or "history" not in meta:
-        raise ValueError("eval_meta 에 customer_id 와 history 열이 필요합니다")
 
     request_at = pd.Timestamp(request)
     dates = pd.to_datetime(transactions["t_dat"])
@@ -65,6 +63,21 @@ def build_candidates(meta: pd.DataFrame, transactions: pd.DataFrame, request: ob
         section: _ranked_items(counts, per_section_m)
         for section, counts in by_section.items()
     }
+    return overall, section_popular
+
+
+def build_candidates(meta: pd.DataFrame, transactions: pd.DataFrame, request: object, *,
+                     top_n: int, per_section_m: int, vocab: Any) -> dict[str, set[str]]:
+    """고객별 운영 후보 집합을 만든다.
+
+    후보 판매량은 요청 시각 직전 7일만 사용한다. 특히 그 뒤 거래가 들어 있는
+    전체 parquet을 받더라도 절대로 후보에 섞이지 않게 여기에서 시간 조건을 둔다.
+    """
+    overall, section_popular = popular_candidates(transactions, request, top_n=top_n,
+                                                  per_section_m=per_section_m, vocab=vocab)
+    if "customer_id" not in meta or "history" not in meta:
+        raise ValueError("eval_meta 에 customer_id 와 history 열이 필요합니다")
+
     result: dict[str, set[str]] = {}
     for row in meta.itertuples(index=False):
         customer_id = str(getattr(row, "customer_id"))

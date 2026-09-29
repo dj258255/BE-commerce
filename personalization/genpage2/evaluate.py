@@ -15,7 +15,10 @@ import pandas as pd
 from .candidates import build_candidates, build_similar_candidates
 from .config import ITEMS_PER_ROW, MAX_ROWS, SEED, data_dir, out_dir, request_of
 from .context import LEVELS
-from .decode import GeneratedRow, PageDecoder
+
+# ``decode`` 는 torch 를 끌어온다. 랭커는 LightGBM 과 torch 의 OpenMP 가 충돌해
+# torch 없이 돌아야 하므로, 페이지가 실제로 ``GeneratedRow`` 일 때만 늦게 부른다.
+_TRIVIAL_PAGE_TYPES = (str, bytes, int, np.integer)
 
 
 def _as_articles(value: Any) -> list[str]:
@@ -216,8 +219,19 @@ def map_at_12(meta: pd.DataFrame, pages: dict[str, list[str]]) -> tuple[float, i
     return map_at_k(pred, _truth_frame(meta), 12)
 
 
+def _page_is_generated(page: Any) -> bool:
+    """페이지가 ``GeneratedRow`` 목록인지 본다. 문자열 목록이면 torch 를 부르지 않는다."""
+    if not page:
+        return False
+    if isinstance(page[0], _TRIVIAL_PAGE_TYPES):
+        return False
+    from .decode import GeneratedRow
+
+    return isinstance(page[0], GeneratedRow)
+
+
 def _page_items(page: Any) -> list[str]:
-    if page and isinstance(page[0], GeneratedRow):
+    if _page_is_generated(page):
         return [article for row in page for article in row.items]
     return list(page or [])
 
@@ -250,7 +264,7 @@ def page_metrics(meta: pd.DataFrame, pages: dict[str, Any], *, vocab: Any | None
         new_recalls.append(len(item_set & set(new_truth)) / len(new_truth) if new_truth else 0.0)
         repeat_recalls.append(len(item_set & set(repeat_truth)) / len(repeat_truth) if repeat_truth else 0.0)
         page = pages.get(customer, [])
-        page_rows = {r.row_token for r in page} if page and isinstance(page[0], GeneratedRow) else set()
+        page_rows = {r.row_token for r in page} if _page_is_generated(page) else set()
         if vocab is not None and truth:
             hit_rows = [vocab.row_of(article) in page_rows or (
                 article in history and vocab.id("ROW_REPEAT") in page_rows
@@ -268,7 +282,7 @@ def page_metrics(meta: pd.DataFrame, pages: dict[str, Any], *, vocab: Any | None
                 diversities.append(float((1 - pairs[np.triu_indices(len(indices), 1)]).mean()))
             else:
                 diversities.append(0.0)
-        total_rows += len(page) if page and isinstance(page[0], GeneratedRow) else 0
+        total_rows += len(page) if _page_is_generated(page) else 0
         total_items += len(items)
     return {
         "map_at_12": score,
@@ -317,6 +331,7 @@ def _load_decoder(mode_dir: Path, ckpt: Path, device_arg: str) -> tuple[PageDeco
     # Deliberately runtime imports: A1/A3 are separate concurrent work.
     import torch
     from .content import load_content
+    from .decode import PageDecoder
     from .model import load_checkpoint
     from .vocab import Vocab
 
@@ -399,10 +414,10 @@ def generate_pages(meta: pd.DataFrame, archive: Any, decoder: PageDecoder, vocab
 
 def _options(pin_repeat: bool, candidate_config: tuple[int, int] | None,
              similar_config: tuple[int, int] | None, repeat_gate: bool,
-             repeat_order: str) -> dict[str, Any] | None:
+             repeat_order: str, ranker_candidates: bool = False) -> dict[str, Any] | None:
     """Build the report ``options`` block, or ``None`` when every option is default."""
     if not (pin_repeat or candidate_config is not None or similar_config is not None
-            or repeat_gate or repeat_order != "model"):
+            or repeat_gate or repeat_order != "model" or ranker_candidates):
         return None
     options: dict[str, Any] = {
         "pin_repeat": pin_repeat,
@@ -414,6 +429,8 @@ def _options(pin_repeat: bool, candidate_config: tuple[int, int] | None,
         options["similar"] = list(similar_config)
     if repeat_gate:
         options["repeat_gate"] = True
+    if ranker_candidates:
+        options["ranker_candidates"] = True
     return options
 
 
@@ -429,6 +446,8 @@ def _report_args(args: argparse.Namespace, pin_repeat: bool,
         report_args.pop("candidates", None)
     if similar_config is None:
         report_args.pop("similar", None)
+    if not getattr(args, "ranker_candidates", False):
+        report_args.pop("ranker_candidates", None)
     if getattr(args, "repeat_order", "model") == "model":
         report_args.pop("repeat_order", None)
     if not getattr(args, "repeat_gate", False):
@@ -443,12 +462,31 @@ def _report_args(args: argparse.Namespace, pin_repeat: bool,
 def _candidates_for(meta: pd.DataFrame, tx: pd.DataFrame, request: Any, *,
                     vocab: Any, content: np.ndarray, content_rows: dict[str, int],
                     candidate_config: tuple[int, int] | None,
-                    similar_config: tuple[int, int] | None) -> dict[str, set[str]] | None:
-    """Union the operational candidates with the e5 nearest-neighbour candidates."""
+                    similar_config: tuple[int, int] | None,
+                    ranker_candidates: bool = False) -> dict[str, set[str]] | None:
+    """Union the operational candidates with the e5 nearest-neighbour candidates.
+
+    ``ranker_candidates`` 를 켜면 랭커의 C1 ~ C5 합집합을 후보 풀로 쓴다(공정한
+    비교를 위해 ``build_ranker_candidates`` 를 그대로 부른다).
+    """
     result: dict[str, set[str]] | None = None
+    if ranker_candidates:
+        from .ranker import DEFAULT_CONFIG, RANKER_CONFIGS, Transactions, build_ranker_candidates, candidate_pool
+
+        if "customer_id" not in tx.columns:
+            raise ValueError("--ranker-candidates 에는 customer_id 열이 있는 거래가 필요합니다")
+        per_source = build_ranker_candidates(meta, Transactions.from_frame(tx), request, vocab=vocab,
+                                             content=content, content_rows=content_rows,
+                                             cfg=dict(RANKER_CONFIGS[DEFAULT_CONFIG]))
+        result = candidate_pool(per_source)
     if candidate_config is not None:
         top_n, per_section_m = candidate_config
-        result = build_candidates(meta, tx, request, top_n=top_n, per_section_m=per_section_m, vocab=vocab)
+        operational = build_candidates(meta, tx, request, top_n=top_n, per_section_m=per_section_m, vocab=vocab)
+        if result is None:
+            result = operational
+        else:
+            for customer, items in operational.items():
+                result.setdefault(customer, set()).update(items)
     if similar_config is not None:
         recent_k, neighbors = similar_config
         similar = build_similar_candidates(meta, vocab=vocab, content=content, content_rows=content_rows,
@@ -465,20 +503,21 @@ def _shard_report(args: argparse.Namespace, base: Path, meta: pd.DataFrame, arch
                   shard_config: tuple[int, int], started: float, pin_repeat: bool,
                   candidate_config: tuple[int, int] | None, report_args: dict[str, Any],
                   similar_config: tuple[int, int] | None = None, repeat_order: str = "model",
-                  repeat_gate: bool = False) -> dict[str, Any]:
+                  repeat_gate: bool = False, ranker_candidates: bool = False) -> dict[str, Any]:
     """Generate only the requested shard and keep per-customer raw output."""
     if not args.ckpt:
         raise ValueError("모델 평가에는 --ckpt 가 필요합니다")
     index, total = shard_config
     start, stop = shard_bounds(len(meta), index, total)
     shard_meta = meta.iloc[start:stop]
-    tx = pd.read_parquet(base / "hm" / "normalized" / "transactions.parquet", columns=["t_dat", "article_id"])
+    columns = ["t_dat", "article_id"] + (["customer_id"] if ranker_candidates else [])
+    tx = pd.read_parquet(base / "hm" / "normalized" / "transactions.parquet", columns=columns)
     request = request_of(args.mode)
     mode_dir = base / "hm" / "model" / "genpage2" / args.mode
     decoder, vocab, content, content_rows, device = _load_decoder(mode_dir, Path(args.ckpt), args.device)
     candidates_by_customer = _candidates_for(shard_meta, tx, request, vocab=vocab, content=content,
                                              content_rows=content_rows, candidate_config=candidate_config,
-                                             similar_config=similar_config)
+                                             similar_config=similar_config, ranker_candidates=ranker_candidates)
     generated_at = time.perf_counter()
     pages, violations = generate_pages(shard_meta, archive, decoder, vocab, candidates_by_customer,
                                        args.batch, pin_repeat, repeat_order=repeat_order,
@@ -500,7 +539,7 @@ def _shard_report(args: argparse.Namespace, base: Path, meta: pd.DataFrame, arch
             for row in shard_meta.itertuples(index=False)
         ],
     }
-    options = _options(pin_repeat, candidate_config, similar_config, repeat_gate, repeat_order)
+    options = _options(pin_repeat, candidate_config, similar_config, repeat_gate, repeat_order, ranker_candidates)
     if options is not None:
         report["options"] = options
     if pin_repeat and repeat_gate:
@@ -524,6 +563,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     candidate_config = parse_candidates(getattr(args, "candidates", None))
     similar_config = parse_similar(getattr(args, "similar", None))
     repeat_order = getattr(args, "repeat_order", "model")
+    ranker_candidates = bool(getattr(args, "ranker_candidates", False))
     shard_config = parse_shard(getattr(args, "shard", None))
     set_torch_threads(getattr(args, "threads", None))
     started = time.perf_counter()
@@ -533,7 +573,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         return _shard_report(args, base, meta, archive, shard_config=shard_config, started=started,
                              pin_repeat=pin_repeat, candidate_config=candidate_config,
                              report_args=report_args, similar_config=similar_config,
-                             repeat_order=repeat_order, repeat_gate=repeat_gate)
+                             repeat_order=repeat_order, repeat_gate=repeat_gate,
+                             ranker_candidates=ranker_candidates)
 
     candidates_by_customer: dict[str, set[str]] | None = None
     results: dict[str, Any] = {}
@@ -541,7 +582,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     repeat = repeat_last_pages(meta)
     results["repeat_last"] = evaluate_pages(meta, repeat, elapsed=time.perf_counter() - started)
     results["repeat_last"]["ms_per_page"] = None
-    tx = pd.read_parquet(base / "hm" / "normalized" / "transactions.parquet", columns=["t_dat", "article_id"])
+    tx_columns = ["t_dat", "article_id"] + (["customer_id"] if ranker_candidates else [])
+    tx = pd.read_parquet(base / "hm" / "normalized" / "transactions.parquet", columns=tx_columns)
     popular = popular_last_week(tx, request)
     results["popular_last_week"] = evaluate_pages(
         meta, {str(c): popular for c in meta["customer_id"]}, elapsed=time.perf_counter() - started
@@ -561,7 +603,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         decoder, vocab, content, content_rows, device = _load_decoder(mode_dir, Path(args.ckpt), args.device)
         candidates_by_customer = _candidates_for(meta, tx, request, vocab=vocab, content=content,
                                                  content_rows=content_rows, candidate_config=candidate_config,
-                                                 similar_config=similar_config)
+                                                 similar_config=similar_config, ranker_candidates=ranker_candidates)
         generated_at = time.perf_counter()
         pages, violations = generate_pages(meta, archive, decoder, vocab, candidates_by_customer,
                                            args.batch, pin_repeat, repeat_order=repeat_order,
@@ -573,7 +615,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     elapsed = time.perf_counter() - started
     report = {"mode": args.mode, "ckpt": str(args.ckpt) if args.ckpt else None,
               "args": report_args, "elapsed_seconds": elapsed, "results": results}
-    options = _options(pin_repeat, candidate_config, similar_config, repeat_gate, repeat_order)
+    options = _options(pin_repeat, candidate_config, similar_config, repeat_gate, repeat_order, ranker_candidates)
     if options is not None:
         report["options"] = options
     if pin_repeat and repeat_gate and vocab is not None:
@@ -602,6 +644,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--candidates", metavar="N,M")
     parser.add_argument("--similar", metavar="K,N",
                         help="최근 산 K 개 상품 각각의 e5 코사인 최근접 N 개를 후보에 더한다")
+    parser.add_argument("--ranker-candidates", action="store_true",
+                        help="허용 후보를 랭커의 C1 ~ C5 합집합으로 둔다(GenPage 대 R 공정 비교)")
     parser.add_argument("--shard", metavar="K/N")
     parser.add_argument("--threads", type=int)
     args = parser.parse_args(argv)

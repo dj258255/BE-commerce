@@ -1,0 +1,72 @@
+{
+  "mode": "validate",
+  "ckpt": "/Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/validate/ckpt/b-base-full",
+  "args": {
+    "mode": "validate",
+    "ckpt": "/Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/validate/ckpt/b-base-full",
+    "limit": 10000,
+    "data_dir": null,
+    "batch": 256,
+    "device": "auto",
+    "baselines_only": false,
+    "pin_repeat": true,
+    "repeat_order": "recency",
+    "ranker_candidates": true,
+    "out": "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/35c4c37b-b9f5-42c6-9a21-4fff361024fe/scratchpad/d2/personalization/docs/runs/20260928-v2-d2-ranker/g1-eval.json"
+  },
+  "elapsed_seconds": 3906.8284724999685,
+  "results": {
+    "repeat_last": {
+      "map_at_12": 0.023456881230101468,
+      "map_at_12_has_vocab_history": 0.025257759481104196,
+      "page_recall": 0.039963099662777335,
+      "new_item_recall": 0.0,
+      "repeat_item_recall": 0.07243440476190476,
+      "row_recall": 0.0,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 10.0526,
+      "ms_per_page": null,
+      "customers": 10000,
+      "device": "cpu"
+    },
+    "popular_last_week": {
+      "map_at_12": 0.005989454395402176,
+      "map_at_12_has_vocab_history": 0.005982405749452282,
+      "page_recall": 0.019291943314238873,
+      "new_item_recall": 0.018174407760399584,
+      "repeat_item_recall": 0.0034166666666666664,
+      "row_recall": 0.0,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 12.0,
+      "ms_per_page": null,
+      "customers": 10000,
+      "device": "cpu"
+    },
+    "model": {
+      "map_at_12": 0.020781103724318014,
+      "map_at_12_has_vocab_history": 0.021986459874194647,
+      "page_recall": 0.055217247173055935,
+      "new_item_recall": 0.024178786814030927,
+      "repeat_item_recall": 0.05903928571428571,
+      "row_recall": 0.3639307955641902,
+      "diversity": 0.10579578854143619,
+      "violations": 0,
+      "rows_mean": 4.1442,
+      "items_mean": 29.9208,
+      "ms_per_page": 373.8210028541158,
+      "customers": 10000,
+      "device": "mps"
+    }
+  },
+  "options": {
+    "pin_repeat": true,
+    "candidates": null,
+    "repeat_order": "recency",
+    "ranker_candidates": true
+  },
+  "candidates_mean": 351.9887
+}
