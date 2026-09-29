@@ -449,6 +449,17 @@ DONE(성공)은 양쪽 다 0건이다 — 이 조건(지연 5000ms > read-timeou
 
 **계기.** 토스페이먼츠 공식 문서는 "결제 처리와 관련된 API 의 Read Timeout 은 60초로 설정하면 돼요"라고 권한다. Stripe SDK 기본값도 80초다. 우리 5초는 이보다 12배 짧았고 설정 주석에 "어느 쪽이 싼지는 아직 안 쟀다"고 남아 있었다. 이 문서의 상한 · 거절 식 · 재전송 예산이 모두 5초 위에 서 있어 그대로 둘 수 없었다.
 
+**다른 PG의 권장값**(2026-09-30 공개 문서 기준). 60초 이상을 권하는 곳이 셋이고 가장 짧은 나이스페이도 30초다. 5초는 어느 권장보다 짧았다.
+
+| PG | 권장 | 근거 |
+|---|---|---|
+| 토스페이먼츠 | 읽기 60초 | [개발자센터: 타임아웃](https://docs.tosspayments.com/resources/glossary/timeout) "결제 처리와 관련된 API 의 Read Timeout 은 60초로 설정하면 돼요" |
+| 포트원 | 읽기 최소 60초 | [REST API V2](https://developers.portone.io/api/rest-v2) "PG 및 결제 원천사의 응답 지연을 고려하여 최소 60초의 읽기 타임아웃 시간을 설정하도록 권장합니다" |
+| Braintree(PayPal) | 60초 이상 | [Best Practices](https://developer.paypal.com/braintree/docs/reference/general/best-practices/php/) 60초보다 짧으면 결제는 됐는데 결과를 못 받을 수 있다(10초에 끊고 19초에 결제가 끝나는 예) |
+| 나이스페이 | 연결 5초, 읽기 30초 | [매뉴얼: 개발 준비](https://github.com/nicepayments/nicepay-manual/blob/main/common/preparations.md) 타임아웃 정보. 읽기 타임아웃이 나면 망취소 |
+| Stripe | SDK 기본 80초 | [stripe-node](https://github.com/stripe/stripe-node) 설정 기본값 80000ms |
+| KG이니시스 · NHN KCP · 카카오페이 | 공개 문서에서 찾지 못함 | 카카오페이는 같은 이유(PG가 끊긴 호출을 계속 처리)로 60초에 맞췄다 |
+
 **가짜 PG를 먼저 고쳤다.** 지금까지 가짜 PG는 우리가 끊으면 PG의 처리도 같이 끝났다. 실 PG는 끊긴 호출도 끝까지 처리한다. 이걸 흉내 내지 않으면 짧은 타임아웃이 PG의 부하까지 줄이는 것처럼 보인다. 스위치 셋을 더했다(기본은 모두 끔, `FakePgClientPgSideProcessingTest`).
 - `pg-side-processing`: 끊어도 PG는 지연만큼 처리를 계속한다. 그동안 같은 멱등키는 토스처럼 409 `IDEMPOTENT_REQUEST_PROCESSING`(우리 쪽 결과 모름), 끝난 뒤에는 처음 결과를 그대로 돌려준다
 - `contract-concurrency`: PG 쪽 동시 처리 한도. 끊긴 호출도 센다. 넘으면 처리 전 확정 거절(가정. 토스는 한도 값을 공개하지 않는다)
