@@ -140,8 +140,8 @@ public class CheckoutService {
     }
 
     /**
-     * 클라이언트 데드라인(밀리초 epoch, {@code null}이면 확인 안 함)을 함께 받는 형태(#407 데드라인
-     * 전파, 27절⑦). 컨트롤러가 {@code X-Client-Deadline-Ms} 요청 헤더에서 뽑아 넘긴다.
+     * 서버 시계 기준 마감 시각(밀리초 epoch, {@code null}이면 확인 안 함)을 함께 받는 형태(#409 데드라인
+     * 전파, 27절⑦). 컨트롤러가 {@code X-Request-Timeout-Ms}(남은 시간)를 받은 순간의 서버 시계로 바꿔 넘긴다.
      */
     public CheckoutResult confirm(String orderNo, String paymentKey, Money cardAmount,
                                   long pointAmount, long walletAmount, long authenticatedUserId,

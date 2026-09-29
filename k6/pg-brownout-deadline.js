@@ -4,12 +4,12 @@ import { Counter } from 'k6/metrics';
 import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
 
 /**
- * 데드라인 전파(#407, 27절⑦) 실측 — 이미 떠난 고객의 결제가 PG 슬롯을 얼마나 차지하는가.
+ * 데드라인 전파(#409, 27절⑦) 실측 — 이미 떠난 고객의 결제가 PG 슬롯을 얼마나 차지하는가.
  *
  * tools/run-pg-brownout.sh 를 그대로 넓혀 쓴다(k6 스크립트만 이걸로 바꿔 부른다). 다른 점은
- * 요청의 일부(LATE_FRACTION)에 <b>이미 지난</b> {@code X-Client-Deadline-Ms} 헤더를 실어 보낸다는
+ * 요청의 일부(LATE_FRACTION)에 <b>남은 시간이 0인</b> {@code X-Request-Timeout-Ms} 헤더를 실어 보낸다는
  * 것이다 — 고객이 화면 앞을 이미 떠났거나(느린 PG에 지쳐 포기) 데드라인이 안 늘어난 재시도를
- * 흉내낸다. 나머지(정상 몫)는 넉넉한 미래 데드라인을 보낸다.
+ * 흉내낸다. 나머지(정상 몫)는 넉넉한 남은 시간(30초)을 보낸다.
  *
  * paymentKey 접두어로 두 몫을 나눠 DB 에서 따로 집계할 수 있다:
  *   late-*   데드라인이 이미 지난 요청
@@ -20,7 +20,7 @@ import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
  *   후: --payment.deadline-check.enabled=true  (기본값)
  *
  * 사용: k6 run -e BASE_URL=... -e RATE=30 -e DURATION=60s \
- *         -e LATE_FRACTION=0.3 -e LATE_DEADLINE_OFFSET_MS=-1000 -e NORMAL_DEADLINE_OFFSET_MS=30000 \
+ *         -e LATE_FRACTION=0.3 -e LATE_TIMEOUT_MS=0 -e NORMAL_TIMEOUT_MS=30000 \
  *         k6/pg-brownout-deadline.js
  */
 
@@ -28,9 +28,9 @@ const BASE = __ENV.BASE_URL || 'http://localhost:8080';
 const RATE = Number(__ENV.RATE || 30);
 const DURATION = __ENV.DURATION || '60s';
 const LATE_FRACTION = Number(__ENV.LATE_FRACTION || 0.3);
-// 음수면 이미 지난 데드라인(밀리초). 요청을 보내는 순간 기준 오프셋이다.
-const LATE_DEADLINE_OFFSET_MS = Number(__ENV.LATE_DEADLINE_OFFSET_MS || -1000);
-const NORMAL_DEADLINE_OFFSET_MS = Number(__ENV.NORMAL_DEADLINE_OFFSET_MS || 30000);
+// 남은 시간(밀리초). 0 이하면 서버가 이미 지난 것으로 본다. 시계 값을 보내지 않으므로 k6와 서버의 시계 차이와 무관하다.
+const LATE_TIMEOUT_MS = Number(__ENV.LATE_TIMEOUT_MS || 0);
+const NORMAL_TIMEOUT_MS = Number(__ENV.NORMAL_TIMEOUT_MS || 30000);
 
 const pending = new Counter('checkout_pending_202');
 const ok = new Counter('checkout_ok_200');
@@ -100,8 +100,7 @@ export default function (data) {
   const order = orderRes.json();
 
   const isLate = Math.random() < LATE_FRACTION;
-  const offset = isLate ? LATE_DEADLINE_OFFSET_MS : NORMAL_DEADLINE_OFFSET_MS;
-  const deadline = Date.now() + offset;
+  const timeoutMs = isLate ? LATE_TIMEOUT_MS : NORMAL_TIMEOUT_MS;
   const prefix = isLate ? 'late' : 'normal';
 
   const res = http.post(`${BASE}/api/v1/payments/confirm`, JSON.stringify({
@@ -113,7 +112,7 @@ export default function (data) {
       'Content-Type': 'application/json',
       'Idempotency-Key': uuidv4(),
       Authorization: auth,
-      'X-Client-Deadline-Ms': String(deadline),
+      'X-Request-Timeout-Ms': String(timeoutMs),
     },
     tags: { name: 'confirm' },
   });

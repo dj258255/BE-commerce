@@ -20,9 +20,10 @@ import java.security.Principal;
  * <p>모든 승인 요청은 {@code Idempotency-Key} 헤더로 멱등 처리된다 — "따닥" 중복결제와
  * 타임아웃 후 재시도를 안전하게 만든다.
  *
- * <p>선택적으로 {@code X-Client-Deadline-Ms} 헤더(밀리초 epoch)를 받는다. 클라이언트가 이 시각까지만
- * 응답을 기다리겠다고 알리는 값이다 — 헤더가 없으면(옛 클라이언트) 데드라인을 확인하지 않는다(#407
- * 데드라인 전파, 27절⑦).
+ * <p>선택적으로 {@code X-Request-Timeout-Ms} 헤더(남은 시간, 밀리초)를 받는다. 클라이언트가 앞으로 이만큼만
+ * 응답을 기다리겠다고 알리는 값이다. 받은 순간 <b>서버 시계로</b> 마감 시각을 계산해 넘기므로 클라이언트와
+ * 서버의 시계가 달라도 판정이 흔들리지 않는다(gRPC의 {@code grpc-timeout}과 같은 방식). 0 이하는 이미
+ * 지난 것으로 본다. 헤더가 없으면 데드라인을 확인하지 않는다(#409 데드라인 전파, 27절⑦).
  *
  * <p>어느 PG로 갈지는 <b>결제창을 띄우기 전에</b> {@code PgSelectionController}가 정한다
  * (payment 모듈 소유). 승인 단계에서는 PG를 넘길 수 없기 때문이다.
@@ -44,18 +45,20 @@ public class CheckoutController {
     @PostMapping("/confirm")
     public ResponseEntity<CheckoutResult> confirm(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
-            @RequestHeader(value = "X-Client-Deadline-Ms", required = false) Long clientDeadlineMs,
+            @RequestHeader(value = "X-Request-Timeout-Ms", required = false) Long requestTimeoutMs,
             @RequestBody ConfirmRequest request,
             Principal principal) {
 
         // 인증된 사용자 ID — 주문 소유권 검증에 쓴다(남의 주문 결제/포인트 소진 방지).
         long userId = Long.parseLong(principal.getName());
+        // 남은 시간을 받은 순간의 서버 시계로 마감 시각으로 바꾼다. 멱등 처리보다 앞에서 계산해 대기 시간도 셈에 넣는다.
+        Long deadlineMs = serverDeadlineMs(requestTimeoutMs, System.currentTimeMillis());
         CheckoutResult result = idempotencyService.execute(
                 idempotencyKey, PATH, "POST", request, CheckoutResult.class,
                 () -> checkoutService.confirm(
                         request.orderNo(), request.paymentKey(),
                         Money.krw(request.amount()), request.pointAmount(), request.walletAmount(),
-                        userId, request.installmentMonths(), clientDeadlineMs));
+                        userId, request.installmentMonths(), deadlineMs));
 
         HttpStatus status = switch (result.paymentStatus()) {
             case DONE -> HttpStatus.OK;               // 승인 완료
@@ -63,6 +66,18 @@ public class CheckoutController {
             default -> HttpStatus.BAD_REQUEST;        // 거절(ABORTED) 등
         };
         return ResponseEntity.status(status).body(result);
+    }
+
+    /**
+     * 남은 시간(밀리초)을 서버 시계 기준 마감 시각으로 바꾼다. {@code null}이면 데드라인 없음.
+     * 0 이하면 이미 지난 것으로 보고 받은 순간보다 1ms 앞을 돌려준다 — 뒤의 비교가 {@code now > deadline}이라
+     * 같은 밀리초 안에 통과하는 일을 막는다.
+     */
+    static Long serverDeadlineMs(Long requestTimeoutMs, long nowMs) {
+        if (requestTimeoutMs == null) {
+            return null;
+        }
+        return requestTimeoutMs <= 0 ? nowMs - 1 : nowMs + requestTimeoutMs;
     }
 
     /**

@@ -15,7 +15,7 @@ LIMIT=${5:-0}     # PG 동시 호출 상한. 0 이면 상한 없음(기본 동�
 EXTRA=${EXTRA:-}  # 앱에 더 넘길 인자(예: --server.tomcat.threads.max=200). #335
 DRAIN_S=${DRAIN_S:-0}  # 0 보다 크면 측정 뒤 앱을 살려 두고 미확정이 0 이 될 때까지(최대 이 초) 1초마다 센다. #335
 MYSQL=${MYSQL:-"docker exec pay-mysql-1 mysql -N -B -ubecommerce -pbecommerce becommerce"}  # 미확정 건수를 셀 DB
-K6_SCRIPT=${K6_SCRIPT:-k6/pg-brownout.js}  # 다른 실험이 이 하네스를 넓혀 쓸 때 k6 스크립트만 바꾼다(#407)
+K6_SCRIPT=${K6_SCRIPT:-k6/pg-brownout.js}  # 다른 실험이 이 하네스를 넓혀 쓸 때 k6 스크립트만 바꾼다(#409)
 K6_EXTRA_ARGS=${K6_EXTRA_ARGS:-}  # 위 스크립트가 받는 추가 -e 인자를 그대로 넘긴다(예: "-e LATE_FRACTION=0.3")
 
 JAR=commerce/build/libs/be-commerce-0.0.1-SNAPSHOT.jar
