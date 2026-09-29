@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import math
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,8 +15,8 @@ import pandas as pd
 
 from genpage2.decode import GeneratedRow
 from genpage2.evaluate import (_candidates_for, _load_decoder, _repeat_pin, evaluate_pages, map_at_12,
-                               parse_shard, parse_similar, repeat_gate_first_row_ratio, repeat_last_pages,
-                               run, shard_bounds)
+                               page_ndcg, parse_shard, parse_similar, repeat_gate_first_row_ratio,
+                               repeat_last_pages, row_hit, run, shard_bounds)
 from genpage2.merge_eval import merge, merge_reports
 
 
@@ -294,6 +295,76 @@ class EvaluateTest(unittest.TestCase):
             decoder, *_ = _load_decoder(Path("/mode"), Path("/checkpoint"), "cpu")
         self.assertEqual(decoder.level, "items")
         self.assertEqual(decoder.maxlen, 17)
+
+
+class PageNdcgRowHitTest(unittest.TestCase):
+    @staticmethod
+    def _weight(r, p):
+        return 1.0 / math.log2(r + 2) / math.log2(p + 2)
+
+    def test_hand_calculated_page_ndcg(self):
+        # 정답 {A,B} 를 가중치가 가장 큰 두 칸(0,0) · (1,0)에 두면 1.0 이다.
+        self.assertAlmostEqual(page_ndcg([["A", "X"], ["B"]], ["A", "B"]), 1.0)
+        # (0,1) · (1,0) 에 두면 (0,0) · (1,0) 이상적 배치보다 낮다.
+        swapped = (self._weight(0, 1) + self._weight(1, 0)) / (self._weight(0, 0) + self._weight(1, 0))
+        self.assertAlmostEqual(page_ndcg([["X", "A"], ["B"]], ["A", "B"]), swapped)
+        self.assertLess(swapped, 1.0)
+        # 정답이 없거나 페이지가 비면 0 이고 분모에 들어간다.
+        self.assertEqual(page_ndcg([["A"]], []), 0.0)
+        self.assertEqual(page_ndcg([], ["A"]), 0.0)
+
+    def test_hand_calculated_row_hit(self):
+        rows = [["A", "X"], ["Y"], ["B"]]
+        self.assertAlmostEqual(row_hit(rows, ["A", "B"]), 2 / 3)
+        self.assertEqual(row_hit(rows, []), 0.0)
+        self.assertEqual(row_hit([], ["A"]), 0.0)
+
+    def test_page_metrics_include_new_metrics_and_flat_page_is_one_row(self):
+        meta = pd.DataFrame({"customer_id": ["one", "two"], "truth": [["A", "B"], ["C"]],
+                             "history": [[], []]})
+        # one 은 한 행(평평한 페이지)으로 보고, two 는 정답을 놓친다.
+        report = evaluate_pages(meta, {"one": ["A", "X", "B"], "two": ["Z"]})
+        expected = (self._weight(0, 0) + self._weight(0, 2)) / (self._weight(0, 0) + self._weight(0, 1))
+        self.assertAlmostEqual(report["page_ndcg"], expected / 2)
+        self.assertAlmostEqual(report["row_hit"], (1.0 + 0.0) / 2)
+
+    def test_generated_rows_use_their_own_row_weights(self):
+        meta = pd.DataFrame({"customer_id": ["one"], "truth": [["A", "B"]], "history": [[]]})
+        pages = {"one": [GeneratedRow(1, ["A"]), GeneratedRow(2, ["X", "B"])]}
+        report = evaluate_pages(meta, pages)
+        expected = (self._weight(0, 0) + self._weight(1, 1)) / (self._weight(0, 0) + self._weight(0, 1))
+        self.assertAlmostEqual(report["page_ndcg"], expected)
+        self.assertAlmostEqual(report["row_hit"], 1.0)
+
+    def test_short_page_shares_the_full_grid_denominator(self):
+        truth = ["A", "B", "C"]
+        padded = [["A", "B", "C", "X", "X", "X", "X", "X"]] + [["X"] * 8 for _ in range(5)]
+        short = page_ndcg([["A", "B", "C"]], truth)
+        full = page_ndcg(padded, truth)
+        # 예전에는 짧은 페이지의 분모가 자기 칸 3개로 작아져 1.0 이 됐다.
+        self.assertLess(short, 1.0)
+        self.assertLessEqual(short, full)
+        # 분모는 실제 칸이 아니라 6×8 격자의 큰 순 3칸(1 + 2/log2 3)이다.
+        expected = (self._weight(0, 0) + self._weight(0, 1) + self._weight(0, 2)) / (
+            self._weight(0, 0) + 2 * self._weight(0, 1))
+        self.assertAlmostEqual(short, expected)
+        self.assertAlmostEqual(full, expected)
+
+    def test_short_generated_rows_are_not_inflated_by_few_rows(self):
+        truth = ["A", "B", "C"]
+        two_rows = page_ndcg([["A", "B", "C", "X", "X", "X", "X", "X"], ["X"] * 8], truth)
+        full_rows = page_ndcg([["A", "B", "C", "X", "X", "X", "X", "X"]] + [["X"] * 8 for _ in range(5)],
+                              truth)
+        self.assertLessEqual(two_rows, full_rows)
+
+    def test_flat_forty_eight_page_never_exceeds_one(self):
+        truth = [f"{index:02d}" for index in range(48)]
+        flat = page_ndcg([truth], truth)
+        numerator = sum(self._weight(0, p) for p in range(48))
+        denominator = sum(self._weight(r, p) for r in range(6) for p in range(8))
+        self.assertAlmostEqual(flat, numerator / denominator)
+        self.assertGreater(flat, 0.0)
+        self.assertLessEqual(flat, 1.0)
 
 
 class ShardEvaluateTest(unittest.TestCase):

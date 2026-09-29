@@ -182,6 +182,88 @@ class DecodeTest(unittest.TestCase):
                                                pinned={0: 3}, pinned_items=None, n_rows=1, items_per_row=3,
                                                prefix=1), baseline)
 
+    def test_allowed_rows_restricts_row_choice(self):
+        unrestricted, _ = self.decoder.generate(self.context, self.content, history_articles=[],
+                                                n_rows=1, items_per_row=3, prefix=1)
+        self.assertEqual(unrestricted[0].row_token, 4)
+        restricted, _ = self.decoder.generate(self.context, self.content, history_articles=[],
+                                              allowed_rows={5}, n_rows=1, items_per_row=3, prefix=1)
+        self.assertEqual(restricted[0].row_token, 5)
+        self.assertEqual(set(restricted[0].items), {"D", "E", "F"})
+
+    def test_row_items_fill_the_chosen_row_in_order(self):
+        rows, violations = self.decoder.generate(
+            self.context, self.content, history_articles=[], allowed_rows={5},
+            row_items={5: ["F"]}, n_rows=1, items_per_row=3, prefix=1,
+        )
+        self.assertEqual(violations, 0)
+        # 주어진 순서가 앞에 오고, 남은 칸은 그 행의 점수 순(D, E)으로 모델이 채운다.
+        self.assertEqual(rows[0].items, ["F", "D", "E"])
+
+    def test_row_items_skip_duplicates_and_out_of_row_articles(self):
+        rows, violations = self.decoder.generate(
+            self.context, self.content, history_articles=[], allowed_rows={5},
+            row_items={5: ["D", "D", "A", "E"]}, n_rows=1, items_per_row=3, prefix=1,
+        )
+        self.assertEqual(violations, 0)
+        # D 는 한 번만 들어가고, A 는 row5 밖이라 건너뛴다.
+        self.assertEqual(rows[0].items, ["D", "E", "F"])
+
+    def test_row_items_default_none_matches_previous_behaviour(self):
+        baseline = self.decoder.generate(self.context, self.content, history_articles=["D", "E", "F"],
+                                         n_rows=2, items_per_row=3, prefix=1)
+        self.assertEqual(self.decoder.generate(self.context, self.content, history_articles=["D", "E", "F"],
+                                               row_items=None, allowed_rows=None, n_rows=2, items_per_row=3,
+                                               prefix=1), baseline)
+
+    def test_row_items_beyond_eight_fill_in_recency_order(self):
+        # 다시 사기 행의 row_items 로 이력 전체를 주면, 최근 8개 안에 허용 밖 상품이
+        # 있어도 9번째 이후 최근 상품이 그 자리를 채운다. 모델이 채우면 그 상품의
+        # 점수 순(여기서는 L,K,J,I)이 되어 결과가 갈린다.
+        class BigVocab:
+            tokens = ["PAD", "SEP_HISTORY", "SEP_PAGE", "ROW_REPEAT", "ROW_A"] + [
+                f"ITEM_{letter}" for letter in "ABCDEFGHIJKL"]
+            item_ids = range(5, 17)
+            row_ids = range(3, 5)
+            article_of = {5 + index: letter for index, letter in enumerate("ABCDEFGHIJKL")}
+
+            def id(self, name):
+                return self.tokens.index(name)
+
+            def item(self, article):
+                return {value: key for key, value in self.article_of.items()}.get(article)
+
+            def row_of(self, article):
+                return 4
+
+        class ByIdModel(torch.nn.Module):
+            def __init__(self, vocab_size):
+                super().__init__()
+                self.vocab_size = vocab_size
+
+            def forward(self, tokens, content_idx):
+                return tokens.float().unsqueeze(-1)
+
+            def logits(self, hidden):
+                shape = hidden.shape
+                return torch.arange(self.vocab_size, dtype=hidden.dtype,
+                                    device=hidden.device).expand(shape[0], shape[1], self.vocab_size)
+
+        vocab = BigVocab()
+        decoder = PageDecoder(ByIdModel(len(vocab.tokens)), vocab, {}, "cpu")
+        history = list("ABCDEFGHIJKL")  # A 가 가장 최근
+        allowed_items = {"A", "B", "C", "D", "I", "J", "K", "L"}  # E ~ H 는 허용 밖
+        kwargs = {"history_articles": history, "allowed_items": allowed_items,
+                  "allowed_rows": {3}, "n_rows": 1, "items_per_row": 8, "prefix": 1}
+        full, violations = decoder.generate(self.context, self.content,
+                                            row_items={3: list("ABCDEFGHIJKL")}, **kwargs)
+        self.assertEqual(violations, 0)
+        self.assertEqual(full[0].items, ["A", "B", "C", "D", "I", "J", "K", "L"])
+        # 최근 8개로 자르면 뒤 네 개가 모두 허용 밖이라 그 자리를 모델이 점수 순으로 채운다.
+        short, _ = decoder.generate(self.context, self.content,
+                                    row_items={3: list("ABCDEFGH")}, **kwargs)
+        self.assertEqual(short[0].items, ["A", "B", "C", "D", "L", "K", "J", "I"])
+
     def test_batch_equals_single_with_pinned_items(self):
         examples = [
             {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": ["D", "E", "F", "C"],
@@ -300,6 +382,28 @@ class DecodeTest(unittest.TestCase):
         # 두 번째 행부터는 앞 행의 캐시를 이어 쓰므로, 패딩이 캐시 길이에 남으면
         # 여기서 결과가 갈린다.
         kwargs = {"n_rows": 3, "items_per_row": 3, "prefix": 1}
+        batched = decoder.generate_batch(examples, **kwargs)
+        singles = [decoder.generate(**example, **kwargs) for example in examples]
+        self.assertEqual(batched, singles)
+        for example in examples:
+            self.assertEqual(decoder.generate(**example, **kwargs, use_cache=True),
+                             decoder.generate(**example, **kwargs, use_cache=False))
+
+    def test_real_model_batch_equals_single_with_row_items_and_allowed_rows(self):
+        cfg = ModelConfig(vocab_size=len(self.vocab.tokens), dim=8, layers=1, heads=2,
+                          ffn=16, dropout=0.0, maxlen=64, content_dim=384)
+        torch.manual_seed(13)
+        model = GenPageV2(cfg, torch.zeros((6, 384)), tokens=self.vocab.tokens).eval()
+        decoder = PageDecoder(model, self.vocab, {a: n for n, a in enumerate("ABCDEF")}, "cpu")
+        examples = [
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": ["D", "E", "F", "C"],
+             "row_items": {5: ["F", "E"]}, "allowed_rows": {5}},
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": ["A", "B", "C"],
+             "row_items": {4: ["C"]}, "allowed_rows": {4}},
+            {"ctx_tokens": [1, 3, 4, 5, 6, 7, 8, 2], "ctx_content": [-1] * 8,
+             "history_articles": ["D"], "row_items": {3: ["D"]}, "allowed_rows": {3, 4, 5}},
+        ]
+        kwargs = {"n_rows": 2, "items_per_row": 3, "prefix": 1}
         batched = decoder.generate_batch(examples, **kwargs)
         singles = [decoder.generate(**example, **kwargs) for example in examples]
         self.assertEqual(batched, singles)
