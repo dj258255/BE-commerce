@@ -50,7 +50,7 @@ public class KakaoPayPgClient implements PgClient {
             @Value("${payment.kakaopay.secret-key:}") String secretKey,
             @Value("${payment.kakaopay.cid:" + TEST_CID + "}") String cid,
             @Value("${payment.kakaopay.connect-timeout:2s}") Duration connectTimeout,
-            @Value("${payment.kakaopay.read-timeout:5s}") Duration readTimeout,
+            @Value("${payment.kakaopay.read-timeout:60s}") Duration readTimeout,
             ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
         this.cid = cid;

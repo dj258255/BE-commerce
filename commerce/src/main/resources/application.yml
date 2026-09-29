@@ -825,16 +825,17 @@ payment:
   # PG HTTP 타임아웃. 코드(@Value)에도 같은 기본값이 있지만, 이 값은 장애 대응에서 조정 대상이라
   # 밖으로 꺼내 둔다.
   #
-  # read-timeout 이 커넥션이 아니라 <톰캣 워커 스레드> 점유의 상한이다. 체크아웃이 사가라
-  # DB 커넥션은 PG 응답과 무관해졌지만(ADR-007), 워커는 여전히 여기까지 묶인다.
-  # 줄이면 장애가 빨리 끝나는 대신 끊긴 호출이 전부 UNKNOWN 이 되어 복구 배치 일거리가 는다.
-  # 어느 쪽이 싼지는 아직 안 쟀다(ADR-022).
+  # read-timeout 60초는 토스 공식 권장("결제 처리와 관련된 API 의 Read Timeout 은 60초")이다(ADR-022 2026-09-30).
+  # 예전 5초는 우리 쪽 대기만 줄였다. PG 는 끊긴 호출도 끝까지 처리하므로 느린 PG 앞에서 5초는
+  # PG 승인 호출을 16배(2,634 대 160)로 늘렸고 PG 쪽 동시 처리를 계약 한도까지 채웠다. 평소 느린 꼬리(10%가 10초)는
+  # 전부 결과 모름이 되어 확정까지 p95 93초가 걸렸다. 워커는 PG 동시 호출 상한(40)이 묶으므로 60초로 늘려도 마르지 않는다.
+  # 카카오페이는 공식 권장값을 찾지 못했다. PG 가 끊긴 호출을 계속 처리한다는 같은 이유로 맞췄다.
   toss:
     connect-timeout: ${PAYMENT_TOSS_CONNECT_TIMEOUT:2s}
-    read-timeout: ${PAYMENT_TOSS_READ_TIMEOUT:5s}
+    read-timeout: ${PAYMENT_TOSS_READ_TIMEOUT:60s}
   kakaopay:
     connect-timeout: ${PAYMENT_KAKAOPAY_CONNECT_TIMEOUT:2s}
-    read-timeout: ${PAYMENT_KAKAOPAY_READ_TIMEOUT:5s}
+    read-timeout: ${PAYMENT_KAKAOPAY_READ_TIMEOUT:60s}
 
 ---
 # kafka 프로파일: 브로커가 있을 때만 활성화한다(예: SPRING_PROFILES_ACTIVE=kafka).
