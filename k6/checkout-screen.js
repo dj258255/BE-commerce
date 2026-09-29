@@ -24,9 +24,11 @@ const BASE = __ENV.BASE_URL || 'http://localhost:8080';
 const RATE = Number(__ENV.RATE || 50);
 const DURATION = __ENV.DURATION || '60s';
 const SCREEN_TIMEOUT_MS = Number(__ENV.SCREEN_TIMEOUT_MS || 15000);   // checkout.html CONFIRM_TIMEOUT_MS
-const POLL_INTERVAL_S = 1.2;                                          // checkout.html pollUntilDecided
-const POLL_TRIES = 10;
-// checkout.html CONFIRM_DEADLINE_MS = 응답 대기 + 조회 창. 2026-09-30 측정은 이 값을 도입하기 전이라
+// checkout.html POLL_INTERVAL_MS · POLL_TRIES. 2026-09-30 의 두 측정(화면 경로, 읽기 타임아웃 5초 대 60초)은
+// 1.2초 × 10번일 때 쟀다(재현: -e POLL_INTERVAL_S=1.2 -e POLL_TRIES=10).
+const POLL_INTERVAL_S = Number(__ENV.POLL_INTERVAL_S || 2);
+const POLL_TRIES = Number(__ENV.POLL_TRIES || 25);
+// checkout.html CONFIRM_DEADLINE_MS = 응답 대기 + 조회 창. 화면 경로 측정은 이 값을 도입하기 전이라
 // 15000 을 보냈다(재현: -e SCREEN_DEADLINE_MS=15000). 값이 커지면 생략은 늘 수 없다.
 const SCREEN_DEADLINE_MS = Number(__ENV.SCREEN_DEADLINE_MS || (SCREEN_TIMEOUT_MS + POLL_INTERVAL_S * 1000 * POLL_TRIES));
 const CONTROL_FRACTION = Number(__ENV.CONTROL_FRACTION || 0.02);

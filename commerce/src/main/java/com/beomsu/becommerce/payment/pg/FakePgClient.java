@@ -90,6 +90,7 @@ public class FakePgClient implements PgClient {
         nextCardFingerprint.set(null);
         pgSide.clear();
         timeoutApprovedSeen.clear();
+        pgSideProcessingByKey.clear();
         firstInProgressAt.set(0);
         firstFailAt.set(0);
     }
@@ -110,7 +111,7 @@ public class FakePgClient implements PgClient {
      * 미확정"이라는 ADR-007의 그 상황이 재현된다. 타임아웃 값을 줄이면 미확정이 얼마나 늘어나는지가
      * ADR-022 선택지 C의 비용이다.
      */
-    private final AtomicLong readTimeoutMillis = new AtomicLong(5_000);
+    private final AtomicLong readTimeoutMillis = new AtomicLong(60_000);
 
     /**
      * 이 접두어로 시작하는 결제 키는 조회에 늘 "진행 중"이라고 답한다(#248). 비어 있으면 끈다.
@@ -161,7 +162,7 @@ public class FakePgClient implements PgClient {
         approveLatencyMillis.set(millis);
     }
 
-    @Value("${payment.fake-pg.read-timeout-ms:5000}")
+    @Value("${payment.fake-pg.read-timeout-ms:60000}")
     public void setReadTimeoutMillis(long millis) {
         readTimeoutMillis.set(millis);
     }
@@ -203,6 +204,62 @@ public class FakePgClient implements PgClient {
         approveTimeoutLostRate = rate;
     }
 
+    /**
+     * 0 보다 크면 승인의 이 비율이 {@code approve-slow-latency-ms}만큼 늦는다(느린 꼬리). 나머지는
+     * {@code approve-latency-ms}를 쓴다. 카드사 쪽이 가끔 느린 평소 상태를 재현한다(PG 읽기 타임아웃 5초 대 60초 비교).
+     */
+    @Value("${payment.fake-pg.approve-slow-rate:0}")
+    private double approveSlowRate = 0;
+
+    @Value("${payment.fake-pg.approve-slow-latency-ms:0}")
+    private long approveSlowLatencyMs = 0;
+
+    /**
+     * true 면 PG 쪽 처리를 우리 쪽 대기와 떼어서 흉내 낸다. 기본은 끔(지금 동작 그대로).
+     *
+     * <p>실 PG 는 우리가 읽기 타임아웃으로 끊어도 지연만큼 계속 처리한다. 그동안 같은 멱등키로 다시 오면
+     * 토스처럼 409 {@code IDEMPOTENT_REQUEST_PROCESSING}을 바로 돌려주고(우리 쪽에서는 결과 모름),
+     * 처리가 끝난 뒤 같은 키로 오면 처음 결과를 그대로 돌려준다. 이걸 흉내 내지 않으면 짧은 타임아웃이
+     * PG 의 부하까지 줄이는 것처럼 보인다.
+     */
+    @Value("${payment.fake-pg.pg-side-processing:false}")
+    private boolean pgSideProcessing = false;
+
+    /**
+     * 0 보다 크면 PG 가 이 가맹점에 대해 동시에 처리하는 수의 한도(계약 한도). 우리가 끊은 호출도 PG 에서
+     * 처리 중이면 센다. 넘으면 PG 를 거치지 않은 확정 거절로 돌려준다. {@code pg-side-processing}과 함께 쓴다.
+     */
+    @Value("${payment.fake-pg.contract-concurrency:0}")
+    private int contractConcurrency = 0;
+
+    private record PgSideProcessing(long doneAtMs, PgApproveResult result) {}
+
+    private final Map<String, PgSideProcessing> pgSideProcessingByKey = new ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicInteger pgSideInflight = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicInteger pgSideInflightMax = new java.util.concurrent.atomic.AtomicInteger();
+    private final AtomicLong contractRejected = new AtomicLong();
+    private final java.util.concurrent.ScheduledExecutorService pgSideClock =
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "fake-pg-side-clock");
+                t.setDaemon(true);
+                return t;
+            });
+
+    @Autowired(required = false)
+    void registerPgSideMetrics(MeterRegistry registry) {
+        Gauge.builder("fake.pg.side.inflight", pgSideInflight, java.util.concurrent.atomic.AtomicInteger::get).register(registry);
+        Gauge.builder("fake.pg.side.inflight.max", pgSideInflightMax, java.util.concurrent.atomic.AtomicInteger::get).register(registry);
+        FunctionCounter.builder("fake.pg.contract.rejected", contractRejected, AtomicLong::get).register(registry);
+    }
+
+    private long sampleApproveLatency() {
+        if (approveSlowRate > 0
+                && java.util.concurrent.ThreadLocalRandom.current().nextDouble() < approveSlowRate) {
+            return approveSlowLatencyMs;
+        }
+        return approveLatencyMillis.get();
+    }
+
     @Override
     public PgApproveResult approve(PgApproveCommand command) {
         approveCalls.incrementAndGet();
@@ -223,10 +280,32 @@ public class FakePgClient implements PgClient {
             // 같은 멱등키의 재요청(#395 재전송) — 실 PG라면 최초 처리 결과를 그대로 돌려준다.
             return PgApproveResult.success("CARD");
         }
+        long latency = sampleApproveLatency();
+        if (pgSideProcessing) {
+            String idemKey = command.idempotencyKey() != null ? command.idempotencyKey() : key;
+            PgSideProcessing seen = pgSideProcessingByKey.get(idemKey);
+            if (seen != null) {
+                // 같은 멱등키: 처리 중이면 409(결과 모름), 끝났으면 처음 결과를 그대로. PG 의 새 일거리가 아니다
+                return System.currentTimeMillis() < seen.doneAtMs()
+                        ? PgApproveResult.timeout("주입: 409 IDEMPOTENT_REQUEST_PROCESSING")
+                        : seen.result();
+            }
+            int inflight = pgSideInflight.incrementAndGet();
+            if (contractConcurrency > 0 && inflight > contractConcurrency) {
+                pgSideInflight.decrementAndGet();
+                contractRejected.incrementAndGet();
+                return PgApproveResult.failed("주입: PG 동시 처리 한도 초과(contract-concurrency)");  // PG 측 기록 없음
+            }
+            pgSideInflightMax.accumulateAndGet(inflight, Math::max);
+            pgSideProcessingByKey.put(idemKey,
+                    new PgSideProcessing(System.currentTimeMillis() + latency, nextApproveResult.get()));
+            // 우리가 끊어도 PG 는 지연만큼 계속 처리한다
+            pgSideClock.schedule(pgSideInflight::decrementAndGet, latency, java.util.concurrent.TimeUnit.MILLISECONDS);
+        }
         // 우리에게 무엇을 돌려주든(성공/타임아웃), PG 측에는 지정된 상태를 남긴다.
         pgSide.put(command.paymentKey(), pgSideStatusOnApprove.get());
 
-        PgApproveResult timedOut = sleepForInjectedLatency();
+        PgApproveResult timedOut = sleepForInjectedLatency(latency);
         if (timedOut != null) {
             return timedOut;
         }
@@ -246,8 +325,7 @@ public class FakePgClient implements PgClient {
      *
      * @return 끊겼으면 TIMEOUT 결과, 정상이면 null
      */
-    private PgApproveResult sleepForInjectedLatency() {
-        long latency = approveLatencyMillis.get();
+    private PgApproveResult sleepForInjectedLatency(long latency) {
         if (latency <= 0) {
             return null;
         }

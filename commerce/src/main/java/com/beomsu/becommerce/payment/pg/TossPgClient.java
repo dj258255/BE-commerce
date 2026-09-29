@@ -46,7 +46,7 @@ public class TossPgClient implements PgClient {
             @Value("${payment.toss.base-url:https://api.tosspayments.com}") String baseUrl,
             @Value("${payment.toss.secret-key:}") String secretKey,
             @Value("${payment.toss.connect-timeout:2s}") Duration connectTimeout,
-            @Value("${payment.toss.read-timeout:5s}") Duration readTimeout,
+            @Value("${payment.toss.read-timeout:60s}") Duration readTimeout,
             ObjectMapper objectMapper) {
         // 토스 인증: 시크릿 키를 아이디로 쓰고 비밀번호는 비운다 — Basic base64(secretKey + ":")
         String basic = Base64.getEncoder()
@@ -98,6 +98,11 @@ public class TossPgClient implements PgClient {
             return mapConfirm(resp, command.amount());
         } catch (HttpStatusCodeException e) {
             TossError err = parseError(e);
+            // 요청 제한으로 처리 전에 막혔으면 결제가 났을 수 없다. 미확정으로 두지 않고 확정 실패로 돌린다
+            if (TossErrorCodes.approveBlockedBeforeProcessing(e.getStatusCode().value(), err.code())) {
+                log.info("토스 승인 요청 제한 order={} status={} code={}", command.orderNo(), e.getStatusCode(), err.code());
+                return PgApproveResult.failed("PG 요청 제한으로 처리 전에 막힘: " + err.describe());
+            }
             // 5xx는 코드와 무관하게 미확정이다. 토스 문서상 RETRYABLE인 코드 중 넷은 500번대라,
             // 4xx만 잡으면 분류표에 적어 두고도 실행 경로에 닿지 않는 죽은 매핑이 된다.
             TossErrorCodes.Kind kind = e.getStatusCode().is5xxServerError()
