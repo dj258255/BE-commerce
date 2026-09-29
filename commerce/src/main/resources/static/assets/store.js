@@ -64,9 +64,11 @@
   /**
    * @param {string} method
    * @param {string} path  '/products' 처럼 /api/v1 뒤 경로만
-   * @param {{body?:object, noAuth?:boolean, idempotency?:boolean, timeoutMs?:number}} [opts]
-   *   timeoutMs 를 주면 그만큼만 기다리고 끊는다. 같은 값을 X-Request-Timeout-Ms(남은 시간)로 보내
-   *   서버가 받은 순간의 자기 시계로 마감을 계산하게 한다(ADR-022 데드라인). 시간이 지나면 timedOut: true.
+   * @param {{body?:object, noAuth?:boolean, idempotency?:boolean, timeoutMs?:number, deadlineMs?:number}} [opts]
+   *   timeoutMs 를 주면 그만큼만 기다리고 끊는다. 시간이 지나면 timedOut: true.
+   *   deadlineMs 는 X-Request-Timeout-Ms(남은 시간)로 보내 서버가 받은 순간의 자기 시계로 마감을 계산하게
+   *   한다(ADR-022 데드라인). 응답을 끊은 뒤에도 조회로 결과를 기다리는 화면은 응답 대기보다 길게 준다.
+   *   없으면 timeoutMs 를 보낸다.
    */
   async function api(method, path, opts) {
     opts = opts || {};
@@ -77,7 +79,7 @@
 
     var controller = null, timer = null;
     if (opts.timeoutMs) {
-      headers['X-Request-Timeout-Ms'] = String(opts.timeoutMs);
+      headers['X-Request-Timeout-Ms'] = String(opts.deadlineMs || opts.timeoutMs);
       controller = new AbortController();
       timer = setTimeout(function () { controller.abort(); }, opts.timeoutMs);
     }

@@ -125,14 +125,17 @@
     b.innerHTML = busy ? '<span class="spinner"></span> 처리 중…' : '결제하기';
   }
 
-  // 결제 확정은 이만큼만 기다린다. PG 읽기 타임아웃 5초 × (첫 시도 + 재전송 1회)에 여유 5초.
-  // 같은 값을 서버에 보내 이미 포기한 결제는 PG 를 부르지 않게 한다(ADR-022 데드라인).
+  // 결제 확정 응답은 이만큼만 기다린다. PG 읽기 타임아웃 5초 × (첫 시도 + 재전송 1회)에 여유 5초.
   var CONFIRM_TIMEOUT_MS = 15000;
+  var POLL_INTERVAL_MS = 1200, POLL_TRIES = 10;
+  // 서버에 보내는 남은 시간(ADR-022 데드라인). 응답을 멈춘 뒤에도 조회로 결과를 계속 기다리므로
+  // 응답 대기와 조회 창을 더한 값이다. 15초만 보내면 아직 조회로 기다리는 고객의 결제를 서버가 뺄 수 있다.
+  var CONFIRM_DEADLINE_MS = CONFIRM_TIMEOUT_MS + POLL_INTERVAL_MS * POLL_TRIES;
 
   /** 승인 미확정(202 UNKNOWN)은 주문 조회로 확정을 폴링한다 — 스펙이 명시한 계약. */
   async function pollUntilDecided(orderNo, tries) {
     for (var i = 0; i < tries; i++) {
-      await new Promise(function (r) { setTimeout(r, 1200); });
+      await new Promise(function (r) { setTimeout(r, POLL_INTERVAL_MS); });
       var r = await Store.api('GET', '/orders/' + orderNo);
       if (r.ok) {
         var ps = r.data.paymentStatus;
@@ -175,7 +178,8 @@
           walletAmount: wallet,
           installmentMonths: 0
         },
-        timeoutMs: CONFIRM_TIMEOUT_MS
+        timeoutMs: CONFIRM_TIMEOUT_MS,
+        deadlineMs: CONFIRM_DEADLINE_MS
       });
 
       if (res.ok) {
@@ -191,7 +195,7 @@
         paymentNotice(res.timedOut
           ? '<div class="notice">응답이 늦어 결제 결과를 확인하고 있습니다…</div>'
           : '<div class="notice">결제 결과를 확인하고 있습니다…</div>');
-        var decided = await pollUntilDecided(state.orderNo, 10);
+        var decided = await pollUntilDecided(state.orderNo, POLL_TRIES);
         if (decided && decided.paymentStatus === 'DONE') {
           Store.cart.clear();
           paymentNotice('<div class="notice ok">결제가 확정되었습니다. 주문내역으로 이동합니다…</div>');
