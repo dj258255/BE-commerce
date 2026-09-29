@@ -11,9 +11,9 @@ import numpy as np
 import pandas as pd
 
 from genpage2 import paired_compare, ranker
-from genpage2.paired_compare import (average_precision_at_12, customer_metrics,
-                                     load_genpage_pages, load_ranker_pages, paired_bootstrap,
-                                     verdict)
+from genpage2.decode import GeneratedRow
+from genpage2.paired_compare import (average_precision_at_12, customer_metrics, load_any_pages,
+                                     load_genpage_pages, load_ranker_pages, paired_bootstrap, verdict)
 from genpage2.ranker import FEATURE_NAMES, Transactions, write_pages
 
 REQUEST = pd.Timestamp("2020-09-09")
@@ -97,6 +97,33 @@ class ShardReadingTest(unittest.TestCase):
                            _shard({"c1": [["A"]], "c2": [["C"]]}))
             with self.assertRaises(ValueError):
                 load_genpage_pages([shard], meta)
+
+
+class AnyPagesTest(unittest.TestCase):
+    def test_a_accepts_flat_or_shard_and_keeps_rows(self):
+        meta = _meta()
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            shard = _write(base / "a.json",
+                           _shard({"c1": [["A", "X"], ["B"]], "c2": [["C"]], "c3": []}))
+            objects = load_any_pages([shard], meta)
+            self.assertEqual([row.items for row in objects["c1"]], [["A", "X"], ["B"]])
+            flat = write_pages(base / "flat.json.gz", meta, A_PAGES)
+            flat_pages = load_any_pages([flat], meta)
+            self.assertEqual(flat_pages["c1"], ["A", "X", "B"])
+
+    def test_customer_metrics_include_page_ndcg_and_row_hit(self):
+        meta = _meta()
+        with tempfile.TemporaryDirectory() as temporary:
+            shard = _write(Path(temporary) / "b.json",
+                           _shard({"c1": [["A"], ["B"]], "c2": [["C"]], "c3": [["D"]]}))
+            pages = paired_compare.load_genpage_objects([shard], meta)
+            vectors = customer_metrics(meta, pages)
+        self.assertIn("page_ndcg", vectors)
+        self.assertIn("row_hit", vectors)
+        self.assertAlmostEqual(float(vectors["row_hit"][0]), 1.0)
+        checks = paired_compare._self_check(meta, pages, vectors)
+        self.assertTrue(all(check["match"] for check in checks.values()))
 
 
 class BootstrapTest(unittest.TestCase):
@@ -193,6 +220,30 @@ class RunEndToEndTest(unittest.TestCase):
         self.assertAlmostEqual(report["difference"]["map_at_12"], 1.0 / 3)
         for name in ("map_at_12", "page_hit", "new_item_hit"):
             self.assertEqual(report["intervals"][name]["verdict"], "비겼다")
+
+    def test_run_accepts_a_shard_and_reports_new_metrics(self):
+        meta = _meta()
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            mode_dir = base / "hm" / "model" / "genpage2" / "validate"
+            mode_dir.mkdir(parents=True)
+            meta.to_parquet(mode_dir / "eval_meta.parquet")
+            np.savez(mode_dir / "eval.npz", ctx_tokens=np.array([1, 1]),
+                     ctx_content=np.array([-1, -1]), ctx_offsets=np.array([0, 1, 2]))
+            a_shard = _write(base / "a.json",
+                             _shard({"c1": [["A", "X"], ["B"]], "c2": [["C"]], "c3": [["D"]]}))
+            b_shard = _write(base / "b.json",
+                             _shard({"c1": [["A"], ["X", "B"]], "c2": [["C"]], "c3": [["D"]]}))
+            report = paired_compare.run([a_shard], [b_shard], mode="validate", limit=None,
+                                        bootstrap=50, seed=7, data_dir_path=base)
+        self.assertEqual(report["a"], str(a_shard))
+        for name in ("page_ndcg", "row_hit"):
+            self.assertIn(name, report["means"]["a"])
+            self.assertIn(name, report["means"]["b"])
+            self.assertIn(name, report["difference"])
+            self.assertIn(name, report["intervals"])
+        self.assertTrue(all(check["match"] for check in report["checks"]["a"].values()))
+        self.assertTrue(all(check["match"] for check in report["checks"]["b"].values()))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,2 @@
+# 결과 JSON 은 같은 이름의 .json.gz 와 같아 뺐다. 줄이는 과정에서 /usr/bin/time -l 통계도 빠졌다(시간 · 최대 메모리는 report.md 의 "측정"에 적었다)
+/private/tmp/claude-501/-Users-beomsu-Desktop-pay/wt-d3/personalization/genpage2/model.py:92: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True

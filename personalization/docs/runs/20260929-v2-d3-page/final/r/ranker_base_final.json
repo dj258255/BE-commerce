@@ -1,0 +1,103 @@
+{
+  "mode": "final",
+  "config": "base",
+  "request": "2020-09-16",
+  "customers": 68984,
+  "elapsed_seconds": 855.2280692079948,
+  "ranking_seconds": 501.52129029200296,
+  "metrics": {
+    "map_at_12": 0.03455663625604076,
+    "page_recall": 0.1354595051494002,
+    "new_item_recall": 0.10070896535552634,
+    "repeat_item_recall": 0.07006530960020174
+  },
+  "candidates_mean": 355.0274846341181,
+  "candidate_recall": 0.25042095583594864,
+  "train_rows": 3383425,
+  "iterations": 241,
+  "feature_importance_top20": [
+    [
+      "cust_item_count",
+      269997.041369915
+    ],
+    [
+      "item_sales_1d",
+      246755.7970304489
+    ],
+    [
+      "item_sales_7d",
+      177727.18811702728
+    ],
+    [
+      "max_cosine_recent5",
+      171247.88940620422
+    ],
+    [
+      "cust_section_share",
+      151818.41870212555
+    ],
+    [
+      "cust_item_days_since_last",
+      112208.72923183441
+    ],
+    [
+      "item_days_since_first_sale",
+      90652.54479885101
+    ],
+    [
+      "item_section",
+      66210.6452999115
+    ],
+    [
+      "item_trend_7_28",
+      55407.31602334976
+    ],
+    [
+      "item_sales_28d",
+      51307.79160165787
+    ],
+    [
+      "cust_days_since_last",
+      49529.331307411194
+    ],
+    [
+      "src_C5",
+      43111.70166349411
+    ],
+    [
+      "price_ratio",
+      33397.97538471222
+    ],
+    [
+      "cust_age",
+      33179.769050598145
+    ],
+    [
+      "cust_count",
+      28964.42470741272
+    ],
+    [
+      "cust_avg_price",
+      27360.86323928833
+    ],
+    [
+      "item_price_median",
+      24205.00134754181
+    ],
+    [
+      "cust_count_4w",
+      18645.015248775482
+    ],
+    [
+      "src_C4",
+      17484.40001630783
+    ],
+    [
+      "src_C1",
+      12489.941547870636
+    ]
+  ],
+  "limit": null,
+  "train_customers": null,
+  "wall_seconds": 876.7522976670007
+}

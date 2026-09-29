@@ -581,8 +581,15 @@ def train_ranker(weeks: list[tuple[np.ndarray, np.ndarray, np.ndarray]], cfg: di
 
 def rank_customers(model: Any, meta: pd.DataFrame, txn: Transactions, request: object, *, vocab: Any,
                    content: np.ndarray, content_rows: dict[str, int], ages: dict[str, float],
-                   cfg: dict[str, Any], top: int = 48) -> tuple[dict[str, list[str]], dict[str, dict[str, set[str]]]]:
-    """평가 고객의 후보를 점수순으로 정렬해 상위 ``top`` 개 페이지를 만든다."""
+                   cfg: dict[str, Any], top: int = 48,
+                   ranked_sink: dict[str, list[tuple[str, float]]] | None = None
+                   ) -> tuple[dict[str, list[str]], dict[str, dict[str, set[str]]]]:
+    """평가 고객의 후보를 점수순으로 정렬해 상위 ``top`` 개 페이지를 만든다.
+
+    ``ranked_sink`` 를 주면 고객별 전체 점수 순위를 ``(상품, 점수)`` 로 채운다
+    (``--dump-scores`` 의 ``scores.json.gz`` 를 위해 ``run`` 이 넘긴다). 보고서와
+    페이지는 건드리지 않는다.
+    """
     events = _events_for(txn, _day_number(request), [str(c) for c in meta["customer_id"]])
     candidates = build_ranker_candidates(meta, txn, request, vocab=vocab, content=content,
                                          content_rows=content_rows, cfg=cfg, events=events)
@@ -598,6 +605,8 @@ def rank_customers(model: Any, meta: pd.DataFrame, txn: Transactions, request: o
     pages: dict[str, list[str]] = {}
     for customer in meta["customer_id"].astype(str):
         ranked = sorted(per_customer.get(customer, []), key=lambda pair: (-pair[0], pair[1]))
+        if ranked_sink is not None:
+            ranked_sink[customer] = [(article, score) for score, article in ranked]
         pages[customer] = [article for _, article in ranked[:top]]
     return pages, candidates
 
@@ -608,12 +617,15 @@ def rank_customers(model: Any, meta: pd.DataFrame, txn: Transactions, request: o
 def run_ranker(mode: str, txn: Transactions, meta: pd.DataFrame, *, vocab: Any, content: np.ndarray,
                content_rows: dict[str, int], ages: dict[str, float], cfg: dict[str, Any],
                train_limit: int | None = None, top: int = 48,
-               pages_sink: dict[str, list[str]] | None = None) -> dict[str, Any]:
+               pages_sink: dict[str, list[str]] | None = None,
+               scores_sink: dict[str, list[tuple[str, float]]] | None = None,
+               score_top: int | None = None) -> dict[str, Any]:
     """학습 세 주와 평가를 한 번에 돌려 보고서 dict 를 만든다(파일 입출력 없음).
 
     ``pages_sink`` 를 주면 고객별 페이지(상위 ``top`` 개, 순위 순)를 그 dict 에
-    채운다(짝 비교용 ``pages.json.gz`` 를 위해 ``run`` 이 넘긴다). 보고서는 건드리지
-    않는다.
+    채운다(짝 비교용 ``pages.json.gz`` 를 위해 ``run`` 이 넘긴다). ``scores_sink``
+    를 주면 고객별 점수 순위를 ``(상품, 점수)`` 로 채우고, ``score_top`` 이 있으면
+    앞에서 그만큼만 남긴다(``scores.json.gz``). 보고서는 어느 쪽도 건드리지 않는다.
     """
     started = time.perf_counter()
     request = config.request_of(mode)
@@ -625,10 +637,15 @@ def run_ranker(mode: str, txn: Transactions, meta: pd.DataFrame, *, vocab: Any, 
                                          content_rows=content_rows, ages=ages, cfg=cfg, limit=train_limit, rng=rng))
     model, iterations, importance = train_ranker(weeks, cfg)
     rank_started = time.perf_counter()
+    ranked: dict[str, list[tuple[str, float]]] | None = {} if scores_sink is not None else None
     pages, candidates = rank_customers(model, meta, txn, request, vocab=vocab, content=content,
-                                       content_rows=content_rows, ages=ages, cfg=cfg, top=top)
+                                       content_rows=content_rows, ages=ages, cfg=cfg, top=top,
+                                       ranked_sink=ranked)
     if pages_sink is not None:
         pages_sink.update(pages)
+    if scores_sink is not None and ranked is not None:
+        for customer, values in ranked.items():
+            scores_sink[customer] = values if score_top is None else values[:score_top]
     ranking_seconds = time.perf_counter() - rank_started
     metrics = evaluate_pages(meta, pages, content=content, content_rows=content_rows,
                              elapsed=ranking_seconds, device="cpu")
@@ -676,6 +693,23 @@ def write_pages(path: Path, meta: pd.DataFrame, pages: dict[str, list[str]]) -> 
     return path
 
 
+def write_scores(path: Path, meta: pd.DataFrame,
+                 scores: dict[str, list[tuple[str, float]]]) -> Path:
+    """고객별 점수 상위 ``(상품, 점수)`` 를 ``scores.json.gz`` 로 따로 쓴다.
+
+    ``--dump-scores N`` 이 만든 파일이다. 형식은 ``[{customer_id, scores}]`` 이고
+    ``scores`` 는 ``[[상품, 점수], ...]`` 의 점수 내림차순이며 순서는 ``meta`` 순서다.
+    D3 의 페이지 구성(:mod:`genpage2.page_compose`)이 이 파일을 읽는다.
+    """
+    records = [{"customer_id": str(customer),
+                "scores": [[str(article), float(score)] for article, score in scores.get(str(customer), [])]}
+               for customer in meta["customer_id"]]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with gzip.open(path, "wt", encoding="utf-8") as handle:
+        json.dump(records, handle, ensure_ascii=False)
+    return path
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     began = time.perf_counter()
     base = Path(args.data_dir) if args.data_dir else config.data_dir()
@@ -697,8 +731,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     vocab, content, content_rows = load_eval_assets(mode_dir)
     ages = _load_ages(base, txn)
     pages: dict[str, list[str]] = {}
+    dump_scores = getattr(args, "dump_scores", None)
+    scores: dict[str, list[tuple[str, float]]] = {}
     report = run_ranker(mode, txn, meta, vocab=vocab, content=content, content_rows=content_rows,
-                        ages=ages, cfg=cfg, train_limit=args.train_customers, pages_sink=pages)
+                        ages=ages, cfg=cfg, train_limit=args.train_customers, pages_sink=pages,
+                        scores_sink=(scores if dump_scores is not None else None), score_top=dump_scores)
     report["config"] = args.config
     report["limit"] = args.limit
     report["train_customers"] = args.train_customers
@@ -708,6 +745,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     path = destination / f"ranker_{args.config}_{mode}.json"
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2, default=float), encoding="utf-8")
     write_pages(destination / "pages.json.gz", meta, pages)
+    if dump_scores is not None:
+        write_scores(destination / "scores.json.gz", meta, scores)
     print(json.dumps(report, ensure_ascii=False, indent=2, default=float))
     return report
 
@@ -728,6 +767,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--data-dir")
     parser.add_argument("--train-customers", type=int, default=None,
                         help="스모크용 학습 고객 상한(기본은 config 값)")
+    parser.add_argument("--dump-scores", type=int, default=None, metavar="N",
+                        help="고객마다 점수 상위 N 개를 scores.json.gz 에 쓴다")
     args = parser.parse_args(argv)
     run(args)
     return 0
