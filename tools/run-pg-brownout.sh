@@ -98,7 +98,8 @@ if [ "$DRAIN_S" -gt 0 ]; then
   END=$(( $(date +%s) + DRAIN_S ))
   while [ "$(date +%s)" -lt "$END" ]; do
     u=$($MYSQL -e "SELECT COUNT(*) FROM payments WHERE status = 'UNKNOWN'" 2>/dev/null | tr -d '[:space:]')
-    a=$(curl -s "$BASE/actuator/prometheus" | awk '/^payment_unknown_oldest_age/ {print $NF; exit}')
+    # awk 가 첫 줄에서 exit 하면 curl 이 SIGPIPE 로 끝나 pipefail + set -e 가 스크립트를 죽인다. 끝까지 읽고 첫 값만 쓴다
+    a=$(curl -s "$BASE/actuator/prometheus" | awk '/^payment_unknown_oldest_age/ && v == "" {v = $NF} END {print v}')
     echo "$(date +%s),${u:-},${a:-}" >> "$OUT/drain.csv"
     [ "$u" = "0" ] && break
     sleep 1

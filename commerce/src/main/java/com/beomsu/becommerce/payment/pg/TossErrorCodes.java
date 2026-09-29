@@ -16,6 +16,21 @@ import java.util.Set;
  */
 final class TossErrorCodes {
 
+    /**
+     * PG 가 처리하기 전에 요청을 막았다(반복 요청 제한). 에러 코드 문서의 403 {@code FORBIDDEN_CONSECUTIVE_REQUEST}
+     * "반복적인 요청은 허용되지 않습니다". 토스 기술 블로그는 비정상적으로 많은 요청에 429 를 준다고 적는다.
+     *
+     * <p><b>승인에서만</b> 확정 실패로 본다({@link #approveBlockedBeforeProcessing}). 승인은 처리 전에 막혔으니
+     * 결제가 났을 수 없고, 미확정으로 두면 복구 배치가 없는 결제를 헛조회한다. 취소는 결국 나가야 하는 요청이라
+     * 이 분류표({@link #classify})에서는 지금처럼 모르는 코드 = 재시도로 둔다.
+     */
+    private static final Set<String> BLOCKED_BEFORE_PROCESSING = Set.of(
+            "FORBIDDEN_CONSECUTIVE_REQUEST");
+
+    static boolean approveBlockedBeforeProcessing(int httpStatus, String code) {
+        return httpStatus == 429 || (code != null && BLOCKED_BEFORE_PROCESSING.contains(code));
+    }
+
     /** 카드사·계좌가 명시적으로 거절했다. 다시 보내도 같은 답이 온다. */
     private static final Set<String> DECLINED = Set.of(
             "INVALID_REJECT_CARD",              // 카드 사용 거절, 카드사 문의 필요

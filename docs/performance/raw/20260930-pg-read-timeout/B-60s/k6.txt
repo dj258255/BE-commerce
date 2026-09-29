@@ -1,0 +1,361 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: k6/checkout-screen.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 2500 max VUs, 3m0s max duration (incl. graceful stop):
+              * arrival: 50.00 iterations/s for 1m0s (maxVUs: 300-2500, gracefulStop: 2m0s)
+
+
+running (0m01.0s), 0041/0300 VUs, 6 complete and 0 interrupted iterations
+arrival   [   2% ] 0041/0300 VUs  0m00.9s/1m0s  50.00 iters/s
+
+running (0m02.0s), 0041/0300 VUs, 56 complete and 0 interrupted iterations
+arrival   [   3% ] 0041/0300 VUs  0m01.9s/1m0s  50.00 iters/s
+
+running (0m03.0s), 0043/0300 VUs, 104 complete and 0 interrupted iterations
+arrival   [   5% ] 0043/0300 VUs  0m02.9s/1m0s  50.00 iters/s
+
+running (0m04.0s), 0041/0300 VUs, 156 complete and 0 interrupted iterations
+arrival   [   7% ] 0041/0300 VUs  0m03.9s/1m0s  50.00 iters/s
+
+running (0m05.0s), 0042/0300 VUs, 205 complete and 0 interrupted iterations
+arrival   [   8% ] 0042/0300 VUs  0m04.9s/1m0s  50.00 iters/s
+
+running (0m06.0s), 0041/0300 VUs, 256 complete and 0 interrupted iterations
+arrival   [  10% ] 0041/0300 VUs  0m05.9s/1m0s  50.00 iters/s
+
+running (0m07.0s), 0041/0300 VUs, 306 complete and 0 interrupted iterations
+arrival   [  12% ] 0041/0300 VUs  0m06.9s/1m0s  50.00 iters/s
+
+running (0m08.0s), 0041/0300 VUs, 356 complete and 0 interrupted iterations
+arrival   [  13% ] 0041/0300 VUs  0m07.9s/1m0s  50.00 iters/s
+
+running (0m09.0s), 0041/0300 VUs, 406 complete and 0 interrupted iterations
+arrival   [  15% ] 0041/0300 VUs  0m08.9s/1m0s  50.00 iters/s
+
+running (0m10.0s), 0041/0300 VUs, 456 complete and 0 interrupted iterations
+arrival   [  17% ] 0041/0300 VUs  0m09.9s/1m0s  50.00 iters/s
+
+running (0m11.0s), 0041/0300 VUs, 506 complete and 0 interrupted iterations
+arrival   [  18% ] 0041/0300 VUs  0m10.9s/1m0s  50.00 iters/s
+
+running (0m12.0s), 0041/0300 VUs, 556 complete and 0 interrupted iterations
+arrival   [  20% ] 0041/0300 VUs  0m11.9s/1m0s  50.00 iters/s
+
+running (0m13.0s), 0041/0300 VUs, 606 complete and 0 interrupted iterations
+arrival   [  22% ] 0041/0300 VUs  0m12.9s/1m0s  50.00 iters/s
+
+running (0m14.0s), 0041/0300 VUs, 656 complete and 0 interrupted iterations
+arrival   [  23% ] 0041/0300 VUs  0m13.9s/1m0s  50.00 iters/s
+
+running (0m15.0s), 0041/0300 VUs, 706 complete and 0 interrupted iterations
+arrival   [  25% ] 0041/0300 VUs  0m14.9s/1m0s  50.00 iters/s
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:29+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+
+running (0m16.0s), 0041/0300 VUs, 756 complete and 0 interrupted iterations
+arrival   [  27% ] 0041/0300 VUs  0m15.9s/1m0s  50.00 iters/s
+
+running (0m17.0s), 0041/0300 VUs, 806 complete and 0 interrupted iterations
+arrival   [  28% ] 0041/0300 VUs  0m16.9s/1m0s  50.00 iters/s
+
+running (0m18.0s), 0041/0300 VUs, 856 complete and 0 interrupted iterations
+arrival   [  30% ] 0041/0300 VUs  0m17.9s/1m0s  50.00 iters/s
+
+running (0m19.0s), 0041/0300 VUs, 906 complete and 0 interrupted iterations
+arrival   [  32% ] 0041/0300 VUs  0m18.9s/1m0s  50.00 iters/s
+
+running (0m20.0s), 0041/0300 VUs, 956 complete and 0 interrupted iterations
+arrival   [  33% ] 0041/0300 VUs  0m19.9s/1m0s  50.00 iters/s
+
+running (0m21.0s), 0081/0300 VUs, 966 complete and 0 interrupted iterations
+arrival   [  35% ] 0081/0300 VUs  0m20.9s/1m0s  50.00 iters/s
+
+running (0m22.0s), 0041/0300 VUs, 1056 complete and 0 interrupted iterations
+arrival   [  37% ] 0041/0300 VUs  0m21.9s/1m0s  50.00 iters/s
+
+running (0m23.0s), 0041/0300 VUs, 1106 complete and 0 interrupted iterations
+arrival   [  38% ] 0041/0300 VUs  0m22.9s/1m0s  50.00 iters/s
+
+running (0m24.0s), 0041/0300 VUs, 1156 complete and 0 interrupted iterations
+arrival   [  40% ] 0041/0300 VUs  0m23.9s/1m0s  50.00 iters/s
+
+running (0m25.0s), 0041/0300 VUs, 1206 complete and 0 interrupted iterations
+arrival   [  42% ] 0041/0300 VUs  0m24.9s/1m0s  50.00 iters/s
+
+running (0m26.0s), 0041/0300 VUs, 1256 complete and 0 interrupted iterations
+arrival   [  43% ] 0041/0300 VUs  0m25.9s/1m0s  50.00 iters/s
+
+running (0m27.0s), 0042/0300 VUs, 1305 complete and 0 interrupted iterations
+arrival   [  45% ] 0042/0300 VUs  0m26.9s/1m0s  50.00 iters/s
+
+running (0m28.0s), 0041/0300 VUs, 1356 complete and 0 interrupted iterations
+arrival   [  47% ] 0041/0300 VUs  0m27.9s/1m0s  50.00 iters/s
+
+running (0m29.0s), 0041/0300 VUs, 1406 complete and 0 interrupted iterations
+arrival   [  48% ] 0041/0300 VUs  0m28.9s/1m0s  50.00 iters/s
+
+running (0m30.0s), 0041/0300 VUs, 1456 complete and 0 interrupted iterations
+arrival   [  50% ] 0041/0300 VUs  0m29.9s/1m0s  50.00 iters/s
+
+running (0m31.0s), 0041/0300 VUs, 1506 complete and 0 interrupted iterations
+arrival   [  52% ] 0041/0300 VUs  0m30.9s/1m0s  50.00 iters/s
+
+running (0m32.0s), 0041/0300 VUs, 1556 complete and 0 interrupted iterations
+arrival   [  53% ] 0041/0300 VUs  0m31.9s/1m0s  50.00 iters/s
+
+running (0m33.0s), 0041/0300 VUs, 1606 complete and 0 interrupted iterations
+arrival   [  55% ] 0041/0300 VUs  0m32.9s/1m0s  50.00 iters/s
+
+running (0m34.0s), 0041/0300 VUs, 1656 complete and 0 interrupted iterations
+arrival   [  57% ] 0041/0300 VUs  0m33.9s/1m0s  50.00 iters/s
+
+running (0m35.0s), 0041/0300 VUs, 1706 complete and 0 interrupted iterations
+arrival   [  58% ] 0041/0300 VUs  0m34.9s/1m0s  50.00 iters/s
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:49+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:23:50+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+
+running (0m36.0s), 0041/0300 VUs, 1756 complete and 0 interrupted iterations
+arrival   [  60% ] 0041/0300 VUs  0m35.9s/1m0s  50.00 iters/s
+
+running (0m37.0s), 0041/0300 VUs, 1806 complete and 0 interrupted iterations
+arrival   [  62% ] 0041/0300 VUs  0m36.9s/1m0s  50.00 iters/s
+
+running (0m38.0s), 0041/0300 VUs, 1856 complete and 0 interrupted iterations
+arrival   [  63% ] 0041/0300 VUs  0m37.9s/1m0s  50.00 iters/s
+
+running (0m39.0s), 0041/0300 VUs, 1906 complete and 0 interrupted iterations
+arrival   [  65% ] 0041/0300 VUs  0m38.9s/1m0s  50.00 iters/s
+
+running (0m40.0s), 0042/0300 VUs, 1955 complete and 0 interrupted iterations
+arrival   [  67% ] 0042/0300 VUs  0m39.9s/1m0s  50.00 iters/s
+
+running (0m41.0s), 0081/0300 VUs, 1966 complete and 0 interrupted iterations
+arrival   [  68% ] 0081/0300 VUs  0m40.9s/1m0s  50.00 iters/s
+
+running (0m42.0s), 0042/0300 VUs, 2055 complete and 0 interrupted iterations
+arrival   [  70% ] 0042/0300 VUs  0m41.9s/1m0s  50.00 iters/s
+
+running (0m43.0s), 0041/0300 VUs, 2106 complete and 0 interrupted iterations
+arrival   [  72% ] 0041/0300 VUs  0m42.9s/1m0s  50.00 iters/s
+
+running (0m44.0s), 0041/0300 VUs, 2156 complete and 0 interrupted iterations
+arrival   [  73% ] 0041/0300 VUs  0m43.9s/1m0s  50.00 iters/s
+
+running (0m45.0s), 0041/0300 VUs, 2206 complete and 0 interrupted iterations
+arrival   [  75% ] 0041/0300 VUs  0m44.9s/1m0s  50.00 iters/s
+
+running (0m46.0s), 0041/0300 VUs, 2256 complete and 0 interrupted iterations
+arrival   [  77% ] 0041/0300 VUs  0m45.9s/1m0s  50.00 iters/s
+
+running (0m47.0s), 0041/0300 VUs, 2306 complete and 0 interrupted iterations
+arrival   [  78% ] 0041/0300 VUs  0m46.9s/1m0s  50.00 iters/s
+
+running (0m48.0s), 0041/0300 VUs, 2356 complete and 0 interrupted iterations
+arrival   [  80% ] 0041/0300 VUs  0m47.9s/1m0s  50.00 iters/s
+
+running (0m49.0s), 0041/0300 VUs, 2406 complete and 0 interrupted iterations
+arrival   [  82% ] 0041/0300 VUs  0m48.9s/1m0s  50.00 iters/s
+
+running (0m50.0s), 0041/0300 VUs, 2456 complete and 0 interrupted iterations
+arrival   [  83% ] 0041/0300 VUs  0m49.9s/1m0s  50.00 iters/s
+
+running (0m51.0s), 0041/0300 VUs, 2506 complete and 0 interrupted iterations
+arrival   [  85% ] 0041/0300 VUs  0m50.9s/1m0s  50.00 iters/s
+
+running (0m52.0s), 0041/0300 VUs, 2556 complete and 0 interrupted iterations
+arrival   [  87% ] 0041/0300 VUs  0m51.9s/1m0s  50.00 iters/s
+
+running (0m53.0s), 0041/0300 VUs, 2606 complete and 0 interrupted iterations
+arrival   [  88% ] 0041/0300 VUs  0m52.9s/1m0s  50.00 iters/s
+
+running (0m54.0s), 0041/0300 VUs, 2656 complete and 0 interrupted iterations
+arrival   [  90% ] 0041/0300 VUs  0m53.9s/1m0s  50.00 iters/s
+
+running (0m55.0s), 0041/0300 VUs, 2706 complete and 0 interrupted iterations
+arrival   [  92% ] 0041/0300 VUs  0m54.9s/1m0s  50.00 iters/s
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:09+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:10+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+time="2026-09-30T04:24:10+09:00" level=warning msg="Request Failed" error="Post \"http://localhost:18404/api/v1/payments/confirm\": request timeout"
+
+running (0m56.0s), 0041/0300 VUs, 2756 complete and 0 interrupted iterations
+arrival   [  93% ] 0041/0300 VUs  0m55.9s/1m0s  50.00 iters/s
+
+running (0m57.0s), 0041/0300 VUs, 2806 complete and 0 interrupted iterations
+arrival   [  95% ] 0041/0300 VUs  0m56.9s/1m0s  50.00 iters/s
+
+running (0m58.0s), 0041/0300 VUs, 2856 complete and 0 interrupted iterations
+arrival   [  97% ] 0041/0300 VUs  0m57.9s/1m0s  50.00 iters/s
+
+running (0m59.0s), 0041/0300 VUs, 2906 complete and 0 interrupted iterations
+arrival   [  98% ] 0041/0300 VUs  0m58.9s/1m0s  50.00 iters/s
+
+running (1m00.0s), 0041/0300 VUs, 2956 complete and 0 interrupted iterations
+arrival   [ 100% ] 0041/0300 VUs  0m59.9s/1m0s  50.00 iters/s
+
+running (1m01.0s), 0040/0300 VUs, 2961 complete and 0 interrupted iterations
+arrival ↓ [ 100% ] 0042/0300 VUs  1m0s  50.00 iters/s
+
+running (1m02.0s), 0002/0300 VUs, 2999 complete and 0 interrupted iterations
+arrival ↓ [ 100% ] 0042/0300 VUs  1m0s  50.00 iters/s
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 1       0.016135/s
+    checks_succeeded...: 100.00% 1 out of 1
+    checks_failed......: 0.00%   0 out of 1
+
+    ✓ login 200
+
+    CUSTOM
+    control_sent...................: 62     1.000365/s
+    screen_client_timeout..........: 120    1.93619/s
+    screen_confirm_ms..............: avg=631.64ms min=12ms    med=18ms    max=15.03s   p(90)=32ms    p(95)=53ms   
+    screen_first_rejected_4xx......: 2819   45.484339/s
+    screen_poll_done...............: 120    1.93619/s
+    screen_sent....................: 2939   47.42053/s
+    screen_timeout_then_done.......: 120    1.93619/s
+
+    HTTP
+    http_req_duration..............: avg=285.15ms min=3.78ms  med=10.42ms max=15.03s   p(90)=22.24ms p(95)=30.8ms 
+      { expected_response:true }...: avg=7.18ms   min=3.78ms  med=6.04ms  max=150.03ms p(90)=9.68ms  p(95)=12.54ms
+    http_req_failed................: 45.44% 3001 out of 6603
+    http_reqs......................: 6603   106.538876/s
+
+    EXECUTION
+    iteration_duration.............: avg=867.99ms min=16.71ms med=24.37ms max=21.07s   p(90)=44.28ms p(95)=78.99ms
+    iterations.....................: 3001   48.420895/s
+    vus............................: 2      min=2            max=81 
+    vus_max........................: 300    min=300          max=300
+
+    NETWORK
+    data_received..................: 2.9 MB 46 kB/s
+    data_sent......................: 3.4 MB 56 kB/s
+
+
+
+
+running (1m02.0s), 0000/0300 VUs, 3001 complete and 0 interrupted iterations
+arrival ✓ [ 100% ] 0000/0300 VUs  1m0s  50.00 iters/s

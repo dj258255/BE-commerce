@@ -116,6 +116,18 @@ class TossPgClientMappingTest {
     }
 
     @Test
+    @DisplayName("승인이 요청 제한(429, FORBIDDEN_CONSECUTIVE_REQUEST)에 막히면 처리 전이라 확정 실패로 본다")
+    void approveBlockedBeforeProcessingIsFailure() {
+        assertThat(TossErrorCodes.approveBlockedBeforeProcessing(429, null)).isTrue();
+        assertThat(TossErrorCodes.approveBlockedBeforeProcessing(403, "FORBIDDEN_CONSECUTIVE_REQUEST")).isTrue();
+        assertThat(TossErrorCodes.approveBlockedBeforeProcessing(400, "PROVIDER_ERROR")).isFalse();
+        assertThat(TossErrorCodes.approveBlockedBeforeProcessing(500, null)).isFalse();
+        // 취소는 결국 나가야 하므로 분류표에서는 지금처럼 재시도다
+        assertThat(TossErrorCodes.classify("FORBIDDEN_CONSECUTIVE_REQUEST"))
+                .isEqualTo(TossErrorCodes.Kind.RETRYABLE);
+    }
+
+    @Test
     @DisplayName("은행 점검 시간은 확정 실패다 — 미확정으로 두면 사용자가 기다린 뒤 실패를 통보받는다")
     void bankNotAvailableIsDeclinedNotUnknown() {
         // 은행이 서비스 시간이 아니면 승인이 나가지 않았음이 확실하다. 미확정 큐에 넣을 이유가 없고,
