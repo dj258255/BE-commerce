@@ -119,6 +119,7 @@ def main(argv: list[str] | None = None) -> int:
     seq_parser.add_argument("--batch-size", type=int, default=256)
     seq_parser.add_argument("--device", default="auto")
     seq_parser.add_argument("--no-cache", action="store_true")
+    seq_parser.add_argument("--from-ckpt")
     seq_parser.add_argument("--out")
 
     compare_parser = subparsers.add_parser("compare", help="두 예측의 짝 부트스트랩")
@@ -142,6 +143,7 @@ def main(argv: list[str] | None = None) -> int:
                                "--epochs", str(args.epochs), "--batch-size", str(args.batch_size),
                                "--device", args.device,
                                *(["--no-cache"] if args.no_cache else []),
+                               *(["--from-ckpt", args.from_ckpt] if args.from_ckpt else []),
                                *(["--out", args.out] if args.out else [])])
     report = compare(args.a, args.b, bootstrap=args.bootstrap, seed=args.seed, out=args.out)
     print(json.dumps(report, ensure_ascii=False, indent=2, default=float))

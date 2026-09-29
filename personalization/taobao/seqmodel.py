@@ -373,11 +373,107 @@ def _flat_scores(scores: np.ndarray, sequences: list[UserSequence]) -> tuple[np.
     return np.concatenate(rows), np.concatenate(values)
 
 
+# --------------------------------------------------------------------------- 체크포인트
+
+
+def checkpoint_path(config_name: str, no_unclicked: bool) -> Path:
+    """검증에서 고른 설정의 체크포인트 자리(`cache_dir()/ckpt/{config}{_noclick}.pt`)."""
+    name = config_name + ("_noclick" if no_unclicked else "")
+    return config.cache_dir() / "ckpt" / f"{name}.pt"
+
+
+def save_checkpoint(path: str | Path, model, *, config_name: str, no_unclicked: bool,
+                    trained_epochs: int, best_epoch: int, best_valid_bundle_gauc: float,
+                    seed: int = config.SEED) -> Path:
+    """가장 좋은 에폭의 가중치와 복원에 필요한 설정을 저장한다."""
+    import torch
+
+    settings = config.SEQ_CONFIGS[config_name]
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    torch.save({
+        "state_dict": model.state_dict(),
+        "config": config_name,
+        "no_unclicked": bool(no_unclicked),
+        "settings": settings,
+        "trained_epochs": int(trained_epochs),
+        "best_epoch": int(best_epoch),
+        "best_valid_bundle_gauc": float(best_valid_bundle_gauc),
+        "seed": int(seed),
+        "vocab": dict(config.VOCAB),
+    }, destination)
+    return destination
+
+
+def load_checkpoint(path: str | Path, config_name: str, no_unclicked: bool,
+                    device: str = "cpu"):
+    """체크포인트를 읽어 모델과 기록을 돌려준다. 설정이 다르면 멈춘다."""
+    import torch
+
+    source = Path(path)
+    if not source.exists():
+        raise FileNotFoundError(f"체크포인트가 없습니다: {source}")
+    payload = torch.load(source, map_location="cpu", weights_only=False)
+    if payload.get("config") != config_name:
+        raise ValueError(f"체크포인트의 config {payload.get('config')!r} 가 인자 {config_name!r} 와 다릅니다")
+    if bool(payload.get("no_unclicked")) != bool(no_unclicked):
+        raise ValueError(
+            f"체크포인트의 no_unclicked {bool(payload.get('no_unclicked'))} 가 인자 {bool(no_unclicked)} 와 다릅니다")
+    settings = payload.get("settings") or config.SEQ_CONFIGS[config_name]
+    model = build_model(settings["dim"], settings["layers"])
+    model.load_state_dict(payload["state_dict"])
+    model.to(device).eval()
+    return model, payload
+
+
+def _evaluate_with_model(torch, model, split: str, config_name: str, no_unclicked: bool, device: str,
+                         *, users: int | None, batch_size: int, use_cache: bool,
+                         from_checkpoint: str | Path | None, checkpoint: dict[str, Any] | None,
+                         started: float) -> dict[str, Any]:
+    """이미 만들어진 모델로 `split` 을 채점하고 예측을 저장한다."""
+    eval_data = data_module.load_split(split, users=users, use_cache=use_cache)
+    eval_sequences = build_sequences(eval_data)
+    eval_attributes = eval_data.user_feats.astype(np.int64)
+    scores = _predict(torch, model, eval_sequences, eval_attributes,
+                      batch_size=batch_size, device=device, no_unclicked=no_unclicked)
+    rows, logits = _flat_scores(scores, eval_sequences)
+    probability = 1.0 / (1.0 + np.exp(-logits))
+    user = eval_data.row_user[rows]
+    label = eval_data.row_label[rows]
+    report: dict[str, Any] = {
+        "model": "seq",
+        "split": split,
+        "config": config_name,
+        "settings": config.SEQ_CONFIGS[config_name],
+        "no_unclicked": bool(no_unclicked),
+        "device": device,
+        "eval_rows": int(len(rows)),
+        "elapsed_seconds": time.perf_counter() - started,
+        "metrics": metrics.evaluate(user, label, logits, probability=probability,
+                                    group=_bundle_ids_from_eval(eval_data, rows),
+                                    history_length=eval_data.pre_day_history()[user]),
+        "predictions": _save_predictions(split, config_name, no_unclicked, eval_data, rows,
+                                         user, label, logits),
+    }
+    if from_checkpoint is not None:
+        report["from_checkpoint"] = str(from_checkpoint)
+        report["checkpoint"] = {
+            "trained_epochs": int((checkpoint or {}).get("trained_epochs", -1)),
+            "best_epoch": int((checkpoint or {}).get("best_epoch", -1)),
+            "best_valid_bundle_gauc": float((checkpoint or {}).get("best_valid_bundle_gauc", float("nan"))),
+        }
+    return report
+
+
 def train(split: str, config_name: str, *, users: int | None = None, no_unclicked: bool = False,
           epochs: int = 3, batch_size: int = 256, device: str = "auto",
           use_cache: bool = True, learning_rate: float = 1e-3, seed: int = config.SEED,
-          max_batches: int | None = None) -> dict[str, Any]:
-    """학습 분할로 G 를 학습하고 `split` 에서 지표와 예측을 낸다."""
+          max_batches: int | None = None, from_ckpt: str | Path | None = None) -> dict[str, Any]:
+    """학습 분할로 G 를 학습하고 `split` 에서 지표와 예측을 낸다.
+
+    `from_ckpt` 가 주어지면 학습하지 않고 체크포인트를 읽어 그 분할만 채점한다.
+    체크포인트의 config · no_unclicked 가 인자와 다르면 오류로 멈춘다.
+    """
     import torch
 
     torch.manual_seed(seed)
@@ -385,6 +481,12 @@ def train(split: str, config_name: str, *, users: int | None = None, no_unclicke
     settings = config.SEQ_CONFIGS[config_name]
     resolved = select_device(device)
     started = time.perf_counter()
+
+    if from_ckpt is not None:
+        model, payload = load_checkpoint(from_ckpt, config_name, no_unclicked, device=resolved)
+        return _evaluate_with_model(torch, model, split, config_name, no_unclicked, resolved,
+                                    users=users, batch_size=batch_size, use_cache=use_cache,
+                                    from_checkpoint=from_ckpt, checkpoint=payload, started=started)
 
     train_data = data_module.load_split("train", users=users, use_cache=use_cache)
     eval_data = data_module.load_split(split, users=users, use_cache=use_cache)
@@ -443,6 +545,10 @@ def train(split: str, config_name: str, *, users: int | None = None, no_unclicke
             best_epoch = epoch
 
     model.load_state_dict(best_state)
+    destination = save_checkpoint(checkpoint_path(config_name, no_unclicked), model,
+                                  config_name=config_name, no_unclicked=no_unclicked,
+                                  trained_epochs=epochs, best_epoch=best_epoch,
+                                  best_valid_bundle_gauc=best_gauc, seed=seed)
     eval_scores = _predict(torch, model, eval_sequences, eval_attributes,
                            batch_size=batch_size, device=resolved, no_unclicked=no_unclicked)
     rows, logits = _flat_scores(eval_scores, eval_sequences)
@@ -458,6 +564,7 @@ def train(split: str, config_name: str, *, users: int | None = None, no_unclicke
         "device": resolved,
         "best_epoch": best_epoch,
         "best_valid_bundle_gauc": best_gauc,
+        "checkpoint": str(destination),
         "epochs": history,
         "train_rows": int(sum(len(sequence.q_pos) for sequence in train_sequences)),
         "train_customers": len(train_sequences),
@@ -509,11 +616,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--no-cache", action="store_true")
+    parser.add_argument("--from-ckpt", help="학습하지 않고 체크포인트로 그 분할만 채점한다")
     parser.add_argument("--out")
     args = parser.parse_args(argv)
     report = train(args.split, args.config, users=args.users, no_unclicked=args.no_unclicked,
                    epochs=args.epochs, batch_size=args.batch_size, device=args.device,
-                   use_cache=not args.no_cache)
+                   use_cache=not args.no_cache, from_ckpt=args.from_ckpt)
     name = f"seq_{args.split}_{args.config}" + ("_nuc" if args.no_unclicked else "")
     destination = Path(args.out) if args.out else (config.out_dir() / f"{name}.json")
     destination.parent.mkdir(parents=True, exist_ok=True)
