@@ -1,0 +1,87 @@
+{
+  "mode": "final",
+  "ckpt": "/Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/final/ckpt/f-base-full-1ep",
+  "args": {
+    "mode": "final",
+    "ckpt": "/Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/final/ckpt/f-base-full-1ep",
+    "limit": null,
+    "data_dir": null,
+    "batch": 256,
+    "device": "auto",
+    "baselines_only": false,
+    "pin_repeat": true,
+    "repeat_order": "recency",
+    "ranker_candidates": true,
+    "out": "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/wt-d2/personalization/docs/runs/20260929-v2-d2-holdout/g1-final.json"
+  },
+  "elapsed_seconds": 24817.643225251,
+  "results": {
+    "repeat_last": {
+      "map_at_12": 0.023446362595426914,
+      "map_at_12_has_vocab_history": 0.025507796642163263,
+      "page_recall": 0.040539643812294406,
+      "new_item_recall": 0.0,
+      "repeat_item_recall": 0.07187928251241739,
+      "row_recall": 0.0,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 9.94520468514438,
+      "ms_per_page": null,
+      "customers": 68984,
+      "device": "cpu"
+    },
+    "popular_last_week": {
+      "map_at_12": 0.008747681312782597,
+      "map_at_12_has_vocab_history": 0.008824519788205757,
+      "page_recall": 0.02550428716366145,
+      "new_item_recall": 0.0245954730439831,
+      "repeat_item_recall": 0.0026660771579883253,
+      "row_recall": 0.0,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 12.0,
+      "ms_per_page": null,
+      "customers": 68984,
+      "device": "cpu"
+    },
+    "v1_engine": {
+      "map_at_12": 0.020929619228809936,
+      "map_at_12_has_vocab_history": 0.022769777994925397,
+      "page_recall": 0.040056244366234436,
+      "new_item_recall": 0.019568680942886704,
+      "repeat_item_recall": 0.035004007546425735,
+      "row_recall": 0.0,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 11.030731763887278,
+      "ms_per_page": null,
+      "customers": 68984,
+      "device": "cpu"
+    },
+    "model": {
+      "map_at_12": 0.021395875934938458,
+      "map_at_12_has_vocab_history": 0.02266491774801942,
+      "page_recall": 0.061462449061298184,
+      "new_item_recall": 0.02894445867049948,
+      "repeat_item_recall": 0.05989135405408829,
+      "row_recall": 0.3826905668075557,
+      "diversity": 0.1072949570153614,
+      "violations": 0,
+      "rows_mean": 4.1942769337817465,
+      "items_mean": 30.14919401600371,
+      "ms_per_page": 356.60256574109934,
+      "customers": 68984,
+      "device": "mps"
+    }
+  },
+  "options": {
+    "pin_repeat": true,
+    "candidates": null,
+    "repeat_order": "recency",
+    "ranker_candidates": true
+  },
+  "candidates_mean": 355.0274846341181
+}

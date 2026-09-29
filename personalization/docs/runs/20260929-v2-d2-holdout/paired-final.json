@@ -1,0 +1,90 @@
+{
+  "mode": "final",
+  "limit": null,
+  "customers": 68984,
+  "bootstrap": 2000,
+  "seed": 7,
+  "a": "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/wt-d2/personalization/docs/runs/20260929-v2-d2-holdout/r-final/pages.json.gz",
+  "b": [
+    "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/wt-d2/personalization/docs/runs/20260929-v2-d2-holdout/g1-final-1.json",
+    "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/wt-d2/personalization/docs/runs/20260929-v2-d2-holdout/g1-final-2.json",
+    "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/wt-d2/personalization/docs/runs/20260929-v2-d2-holdout/g1-final-3.json",
+    "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/wt-d2/personalization/docs/runs/20260929-v2-d2-holdout/g1-final-4.json",
+    "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/wt-d2/personalization/docs/runs/20260929-v2-d2-holdout/g1-final-5.json"
+  ],
+  "means": {
+    "a": {
+      "map_at_12": 0.03455663625604076,
+      "page_hit": 0.1354595051494002,
+      "new_item_hit": 0.10070896535552634
+    },
+    "b": {
+      "map_at_12": 0.021395875934938458,
+      "page_hit": 0.061462449061298184,
+      "new_item_hit": 0.02894445867049948
+    }
+  },
+  "difference": {
+    "map_at_12": -0.013160760321102302,
+    "page_hit": -0.073997056088102,
+    "new_item_hit": -0.07176450668502686
+  },
+  "checks": {
+    "a": {
+      "map_at_12": {
+        "computed": 0.03455663625604076,
+        "evaluate": 0.03455663625604076,
+        "match": true
+      },
+      "page_hit": {
+        "computed": 0.1354595051494002,
+        "evaluate": 0.1354595051494002,
+        "match": true
+      },
+      "new_item_hit": {
+        "computed": 0.10070896535552634,
+        "evaluate": 0.10070896535552634,
+        "match": true
+      }
+    },
+    "b": {
+      "map_at_12": {
+        "computed": 0.021395875934938458,
+        "evaluate": 0.021395875934938458,
+        "match": true
+      },
+      "page_hit": {
+        "computed": 0.061462449061298184,
+        "evaluate": 0.061462449061298184,
+        "match": true
+      },
+      "new_item_hit": {
+        "computed": 0.02894445867049948,
+        "evaluate": 0.02894445867049948,
+        "match": true
+      }
+    }
+  },
+  "intervals": {
+    "map_at_12": {
+      "low": -0.013883128483626914,
+      "high": -0.012459914754324734,
+      "verdict": "B 가 졌다"
+    },
+    "page_hit": {
+      "low": -0.07582140464153311,
+      "high": -0.0722116063632645,
+      "verdict": "B 가 졌다"
+    },
+    "new_item_hit": {
+      "low": -0.07357538616071668,
+      "high": -0.07002708947762976,
+      "verdict": "B 가 졌다"
+    }
+  },
+  "judgment": {
+    "map_at_12": "B 가 졌다",
+    "page_hit": "B 가 졌다",
+    "new_item_hit": "B 가 졌다"
+  }
+}
