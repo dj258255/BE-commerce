@@ -64,7 +64,9 @@
   /**
    * @param {string} method
    * @param {string} path  '/products' 처럼 /api/v1 뒤 경로만
-   * @param {{body?:object, noAuth?:boolean, idempotency?:boolean}} [opts]
+   * @param {{body?:object, noAuth?:boolean, idempotency?:boolean, timeoutMs?:number}} [opts]
+   *   timeoutMs 를 주면 그만큼만 기다리고 끊는다. 같은 값을 X-Request-Timeout-Ms(남은 시간)로 보내
+   *   서버가 받은 순간의 자기 시계로 마감을 계산하게 한다(ADR-022 데드라인). 시간이 지나면 timedOut: true.
    */
   async function api(method, path, opts) {
     opts = opts || {};
@@ -73,18 +75,32 @@
     if (!opts.noAuth && token) headers['Authorization'] = 'Bearer ' + token;
     if (method !== 'GET' && opts.idempotency !== false) headers['Idempotency-Key'] = uuid();
 
+    var controller = null, timer = null;
+    if (opts.timeoutMs) {
+      headers['X-Request-Timeout-Ms'] = String(opts.timeoutMs);
+      controller = new AbortController();
+      timer = setTimeout(function () { controller.abort(); }, opts.timeoutMs);
+    }
+
     logLine('req', '→ ' + method + ' ' + path + (opts.body ? ' ' + JSON.stringify(opts.body) : ''));
     var res;
     try {
       res = await fetch(API + path, {
         method: method,
         headers: headers,
-        body: opts.body ? JSON.stringify(opts.body) : undefined
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        signal: controller ? controller.signal : undefined
       });
     } catch (e) {
+      if (timer) clearTimeout(timer);
+      if (e && e.name === 'AbortError') {
+        logLine('err', '✗ ' + opts.timeoutMs + 'ms 안에 응답이 없어 기다림을 멈춤');
+        return { ok: false, status: 0, data: null, timedOut: true };
+      }
       logLine('err', '✗ 네트워크 오류 ' + e);
       return { ok: false, status: 0, data: null, networkError: true };
     }
+    if (timer) clearTimeout(timer);
     var text = await res.text();
     var data = null;
     try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
