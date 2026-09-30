@@ -1,0 +1,56 @@
+{
+  "model": "seq",
+  "split": "valid",
+  "config": "d128_l2",
+  "settings": {
+    "dim": 128,
+    "layers": 2
+  },
+  "no_unclicked": false,
+  "device": "mps",
+  "best_epoch": 1,
+  "best_valid_bundle_gauc": 0.5571547872310424,
+  "checkpoint": "personalization/data/taobao-ad/cache/ckpt/d128_l2.pt",
+  "epochs": [
+    {
+      "epoch": 0,
+      "train_loss": 0.2017892494458011,
+      "valid_bundle_gauc": 0.542026239961922,
+      "valid_user_gauc": 0.4754933326362376
+    },
+    {
+      "epoch": 1,
+      "train_loss": 0.1968000568272643,
+      "valid_bundle_gauc": 0.5571547872310424,
+      "valid_user_gauc": 0.520263240005955
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.19342877840725473,
+      "valid_bundle_gauc": 0.5565293709045488,
+      "valid_user_gauc": 0.522289730437497
+    }
+  ],
+  "train_rows": 15970454,
+  "train_customers": 459683,
+  "eval_rows": 2864176,
+  "elapsed_seconds": 9392.711393875012,
+  "metrics": {
+    "rows": 2864176,
+    "clicks": 135352,
+    "bundle_gauc": 0.5571547872310424,
+    "bundle_gauc_bundles": 111940,
+    "user_gauc": 0.520263240005955,
+    "user_gauc_users": 81608,
+    "auc": 0.6508918337943469,
+    "logloss": 0.1839199446001143,
+    "ndcg": 0.6877014132243696,
+    "bundles": 112749,
+    "bundle_gauc_short": 0.5608147955837356,
+    "bundle_gauc_long": 0.5541032244216019
+  },
+  "predictions": {
+    "path": "personalization/data/taobao-ad/cache/predictions/valid_seq_d128_l2.parquet",
+    "rows": 2864176
+  }
+}

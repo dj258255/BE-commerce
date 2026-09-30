@@ -1,0 +1,37 @@
+{
+  "model": "seq",
+  "split": "test",
+  "config": "d128_l2",
+  "settings": {
+    "dim": 128,
+    "layers": 2
+  },
+  "no_unclicked": true,
+  "device": "mps",
+  "eval_rows": 2898360,
+  "elapsed_seconds": 295.64057437499287,
+  "metrics": {
+    "rows": 2898360,
+    "clicks": 138561,
+    "bundle_gauc": 0.5456555399396056,
+    "bundle_gauc_bundles": 114321,
+    "user_gauc": 0.5366234082358544,
+    "user_gauc_users": 82394,
+    "auc": 0.5961682573623766,
+    "logloss": 0.1936327614668535,
+    "ndcg": 0.6807995590331974,
+    "bundles": 115145,
+    "bundle_gauc_short": 0.5473080886790882,
+    "bundle_gauc_long": 0.5444441897196208
+  },
+  "predictions": {
+    "path": "personalization/data/taobao-ad/cache/predictions/test_seq_d128_l2_nuc.parquet",
+    "rows": 2898360
+  },
+  "from_checkpoint": "personalization/data/taobao-ad/cache/ckpt/d128_l2_noclick.pt",
+  "checkpoint": {
+    "trained_epochs": 3,
+    "best_epoch": 2,
+    "best_valid_bundle_gauc": 0.5518017072797964
+  }
+}
