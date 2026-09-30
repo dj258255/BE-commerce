@@ -1,0 +1,16 @@
+== G d128_l2 시작 07:30
+== G d128_l2 끝 09:34
+== G d128_l2 시작(수정 후) 12:30
+== G d128_l2 끝 15:08
+== ranker_test_l31 시작 19:12
+== ranker_test_l31 끝 19:17
+== seq_test_d128_l2 시작 19:17
+== seq_test_d128_l2 끝 19:22
+== t2_seq_valid_side 시작 01:29
+== t2_seq_valid_side 끝 05:18
+== t2_seq_test_side 시작 05:18
+== t2_seq_test_side 끝 05:23
+== t2_compare_vs_R 시작 05:23
+== t2_compare_vs_R 끝 05:23
+== t2_compare_vs_G 시작 05:23
+== t2_compare_vs_G 끝 05:24
