@@ -116,7 +116,9 @@ def build_sequences(split_data: data_module.SplitData, *,
         index = np.flatnonzero(in_window)
         if len(index) == 0:
             continue
-        window = np.arange(start, end)
+        # 노출 배열은 고객 순서로 이어 붙어 있다. 고객 u 의 노출은 offsets[u] 부터다.
+        left = int(split_data.offsets[user])
+        window = left + np.arange(start, end)
         order = np.argsort(positions[index], kind="stable")
         index = index[order]
         q_pos = (positions[index] - start).astype(np.int64)
