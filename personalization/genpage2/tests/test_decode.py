@@ -216,6 +216,29 @@ class DecodeTest(unittest.TestCase):
                                                row_items=None, allowed_rows=None, n_rows=2, items_per_row=3,
                                                prefix=1), baseline)
 
+    def test_row_bias_none_and_zero_match_previous_behaviour(self):
+        baseline = self.decoder.generate(self.context, self.content, history_articles=["D", "E", "F"],
+                                         allowed_rows={4, 5}, n_rows=2, items_per_row=3, prefix=1)
+        self.assertEqual(self.decoder.generate(self.context, self.content, history_articles=["D", "E", "F"],
+                                               allowed_rows={4, 5}, row_bias=None, n_rows=2, items_per_row=3,
+                                               prefix=1), baseline)
+        # 모든 bias 가 0 이면 log_softmax 가 단조라 선택이 같다.
+        self.assertEqual(self.decoder.generate(self.context, self.content, history_articles=["D", "E", "F"],
+                                               allowed_rows={4, 5}, row_bias={4: 0.0, 5: 0.0},
+                                               n_rows=2, items_per_row=3, prefix=1), baseline)
+
+    def test_row_bias_steers_greedy_row_choice(self):
+        # FakeModel 은 row A(4) 40 > row B(5) 30 > repeat(3) 20 이다.
+        default, _ = self.decoder.generate(self.context, self.content, history_articles=[],
+                                           allowed_rows={4, 5}, n_rows=1, items_per_row=3, prefix=1)
+        self.assertEqual(default[0].row_token, 4)
+        biased, violations = self.decoder.generate(self.context, self.content, history_articles=[],
+                                                   allowed_rows={4, 5}, row_bias={5: 100.0},
+                                                   n_rows=1, items_per_row=3, prefix=1)
+        self.assertEqual(violations, 0)
+        self.assertEqual(biased[0].row_token, 5)
+        self.assertEqual(set(biased[0].items), {"D", "E", "F"})
+
     def test_row_items_beyond_eight_fill_in_recency_order(self):
         # 다시 사기 행의 row_items 로 이력 전체를 주면, 최근 8개 안에 허용 밖 상품이
         # 있어도 9번째 이후 최근 상품이 그 자리를 채운다. 모델이 채우면 그 상품의
@@ -402,6 +425,26 @@ class DecodeTest(unittest.TestCase):
              "row_items": {4: ["C"]}, "allowed_rows": {4}},
             {"ctx_tokens": [1, 3, 4, 5, 6, 7, 8, 2], "ctx_content": [-1] * 8,
              "history_articles": ["D"], "row_items": {3: ["D"]}, "allowed_rows": {3, 4, 5}},
+        ]
+        kwargs = {"n_rows": 2, "items_per_row": 3, "prefix": 1}
+        batched = decoder.generate_batch(examples, **kwargs)
+        singles = [decoder.generate(**example, **kwargs) for example in examples]
+        self.assertEqual(batched, singles)
+        for example in examples:
+            self.assertEqual(decoder.generate(**example, **kwargs, use_cache=True),
+                             decoder.generate(**example, **kwargs, use_cache=False))
+
+    def test_real_model_batch_equals_single_with_row_bias(self):
+        cfg = ModelConfig(vocab_size=len(self.vocab.tokens), dim=8, layers=1, heads=2,
+                          ffn=16, dropout=0.0, maxlen=64, content_dim=384)
+        torch.manual_seed(23)
+        model = GenPageV2(cfg, torch.zeros((6, 384)), tokens=self.vocab.tokens).eval()
+        decoder = PageDecoder(model, self.vocab, {a: n for n, a in enumerate("ABCDEF")}, "cpu")
+        examples = [
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": [],
+             "allowed_rows": {4, 5}, "row_bias": {4: 0.5, 5: -0.5}},
+            {"ctx_tokens": [1, 3, 4, 5, 2], "ctx_content": [-1] * 5, "history_articles": ["D"],
+             "allowed_rows": {3, 4, 5}, "row_bias": {3: 1.0, 4: 0.0, 5: -1.0}},
         ]
         kwargs = {"n_rows": 2, "items_per_row": 3, "prefix": 1}
         batched = decoder.generate_batch(examples, **kwargs)

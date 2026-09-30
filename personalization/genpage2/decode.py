@@ -244,7 +244,8 @@ class PageDecoder:
 
     @staticmethod
     def _choose(logits: torch.Tensor, allowed: Iterable[int] | torch.Tensor, temperature: float,
-                generator: torch.Generator | None, count: int = 1) -> list[int]:
+                generator: torch.Generator | None, count: int = 1, *,
+                bias: torch.Tensor | None = None) -> list[int]:
         if isinstance(allowed, torch.Tensor):
             ids_t = (torch.nonzero(allowed, as_tuple=False).flatten()
                      if allowed.dtype == torch.bool else allowed.to(device=logits.device, dtype=torch.long))
@@ -255,6 +256,10 @@ class PageDecoder:
         if not ids or count <= 0:
             return []
         scores = logits.index_select(0, ids_t)
+        if bias is not None:
+            # D4 H: 후보 행들만 놓고 log_softmax 한 로그 확률에 행 점수 bias 를
+            # 더해 고른다. 후보 밖 토큰은 확률 질량을 나눠 갖지 않는다.
+            scores = torch.log_softmax(scores, dim=0) + bias.index_select(0, ids_t)
         n = min(count, len(ids))
         if temperature <= 0:
             local = torch.topk(scores, n).indices.tolist()
@@ -283,6 +288,19 @@ class PageDecoder:
         if tokens:
             mask[torch.tensor(tokens, dtype=torch.long, device=self.device)] = True
         return mask
+
+    def _row_bias_tensor(self, row_bias: dict[int, float] | None) -> torch.Tensor | None:
+        """Turn a row-token bias dict into a vocab-wide float tensor, or ``None``.
+
+        ``None`` (the default) keeps row selection byte-for-byte identical to the
+        pre-D4 decoder; an empty dict behaves the same way.
+        """
+        if not row_bias:
+            return None
+        bias = torch.zeros(len(self.vocab.tokens), dtype=torch.float32, device=self.device)
+        for token, value in row_bias.items():
+            bias[int(token)] = float(value)
+        return bias
 
     def _row_candidates(self, history_articles: list[str], used: torch.Tensor,
                         used_per_row: dict[int, int], used_rows: set[int],
@@ -369,6 +387,7 @@ class PageDecoder:
                  pinned_items: dict[int, list[str]] | None = None,
                  row_items: dict[int, list[str]] | None = None,
                  allowed_rows: set[int] | None = None,
+                 row_bias: dict[int, float] | None = None,
                  items_per_row: int = 8, prefix: int = 2, temperature: float = 0.0,
                  generator: torch.Generator | None = None, use_cache: bool = True) -> tuple[list[GeneratedRow], int]:
         """Generate up to ``n_rows`` rows and return them with violation count.
@@ -380,7 +399,10 @@ class PageDecoder:
         articles are placed from the front in the given order.  Both skip
         already-used or non-allowed articles and let the model fill the rest, so
         ``None`` keeps the previous behaviour.  ``allowed_rows``, when given,
-        hides every row token outside the set from row selection.
+        hides every row token outside the set from row selection.  ``row_bias``
+        (also optional) adds a per-row token value to the row log probabilities
+        computed over the candidate rows only, so a greedy choice favours rows
+        with a larger bias (D4 H).
         """
         if len(ctx_tokens) != len(ctx_content):
             raise ValueError("ctx_tokens 와 ctx_content 길이는 같아야 합니다")
@@ -414,6 +436,7 @@ class PageDecoder:
         min_items = 3
         pinned = pinned or {}
         allowed_mask = self._allowed_mask(allowed_items)
+        bias = self._row_bias_tensor(row_bias)
         next_logits, cache = self._next_logits(tokens, content, use_cache=use_cache)
 
         for row_pos in range(n_rows):
@@ -424,7 +447,7 @@ class PageDecoder:
                 candidates = [wanted] if wanted in candidates else []
             if not candidates:
                 break
-            row_token = self._choose(next_logits, candidates, temperature, generator)[0]
+            row_token = self._choose(next_logits, candidates, temperature, generator, bias=bias)[0]
             tokens.append(row_token)
             content.append(-1)
             used_rows.add(row_token)
@@ -524,6 +547,7 @@ class PageDecoder:
                            "used_rows": used_rows, "used": used, "used_per_row": used_per_row,
                            "allowed_mask": self._allowed_mask(args.get("allowed_items")),
                            "allowed_rows": set(allowed_rows) if allowed_rows is not None else None,
+                           "row_bias": self._row_bias_tensor(args.get("row_bias")),
                            "rows": [], "done": False,
                            "use_cache": bool(args.get("use_cache", True) and hasattr(self.model, "forward_cached"))})
 
@@ -560,7 +584,8 @@ class PageDecoder:
             row_logits = [state["logits"] for state in active]
             for state, candidates, logits in zip(active, domains, row_logits, strict=True):
                 args = state["args"]
-                row = self._choose(logits, candidates, args.get("temperature", 0.0), args.get("generator"))[0]
+                row = self._choose(logits, candidates, args.get("temperature", 0.0), args.get("generator"),
+                                   bias=state["row_bias"])[0]
                 state["row"] = row
                 state["allowed"] = self._items_for_row(row, args["history_articles"], state["used"],
                                                          state["allowed_mask"]).clone()
