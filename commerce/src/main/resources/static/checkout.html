@@ -125,10 +125,19 @@
     b.innerHTML = busy ? '<span class="spinner"></span> 처리 중…' : '결제하기';
   }
 
+  // 결제 확정 응답은 15초만 붙잡고 기다리고, 그 뒤에는 "확인 중"을 띄우고 주문 조회로 결과를 기다린다.
+  // 조회 창은 서버가 결과를 낼 수 있는 가장 긴 시간(PG 읽기 타임아웃 60초 + 여유 5초)까지 덮는다.
+  // 앞단은 뒷단의 최대 처리 시간 이상 기다려야 "승인됐는데 화면은 실패"가 생기지 않는다(ADR-022 2026-09-30).
+  var CONFIRM_TIMEOUT_MS = 15000;
+  var POLL_INTERVAL_MS = 2000, POLL_TRIES = 25;
+  // 서버에 보내는 남은 시간(ADR-022 데드라인). 응답을 멈춘 뒤에도 조회로 결과를 계속 기다리므로
+  // 응답 대기와 조회 창을 더한 값이다(65초). 응답 대기만 보내면 아직 조회로 기다리는 고객의 결제를 서버가 뺄 수 있다.
+  var CONFIRM_DEADLINE_MS = CONFIRM_TIMEOUT_MS + POLL_INTERVAL_MS * POLL_TRIES;
+
   /** 승인 미확정(202 UNKNOWN)은 주문 조회로 확정을 폴링한다 — 스펙이 명시한 계약. */
   async function pollUntilDecided(orderNo, tries) {
     for (var i = 0; i < tries; i++) {
-      await new Promise(function (r) { setTimeout(r, 1200); });
+      await new Promise(function (r) { setTimeout(r, POLL_INTERVAL_MS); });
       var r = await Store.api('GET', '/orders/' + orderNo);
       if (r.ok) {
         var ps = r.data.paymentStatus;
@@ -170,7 +179,9 @@
           pointAmount: point,
           walletAmount: wallet,
           installmentMonths: 0
-        }
+        },
+        timeoutMs: CONFIRM_TIMEOUT_MS,
+        deadlineMs: CONFIRM_DEADLINE_MS
       });
 
       if (res.ok) {
@@ -180,9 +191,13 @@
         return;
       }
 
-      if (res.status === 202) {
-        paymentNotice('<div class="notice">결제 결과를 확인하고 있습니다…</div>');
-        var decided = await pollUntilDecided(state.orderNo, 10);
+      // 기다림을 멈춘 경우도 202 와 같이 다룬다. 서버는 계속 처리 중일 수 있어 실패로 단정하면
+      // 고객이 다시 눌러 이중 결제를 시도하게 된다. 주문 상태로 결과를 확인한다.
+      if (res.status === 202 || res.timedOut) {
+        paymentNotice(res.timedOut
+          ? '<div class="notice">응답이 늦어 결제 결과를 확인하고 있습니다…</div>'
+          : '<div class="notice">결제 결과를 확인하고 있습니다…</div>');
+        var decided = await pollUntilDecided(state.orderNo, POLL_TRIES);
         if (decided && decided.paymentStatus === 'DONE') {
           Store.cart.clear();
           paymentNotice('<div class="notice ok">결제가 확정되었습니다. 주문내역으로 이동합니다…</div>');
@@ -190,6 +205,10 @@
           return;
         }
         setBusy(false);
+        if (decided && decided.paymentStatus === 'ABORTED') {
+          paymentNotice('<div class="notice err">결제가 진행되지 않았습니다. 다시 시도해 주세요.</div>');
+          return;
+        }
         paymentNotice('<div class="notice err">아직 결과가 확정되지 않았습니다. 잠시 후 주문내역에서 확인해 주세요.</div>');
         return;
       }

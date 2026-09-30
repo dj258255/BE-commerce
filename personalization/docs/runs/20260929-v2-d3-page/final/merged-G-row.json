@@ -1,0 +1,89 @@
+{
+  "mode": "final",
+  "ckpt": "/Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/final/ckpt/f-base-full-1ep",
+  "args": {
+    "mode": "final",
+    "limit": null,
+    "scores": "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/wt-d3/personalization/docs/runs/20260929-v2-d3-page/final/r/scores.json.gz",
+    "variant": "G-row",
+    "ckpt": "/Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/final/ckpt/f-base-full-1ep",
+    "batch": 256,
+    "device": "auto",
+    "data_dir": null,
+    "out": "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/wt-d3/personalization/docs/runs/20260929-v2-d3-page/final/merged-G-row.json"
+  },
+  "elapsed_seconds": 18399.62986875004,
+  "results": {
+    "repeat_last": {
+      "map_at_12": 0.023446362595426914,
+      "map_at_12_has_vocab_history": 0.025507796642163263,
+      "page_recall": 0.040539643812294406,
+      "new_item_recall": 0.0,
+      "repeat_item_recall": 0.07187928251241739,
+      "row_recall": 0.0,
+      "page_ndcg": 0.030682013977005436,
+      "row_hit": 0.07379972167459121,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 9.94520468514438,
+      "ms_per_page": null,
+      "customers": 68984,
+      "device": "cpu"
+    },
+    "popular_last_week": {
+      "map_at_12": 0.008747681312782597,
+      "map_at_12_has_vocab_history": 0.008824519788205757,
+      "page_recall": 0.02550428716366145,
+      "new_item_recall": 0.0245954730439831,
+      "repeat_item_recall": 0.0026660771579883253,
+      "row_recall": 0.0,
+      "page_ndcg": 0.015092339272750525,
+      "row_hit": 0.06430476632262554,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 12.0,
+      "ms_per_page": null,
+      "customers": 68984,
+      "device": "cpu"
+    },
+    "v1_engine": {
+      "map_at_12": 0.020929619228809936,
+      "map_at_12_has_vocab_history": 0.022769777994925397,
+      "page_recall": 0.040056244366234436,
+      "new_item_recall": 0.019568680942886704,
+      "repeat_item_recall": 0.035004007546425735,
+      "row_recall": 0.0,
+      "page_ndcg": 0.028649489957783835,
+      "row_hit": 0.07607561173605473,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 11.030731763887278,
+      "ms_per_page": null,
+      "customers": 68984,
+      "device": "cpu"
+    },
+    "model": {
+      "map_at_12": 0.013186130347384143,
+      "map_at_12_has_vocab_history": 0.01364659287628677,
+      "page_recall": 0.08021262983592578,
+      "new_item_recall": 0.07214337800161937,
+      "repeat_item_recall": 0.021450351807582983,
+      "row_recall": 0.6004108677637898,
+      "page_ndcg": 0.036903035033008895,
+      "row_hit": 0.0350375932583401,
+      "diversity": 0.15373707933399566,
+      "violations": 0,
+      "rows_mean": 5.750391395106112,
+      "items_mean": 46.003131160848895,
+      "ms_per_page": 265.2741495008405,
+      "customers": 68984,
+      "device": "mps"
+    }
+  },
+  "options": {
+    "compose": "G-row"
+  }
+}

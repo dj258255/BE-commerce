@@ -287,11 +287,14 @@ class PageDecoder:
     def _row_candidates(self, history_articles: list[str], used: torch.Tensor,
                         used_per_row: dict[int, int], used_rows: set[int],
                         excluded_rows: set[int], min_items: int,
-                        allowed_mask: torch.Tensor | None = None) -> list[int]:
+                        allowed_mask: torch.Tensor | None = None,
+                        allowed_rows: set[int] | None = None) -> list[int]:
         history_ids = self._history_ids(history_articles)
         out: list[int] = []
         for row in self._row_ids:
             if row in used_rows or row in excluded_rows:
+                continue
+            if allowed_rows is not None and row not in allowed_rows:
                 continue
             if allowed_mask is not None:
                 # 후보 집합을 켠 경우 행 자격도 그 집합 안의 아직 쓰지 않은
@@ -364,14 +367,20 @@ class PageDecoder:
                  pinned: dict[int, int] | None = None, n_rows: int = 3,
                  allowed_items: set[str] | None = None,
                  pinned_items: dict[int, list[str]] | None = None,
+                 row_items: dict[int, list[str]] | None = None,
+                 allowed_rows: set[int] | None = None,
                  items_per_row: int = 8, prefix: int = 2, temperature: float = 0.0,
                  generator: torch.Generator | None = None, use_cache: bool = True) -> tuple[list[GeneratedRow], int]:
         """Generate up to ``n_rows`` rows and return them with violation count.
 
-        ``pinned_items`` optionally starts a row position with caller-supplied
+        ``pinned_items`` optionally starts a row *position* with caller-supplied
         articles in the given order (for example the customer's recent purchases
-        in a pinned repeat row).  Anything left over is filled by the model from
-        the row's allowed items, so ``None`` keeps the previous behaviour.
+        in a pinned repeat row).  ``row_items`` is the same idea keyed by the
+        *row token* the model chose: whatever row the model picks, that row's
+        articles are placed from the front in the given order.  Both skip
+        already-used or non-allowed articles and let the model fill the rest, so
+        ``None`` keeps the previous behaviour.  ``allowed_rows``, when given,
+        hides every row token outside the set from row selection.
         """
         if len(ctx_tokens) != len(ctx_content):
             raise ValueError("ctx_tokens 와 ctx_content 길이는 같아야 합니다")
@@ -409,7 +418,7 @@ class PageDecoder:
 
         for row_pos in range(n_rows):
             candidates = self._row_candidates(history_articles, used, used_per_row, used_rows, excluded_rows,
-                                              min_items, allowed_mask)
+                                              min_items, allowed_mask, allowed_rows)
             if row_pos in pinned:
                 wanted = pinned[row_pos]
                 candidates = [wanted] if wanted in candidates else []
@@ -426,10 +435,13 @@ class PageDecoder:
             allowed = self._items_for_row(row_token, history_articles, used, allowed_mask).clone()
             chosen: list[int] = []
 
-            # A pinned row may start with an explicit, caller-supplied prefix.
+            # A pinned row (by position) or a row-items row (by the chosen row
+            # token) may start with an explicit, caller-supplied prefix.
             # Invalid, duplicate or row-ineligible articles are skipped so the
             # rule bookkeeping still sees only legal tokens.
-            for article in (pinned_items or {}).get(row_pos, ()):
+            prefix_articles = (list((pinned_items or {}).get(row_pos, ()))
+                               + list((row_items or {}).get(row_token, ())))
+            for article in prefix_articles:
                 if len(chosen) >= items_per_row:
                     break
                 token = self._item_of_article.get(article)
@@ -506,10 +518,12 @@ class PageDecoder:
             excluded_ids = [self._item_of_article[a] for a in excluded_items if a in self._item_of_article]
             for token in previous_items + excluded_ids:
                 self._mark_used(used, used_per_row, token)
+            allowed_rows = args.get("allowed_rows")
             states.append({"args": args, "tokens": tokens, "content": content, "previous": previous,
                            "excluded_items": excluded_items, "excluded_rows": excluded_rows,
                            "used_rows": used_rows, "used": used, "used_per_row": used_per_row,
                            "allowed_mask": self._allowed_mask(args.get("allowed_items")),
+                           "allowed_rows": set(allowed_rows) if allowed_rows is not None else None,
                            "rows": [], "done": False,
                            "use_cache": bool(args.get("use_cache", True) and hasattr(self.model, "forward_cached"))})
 
@@ -531,7 +545,7 @@ class PageDecoder:
                     continue
                 candidates = self._row_candidates(args["history_articles"], state["used"], state["used_per_row"],
                                                   state["used_rows"], state["excluded_rows"], 3,
-                                                  state["allowed_mask"])
+                                                  state["allowed_mask"], state["allowed_rows"])
                 pinned = args.get("pinned") or {}
                 if row_pos in pinned:
                     wanted = pinned[row_pos]
@@ -562,11 +576,13 @@ class PageDecoder:
             for state, logits, cache in zip(active, step_logits, step_new_caches, strict=True):
                 state["logits"], state["cache"] = logits, cache
 
-            # Explicit pinned prefix (per example, per row) goes before the model
-            # prefix; the rest of the row still comes from the model.
+            # Explicit pinned prefix (per example, per row) and row-token items
+            # go before the model prefix; the rest of the row still comes from
+            # the model.
             placed_states: list[tuple[dict[str, Any], list[int]]] = []
             for state in active:
-                items = (state["args"].get("pinned_items") or {}).get(row_pos) or []
+                items = list((state["args"].get("pinned_items") or {}).get(row_pos) or [])
+                items += list((state["args"].get("row_items") or {}).get(state["row"]) or [])
                 placed: list[int] = []
                 for article in items:
                     if len(state["chosen"]) >= int(state["args"].get("items_per_row", 8)):

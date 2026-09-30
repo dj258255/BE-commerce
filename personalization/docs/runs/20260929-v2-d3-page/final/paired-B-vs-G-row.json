@@ -1,0 +1,131 @@
+{
+  "mode": "final",
+  "limit": null,
+  "customers": 68984,
+  "bootstrap": 2000,
+  "seed": 7,
+  "a": "docs/runs/20260929-v2-d3-page/final/B-1.json",
+  "b": [
+    "docs/runs/20260929-v2-d3-page/final/G-row-1.json",
+    "docs/runs/20260929-v2-d3-page/final/G-row-2.json",
+    "docs/runs/20260929-v2-d3-page/final/G-row-3.json",
+    "docs/runs/20260929-v2-d3-page/final/G-row-4.json",
+    "docs/runs/20260929-v2-d3-page/final/G-row-5.json",
+    "docs/runs/20260929-v2-d3-page/final/G-row-6.json",
+    "docs/runs/20260929-v2-d3-page/final/G-row-7.json",
+    "docs/runs/20260929-v2-d3-page/final/G-row-8.json"
+  ],
+  "means": {
+    "a": {
+      "map_at_12": 0.027866003612838402,
+      "page_hit": 0.09733193346989331,
+      "new_item_hit": 0.06320249950977455,
+      "page_ndcg": 0.05641438025459713,
+      "row_hit": 0.036568866210522244
+    },
+    "b": {
+      "map_at_12": 0.013186130347384143,
+      "page_hit": 0.08021262983592578,
+      "new_item_hit": 0.07214337800161937,
+      "page_ndcg": 0.036903035033008895,
+      "row_hit": 0.0350375932583401
+    }
+  },
+  "difference": {
+    "map_at_12": -0.014679873265454259,
+    "page_hit": -0.017119303633967534,
+    "new_item_hit": 0.008940878491844814,
+    "page_ndcg": -0.019511345221588233,
+    "row_hit": -0.0015312729521821458
+  },
+  "checks": {
+    "a": {
+      "map_at_12": {
+        "computed": 0.027866003612838402,
+        "evaluate": 0.027866003612838402,
+        "match": true
+      },
+      "page_hit": {
+        "computed": 0.09733193346989331,
+        "evaluate": 0.09733193346989331,
+        "match": true
+      },
+      "new_item_hit": {
+        "computed": 0.06320249950977455,
+        "evaluate": 0.06320249950977455,
+        "match": true
+      },
+      "page_ndcg": {
+        "computed": 0.05641438025459713,
+        "evaluate": 0.05641438025459713,
+        "match": true
+      },
+      "row_hit": {
+        "computed": 0.036568866210522244,
+        "evaluate": 0.036568866210522244,
+        "match": true
+      }
+    },
+    "b": {
+      "map_at_12": {
+        "computed": 0.013186130347384143,
+        "evaluate": 0.013186130347384143,
+        "match": true
+      },
+      "page_hit": {
+        "computed": 0.08021262983592578,
+        "evaluate": 0.08021262983592578,
+        "match": true
+      },
+      "new_item_hit": {
+        "computed": 0.07214337800161937,
+        "evaluate": 0.07214337800161937,
+        "match": true
+      },
+      "page_ndcg": {
+        "computed": 0.036903035033008895,
+        "evaluate": 0.036903035033008895,
+        "match": true
+      },
+      "row_hit": {
+        "computed": 0.0350375932583401,
+        "evaluate": 0.0350375932583401,
+        "match": true
+      }
+    }
+  },
+  "intervals": {
+    "map_at_12": {
+      "low": -0.015528048118615263,
+      "high": -0.013840144715504439,
+      "verdict": "B 가 졌다"
+    },
+    "page_hit": {
+      "low": -0.01863391920929646,
+      "high": -0.015587534454103324,
+      "verdict": "B 가 졌다"
+    },
+    "new_item_hit": {
+      "low": 0.007842362225159641,
+      "high": 0.010026567095146361,
+      "verdict": "B 가 이겼다"
+    },
+    "page_ndcg": {
+      "low": -0.020473024140871453,
+      "high": -0.018549630104333564,
+      "verdict": "B 가 졌다"
+    },
+    "row_hit": {
+      "low": -0.0020168928060613086,
+      "high": -0.0010451215740848118,
+      "verdict": "B 가 졌다"
+    }
+  },
+  "judgment": {
+    "map_at_12": "B 가 졌다",
+    "page_hit": "B 가 졌다",
+    "new_item_hit": "B 가 이겼다",
+    "page_ndcg": "B 가 졌다",
+    "row_hit": "B 가 졌다"
+  }
+}

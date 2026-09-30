@@ -1,0 +1,72 @@
+{
+  "mode": "validate",
+  "ckpt": null,
+  "args": {
+    "mode": "validate",
+    "limit": 10000,
+    "scores": "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/wt-d3/personalization/docs/runs/20260929-v2-d3-page/validate/r/scores.json.gz",
+    "variant": "B",
+    "ckpt": null,
+    "batch": 256,
+    "device": "auto",
+    "data_dir": null,
+    "out": "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/wt-d3/personalization/docs/runs/20260929-v2-d3-page/validate/merged-B.json"
+  },
+  "elapsed_seconds": 3.3527827079960844,
+  "results": {
+    "repeat_last": {
+      "map_at_12": 0.023456881230101468,
+      "map_at_12_has_vocab_history": 0.025257759481104196,
+      "page_recall": 0.039963099662777335,
+      "new_item_recall": 0.0,
+      "repeat_item_recall": 0.07243440476190476,
+      "row_recall": 0.0,
+      "page_ndcg": 0.030748603705377697,
+      "row_hit": 0.0746,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 10.0526,
+      "ms_per_page": null,
+      "customers": 10000,
+      "device": "cpu"
+    },
+    "popular_last_week": {
+      "map_at_12": 0.005989454395402176,
+      "map_at_12_has_vocab_history": 0.005982405749452282,
+      "page_recall": 0.019291943314238873,
+      "new_item_recall": 0.018174407760399584,
+      "repeat_item_recall": 0.0034166666666666664,
+      "row_recall": 0.0,
+      "page_ndcg": 0.011154293607465076,
+      "row_hit": 0.0546,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 12.0,
+      "ms_per_page": null,
+      "customers": 10000,
+      "device": "cpu"
+    },
+    "model": {
+      "map_at_12": 0.024904403101828423,
+      "map_at_12_has_vocab_history": 0.026476426780535026,
+      "page_recall": 0.09188493965533188,
+      "new_item_recall": 0.057885782978625344,
+      "repeat_item_recall": 0.06680964285714286,
+      "row_recall": 0.5358098342841384,
+      "page_ndcg": 0.05288335016077642,
+      "row_hit": 0.035866666666666665,
+      "diversity": 0.1472259796641767,
+      "violations": 0,
+      "rows_mean": 6.0,
+      "items_mean": 32.703,
+      "ms_per_page": 0.14079988750017947,
+      "customers": 10000,
+      "device": "rule"
+    }
+  },
+  "options": {
+    "compose": "B"
+  }
+}

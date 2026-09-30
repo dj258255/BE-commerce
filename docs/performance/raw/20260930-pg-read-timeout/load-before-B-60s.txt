@@ -1,0 +1,2 @@
+ 4:22  up 1 day,  4:24, 3 users, load averages: 11.64 17.05 12.95
+95834 bash tools/run-d3.sh

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
@@ -236,6 +237,53 @@ def _page_items(page: Any) -> list[str]:
     return list(page or [])
 
 
+def _page_rows(page: Any) -> list[list[str]]:
+    """페이지를 행별 상품 목록으로 본다. 행 구조가 없는 페이지는 한 행으로 본다.
+
+    ``page_ndcg`` · ``row_hit`` 은 행 구조가 필요하다. 순위 모델의 평평한
+    ``pages.json.gz`` 처럼 행이 없는 입력도 같은 채점기로 재도록, 그때는 전체를
+    한 행(행 0)으로 본다.
+    """
+    if _page_is_generated(page):
+        return [list(row.items) for row in page]
+    return [list(page or [])]
+
+
+def page_ndcg(rows: list[list[str]], truth: Iterable[str], *,
+              grid_rows: int = MAX_ROWS, grid_items: int = ITEMS_PER_ROW) -> float:
+    """STATUS D3 의 페이지 nDCG.
+
+    분자(정답 가중치 합)는 페이지의 **실제** 행 · 위치 가중치
+    ``1/log2(r + 2) × 1/log2(p + 2)`` 로 센다(평평한 페이지는 행 0 에 48개).
+
+    분모(이상적 배치)는 그 페이지에 실제로 있는 칸이 아니라 **고정 6행 × 8개
+    격자**(``grid_rows`` × ``grid_items``)의 가중치를 큰 순으로 정렬해 앞
+    ``min(|정답|, 격자 칸수)`` 개를 더한 값이다. 그래야 칸이 적은 짧은 페이지가
+    분모를 줄여 점수를 부풀리지 못한다. 정답이 없거나 페이지가 비면 0 이다.
+    """
+    truth_set = set(truth)
+    dcg = 0.0
+    for r, items in enumerate(rows):
+        row_weight = 1.0 / math.log2(r + 2)
+        for p, article in enumerate(items):
+            if article in truth_set:
+                dcg += row_weight / math.log2(p + 2)
+    if not truth_set or not rows:
+        return 0.0
+    grid = [1.0 / math.log2(r + 2) / math.log2(p + 2)
+            for r in range(grid_rows) for p in range(grid_items)]
+    ideal = sum(sorted(grid, reverse=True)[:min(len(truth_set), len(grid))])
+    return dcg / ideal if ideal > 0 else 0.0
+
+
+def row_hit(rows: list[list[str]], truth: Iterable[str]) -> float:
+    """정답이 하나라도 든 행의 비율. 행이 없거나 정답이 없으면 0."""
+    truth_set = set(truth)
+    if not rows or not truth_set:
+        return 0.0
+    return sum(1 for items in rows if any(a in truth_set for a in items)) / len(rows)
+
+
 def page_metrics(meta: pd.DataFrame, pages: dict[str, Any], *, vocab: Any | None = None,
                  content: np.ndarray | None = None, content_rows: dict[str, int] | None = None,
                  violations: dict[str, int] | None = None, elapsed: float = 0.0,
@@ -247,6 +295,8 @@ def page_metrics(meta: pd.DataFrame, pages: dict[str, Any], *, vocab: Any | None
     new_recalls: list[float] = []
     repeat_recalls: list[float] = []
     row_recalls: list[float] = []
+    page_ndcgs: list[float] = []
+    row_hits: list[float] = []
     diversities: list[float] = []
     total_rows = 0
     total_items = 0
@@ -265,6 +315,9 @@ def page_metrics(meta: pd.DataFrame, pages: dict[str, Any], *, vocab: Any | None
         repeat_recalls.append(len(item_set & set(repeat_truth)) / len(repeat_truth) if repeat_truth else 0.0)
         page = pages.get(customer, [])
         page_rows = {r.row_token for r in page} if _page_is_generated(page) else set()
+        page_row_items = _page_rows(page)
+        page_ndcgs.append(page_ndcg(page_row_items, truth))
+        row_hits.append(row_hit(page_row_items, truth))
         if vocab is not None and truth:
             hit_rows = [vocab.row_of(article) in page_rows or (
                 article in history and vocab.id("ROW_REPEAT") in page_rows
@@ -291,6 +344,8 @@ def page_metrics(meta: pd.DataFrame, pages: dict[str, Any], *, vocab: Any | None
         "new_item_recall": float(np.mean(new_recalls)) if new_recalls else 0.0,
         "repeat_item_recall": float(np.mean(repeat_recalls)) if repeat_recalls else 0.0,
         "row_recall": float(np.mean(row_recalls)) if row_recalls else 0.0,
+        "page_ndcg": float(np.mean(page_ndcgs)) if page_ndcgs else 0.0,
+        "row_hit": float(np.mean(row_hits)) if row_hits else 0.0,
         "diversity": float(np.mean(diversities)) if diversities else 0.0,
         "violations": int(sum((violations or {}).values())),
         "rows_mean": total_rows / customers if customers else 0.0,
