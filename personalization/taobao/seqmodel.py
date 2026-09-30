@@ -25,10 +25,31 @@ from typing import Any
 
 import numpy as np
 
-from . import config, data as data_module, metrics
+from . import config, data as data_module, features, metrics
 
 USER_ATTRIBUTES = ("cms_segid", "cms_group_id", "final_gender_code", "age_level",
                    "pvalue_level", "shopping_level", "occupation", "new_user_class_level")
+
+
+def side_statistics(matrix: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """곁채널 행렬의 열별 평균 · 표준편차. 분산이 0 인 열은 표준편차를 1 로 둔다."""
+    mean = matrix.mean(axis=0).astype(np.float32)
+    std = matrix.std(axis=0).astype(np.float32)
+    std = np.where(std < 1e-6, 1.0, std).astype(np.float32)
+    return mean, std
+
+
+def standardize_side(matrix: np.ndarray, mean: np.ndarray, std: np.ndarray) -> np.ndarray:
+    """곁채널 행렬을 표준화한다. 검증 · 시험은 학습 분할 통계를 넘겨 쓴다."""
+    return ((matrix - mean) / std).astype(np.float32)
+
+
+def _standardize_from_stats(matrix: np.ndarray, stats: dict[str, Any] | None) -> np.ndarray:
+    """체크포인트에 저장한 표준화 통계로 행렬을 표준화한다."""
+    if not stats:
+        raise ValueError("곁채널 표준화 통계가 없습니다")
+    return standardize_side(matrix, np.asarray(stats["mean"], dtype=np.float32),
+                            np.asarray(stats["std"], dtype=np.float32))
 
 
 def gap_bucket(seconds: np.ndarray) -> np.ndarray:
@@ -172,7 +193,7 @@ class _Attention:
         return out.transpose(1, 2).reshape(batch, length_q, dim)
 
 
-def build_model(dim: int, layers: int, *, heads: int = 4, dropout: float = 0.1):
+def build_model(dim: int, layers: int, *, heads: int = 4, dropout: float = 0.1, side_dim: int | None = None):
     torch = _torch()
     from torch import nn
 
@@ -220,6 +241,9 @@ def build_model(dim: int, layers: int, *, heads: int = 4, dropout: float = 0.1):
             ])
             self.blocks = nn.ModuleList([Block() for _ in range(layers)])
             self.head = nn.Linear(dim, 1)
+            # 곁채널: 수치 특징 벡터 → Linear → GELU → Linear(d). 질의 토큰에만 더한다.
+            self.side = (nn.Sequential(nn.Linear(side_dim, dim), nn.GELU(), nn.Linear(dim, dim))
+                         if side_dim is not None else None)
 
         def _token(self, item, cate, brand, campaign, price, gap):
             return (self.item(item) + self.cate(cate) + self.brand(brand)
@@ -253,6 +277,8 @@ def build_model(dim: int, layers: int, *, heads: int = 4, dropout: float = 0.1):
                 query = query + embedding(q_attr[:, :, index])
             for index, embedding in enumerate(self.context):
                 query = query + embedding(q_ctx[..., index])
+            if self.side is not None:
+                query = query + self.side(batch["q_side"].to(device))
 
             length = hist_ts.shape[1]
             self_mask = torch.triu(torch.ones(length, length, dtype=torch.bool, device=hist_ts.device), diagonal=1)
@@ -271,7 +297,7 @@ def build_model(dim: int, layers: int, *, heads: int = 4, dropout: float = 0.1):
 
 
 def _collate(torch, sequences: list[UserSequence], user_feats: np.ndarray,
-             no_unclicked: bool) -> dict[str, Any]:
+             no_unclicked: bool, side_matrix: np.ndarray | None = None) -> dict[str, Any]:
     batch = len(sequences)
     hist_len = max(len(sequence.item) for sequence in sequences)
     query_len = max(len(sequence.q_pos) for sequence in sequences)
@@ -297,6 +323,8 @@ def _collate(torch, sequences: list[UserSequence], user_feats: np.ndarray,
     q_ctx = np.zeros((batch, query_len, 3), dtype=np.int64)
     q_label = np.zeros((batch, query_len), dtype=np.float32)
     q_valid = np.zeros((batch, query_len), dtype=bool)
+    q_side = (np.zeros((batch, query_len, side_matrix.shape[1]), dtype=np.float32)
+              if side_matrix is not None else None)
 
     for row, sequence in enumerate(sequences):
         keep = sequence.click.astype(bool) if no_unclicked else np.ones(len(sequence.item), dtype=bool)
@@ -331,8 +359,11 @@ def _collate(torch, sequences: list[UserSequence], user_feats: np.ndarray,
         q_ctx[row, :count] = sequence.q_ctx
         q_label[row, :count] = sequence.q_label
         q_valid[row, :count] = True
+        if q_side is not None:
+            # 질의의 특징 행은 질의의 채점 행 번호(q_row)로 찾는다.
+            q_side[row, :count] = side_matrix[sequence.q_row]
 
-    return {
+    batch_tensors: dict[str, Any] = {
         "hist_item": torch.as_tensor(hist_item), "hist_cate": torch.as_tensor(hist_cate),
         "hist_brand": torch.as_tensor(hist_brand), "hist_campaign": torch.as_tensor(hist_campaign),
         "hist_price": torch.as_tensor(hist_price), "hist_click": torch.as_tensor(hist_click),
@@ -344,19 +375,23 @@ def _collate(torch, sequences: list[UserSequence], user_feats: np.ndarray,
         "q_ts": torch.as_tensor(q_ts), "q_attr": torch.as_tensor(q_attr), "q_ctx": torch.as_tensor(q_ctx),
         "q_label": torch.as_tensor(q_label), "q_valid": torch.as_tensor(q_valid),
     }
+    if q_side is not None:
+        batch_tensors["q_side"] = torch.as_tensor(q_side)
+    return batch_tensors
 
 
 # --------------------------------------------------------------------------- 학습
 
 
 def _predict(torch, model, sequences: list[UserSequence], user_feats: np.ndarray, *,
-             batch_size: int, device: str, no_unclicked: bool) -> np.ndarray:
+             batch_size: int, device: str, no_unclicked: bool,
+             side_matrix: np.ndarray | None = None) -> np.ndarray:
     model.eval()
     scores = np.zeros(len(sequences), dtype=object)
     with torch.no_grad():
         for start in range(0, len(sequences), batch_size):
             part = sequences[start:start + batch_size]
-            batch = _collate(torch, part, user_feats, no_unclicked)
+            batch = _collate(torch, part, user_feats, no_unclicked, side_matrix)
             logits = model(batch, device).cpu()
             valid = batch["q_valid"]
             for row, sequence in enumerate(part):
@@ -378,15 +413,16 @@ def _flat_scores(scores: np.ndarray, sequences: list[UserSequence]) -> tuple[np.
 # --------------------------------------------------------------------------- 체크포인트
 
 
-def checkpoint_path(config_name: str, no_unclicked: bool) -> Path:
-    """검증에서 고른 설정의 체크포인트 자리(`cache_dir()/ckpt/{config}{_noclick}.pt`)."""
-    name = config_name + ("_noclick" if no_unclicked else "")
+def checkpoint_path(config_name: str, no_unclicked: bool, side: bool = False) -> Path:
+    """검증에서 고른 설정의 체크포인트 자리(`cache_dir()/ckpt/{config}{_noclick}{_side}.pt`)."""
+    name = config_name + ("_noclick" if no_unclicked else "") + ("_side" if side else "")
     return config.cache_dir() / "ckpt" / f"{name}.pt"
 
 
 def save_checkpoint(path: str | Path, model, *, config_name: str, no_unclicked: bool,
                     trained_epochs: int, best_epoch: int, best_valid_bundle_gauc: float,
-                    seed: int = config.SEED) -> Path:
+                    seed: int = config.SEED, side: bool = False,
+                    side_dim: int | None = None, side_stats: dict[str, Any] | None = None) -> Path:
     """가장 좋은 에폭의 가중치와 복원에 필요한 설정을 저장한다."""
     import torch
 
@@ -397,6 +433,9 @@ def save_checkpoint(path: str | Path, model, *, config_name: str, no_unclicked: 
         "state_dict": model.state_dict(),
         "config": config_name,
         "no_unclicked": bool(no_unclicked),
+        "side": bool(side),
+        "side_dim": int(side_dim) if side_dim is not None else None,
+        "side_stats": side_stats,
         "settings": settings,
         "trained_epochs": int(trained_epochs),
         "best_epoch": int(best_epoch),
@@ -408,7 +447,7 @@ def save_checkpoint(path: str | Path, model, *, config_name: str, no_unclicked: 
 
 
 def load_checkpoint(path: str | Path, config_name: str, no_unclicked: bool,
-                    device: str = "cpu"):
+                    device: str = "cpu", side: bool = False):
     """체크포인트를 읽어 모델과 기록을 돌려준다. 설정이 다르면 멈춘다."""
     import torch
 
@@ -421,8 +460,12 @@ def load_checkpoint(path: str | Path, config_name: str, no_unclicked: bool,
     if bool(payload.get("no_unclicked")) != bool(no_unclicked):
         raise ValueError(
             f"체크포인트의 no_unclicked {bool(payload.get('no_unclicked'))} 가 인자 {bool(no_unclicked)} 와 다릅니다")
+    if bool(payload.get("side")) != bool(side):
+        raise ValueError(
+            f"체크포인트의 side {bool(payload.get('side'))} 가 인자 {bool(side)} 와 다릅니다")
     settings = payload.get("settings") or config.SEQ_CONFIGS[config_name]
-    model = build_model(settings["dim"], settings["layers"])
+    side_dim = payload.get("side_dim") if side else None
+    model = build_model(settings["dim"], settings["layers"], side_dim=side_dim)
     model.load_state_dict(payload["state_dict"])
     model.to(device).eval()
     return model, payload
@@ -431,13 +474,17 @@ def load_checkpoint(path: str | Path, config_name: str, no_unclicked: bool,
 def _evaluate_with_model(torch, model, split: str, config_name: str, no_unclicked: bool, device: str,
                          *, users: int | None, batch_size: int, use_cache: bool,
                          from_checkpoint: str | Path | None, checkpoint: dict[str, Any] | None,
-                         started: float) -> dict[str, Any]:
+                         started: float, side: bool = False,
+                         side_stats: dict[str, Any] | None = None) -> dict[str, Any]:
     """이미 만들어진 모델로 `split` 을 채점하고 예측을 저장한다."""
     eval_data = data_module.load_split(split, users=users, use_cache=use_cache)
     eval_sequences = build_sequences(eval_data)
     eval_attributes = eval_data.user_feats.astype(np.int64)
+    eval_side = (_standardize_from_stats(features.side_design(eval_data)[0], side_stats)
+                 if side else None)
     scores = _predict(torch, model, eval_sequences, eval_attributes,
-                      batch_size=batch_size, device=device, no_unclicked=no_unclicked)
+                      batch_size=batch_size, device=device, no_unclicked=no_unclicked,
+                      side_matrix=eval_side)
     rows, logits = _flat_scores(scores, eval_sequences)
     probability = 1.0 / (1.0 + np.exp(-logits))
     user = eval_data.row_user[rows]
@@ -448,13 +495,14 @@ def _evaluate_with_model(torch, model, split: str, config_name: str, no_unclicke
         "config": config_name,
         "settings": config.SEQ_CONFIGS[config_name],
         "no_unclicked": bool(no_unclicked),
+        "side": bool(side),
         "device": device,
         "eval_rows": int(len(rows)),
         "elapsed_seconds": time.perf_counter() - started,
         "metrics": metrics.evaluate(user, label, logits, probability=probability,
                                     group=_bundle_ids_from_eval(eval_data, rows),
                                     history_length=eval_data.pre_day_history()[user]),
-        "predictions": _save_predictions(split, config_name, no_unclicked, eval_data, rows,
+        "predictions": _save_predictions(split, config_name, no_unclicked, side, eval_data, rows,
                                          user, label, logits),
     }
     if from_checkpoint is not None:
@@ -470,11 +518,16 @@ def _evaluate_with_model(torch, model, split: str, config_name: str, no_unclicke
 def train(split: str, config_name: str, *, users: int | None = None, no_unclicked: bool = False,
           epochs: int = 3, batch_size: int = 256, device: str = "auto",
           use_cache: bool = True, learning_rate: float = 1e-3, seed: int = config.SEED,
-          max_batches: int | None = None, from_ckpt: str | Path | None = None) -> dict[str, Any]:
+          max_batches: int | None = None, from_ckpt: str | Path | None = None,
+          side_features: bool = False) -> dict[str, Any]:
     """학습 분할로 G 를 학습하고 `split` 에서 지표와 예측을 낸다.
 
     `from_ckpt` 가 주어지면 학습하지 않고 체크포인트를 읽어 그 분할만 채점한다.
-    체크포인트의 config · no_unclicked 가 인자와 다르면 오류로 멈춘다.
+    체크포인트의 config · no_unclicked · side 가 인자와 다르면 오류로 멈춘다.
+
+    `side_features` 를 켜면 R 의 수치 특징 27개를 곁채널로 질의 토큰에 더한다.
+    표준화는 학습 분할 통계로만 하고 체크포인트에 남겨 검증 · 시험이 다시 쓴다.
+    옵션을 끄면 지금까지와 완전히 같게 동작한다.
     """
     import torch
 
@@ -485,10 +538,12 @@ def train(split: str, config_name: str, *, users: int | None = None, no_unclicke
     started = time.perf_counter()
 
     if from_ckpt is not None:
-        model, payload = load_checkpoint(from_ckpt, config_name, no_unclicked, device=resolved)
+        model, payload = load_checkpoint(from_ckpt, config_name, no_unclicked, device=resolved,
+                                         side=side_features)
         return _evaluate_with_model(torch, model, split, config_name, no_unclicked, resolved,
                                     users=users, batch_size=batch_size, use_cache=use_cache,
-                                    from_checkpoint=from_ckpt, checkpoint=payload, started=started)
+                                    from_checkpoint=from_ckpt, checkpoint=payload, started=started,
+                                    side=side_features, side_stats=payload.get("side_stats"))
 
     train_data = data_module.load_split("train", users=users, use_cache=use_cache)
     eval_data = data_module.load_split(split, users=users, use_cache=use_cache)
@@ -498,7 +553,21 @@ def train(split: str, config_name: str, *, users: int | None = None, no_unclicke
     valid_sequences = build_sequences(valid_data)
     eval_sequences = build_sequences(eval_data)
 
-    model = build_model(settings["dim"], settings["layers"]).to(resolved)
+    # 곁채널: 학습 분할에서 표준화 통계를 내고, 검증 · 시험은 그 통계로 표준화한다.
+    side_stats: dict[str, Any] | None = None
+    train_side = valid_side = eval_side = None
+    side_dim: int | None = None
+    if side_features:
+        train_side, side_names = features.side_design(train_data)
+        mean, std = side_statistics(train_side)
+        side_stats = {"mean": mean.tolist(), "std": std.tolist(), "names": side_names}
+        train_side = standardize_side(train_side, mean, std)
+        valid_side = standardize_side(features.side_design(valid_data)[0], mean, std)
+        eval_side = (valid_side if valid_data is eval_data
+                     else standardize_side(features.side_design(eval_data)[0], mean, std))
+        side_dim = int(train_side.shape[1])
+
+    model = build_model(settings["dim"], settings["layers"], side_dim=side_dim).to(resolved)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     loss_fn = torch.nn.BCEWithLogitsLoss(reduction="none")
     train_attributes = train_data.user_feats.astype(np.int64)
@@ -521,7 +590,7 @@ def train(split: str, config_name: str, *, users: int | None = None, no_unclicke
                 break
             picked = order[start:start + batch_size]
             part = [train_sequences[index] for index in picked]
-            batch = _collate(torch, part, train_attributes, no_unclicked)
+            batch = _collate(torch, part, train_attributes, no_unclicked, train_side)
             logits = model(batch, resolved)
             valid = batch["q_valid"].to(resolved)
             target = batch["q_label"].to(resolved)
@@ -532,7 +601,8 @@ def train(split: str, config_name: str, *, users: int | None = None, no_unclicke
             total += float(loss.item()) * int(valid.sum())
             count += int(valid.sum())
         valid_scores = _predict(torch, model, valid_sequences, valid_attributes,
-                                batch_size=batch_size, device=resolved, no_unclicked=no_unclicked)
+                                batch_size=batch_size, device=resolved, no_unclicked=no_unclicked,
+                                side_matrix=valid_side)
         rows, scores = _flat_scores(valid_scores, valid_sequences)
         valid_user = valid_data.row_user[rows]
         valid_label = valid_data.row_label[rows]
@@ -547,12 +617,14 @@ def train(split: str, config_name: str, *, users: int | None = None, no_unclicke
             best_epoch = epoch
 
     model.load_state_dict(best_state)
-    destination = save_checkpoint(checkpoint_path(config_name, no_unclicked), model,
+    destination = save_checkpoint(checkpoint_path(config_name, no_unclicked, side_features), model,
                                   config_name=config_name, no_unclicked=no_unclicked,
                                   trained_epochs=epochs, best_epoch=best_epoch,
-                                  best_valid_bundle_gauc=best_gauc, seed=seed)
+                                  best_valid_bundle_gauc=best_gauc, seed=seed,
+                                  side=side_features, side_dim=side_dim, side_stats=side_stats)
     eval_scores = _predict(torch, model, eval_sequences, eval_attributes,
-                           batch_size=batch_size, device=resolved, no_unclicked=no_unclicked)
+                           batch_size=batch_size, device=resolved, no_unclicked=no_unclicked,
+                           side_matrix=eval_side)
     rows, logits = _flat_scores(eval_scores, eval_sequences)
     probability = 1.0 / (1.0 + np.exp(-logits))
     user = eval_data.row_user[rows]
@@ -563,6 +635,7 @@ def train(split: str, config_name: str, *, users: int | None = None, no_unclicke
         "config": config_name,
         "settings": settings,
         "no_unclicked": bool(no_unclicked),
+        "side": bool(side_features),
         "device": resolved,
         "best_epoch": best_epoch,
         "best_valid_bundle_gauc": best_gauc,
@@ -575,8 +648,8 @@ def train(split: str, config_name: str, *, users: int | None = None, no_unclicke
         "metrics": metrics.evaluate(user, label, logits, probability=probability,
                                     group=_bundle_ids_from_eval(eval_data, rows),
                                     history_length=eval_data.pre_day_history()[user]),
-        "predictions": _save_predictions(split, config_name, no_unclicked, eval_data, rows,
-                                         user, label, logits),
+        "predictions": _save_predictions(split, config_name, no_unclicked, side_features, eval_data,
+                                         rows, user, label, logits),
     }
     return report
 
@@ -587,7 +660,7 @@ def _bundle_ids_from_eval(split_data: data_module.SplitData, rows: np.ndarray) -
     return _bundle_ids(split_data)[rows]
 
 
-def _save_predictions(split: str, config_name: str, no_unclicked: bool,
+def _save_predictions(split: str, config_name: str, no_unclicked: bool, side: bool,
                       eval_data: data_module.SplitData, rows: np.ndarray, user: np.ndarray,
                       label: np.ndarray, score: np.ndarray) -> dict[str, Any]:
     import pandas as pd
@@ -595,6 +668,8 @@ def _save_predictions(split: str, config_name: str, no_unclicked: bool,
     name = f"{split}_seq_{config_name}"
     if no_unclicked:
         name += "_nuc"
+    if side:
+        name += "_side"
     destination = config.cache_dir() / "predictions" / f"{name}.parquet"
     destination.parent.mkdir(parents=True, exist_ok=True)
     frame = pd.DataFrame({
@@ -613,6 +688,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--split", choices=("valid", "test"), required=True)
     parser.add_argument("--config", choices=tuple(config.SEQ_CONFIGS), default=config.SEQ_DEFAULT)
     parser.add_argument("--no-unclicked", action="store_true")
+    parser.add_argument("--side-features", action="store_true",
+                        help="R 의 수치 특징 27개를 곁채널로 질의 토큰에 더한다")
     parser.add_argument("--users", type=int)
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch-size", type=int, default=256)
@@ -623,8 +700,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     report = train(args.split, args.config, users=args.users, no_unclicked=args.no_unclicked,
                    epochs=args.epochs, batch_size=args.batch_size, device=args.device,
-                   use_cache=not args.no_cache, from_ckpt=args.from_ckpt)
+                   use_cache=not args.no_cache, from_ckpt=args.from_ckpt,
+                   side_features=args.side_features)
     name = f"seq_{args.split}_{args.config}" + ("_nuc" if args.no_unclicked else "")
+    name += "_side" if args.side_features else ""
     destination = Path(args.out) if args.out else (config.out_dir() / f"{name}.json")
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(report, ensure_ascii=False, indent=2, default=float), encoding="utf-8")

@@ -1,0 +1,36 @@
+{
+  "a": "personalization/data/taobao-ad/cache/predictions/test_ranker_l31.parquet",
+  "b": "personalization/data/taobao-ad/cache/predictions/test_seq_d128_l2_side.parquet",
+  "rows": 2898360,
+  "bundles": 676305,
+  "bundle_gauc": {
+    "a": 0.5759749354210247,
+    "b": 0.5716614955341657,
+    "difference": {
+      "difference": -0.004313439886858948,
+      "low": -0.006076375494755876,
+      "high": -0.002555487261828723,
+      "verdict": "졌다",
+      "bootstrap": 2000,
+      "seed": 7,
+      "users": 81308
+    }
+  },
+  "user_gauc": {
+    "a": 0.5349683047877847,
+    "b": 0.5385197711491013,
+    "difference": {
+      "difference": 0.00355146636131669,
+      "low": 0.0019221474020792576,
+      "high": 0.005188071576188365,
+      "verdict": "이겼다",
+      "bootstrap": 2000,
+      "seed": 7,
+      "users": 82394
+    }
+  },
+  "auc": {
+    "a": 0.6665437614171587,
+    "b": 0.6636771894840264
+  }
+}

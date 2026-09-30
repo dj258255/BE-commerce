@@ -114,6 +114,8 @@ def main(argv: list[str] | None = None) -> int:
     seq_parser.add_argument("--split", choices=("valid", "test"), required=True)
     seq_parser.add_argument("--config", choices=tuple(config.SEQ_CONFIGS), default=config.SEQ_DEFAULT)
     seq_parser.add_argument("--no-unclicked", action="store_true")
+    seq_parser.add_argument("--side-features", action="store_true",
+                            help="R 의 수치 특징 27개를 곁채널로 질의 토큰에 더한다")
     seq_parser.add_argument("--users", type=int)
     seq_parser.add_argument("--epochs", type=int, default=3)
     seq_parser.add_argument("--batch-size", type=int, default=256)
@@ -139,6 +141,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "seq":
         return _seqmodel.main(["--split", args.split, "--config", args.config,
                                *(["--no-unclicked"] if args.no_unclicked else []),
+                               *(["--side-features"] if args.side_features else []),
                                *(["--users", str(args.users)] if args.users else []),
                                "--epochs", str(args.epochs), "--batch-size", str(args.batch_size),
                                "--device", args.device,
