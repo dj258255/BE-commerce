@@ -29,10 +29,11 @@ OUT=${OUT:-docs/performance/runs/$(date +%Y%m%d)-approve-resend-load}
 RATE=${RATE:-30}; DUR=${DUR:-60s}; DRAIN_S=${DRAIN_S:-300}
 LAT=${LAT:-5000}; RTO=${RTO:-2000}          # 느림: 지연이 read-timeout 을 항상 넘겨 첫 시도가 결정적으로 타임아웃
 LOSS_RATE=${LOSS_RATE:-0.15}                 # 손실: 승인마다 15% 확률로 완전히 사라짐
+MIX_LAT=${MIX_LAT:-1800}                      # 겹침: 읽기 타임아웃(2초) 안의 지연 + 손실. 상한이 살짝 넘친다
 LIMIT=${LIMIT:-40}                            # PG 동시 호출 상한. 운영 기본값(ADR-022)
 BUDGET=${BUDGET:-4}                           # 재전송 예산: 빈 자리가 이 수보다 적으면 재전송하지 않음(#404)
 DB_PORT=${DB_PORT:-13398}; REDIS_PORT=${REDIS_PORT:-16398}; PORT=${PORT:-18398}
-# name:resend:mode:headroom  (headroom 은 payment.pg.approve-resend-min-headroom, 0=예산 없음)
+# name:resend:mode:headroom  (mode: slow · loss · mix, headroom 은 payment.pg.approve-resend-min-headroom, 0=예산 없음)
 CONDITIONS=${CONDITIONS:-"R0-SLOW:0:slow:0 R1-SLOW:1:slow:0 RB-SLOW:1:slow:$BUDGET R0-LOSS:0:loss:0 R1-LOSS:1:loss:0 RB-LOSS:1:loss:$BUDGET"}
 mkdir -p "$OUT"
 
@@ -56,10 +57,16 @@ for c in $CONDITIONS; do
   if [ "$mode" = "slow" ]; then
     lat=$LAT; rto=$RTO
     extra="--app.recovery.enabled=true --payment.pg.approve-resend-max-attempts=$resend --payment.pg.approve-resend-min-headroom=$headroom"
+  elif [ "$mode" = "mix" ]; then
+    # 겹침: 응답은 읽기 타임아웃 안(1.8초 < 2초)에 오지만 상한이 살짝 넘치고(30 × 0.85 × 1.8 ≈ 46 > 40) 일부 응답을 잃는다.
+    # 재전송 예산의 대가("겹치면 살릴 결제를 놓친다")가 순손실로 나타나는지 보는 조건이다
+    lat=$MIX_LAT; rto=$RTO
+    extra="--app.recovery.enabled=true --payment.pg.approve-resend-max-attempts=$resend --payment.pg.approve-resend-min-headroom=$headroom --payment.fake-pg.approve-timeout-lost-rate=$LOSS_RATE"
   else
     lat=0; rto=5000
     extra="--app.recovery.enabled=true --payment.pg.approve-resend-max-attempts=$resend --payment.pg.approve-resend-min-headroom=$headroom --payment.fake-pg.approve-timeout-lost-rate=$LOSS_RATE"
   fi
+  { uptime; pgrep -fl 'k6 run|run-.*\.sh' || true; } > "$OUT/load-before-$name.txt"
   echo "== 조건 $name: 재전송=$resend 모드=$mode 예산=$headroom"
   SPRING_DATASOURCE_URL="jdbc:mysql://localhost:$DB_PORT/$db?serverTimezone=UTC&characterEncoding=UTF-8" \
   SPRING_DATASOURCE_USERNAME=root SPRING_DATASOURCE_PASSWORD=root SPRING_DATA_REDIS_PORT=$REDIS_PORT \
