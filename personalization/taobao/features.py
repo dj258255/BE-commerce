@@ -33,6 +33,51 @@ NUMERIC = (
 FEATURE_NAMES = CATEGORICAL + NUMERIC
 CATEGORICAL_INDEX = list(range(len(CATEGORICAL)))
 
+# G 의 곁채널이 쓰는 수치 특징 — 고객 이력 15 + 전날까지 전체 통계 12 = 27.
+# 변환은 이름 묶음으로 나눈다: 카운트는 log1p, 클릭률은 그대로, 지난 시간은
+# log1p 하고 한 번도 없었으면(`*_ago` < 0) 표시 칸을 1 로 덧붙인다.
+SIDE_COUNT = (
+    "cust_exp", "cust_click", "ad_exp", "ad_click", "cate_exp", "cate_click",
+    "brand_exp", "brand_click", "campaign_exp", "campaign_click",
+    "g_ad_exp", "g_ad_click", "g_cate_exp", "g_cate_click",
+    "g_brand_exp", "g_brand_click", "g_campaign_exp", "g_campaign_click",
+)
+SIDE_RATE = ("cust_ctr", "g_ad_ctr", "g_cate_ctr", "g_brand_ctr", "g_campaign_ctr")
+SIDE_AGO = ("cate_last_exp_ago", "cate_last_click_ago", "brand_last_exp_ago", "brand_last_click_ago")
+SIDE_NUMERIC = SIDE_COUNT + SIDE_RATE + SIDE_AGO
+
+
+def side_design(data: SplitData) -> tuple[np.ndarray, list[str]]:
+    """곁채널 입력 — 수치 27개에 변환을 적용한 행렬과 열 이름.
+
+    `build_design` 이 만든 행렬에서 :data:`SIDE_NUMERIC` 이름으로 골라 쓴다. 이름이
+    없으면 멈춘다. 카운트는 log1p, 클릭률은 그대로, 지난 시간은 log1p 하고 값이 없으면
+    (한 번도 없었으면) 표시 칸 1 · 값 0 으로 둔다. 그래서 열은 27 + 표시 칸 4 = 31 개다.
+    표준화는 하지 않는다(학습 분할 통계로 하는 것은 부르는 쪽 몫).
+    """
+    matrix, _, names = build_design(data)
+    index = {name: position for position, name in enumerate(names)}
+    missing = [name for name in SIDE_NUMERIC if name not in index]
+    if missing:
+        raise KeyError(f"곁채널 특징이 설계 행렬에 없습니다: {missing}")
+    columns: list[np.ndarray] = []
+    labels: list[str] = []
+    for name in SIDE_NUMERIC:
+        column = matrix[:, index[name]].astype(np.float32)
+        if name in SIDE_AGO:
+            present = column >= 0
+            columns.append(np.where(present, np.log1p(np.maximum(column, 0.0)), 0.0).astype(np.float32))
+            labels.append(name)
+            columns.append((~present).astype(np.float32))
+            labels.append(f"{name}_missing")
+        elif name in SIDE_COUNT:
+            columns.append(np.log1p(np.maximum(column, 0.0)).astype(np.float32))
+            labels.append(name)
+        else:
+            columns.append(column)
+            labels.append(name)
+    return np.stack(columns, axis=1), labels
+
 
 def _cumulative(counts: np.ndarray) -> np.ndarray:
     """(id, day) 격자를 (id, day+1) 누적으로. `cum[e, d]` = d 보다 이른 날의 합."""
