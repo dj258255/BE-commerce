@@ -389,7 +389,9 @@ class PageDecoder:
                  allowed_rows: set[int] | None = None,
                  row_bias: dict[int, float] | None = None,
                  items_per_row: int = 8, prefix: int = 2, temperature: float = 0.0,
-                 generator: torch.Generator | None = None, use_cache: bool = True) -> tuple[list[GeneratedRow], int]:
+                 generator: torch.Generator | None = None, use_cache: bool = True,
+                 min_row_items: int | None = None, row_items_only: bool = False
+                 ) -> tuple[list[GeneratedRow], int]:
         """Generate up to ``n_rows`` rows and return them with violation count.
 
         ``pinned_items`` optionally starts a row *position* with caller-supplied
@@ -402,7 +404,15 @@ class PageDecoder:
         hides every row token outside the set from row selection.  ``row_bias``
         (also optional) adds a per-row token value to the row log probabilities
         computed over the candidate rows only, so a greedy choice favours rows
-        with a larger bias (D4 H).
+        with a larger bias (D4 H).  ``min_row_items`` (also optional) is the
+        minimum number of available products a row must have to be a candidate;
+        ``None`` keeps the historical fixed value of three, so D5 can lower it
+        to one and allow short rows that mirror B's row rule.  ``row_items_only``
+        (also optional) stops the model from filling a row whose ``row_items``
+        were supplied: the row ends at that prefix even when the row's catalogue
+        holds more products, which is what D5's thin rows need.  A second home
+        for history products (``row_items`` also lists them under ROW_REPEAT)
+        would otherwise leak into a section row's fill.
         """
         if len(ctx_tokens) != len(ctx_content):
             raise ValueError("ctx_tokens 와 ctx_content 길이는 같아야 합니다")
@@ -433,7 +443,7 @@ class PageDecoder:
         for token in previous_items + excluded_ids:
             self._mark_used(used, used_per_row, token)
         rows: list[GeneratedRow] = []
-        min_items = 3
+        min_items = 3 if min_row_items is None else int(min_row_items)
         pinned = pinned or {}
         allowed_mask = self._allowed_mask(allowed_items)
         bias = self._row_bias_tensor(row_bias)
@@ -479,6 +489,10 @@ class PageDecoder:
                     next_logits, cache = self._next_logits([token], [self._content_for(token)], cache, use_cache=True)
                 else:
                     next_logits, cache = self._next_logits(tokens, content, use_cache=False)
+
+            if row_items_only and row_token in (row_items or {}):
+                # D5 thin 행: 주어진 row_items 앞에서 행을 끝낸다.
+                allowed = allowed[:0]
 
             # Prefix tokens each affect the distribution for their successor.
             for _ in range(min(prefix, items_per_row - len(chosen), len(allowed))):
@@ -542,11 +556,13 @@ class PageDecoder:
             for token in previous_items + excluded_ids:
                 self._mark_used(used, used_per_row, token)
             allowed_rows = args.get("allowed_rows")
+            min_row_items = args.get("min_row_items")
             states.append({"args": args, "tokens": tokens, "content": content, "previous": previous,
                            "excluded_items": excluded_items, "excluded_rows": excluded_rows,
                            "used_rows": used_rows, "used": used, "used_per_row": used_per_row,
                            "allowed_mask": self._allowed_mask(args.get("allowed_items")),
                            "allowed_rows": set(allowed_rows) if allowed_rows is not None else None,
+                           "min_items": 3 if min_row_items is None else int(min_row_items),
                            "row_bias": self._row_bias_tensor(args.get("row_bias")),
                            "rows": [], "done": False,
                            "use_cache": bool(args.get("use_cache", True) and hasattr(self.model, "forward_cached"))})
@@ -568,7 +584,7 @@ class PageDecoder:
                 if state["done"] or row_pos >= int(args.get("n_rows", 3)) or int(args.get("items_per_row", 8)) < 1:
                     continue
                 candidates = self._row_candidates(args["history_articles"], state["used"], state["used_per_row"],
-                                                  state["used_rows"], state["excluded_rows"], 3,
+                                                  state["used_rows"], state["excluded_rows"], state["min_items"],
                                                   state["allowed_mask"], state["allowed_rows"])
                 pinned = args.get("pinned") or {}
                 if row_pos in pinned:
@@ -621,6 +637,10 @@ class PageDecoder:
                     self._mark_used(state["used"], state["used_per_row"], token)
                     state["tokens"].append(token)
                     state["content"].append(self._content_for(token))
+                if (state["args"].get("row_items_only")
+                        and state["row"] in (state["args"].get("row_items") or {})):
+                    # D5 thin 행: 주어진 row_items 앞에서 행을 끝낸다.
+                    state["allowed"] = state["allowed"][:0]
                 if placed:
                     placed_states.append((state, placed))
             if placed_states:

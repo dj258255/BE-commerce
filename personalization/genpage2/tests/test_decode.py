@@ -182,6 +182,75 @@ class DecodeTest(unittest.TestCase):
                                                pinned={0: 3}, pinned_items=None, n_rows=1, items_per_row=3,
                                                prefix=1), baseline)
 
+    def test_min_row_items_default_keeps_previous_behaviour(self):
+        baseline = self.decoder.generate(self.context, self.content, history_articles=[],
+                                         n_rows=2, items_per_row=3, prefix=1)
+        self.assertEqual(self.decoder.generate(self.context, self.content, history_articles=[],
+                                               min_row_items=None, n_rows=2, items_per_row=3,
+                                               prefix=1), baseline)
+        # 3 은 지금까지의 고정값이라 명시해도 같다.
+        self.assertEqual(self.decoder.generate(self.context, self.content, history_articles=[],
+                                               min_row_items=3, n_rows=2, items_per_row=3,
+                                               prefix=1), baseline)
+
+    def test_min_row_items_one_allows_a_single_product_row(self):
+        # FakeModel 은 행 A(4)=40 > B(5)=30 이고, 허용 상품을 A · D 로 좁히면 행마다
+        # 쓸 수 있는 상품이 하나뿐이다. 최소 1개면 짧은 행이 나오고, 기본 3개면 막힌다.
+        rows, violations = self.decoder.generate(self.context, self.content, history_articles=[],
+                                                 allowed_items={"A", "D"}, min_row_items=1,
+                                                 n_rows=2, items_per_row=3, prefix=1)
+        self.assertEqual(violations, 0)
+        self.assertEqual([(row.row_token, row.items) for row in rows], [(4, ["A"]), (5, ["D"])])
+        self.assertEqual(self.decoder.generate(self.context, self.content, history_articles=[],
+                                               allowed_items={"A", "D"}, n_rows=2, items_per_row=3,
+                                               prefix=1)[0], [])
+
+    def test_batch_min_row_items_matches_single(self):
+        examples = [
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": [],
+             "allowed_items": {"A", "D"}},
+            {"ctx_tokens": [1, 3, 4, 5, 2], "ctx_content": [-1] * 5, "history_articles": ["A"],
+             "allowed_items": {"A", "D", "E"}},
+        ]
+        kwargs = {"min_row_items": 1, "n_rows": 2, "items_per_row": 3, "prefix": 1}
+        self.assertEqual(self.decoder.generate_batch(examples, **kwargs),
+                         [self.decoder.generate(**example, **kwargs) for example in examples])
+
+    def test_row_items_only_stops_the_row_at_its_prefix(self):
+        # 허용 상품 마스크만으로는 이력 상품(A)이 자기 섹션 행(4)의 남은 칸을 채울 수
+        # 있다. row_items_only 는 그 채우기를 막아 행을 row_items 앞에서 끝낸다.
+        rows, violations = self.decoder.generate(
+            self.context, self.content, history_articles=["A"],
+            allowed_items={"A", "B", "C", "D"}, allowed_rows={4, 5},
+            row_items={4: ["B", "C"], 5: ["D"]}, min_row_items=1, row_items_only=True,
+            n_rows=2, items_per_row=3, prefix=1,
+        )
+        self.assertEqual(violations, 0)
+        self.assertEqual([(row.row_token, row.items) for row in rows], [(4, ["B", "C"]), (5, ["D"])])
+
+    def test_row_items_only_false_matches_previous_behaviour(self):
+        baseline = self.decoder.generate(self.context, self.content, history_articles=[],
+                                         allowed_rows={5}, row_items={5: ["F"]},
+                                         n_rows=1, items_per_row=3, prefix=1)
+        self.assertEqual(baseline[0][0].items, ["F", "D", "E"])
+        self.assertEqual(self.decoder.generate(self.context, self.content, history_articles=[],
+                                               allowed_rows={5}, row_items={5: ["F"]},
+                                               row_items_only=False, n_rows=1, items_per_row=3,
+                                               prefix=1), baseline)
+
+    def test_batch_row_items_only_matches_single(self):
+        examples = [
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": ["A"],
+             "allowed_items": {"A", "B", "C", "D"}, "allowed_rows": {4, 5},
+             "row_items": {4: ["B", "C"], 5: ["D"]}},
+            {"ctx_tokens": [1, 2], "ctx_content": [-1, -1], "history_articles": [],
+             "allowed_items": {"D", "E"}, "allowed_rows": {5}, "row_items": {5: ["E"]}},
+        ]
+        kwargs = {"min_row_items": 1, "row_items_only": True, "n_rows": 2, "items_per_row": 3,
+                  "prefix": 1}
+        self.assertEqual(self.decoder.generate_batch(examples, **kwargs),
+                         [self.decoder.generate(**example, **kwargs) for example in examples])
+
     def test_allowed_rows_restricts_row_choice(self):
         unrestricted, _ = self.decoder.generate(self.context, self.content, history_articles=[],
                                                 n_rows=1, items_per_row=3, prefix=1)

@@ -1,0 +1,131 @@
+{
+  "mode": "final",
+  "limit": null,
+  "customers": 68984,
+  "bootstrap": 2000,
+  "seed": 7,
+  "a": "/Users/beomsu/Desktop/pay/personalization/docs/runs/20260929-v2-d3-page/final/B-1.json.gz",
+  "b": [
+    "docs/runs/20261001-v2-d5-thin-rows/final/H-thin-4-1.json",
+    "docs/runs/20261001-v2-d5-thin-rows/final/H-thin-4-2.json",
+    "docs/runs/20261001-v2-d5-thin-rows/final/H-thin-4-3.json",
+    "docs/runs/20261001-v2-d5-thin-rows/final/H-thin-4-4.json",
+    "docs/runs/20261001-v2-d5-thin-rows/final/H-thin-4-5.json",
+    "docs/runs/20261001-v2-d5-thin-rows/final/H-thin-4-6.json",
+    "docs/runs/20261001-v2-d5-thin-rows/final/H-thin-4-7.json",
+    "docs/runs/20261001-v2-d5-thin-rows/final/H-thin-4-8.json"
+  ],
+  "means": {
+    "a": {
+      "map_at_12": 0.027866003612838402,
+      "page_hit": 0.09733193346989331,
+      "new_item_hit": 0.06320249950977455,
+      "page_ndcg": 0.05641438025459713,
+      "row_hit": 0.036568866210522244
+    },
+    "b": {
+      "map_at_12": 0.027943474751643663,
+      "page_hit": 0.10026999192182116,
+      "new_item_hit": 0.0663140534128531,
+      "page_ndcg": 0.057518458301792155,
+      "row_hit": 0.03813444663496849
+    }
+  },
+  "difference": {
+    "map_at_12": 7.747113880526152e-05,
+    "page_hit": 0.0029380584519278496,
+    "new_item_hit": 0.0031115539030785455,
+    "page_ndcg": 0.001104078047195027,
+    "row_hit": 0.001565580424446246
+  },
+  "checks": {
+    "a": {
+      "map_at_12": {
+        "computed": 0.027866003612838402,
+        "evaluate": 0.027866003612838402,
+        "match": true
+      },
+      "page_hit": {
+        "computed": 0.09733193346989331,
+        "evaluate": 0.09733193346989331,
+        "match": true
+      },
+      "new_item_hit": {
+        "computed": 0.06320249950977455,
+        "evaluate": 0.06320249950977455,
+        "match": true
+      },
+      "page_ndcg": {
+        "computed": 0.05641438025459713,
+        "evaluate": 0.05641438025459713,
+        "match": true
+      },
+      "row_hit": {
+        "computed": 0.036568866210522244,
+        "evaluate": 0.036568866210522244,
+        "match": true
+      }
+    },
+    "b": {
+      "map_at_12": {
+        "computed": 0.027943474751643663,
+        "evaluate": 0.027943474751643663,
+        "match": true
+      },
+      "page_hit": {
+        "computed": 0.10026999192182116,
+        "evaluate": 0.10026999192182116,
+        "match": true
+      },
+      "new_item_hit": {
+        "computed": 0.0663140534128531,
+        "evaluate": 0.0663140534128531,
+        "match": true
+      },
+      "page_ndcg": {
+        "computed": 0.057518458301792155,
+        "evaluate": 0.057518458301792155,
+        "match": true
+      },
+      "row_hit": {
+        "computed": 0.03813444663496849,
+        "evaluate": 0.03813444663496849,
+        "match": true
+      }
+    }
+  },
+  "intervals": {
+    "map_at_12": {
+      "low": -0.00021532361621753402,
+      "high": 0.0003680989965509751,
+      "verdict": "비겼다"
+    },
+    "page_hit": {
+      "low": 0.002443485917792479,
+      "high": 0.0034772973708049534,
+      "verdict": "B 가 이겼다"
+    },
+    "new_item_hit": {
+      "low": 0.0025960853938611674,
+      "high": 0.0036654381322716433,
+      "verdict": "B 가 이겼다"
+    },
+    "page_ndcg": {
+      "low": 0.000869733858103827,
+      "high": 0.0013296930893060839,
+      "verdict": "B 가 이겼다"
+    },
+    "row_hit": {
+      "low": 0.00138190256677877,
+      "high": 0.0017467818624608605,
+      "verdict": "B 가 이겼다"
+    }
+  },
+  "judgment": {
+    "map_at_12": "비겼다",
+    "page_hit": "B 가 이겼다",
+    "new_item_hit": "B 가 이겼다",
+    "page_ndcg": "B 가 이겼다",
+    "row_hit": "B 가 이겼다"
+  }
+}

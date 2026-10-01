@@ -1,0 +1,72 @@
+{
+  "mode": "validate",
+  "ckpt": "/Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/validate/ckpt/b-base-full",
+  "args": {
+    "mode": "validate",
+    "limit": 10000,
+    "scores": "/Users/beomsu/Desktop/pay/personalization/data/hm/runs-archive/20260929-v2-d3-page/validate/scores.json.gz",
+    "variant": "G-row-thin",
+    "ckpt": "/Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/validate/ckpt/b-base-full",
+    "batch": 256,
+    "device": "auto",
+    "data_dir": null,
+    "out": "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/wt-d5/personalization/docs/runs/20261001-v2-d5-thin-rows/validate/merged-G-row-thin.json"
+  },
+  "elapsed_seconds": 4423.568807540985,
+  "results": {
+    "repeat_last": {
+      "map_at_12": 0.023456881230101468,
+      "map_at_12_has_vocab_history": 0.025257759481104196,
+      "page_recall": 0.039963099662777335,
+      "new_item_recall": 0.0,
+      "repeat_item_recall": 0.07243440476190476,
+      "row_recall": 0.0,
+      "page_ndcg": 0.030748603705377697,
+      "row_hit": 0.0746,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 10.0526,
+      "ms_per_page": null,
+      "customers": 10000,
+      "device": "cpu"
+    },
+    "popular_last_week": {
+      "map_at_12": 0.005989454395402176,
+      "map_at_12_has_vocab_history": 0.005982405749452282,
+      "page_recall": 0.019291943314238873,
+      "new_item_recall": 0.018174407760399584,
+      "repeat_item_recall": 0.0034166666666666664,
+      "row_recall": 0.0,
+      "page_ndcg": 0.011154293607465076,
+      "row_hit": 0.0546,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 12.0,
+      "ms_per_page": null,
+      "customers": 10000,
+      "device": "cpu"
+    },
+    "model": {
+      "map_at_12": 0.014897372058557125,
+      "map_at_12_has_vocab_history": 0.015656939347243066,
+      "page_recall": 0.06529682767296165,
+      "new_item_recall": 0.05304559025933676,
+      "repeat_item_recall": 0.023573809523809525,
+      "row_recall": 0.5391754160811143,
+      "page_ndcg": 0.03375357384769993,
+      "row_hit": 0.02803333333333333,
+      "diversity": 0.14838551326841115,
+      "violations": 0,
+      "rows_mean": 6.0,
+      "items_mean": 42.3412,
+      "ms_per_page": 441.3877096040989,
+      "customers": 10000,
+      "device": "mps"
+    }
+  },
+  "options": {
+    "compose": "G-row-thin"
+  }
+}
