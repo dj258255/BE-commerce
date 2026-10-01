@@ -1,0 +1,74 @@
+{
+  "mode": "validate",
+  "ckpt": "/Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/validate/ckpt/b-base-full",
+  "args": {
+    "mode": "validate",
+    "limit": 10000,
+    "scores": "/Users/beomsu/Desktop/pay/personalization/data/hm/runs-archive/20260929-v2-d3-page/validate/scores.json.gz",
+    "variant": "H",
+    "ckpt": "/Users/beomsu/Desktop/pay/personalization/data/hm/model/genpage2/validate/ckpt/b-base-full",
+    "row_lambda": 0.5,
+    "batch": 256,
+    "device": "auto",
+    "data_dir": null,
+    "out": "/private/tmp/claude-501/-Users-beomsu-Desktop-pay/wt-d4/personalization/docs/runs/20260930-v2-d4-hybrid-rows/validate/merged-H-0.5.json"
+  },
+  "elapsed_seconds": 3067.021554167004,
+  "results": {
+    "repeat_last": {
+      "map_at_12": 0.023456881230101468,
+      "map_at_12_has_vocab_history": 0.025257759481104196,
+      "page_recall": 0.039963099662777335,
+      "new_item_recall": 0.0,
+      "repeat_item_recall": 0.07243440476190476,
+      "row_recall": 0.0,
+      "page_ndcg": 0.030748603705377697,
+      "row_hit": 0.0746,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 10.0526,
+      "ms_per_page": null,
+      "customers": 10000,
+      "device": "cpu"
+    },
+    "popular_last_week": {
+      "map_at_12": 0.005989454395402176,
+      "map_at_12_has_vocab_history": 0.005982405749452282,
+      "page_recall": 0.019291943314238873,
+      "new_item_recall": 0.018174407760399584,
+      "repeat_item_recall": 0.0034166666666666664,
+      "row_recall": 0.0,
+      "page_ndcg": 0.011154293607465076,
+      "row_hit": 0.0546,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 12.0,
+      "ms_per_page": null,
+      "customers": 10000,
+      "device": "cpu"
+    },
+    "model": {
+      "map_at_12": 0.013729467690328349,
+      "map_at_12_has_vocab_history": 0.014461654847557124,
+      "page_recall": 0.07676645853411392,
+      "new_item_recall": 0.06571086647985587,
+      "repeat_item_recall": 0.026492976190476192,
+      "row_recall": 0.6096597489251391,
+      "page_ndcg": 0.036882086972840865,
+      "row_hit": 0.033405,
+      "diversity": 0.1504765871077776,
+      "violations": 0,
+      "rows_mean": 5.9982,
+      "items_mean": 47.9856,
+      "ms_per_page": 305.8304150041979,
+      "customers": 10000,
+      "device": "mps"
+    }
+  },
+  "options": {
+    "compose": "H",
+    "row_lambda": 0.5
+  }
+}
