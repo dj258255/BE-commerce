@@ -1,0 +1,4 @@
+# 결과 JSON 은 같은 이름의 .json.gz 와 같아 뺐다. 아래는 /usr/bin/time -l 의 시간 · 메모리 줄이다
+     1527.02 real       556.48 user       443.10 sys
+          1775419392  maximum resident set size
+          9358756648  peak memory footprint

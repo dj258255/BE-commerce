@@ -1,8 +1,8 @@
-"""D3(#437) 페이지 대 페이지 — 상품은 같게, 줄 구성만 다르게 페이지를 만든다.
+"""D3(#437) · D4(#448) 페이지 대 페이지 — 상품은 같게, 줄 구성만 다르게 페이지를 만든다.
 
-STATUS.md 의 "D3" 절에 **측정 전에** 적은 변형 B · G-row · G-full 을 그대로
-구현한다. 공통 조건은 상품(순위 모델 R 의 점수 상위 200개) · 페이지(6행 × 8개,
-한 상품은 한 번만) · 행(H&M 섹션 행 + 다시 사기 행)이다.
+STATUS.md 의 "D3" · "D4" 절에 **측정 전에** 적은 변형 B · G-row · G-full · H 를
+그대로 구현한다. 공통 조건은 상품(순위 모델 R 의 점수 상위 200개) · 페이지
+(6행 × 8개, 한 상품은 한 번만) · 행(H&M 섹션 행 + 다시 사기 행)이다.
 
 - ``B`` 규칙 줄 구성(기존 방식): 점수 상위 200개를 행별로 묶고, 행마다 점수 상위
   8개의 점수 합이 큰 행부터 6개, 행 안은 점수 순 8개
@@ -10,6 +10,8 @@ STATUS.md 의 "D3" 절에 **측정 전에** 적은 변형 B · G-row · G-full �
   이상인 행이고, 행 안 상품은 그 행의 점수 순 상품으로 채운다
 - ``G-full``: 허용 상품 = 상위 200개, 행 토큰 · 상품 모두 GenPage 가 생성한다.
   다시 사기 행이 나오면 최근 산 순서로 채운다
+- ``H(λ)``: G-row 와 같되, 행을 고를 때 GenPage 의 행 로그 확률에 λ × z 를 더한다.
+  z 는 그 고객의 허용 행들 사이에서 행 점수(B 와 같은 값)를 표준화한 값이다
 
 출력은 :mod:`genpage2.evaluate` 조각과 같은 모양(``mode`` · ``ckpt`` · ``args`` ·
 ``device`` · ``shard`` · ``pages[].rows[].items``)이라 :mod:`genpage2.merge_eval` 과
@@ -31,11 +33,11 @@ from .evaluate import (_as_articles, _context_at, _load_decoder, _load_examples,
                        _recent_repeat_items, load_eval_assets, parse_shard, set_torch_threads,
                        shard_bounds)
 
-# STATUS D3 의 공통 조건. 행 = 아마존과 같은 섹션 행 + 다시 사기 행(이력 상품).
+# STATUS D3 · D4 의 공통 조건. 행 = 아마존과 같은 섹션 행 + 다시 사기 행(이력 상품).
 TOP = 200
 ROWS = MAX_ROWS
 ITEMS = ITEMS_PER_ROW
-VARIANTS = ("B", "G-row", "G-full")
+VARIANTS = ("B", "G-row", "G-full", "H")
 
 
 def _read_json(path: Path) -> Any:
@@ -77,16 +79,30 @@ def _row_groups(scored: list[tuple[str, float]], history: set[str], vocab: Any, 
     return groups
 
 
+def row_score_sums(groups: dict[int, list[tuple[float, str]]], *, items: int = ITEMS) -> dict[int, float]:
+    """행 점수 = 그 행의 R 점수 상위 ``items`` 개의 합(B 와 H 가 함께 쓴다)."""
+    return {row: sum(score for score, _ in values[:items]) for row, values in groups.items()}
+
+
 def compose_b(scored: list[tuple[str, float]], history: list[str], vocab: Any, *,
               rows: int = ROWS, items: int = ITEMS) -> list[GeneratedRow]:
     """B 규칙 줄 구성. 행마다 점수 상위 ``items`` 개의 점수 합이 큰 행부터 ``rows`` 개."""
     groups = _row_groups(scored, set(history), vocab)
-    entries: list[tuple[float, int, list[str]]] = []
-    for row, values in groups.items():
-        take = values[:items]
-        entries.append((sum(score for score, _ in take), row, [article for _, article in take]))
+    sums = row_score_sums(groups, items=items)
+    entries: list[tuple[float, int, list[str]]] = [
+        (sums[row], row, [article for _, article in values[:items]])
+        for row, values in groups.items()
+    ]
     entries.sort(key=lambda entry: (-entry[0], entry[1]))
     return [GeneratedRow(row, items_list) for _, row, items_list in entries[:rows]]
+
+
+def _group_inputs(groups: dict[int, list[tuple[float, str]]], *,
+                  items: int = ITEMS) -> tuple[dict[int, list[str]], set[int]]:
+    """``row_items`` · ``allowed_rows`` 를 행 묶음에서 만든다(G-row · H 공통)."""
+    allowed_rows = {row for row, values in groups.items() if len(values) >= items}
+    row_items = {row: [article for _, article in groups[row][:items]] for row in allowed_rows}
+    return row_items, allowed_rows
 
 
 def g_row_inputs(scored: list[tuple[str, float]], history: list[str], vocab: Any, *,
@@ -97,10 +113,38 @@ def g_row_inputs(scored: list[tuple[str, float]], history: list[str], vocab: Any
     허용 행은 상위 ``top`` 개에 상품이 ``items`` 개 이상인 행이고, ``row_items``
     는 그 행의 점수 순 상품이다. 행 안 상품이 점수 순이 되는 이유가 이것이다.
     """
+    return _group_inputs(_row_groups(scored, set(history), vocab, top=top), items=items)
+
+
+def _standardize(row_lambda: float, sums: dict[int, float], allowed_rows: set[int]) -> dict[int, float]:
+    """허용 행 안에서 행 점수를 평균 0 · 표준편차 1 로 표준화하고 λ 를 곱한다.
+
+    허용 행이 하나뿐이거나 표준편차가 0 이면 모든 z 가 0 이라 bias 도 0 이다
+    (그 고객의 H 페이지는 G-row 와 같아진다).
+    """
+    values = [sums[row] for row in allowed_rows]
+    if len(values) < 2:
+        return {row: 0.0 for row in allowed_rows}
+    mean = sum(values) / len(values)
+    std = (sum((value - mean) ** 2 for value in values) / len(values)) ** 0.5
+    if std == 0:
+        return {row: 0.0 for row in allowed_rows}
+    return {row: row_lambda * (sums[row] - mean) / std for row in allowed_rows}
+
+
+def h_inputs(scored: list[tuple[str, float]], history: list[str], vocab: Any, row_lambda: float, *,
+             items: int = ITEMS, top: int = TOP
+             ) -> tuple[dict[int, list[str]], set[int], dict[int, float]]:
+    """H(λ) 의 ``row_items`` · ``allowed_rows`` · ``row_bias`` 를 만든다.
+
+    허용 행과 ``row_items`` 는 G-row 와 같다. ``row_bias`` 는 그 고객의 허용 행
+    안에서 행 점수(상위 ``items`` 개의 합, B 와 같은 값)를 표준화한 z 에 λ 를
+    곱한 값이다. 디코더는 행 로그 확률에 이 bias 를 더해 고른다.
+    """
     groups = _row_groups(scored, set(history), vocab, top=top)
-    allowed_rows = {row for row, values in groups.items() if len(values) >= items}
-    row_items = {row: [article for _, article in groups[row][:items]] for row in allowed_rows}
-    return row_items, allowed_rows
+    row_items, allowed_rows = _group_inputs(groups, items=items)
+    row_bias = _standardize(row_lambda, row_score_sums(groups, items=items), allowed_rows)
+    return row_items, allowed_rows, row_bias
 
 
 def g_full_inputs(scored: list[tuple[str, float]], history: list[str], vocab: Any, *,
@@ -119,7 +163,7 @@ def g_full_inputs(scored: list[tuple[str, float]], history: list[str], vocab: An
 
 
 def build_pages(variant: str, meta: Any, archive: Any, scores: dict[str, list[tuple[str, float]]], *,
-                vocab: Any, decoder: Any = None, batch: int = 256
+                vocab: Any, decoder: Any = None, batch: int = 256, row_lambda: float = 0.0
                 ) -> tuple[dict[str, list[GeneratedRow]], dict[str, int]]:
     """고객마다 변형 페이지를 만든다. ``meta`` 순서대로 돌려준다."""
     pages: dict[str, list[GeneratedRow]] = {}
@@ -139,11 +183,15 @@ def build_pages(variant: str, meta: Any, archive: Any, scores: dict[str, list[tu
             ctx_tokens, ctx_content = _context_at(archive, int(index))
             history = _as_articles(row.history)
             scored = scores.get(customer, [])
-            if variant == "G-row":
-                row_items, allowed_rows = g_row_inputs(scored, history, vocab)
+            if variant in ("G-row", "H"):
+                if variant == "H":
+                    row_items, allowed_rows, row_bias = h_inputs(scored, history, vocab, row_lambda)
+                else:
+                    row_items, allowed_rows = g_row_inputs(scored, history, vocab)
+                    row_bias = None
                 example = {"ctx_tokens": ctx_tokens, "ctx_content": ctx_content,
                            "history_articles": history, "row_items": row_items,
-                           "allowed_rows": allowed_rows}
+                           "allowed_rows": allowed_rows, "row_bias": row_bias}
             else:
                 allowed_items, row_items = g_full_inputs(scored, history, vocab)
                 example = {"ctx_tokens": ctx_tokens, "ctx_content": ctx_content,
@@ -168,6 +216,9 @@ def _report_args(args: argparse.Namespace) -> dict[str, Any]:
     # 조각마다 다를 수밖에 없는 실행 인자는 합칠 때 비교하지 않는다(evaluate 와 같다).
     for key in ("shard", "out", "threads"):
         report_args.pop(key, None)
+    # λ 는 H 의 옵션이라 H 가 아니면 종전 조각 모양을 유지한다.
+    if args.variant != "H":
+        report_args.pop("row_lambda", None)
     return report_args
 
 
@@ -175,6 +226,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     began = time.perf_counter()
     if args.variant not in VARIANTS:
         raise ValueError(f"--variant 는 {sorted(VARIANTS)} 중 하나: {args.variant}")
+    row_lambda = getattr(args, "row_lambda", None)
+    if args.variant == "H" and row_lambda is None:
+        raise ValueError("H 변형에는 --row-lambda 가 필요합니다")
     base = Path(args.data_dir) if args.data_dir else config.data_dir()
     meta, archive = _load_examples(base, args.mode, args.limit)
     scores = read_scores(args.scores)
@@ -198,9 +252,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
     generated_at = time.perf_counter()
     pages, violations = build_pages(args.variant, shard_meta, archive, scores, vocab=vocab,
-                                    decoder=decoder, batch=args.batch)
+                                    decoder=decoder, batch=args.batch, row_lambda=row_lambda or 0.0)
     generation_seconds = time.perf_counter() - generated_at
 
+    options: dict[str, Any] = {"compose": args.variant}
+    if args.variant == "H":
+        options["row_lambda"] = row_lambda
     report: dict[str, Any] = {
         "mode": args.mode,
         "ckpt": str(args.ckpt) if args.ckpt else None,
@@ -209,7 +266,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "shard": {"index": index, "total": total, "customers": int(len(shard_meta))},
         "elapsed_seconds": time.perf_counter() - began,
         "generation_seconds": generation_seconds,
-        "options": {"compose": args.variant},
+        "options": options,
         "pages": [
             {"customer_id": str(row.customer_id),
              "rows": [{"row_token": int(generated.row_token), "items": [str(a) for a in generated.items]}
@@ -227,7 +284,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--limit", type=int)
     parser.add_argument("--scores", required=True, help="랭커가 쓴 scores.json.gz")
     parser.add_argument("--variant", required=True, choices=VARIANTS)
-    parser.add_argument("--ckpt", help="G 변형의 체크포인트")
+    parser.add_argument("--ckpt", help="G · H 변형의 체크포인트")
+    parser.add_argument("--row-lambda", type=float,
+                        help="H 변형에서 행 로그 확률에 더하는 λ×z 의 λ")
     parser.add_argument("--shard", metavar="K/N")
     parser.add_argument("--out", required=True, help="결과 JSON 경로")
     parser.add_argument("--batch", type=int, default=256)

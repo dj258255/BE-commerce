@@ -8,11 +8,14 @@ from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
+import torch
 
-from genpage2.decode import GeneratedRow
+from genpage2.decode import GeneratedRow, PageDecoder
 from genpage2.evaluate import evaluate_pages
 from genpage2.merge_eval import _collect_pages
-from genpage2.page_compose import (build_pages, compose_b, g_full_inputs, g_row_inputs, read_scores, run)
+from genpage2.model import GenPageV2, ModelConfig
+from genpage2.page_compose import (build_pages, compose_b, g_full_inputs, g_row_inputs, h_inputs,
+                                   read_scores, row_score_sums, run)
 from genpage2.ranker import write_scores
 
 _TOKENS = (["ROW_REPEAT", "ROW_S1", "ROW_S2"]
@@ -111,6 +114,111 @@ class GFullInputsTest(unittest.TestCase):
         _, row_items = g_full_inputs(scored, history, vocab)
         self.assertEqual(row_items[vocab.id("ROW_REPEAT")], list("ABCDEFGHIJKL"))
         self.assertGreater(len(row_items[vocab.id("ROW_REPEAT")]), 8)
+
+
+class RowScoreSumsTest(unittest.TestCase):
+    def test_shares_the_sum_of_top_items_with_compose_b(self):
+        vocab = FakeVocab()
+        # row1(A..H) 합 6, row2(I..P) 합 8 → row2 가 먼저.
+        scored = [("A", 3.0), ("B", 2.0), ("C", 1.0)] + [(letter, 0.0) for letter in "DEFGH"]
+        scored += [(letter, 1.0) for letter in "IJKLMNOP"]
+        rows = compose_b(scored, [], vocab, rows=6, items=8)
+        self.assertEqual([row.row_token for row in rows], [2, 1])
+        self.assertEqual(row_score_sums({1: [(3.0, "A"), (2.0, "B"), (1.0, "C")]}, items=8), {1: 6.0})
+
+
+class HInputsTest(unittest.TestCase):
+    def setUp(self):
+        self.vocab = FakeVocab()
+
+    def test_row_bias_is_lambda_times_standardized_row_scores(self):
+        # row1(A..H) 합 6, row2(I..P) 합 8 → 평균 7, 표준편차 1 → z = {1: -1, 2: +1}.
+        scored = [("A", 3.0), ("B", 2.0), ("C", 1.0)] + [(letter, 0.0) for letter in "DEFGH"]
+        scored += [(letter, 1.0) for letter in "IJKLMNOP"]
+        row_items, allowed_rows, row_bias = h_inputs(scored, [], self.vocab, 0.5)
+        self.assertEqual(allowed_rows, {1, 2})
+        self.assertAlmostEqual(row_bias[1], -0.5)
+        self.assertAlmostEqual(row_bias[2], 0.5)
+        # row_items · allowed_rows 는 G-row 와 같다.
+        self.assertEqual((row_items, allowed_rows), g_row_inputs(scored, [], self.vocab))
+
+    def test_single_allowed_row_bias_is_zero(self):
+        # row1 만 8개, row2 는 7개라 허용 행이 하나다.
+        scored = [(letter, 1.0 - index / 100) for index, letter in enumerate("ABCDEFGH")]
+        scored += [(letter, 0.5) for letter in "IJKLMNO"]
+        row_items, allowed_rows, row_bias = h_inputs(scored, [], self.vocab, 4.0)
+        self.assertEqual(allowed_rows, {1})
+        self.assertEqual(row_bias, {1: 0.0})
+
+    def test_equal_row_scores_give_zero_bias(self):
+        scored = [(letter, 1.0) for letter in "ABCDEFGH"] + [(letter, 1.0) for letter in "IJKLMNOP"]
+        _, allowed_rows, row_bias = h_inputs(scored, [], self.vocab, 3.0)
+        self.assertEqual(allowed_rows, {1, 2})
+        self.assertEqual(row_bias, {1: 0.0, 2: 0.0})
+
+    def test_no_allowed_rows_gives_empty_bias(self):
+        _, allowed_rows, row_bias = h_inputs([("A", 1.0), ("I", 0.5)], [], self.vocab, 2.0)
+        self.assertEqual(allowed_rows, set())
+        self.assertEqual(row_bias, {})
+
+
+_SMALL_TOKENS = (["PAD", "SEP_HISTORY", "SEP_PAGE", "ROW_REPEAT", "ROW_A", "ROW_B"]
+                 + [f"ITEM_{letter}" for letter in "ABCDEFGHIJKLMNOP"])
+
+
+class DecodeVocab:
+    tokens = _SMALL_TOKENS
+    item_ids = range(6, 22)
+    row_ids = range(3, 6)
+    article_of = {6 + index: letter for index, letter in enumerate("ABCDEFGHIJKLMNOP")}
+
+    def id(self, name):
+        return self.tokens.index(name)
+
+    def item(self, article):
+        return {letter: token for token, letter in self.article_of.items()}.get(article)
+
+    def row_of(self, article):
+        return 4 if article in "ABCDEFGH" else 5
+
+
+class HPageTest(unittest.TestCase):
+    """작은 실제 모델로 H(λ) 페이지를 G-row · 행 점수 순서와 맞춰 본다."""
+
+    def setUp(self):
+        self.vocab = DecodeVocab()
+        cfg = ModelConfig(vocab_size=len(self.vocab.tokens), dim=8, layers=1, heads=2,
+                          ffn=16, dropout=0.0, maxlen=64, content_dim=384)
+        torch.manual_seed(29)
+        model = GenPageV2(cfg, torch.zeros((16, 384)), tokens=self.vocab.tokens).eval()
+        content_rows = {letter: index for index, letter in enumerate("ABCDEFGHIJKLMNOP")}
+        self.decoder = PageDecoder(model, self.vocab, content_rows, "cpu")
+        self.meta = pd.DataFrame({"customer_id": ["c1", "c2"], "history": [[], ["A"]]})
+        self.archive = {"ctx_tokens": np.array([1, 2, 1, 2]),
+                        "ctx_content": np.array([-1, -1, -1, -1]),
+                        "ctx_offsets": np.array([0, 2, 4])}
+
+    def _scores(self):
+        # ROW_A(A..H) 가 ROW_B(I..P) 보다 행 점수가 훨씬 크다.
+        scored = [(letter, float(20 - index)) for index, letter in enumerate("ABCDEFGH")]
+        scored += [(letter, float(1.0 - index * 0.05)) for index, letter in enumerate("IJKLMNOP")]
+        return {"c1": scored, "c2": scored}
+
+    def test_lambda_zero_h_matches_g_row(self):
+        pages_g, _ = build_pages("G-row", self.meta, self.archive, self._scores(),
+                                 vocab=self.vocab, decoder=self.decoder)
+        pages_h, _ = build_pages("H", self.meta, self.archive, self._scores(),
+                                 vocab=self.vocab, decoder=self.decoder, row_lambda=0.0)
+        self.assertEqual(pages_h, pages_g)
+        self.assertTrue(pages_g["c1"])
+
+    def test_large_lambda_follows_row_score_order(self):
+        pages, _ = build_pages("H", self.meta, self.archive, self._scores(),
+                               vocab=self.vocab, decoder=self.decoder, row_lambda=100.0)
+        # c1 은 허용 행이 둘이고 ROW_A 점수가 더 크다 → 행 점수 순으로 골라진다.
+        self.assertEqual([row.row_token for row in pages["c1"]], [4, 5])
+        # c2 는 이력의 A 가 다시 사기 행으로 가 허용 행이 ROW_B 하나뿐이라 bias 가 0 이다.
+        self.assertEqual([row.row_token for row in pages["c2"]], [5])
 
 
 class BuildPagesTest(unittest.TestCase):
