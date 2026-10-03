@@ -62,6 +62,7 @@ SETTINGS = ("OFF", "RULE", "HYBRID")
 COMPOSE_OF = {"OFF": None, "RULE": "rule", "HYBRID": "hybrid"}
 HOME_PATH = "/api/v1/personalization/homepage"
 M4_ACCOUNTS = 20
+M3_MAPPED = 20
 
 
 # ---------------------------------------------------------------------------
@@ -472,32 +473,52 @@ def table_m2(report: dict[str, Any]) -> str:
 # M3 — 대체 경로
 # ---------------------------------------------------------------------------
 
-def run_m3(base: str, accounts: dict[str, Any], case: str, timeout: float) -> dict[str, Any]:
-    """M3 한 경우를 재고 지표 변화를 남긴다. 어느 계정을 쓰는지는 계획이 고정한다."""
+def m3_case_accounts(accounts: dict[str, Any], case: str) -> list[dict[str, Any]]:
+    """M3 한 경우가 도는 계정 — 계획이 고정한다. (a) 매핑 없음 전부 (b) 점수 없음 전부
+    (c) 매핑 계정 앞 `M3_MAPPED`개(모델 서버 정지 상태)."""
     if case == "a":
-        account = accounts["unmapped"][0]
-    elif case == "b":
-        account = accounts["no_scores"][0]
-    elif case == "c":
-        account = accounts["mapped"][0]
-    else:
-        raise ValueError(f"case 는 a · b · c: {case}")
-    token = login(base, account["email"])
-    _, p1, _ = home(base, token, timeout=timeout)
+        return list(accounts["unmapped"])
+    if case == "b":
+        return list(accounts["no_scores"])
+    if case == "c":
+        return list(accounts["mapped"])[:M3_MAPPED]
+    raise ValueError(f"case 는 a · b · c: {case}")
+
+
+def run_m3(base: str, accounts: dict[str, Any], case: str, timeout: float,
+           limit: int = 0) -> dict[str, Any]:
+    """M3 한 경우를 그 경우의 계정 전부로 잰다 — 계정마다 상태 · 행 수 · 전략 · 왕복 ms 를 남기고,
+    지표 델타는 전체 전후로 잰다. 한 건이 아니라 전부를 돌아야 "오류 0" 이 강해진다."""
+    chosen = m3_case_accounts(accounts, case)
+    if int(limit) > 0:
+        chosen = chosen[:int(limit)]
     before = prometheus(base, timeout=timeout)
-    if not p1 or not p1.get("nextCursor"):
-        page, status = None, 0
-    else:
-        status, page, _ = home(base, token, cursor=p1["nextCursor"], timeout=timeout)
+    records: list[dict[str, Any]] = []
+    for account in chosen:
+        token = login(base, account["email"])
+        _, p1, _ = home(base, token, timeout=timeout)
+        if not p1 or not p1.get("nextCursor"):
+            records.append({"i": account["i"], "status": 0, "ms": None, "rows": 0,
+                            "strategies": [], "all_genpage": False, "error": "1쪽에 nextCursor 가 없다"})
+            continue
+        status, page, ms = home(base, token, cursor=p1["nextCursor"], timeout=timeout)
+        records.append({"i": account["i"], "status": status, "ms": ms,
+                        "rows": len((page or {}).get("rows", [])),
+                        "strategies": sorted({strategy for _, _, strategy in page_rows(page or {})}),
+                        "all_genpage": all_genpage(page or {})})
     after = prometheus(base, timeout=timeout)
     delta = metric_delta(before, after)
-    strategies = sorted({strategy for _, _, strategy in page_rows(page or {})})
-    return {"stage": "m3", "case": case, "app_url": base, "status": status,
-            "rows": len((page or {}).get("rows", [])), "strategies": strategies,
-            "all_genpage": all_genpage(page or {}),
+    latencies = [float(record["ms"]) for record in records if record["ms"] is not None]
+    return {"stage": "m3", "case": case, "app_url": base,
+            "accounts": len(chosen), "responses": len(records),
+            "errors": sum(1 for record in records if record["status"] != 200),
+            "all_200": bool(records) and all(record["status"] == 200 for record in records),
+            "all_rule": bool(records) and all("GENPAGE" not in record["strategies"] for record in records),
+            "wall": latency_summary(latencies),
             "compose_delta": _tag_delta(delta, "recommendation_genpage_compose_total",
                                         ("composition", "fallback")),
-            "page_delta": _tag_delta(delta, "recommendation_genpage_page_total", ("result",))}
+            "page_delta": _tag_delta(delta, "recommendation_genpage_page_total", ("result",)),
+            "records": records}
 
 
 def _tag_delta(delta: dict[Any, float], name: str, tags: Sequence[str]) -> dict[str, float]:
@@ -515,26 +536,46 @@ def _tag_delta(delta: dict[Any, float], name: str, tags: Sequence[str]) -> dict[
 
 
 def m3_passed(report: dict[str, Any]) -> bool:
-    """셋 다 응답 200 이고, 폴백 지표가 맞게 셌는가(판정 1)."""
-    if report["status"] != 200:
+    """모든 응답 200 · 오류 0 이고, 폴백 지표가 계정 수만큼 맞게 셌는가(판정 1).
+
+    (a) `none/no_mapping` 델타 = 계정 수 (b) `generate/no_scores` 델타 = 계정 수
+    (c) 모든 페이지가 규칙 행(`GENPAGE` 없음)이고 `failed` · `busy` 델타 합 = 계정 수.
+    """
+    if not report.get("all_200") or report.get("errors"):
         return False
-    delta = report["compose_delta"]
-    if report["case"] == "a":
-        return delta.get("none/no_mapping", 0.0) >= 1
-    if report["case"] == "b":
-        return delta.get("generate/no_scores", 0.0) >= 1
-    return not report["all_genpage"] and bool(report["page_delta"])
+    count = int(report.get("accounts", 0))
+    if count <= 0:
+        return False
+    compose = report.get("compose_delta", {})
+    if report.get("case") == "a":
+        return compose.get("none/no_mapping", 0.0) == count
+    if report.get("case") == "b":
+        return compose.get("generate/no_scores", 0.0) == count
+    if any("GENPAGE" in record["strategies"] for record in report.get("records", [])):
+        return False
+    page = report.get("page_delta", {})
+    return page.get("failed", 0.0) + page.get("busy", 0.0) == count
 
 
 def table_m3(reports: Sequence[dict[str, Any]]) -> str:
-    lines = ["# S2 M3 — 대체 경로", "", "| 경우 | 기대 | 상태 | 행 | 전략 | 지표 | 판정 |",
-             "|---|---|---:|---:|---|---|:--:|"]
+    """경우마다 요약 한 줄 + 계정별 표."""
     labels = {"a": "매핑 없음 → no_mapping", "b": "점수 없음 → no_scores", "c": "모델 정지 → 규칙 행"}
+    lines = ["# S2 M3 — 대체 경로", ""]
     for report in reports:
-        lines.append(f"| {report['case']} | {labels[report['case']]} | {report['status']} | {report['rows']} | "
-                     f"`{report['strategies']}` | `{json.dumps(report['compose_delta'], ensure_ascii=False)}` | "
-                     f"{'통과' if m3_passed(report) else '실패'} |")
-    lines.append("")
+        wall = report["wall"]
+        lines += [f"## 경우 {report['case']} — {labels[report['case']]}", "",
+                  f"- 계정 {report['accounts']}개 · 응답 {report['responses']} · 오류 {report['errors']} · "
+                  f"상태 200 {'전부' if report['all_200'] else '아님'}",
+                  f"- 왕복 p50 {wall['p50_ms']:.1f} · p95 {wall['p95_ms']:.1f} ms",
+                  f"- 지표 compose `{json.dumps(report['compose_delta'], ensure_ascii=False)}` · "
+                  f"page `{json.dumps(report['page_delta'], ensure_ascii=False)}`",
+                  f"- 판정: **{'통과' if m3_passed(report) else '실패'}**", "",
+                  "| 계정 | 상태 | 행 | 전략 | 왕복 ms |", "|---:|---:|---:|---|---:|"]
+        for record in report["records"]:
+            ms = "-" if record["ms"] is None else f"{record['ms']:.1f}"
+            lines.append(f"| {record['i']} | {record['status']} | {record['rows']} | "
+                         f"`{record['strategies']}` | {ms} |")
+        lines.append("")
     return "\n".join(lines) + "\n"
 
 
@@ -679,7 +720,7 @@ def main(argv: list[str] | None = None) -> int:
         write_report(out, f"m2-{args.setting.lower()}", report, table_m2(report))
     elif args.command == "m3":
         accounts = load_json(out, "accounts.json")
-        report = run_m3(args.app_url, accounts, args.case, args.timeout)
+        report = run_m3(args.app_url, accounts, args.case, args.timeout, args.limit)
         write_report(out, f"m3-{args.case}", report, table_m3([report]))
     elif args.command == "m4-capture":
         accounts = load_json(out, "accounts.json")["mapped"][:M4_ACCOUNTS]

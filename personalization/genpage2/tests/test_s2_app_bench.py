@@ -13,8 +13,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from tools.s2_app_bench import (all_genpage, closed_loop, compare_rows, compare_captures, leaked_items,
-                                metric_delta, metric_value, m3_passed, parse_prometheus, page_items,
-                                server_hybrid_body, summarize_page_latencies, run_m1, run_m2, run_m3)
+                                metric_delta, metric_value, m3_case_accounts, m3_passed, parse_prometheus,
+                                page_items, server_hybrid_body, summarize_page_latencies, run_m1, run_m2,
+                                run_m3)
 
 
 class _FakeApp:
@@ -181,17 +182,22 @@ class PrometheusTest(unittest.TestCase):
         self.assertEqual(delta["b"], 2.0)
 
     def test_m3_passed_reads_each_case(self):
-        self.assertTrue(m3_passed({"status": 200, "case": "a", "all_genpage": True, "rows": 1,
-                                   "strategies": ["GENPAGE"], "compose_delta": {"none/no_mapping": 1.0},
+        """판정은 계정 수만큼 셌는지 본다 — 한 건이 아니라 전부를 도는 것이 전제다."""
+        base = {"accounts": 3, "responses": 3, "errors": 0, "all_200": True,
+                "records": [{"strategies": ["GENPAGE"]} for _ in range(3)]}
+        self.assertTrue(m3_passed({**base, "case": "a", "compose_delta": {"none/no_mapping": 3.0},
                                    "page_delta": {}}))
-        self.assertTrue(m3_passed({"status": 200, "case": "b", "all_genpage": False, "rows": 1,
-                                   "strategies": ["GENPAGE"], "compose_delta": {"generate/no_scores": 1.0},
+        self.assertTrue(m3_passed({**base, "case": "b", "compose_delta": {"generate/no_scores": 3.0},
                                    "page_delta": {}}))
-        self.assertTrue(m3_passed({"status": 200, "case": "c", "all_genpage": False, "rows": 1,
-                                   "strategies": ["CATEGORY_POPULAR"], "compose_delta": {},
-                                   "page_delta": {"failed": 1.0}}))
-        self.assertFalse(m3_passed({"status": 500, "case": "a", "all_genpage": False, "rows": 0,
-                                    "strategies": [], "compose_delta": {}, "page_delta": {}}))
+        ruled = {**base, "case": "c", "records": [{"strategies": ["CATEGORY_POPULAR"]} for _ in range(3)],
+                 "compose_delta": {}, "page_delta": {"busy": 1.0, "failed": 2.0}}
+        self.assertTrue(m3_passed(ruled))
+        # 델타가 계정 수보다 적으면 실패, 규칙 행이 아닌 페이지가 섞여도 실패
+        self.assertFalse(m3_passed({**base, "case": "a", "compose_delta": {"none/no_mapping": 1.0},
+                                    "page_delta": {}}))
+        self.assertFalse(m3_passed({**ruled, "records": [{"strategies": ["GENPAGE"]}] * 3}))
+        self.assertFalse(m3_passed({"case": "a", "accounts": 1, "errors": 1, "all_200": False,
+                                    "records": [], "compose_delta": {}, "page_delta": {}}))
 
 
 class LatencyTest(unittest.TestCase):
@@ -250,9 +256,12 @@ class RunStagesTest(unittest.TestCase):
         self.assertEqual(report["strategies"], {"GENPAGE": 1})
 
     def test_run_m3_cases(self):
-        accounts = {"unmapped": [{"i": 0, "email": "u@load.test"}],
-                    "no_scores": [{"i": 0, "email": "n@load.test", "hm_customer_id": "hm-n"}],
-                    "mapped": [{"i": 0, "email": "m@load.test", "hm_customer_id": "hm-m"}]}
+        """한 경우의 계정 전부를 돌아 판정한다 — 가짜 앱 지표가 계정 수만큼 오른다."""
+        accounts = {"unmapped": [{"i": i, "email": f"u{i}@load.test"} for i in range(3)],
+                    "no_scores": [{"i": i, "email": f"n{i}@load.test", "hm_customer_id": f"hm-n{i}"}
+                                  for i in range(3)],
+                    "mapped": [{"i": i, "email": f"m{i}@load.test", "hm_customer_id": f"hm-m{i}"}
+                               for i in range(3)]}
         app_a = _FakeApp(_p1(), _p2(), compose_key=("none", "no_mapping"))
         app_b = _FakeApp(_p1(), _p2(), compose_key=("generate", "no_scores"))
         app_c = _FakeApp(_p1(), _p2(strategy="CATEGORY_POPULAR"), compose_key=("none", "none"))
@@ -263,11 +272,21 @@ class RunStagesTest(unittest.TestCase):
         finally:
             for app in (app_a, app_b, app_c):
                 app.stop()
+        self.assertEqual((report_a["accounts"], len(report_a["records"])), (3, 3))
         self.assertTrue(m3_passed(report_a))
         self.assertTrue(m3_passed(report_b))
         self.assertTrue(m3_passed(report_c))
         self.assertFalse(all_genpage(_p2(strategy="CATEGORY_POPULAR")))
         self.assertEqual(page_items(_p1(items=(11, 12))), [11, 12])
+
+    def test_m3_case_accounts_caps_mapped(self):
+        """(a)·(b)는 전부, (c)는 매핑 계정 앞 20개만 돈다(계획 고정)."""
+        accounts = {"unmapped": [{"i": i} for i in range(25)],
+                    "no_scores": [{"i": i} for i in range(25)],
+                    "mapped": [{"i": i} for i in range(25)]}
+        self.assertEqual(len(m3_case_accounts(accounts, "a")), 25)
+        self.assertEqual(len(m3_case_accounts(accounts, "b")), 25)
+        self.assertEqual(len(m3_case_accounts(accounts, "c")), 20)
 
 
 class M4CompareTest(unittest.TestCase):
