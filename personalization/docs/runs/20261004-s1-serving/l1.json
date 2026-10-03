@@ -1,0 +1,53 @@
+{
+  "level": "l1",
+  "url": "http://127.0.0.1:18866",
+  "customers": 500,
+  "compose": {
+    "rule": {
+      "matched": 500,
+      "mismatched": 0,
+      "missing": 0,
+      "errors": 0,
+      "total": 500,
+      "examples": [],
+      "composition": {
+        "rule": 500
+      },
+      "fallback": {
+        "null": 500
+      },
+      "all_matched": true
+    },
+    "hybrid": {
+      "matched": 500,
+      "mismatched": 0,
+      "missing": 0,
+      "errors": 0,
+      "total": 500,
+      "examples": [],
+      "composition": {
+        "hybrid": 500
+      },
+      "fallback": {
+        "null": 500
+      },
+      "all_matched": true
+    },
+    "hybrid-cached": {
+      "matched": 500,
+      "mismatched": 0,
+      "missing": 0,
+      "errors": 0,
+      "total": 500,
+      "examples": [],
+      "composition": {
+        "hybrid-cached": 500
+      },
+      "fallback": {
+        "null": 500
+      },
+      "all_matched": true
+    }
+  },
+  "all_matched": true
+}
