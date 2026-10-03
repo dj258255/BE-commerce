@@ -290,8 +290,13 @@ class Engine:
             return body
         # exclude(앞 쪽에서 보여 준 상품)는 상위 200개에서 먼저 뺀 뒤 줄을 구성한다.
         scored = [(article, score) for article, score in scored if article not in exclude]
+        # 앱 2쪽은 rows 3 · items_per_row 8 로 요청한다. 요청 값을 무시하고 항상 6행 × 8개를 만들면
+        # 결합 방식만 행이 두 배가 되어 앱 지연 비교가 불공정하다(S2 M2). 요청에 없으면 지금과 같은
+        # 6 · 8 이라 S1 결과는 그대로다(계약: 요청 값 우선).
+        n_rows = int(request.get("rows", config.MAX_ROWS))
+        items_per_row = int(request.get("items_per_row", config.ITEMS_PER_ROW))
         if compose == "rule":
-            rows = compose_b(scored, history, self.vocab)
+            rows = compose_b(scored, history, self.vocab, rows=n_rows, items=items_per_row)
             return self._rows_body(rows, report, composition="rule", fallback=None,
                                    violations=0, forward_passes=0)
         composition, fallback = compose, None
@@ -302,9 +307,13 @@ class Engine:
                                        violations=0, forward_passes=0)
             composition = "hybrid"
             fallback = "exclude" if cached is not None else "not_in_store"
-        # hybrid: 오프라인 build_pages 의 H-thin 분기와 같은 함수 · 같은 인자.
+        # hybrid: 오프라인 build_pages 의 H-thin 분기와 같은 함수 · 같은 인자. 다만 행 수 ·
+        # 행 안 개수는 요청 값을 쓴다(위 주석) — 요청에 없으면 THIN_DECODE_KWARGS 의 6 · 8 그대로다.
         example = h_thin_example(tokens, content, scored, history, self.vocab, self.hybrid_lambda)
-        rows, violations = self.decoder.generate_batch([example], **THIN_DECODE_KWARGS)[0]
+        decode_kwargs = dict(THIN_DECODE_KWARGS)
+        decode_kwargs["n_rows"] = n_rows
+        decode_kwargs["items_per_row"] = items_per_row
+        rows, violations = self.decoder.generate_batch([example], **decode_kwargs)[0]
         forward_passes = 1 + sum(1 + len(row.items) for row in rows)
         return self._rows_body(rows, report, composition=composition, fallback=fallback,
                                violations=violations, forward_passes=forward_passes)
