@@ -46,6 +46,8 @@ from .vocab import Vocab, _article_id, content_rows
 
 FEEDBACK_KINDS = ("unseen", "skip", "click", "buy")
 TRANSACTION_COLUMNS = ("t_dat", "customer_id", "article_id", "sales_channel_id", "price")
+# S1(#454): /page 요청 본문의 compose 값. 계약은 docs/genpage-v2/BACKEND.md "S1" 절.
+COMPOSES = ("generate", "rule", "hybrid", "hybrid-cached")
 
 
 # ---------------------------------------------------------------------------
@@ -370,9 +372,14 @@ class HttpSource:
 
     def __init__(self, url: str, kind: str, vocab: Vocab, sections: dict[str, Any], *,
                  rows: int = config.MAX_ROWS, items_per_row: int = config.ITEMS_PER_ROW,
-                 prefix: int = 2, timeout: float = 60.0) -> None:
+                 prefix: int = 2, timeout: float = 60.0, compose: str | None = None,
+                 history_events: int = config.HISTORY_EVENTS) -> None:
         if kind not in ("v1", "v2"):
             raise ValueError(f"kind 는 'v1' 또는 'v2': {kind!r}")
+        if compose is not None and compose not in COMPOSES:
+            raise ValueError(f"compose 는 {COMPOSES} 중 하나: {compose!r}")
+        if compose is not None and kind != "v2":
+            raise ValueError("compose 는 v2 요청에만 씁니다")
         self.url = str(url).rstrip("/")
         self.kind = kind
         self.vocab = vocab
@@ -381,6 +388,15 @@ class HttpSource:
         self.items_per_row = int(items_per_row)
         self.prefix = int(prefix)
         self.timeout = float(timeout)
+        # S1(#454): 주면 요청 본문에 `compose` 와 `customer` 를 더한다(계약 필드). 없으면 지금과 같다.
+        self.compose = compose
+        # 요청 본문에 실을 최근 구매 이벤트 수. 기본값은 지금과 같다(프롬프트가 쓰는 값).
+        # S1 은 서버가 다시 사기 행을 정하는 이력을 오프라인과 같게 하려고 100 을 준다(_events_of 참고).
+        self.history_events = int(history_events)
+        # 서버 응답의 `composition` · `fallback` 을 세고 요청별 관측을 남긴다(L1 · L2 · L3).
+        self.composition_counts: Counter[str] = Counter()
+        self.fallback_counts: Counter[str] = Counter()
+        self.observations: list[dict[str, Any]] = []
 
     @property
     def name(self) -> str:
@@ -399,15 +415,24 @@ class HttpSource:
                                       if token in self.vocab.article_of))
         return [_int_article(article) for article in articles] if self.kind == "v1" else articles
 
+    def request_body(self, example: PageRequest) -> dict:
+        """이 요청의 `/page` 본문(`_body` 의 공개 이름). 닫힌 루프 도구가 같은 본문을 쓴다."""
+        return self._body(example)
+
     def _body(self, example: PageRequest) -> dict:
         if self.kind == "v1":
             body = {"history": [_int_article(article) for article in example.history],
                     "rows": self.rows, "items_per_row": self.items_per_row, "prefix": self.prefix}
         else:
-            body = {"history": [], "events": [self._event(event) for event in example.events],
+            events = example.events[-self.history_events:]
+            body = {"history": [], "events": [self._event(event) for event in events],
                     "profile": _clean_json(example.profile),
                     "now": pd.Timestamp(example.request_date).isoformat(), "pin_repeat": True,
                     "rows": self.rows, "items_per_row": self.items_per_row, "prefix": self.prefix}
+            if self.compose is not None:
+                # S1(#454) 계약: compose 와 고객 키를 본문에 넣는다. 없으면 지금과 완전히 같다.
+                body["compose"] = self.compose
+                body["customer"] = str(example.customer_id)
         # 2쪽(`prev_page` 가 있는 요청)에만 앞 쪽 상품을 exclude 로 보낸다 — 1쪽에는 넣지 않는다.
         # 행 제외(`exclude_categories`)는 v1 · v2 의 행 이름 체계가 달라 쓰지 않는다.
         if example.prev_page:
@@ -446,16 +471,33 @@ class HttpSource:
             body = json.dumps(self._body(example), ensure_ascii=False, allow_nan=False).encode("utf-8")
             request = urllib.request.Request(self.url + "/page", data=body, method="POST",
                                              headers={"Content-Type": "application/json"})
+            began = time.perf_counter()
             try:
                 with urllib.request.urlopen(request, timeout=self.timeout) as response:
                     payload = json.loads(response.read().decode("utf-8"))
             except (urllib.error.HTTPError, urllib.error.URLError, OSError, ValueError) as exc:
                 raise RuntimeError(f"{self.kind} /page 요청 실패: {exc}") from exc
+            self._observe(payload, (time.perf_counter() - began) * 1000)
             violations = int(payload.get("violations", 0))
             if violations != 0:
                 raise RuntimeError(f"{self.kind} /page 규칙 위반 {violations}건")
             result.append(self._rows(payload))
         return result
+
+    def _observe(self, payload: dict, latency_ms: float) -> None:
+        """응답 하나를 관측에 남긴다(위반 검사 전에 — L3 는 대체 응답의 지연을 본다)."""
+        composition = payload.get("composition")
+        fallback = payload.get("fallback")
+        if "composition" in payload:
+            self.composition_counts["null" if composition is None else str(composition)] += 1
+        if "fallback" in payload:
+            self.fallback_counts["null" if fallback is None else str(fallback)] += 1
+        self.observations.append({
+            "latency_ms": float(latency_ms),
+            "inference_ms": float(payload.get("ms", 0.0) or 0.0),
+            "queue_ms": float(payload.get("queue_ms", 0.0) or 0.0),
+            "composition": None if composition is None else str(composition),
+            "fallback": None if fallback is None else str(fallback)})
 
 
 def _int_article(article: Any) -> Any:
@@ -480,10 +522,17 @@ def _clean_json(value: Any) -> Any:
     return value
 
 
-def _events_of(events: dict[str, np.ndarray], stop: int) -> list[dict]:
-    """문맥 이벤트를 v2 요청의 events 모양(오래된 것부터, 최근 HISTORY_EVENTS 개)으로."""
+def _events_of(events: dict[str, np.ndarray], stop: int,
+               history_events: int = config.HISTORY_EVENTS) -> list[dict]:
+    """문맥 이벤트를 v2 요청의 events 모양(오래된 것부터, 최근 ``history_events`` 개)으로.
+
+    기본값(``config.HISTORY_EVENTS``)은 지금과 같다. S1 은 ``history_events=100`` 을 준다 —
+    그 100 은 dataset.py 의 이력 상한(``articles[max(0, start - 100):start]``, dataset.py:298 · 324)
+    과 같은 값이다. 프롬프트는 dataset 에서 tail(60) 이라 100건을 보내도 같고, 서버가
+    다시 사기 행을 정할 때 쓰는 이력만 오프라인(``eval_meta.history``)과 같아진다.
+    """
     stop = max(0, min(int(stop), len(events["dates"])))
-    begin = max(0, stop - config.HISTORY_EVENTS)
+    begin = max(0, stop - int(history_events))
     result: list[dict] = []
     for article, date, channel, price in zip(events["articles"][begin:stop], events["dates"][begin:stop],
                                              events["channels"][begin:stop], events["prices"][begin:stop],
@@ -798,12 +847,16 @@ def build_users(vocab: Vocab, transactions: pd.DataFrame, customers: pd.DataFram
 
 def build_eval_users(vocab: Vocab, transactions: pd.DataFrame, customers: pd.DataFrame,
                      attributes: dict[str, tuple], content_rows_map: dict[str, int],
-                     request: Any | None = None) -> tuple[list[SimUser], PriceIndex]:
+                     request: Any | None = None,
+                     history_events: int = config.HISTORY_EVENTS) -> tuple[list[SimUser], PriceIndex]:
     """평가 기간(홀드아웃 주) 진입점.
 
     요청 시각은 final 모드의 요청 시각(2020-09-16)이고, 원하는 것은 [r, r+7) 실제
     구매다. 문맥은 r 이전 거래만 쓴다. 학습 기간 검사 대신 **요청 시각 이후 거래가
     문맥 · 가격에 없다**를 검사한다(가격은 r 이전 거래만 본 값과 같은지 확인한다).
+
+    ``history_events`` 는 요청 본문에 실을 최근 구매 이벤트 수다(기본값은 지금과 같다).
+    S1 은 dataset 의 이력 상한과 같은 100 을 준다 — ``_events_of`` 참고.
     """
     request = pd.Timestamp(request if request is not None else config.request_of("final"))
     window_end = request + pd.Timedelta(days=config.TARGET_DAYS)
@@ -834,7 +887,7 @@ def build_eval_users(vocab: Vocab, transactions: pd.DataFrame, customers: pd.Dat
         history = events["articles"][max(0, start - 100):start][::-1].tolist()
         user = SimUser(str(customer_id), request, ctx.tolist(), ctx_content.tolist(), history, wanted,
                        device_of(customer_id), persona_of(str(customer_id), wanted, attributes),
-                       _events_of(events, start), _json_profile(profile))
+                       _events_of(events, start, history_events), _json_profile(profile))
         if any(_day(event["at"]) >= request_day for event in user.events):
             raise ValueError("요청 시각 이후 거래가 문맥에 섞였다")
         users.append(user)

@@ -9,6 +9,10 @@
         --mode ab --customers 5000 --seed 7 --bootstrap 2000 --out OUT
 
 `--mode aa` 는 같은 사용자 분할에 두 쪽 모두 v2 를 보여 준다(하네스 점검).
+
+S1(#454) L4 는 한 v2 서버를 compose 로 가른다. A/A 는 `--a-compose hybrid --aa`, A/B 는
+`--a-compose rule --b-compose hybrid` 다. 결과에 두 arm 응답의 `composition` · `fallback`
+개수도 남긴다(대체 경로가 얼마나 탔는지).
 """
 from __future__ import annotations
 
@@ -91,6 +95,27 @@ def _metric_values(arm_pages: dict[str, list[Any]], users: Sequence[Any]) -> dic
     return values
 
 
+def _arms(args: argparse.Namespace) -> dict[str, tuple[str, str, str | None]]:
+    """arm → (kind, url, compose).
+
+    compose 옵션(`--a-compose` · `--b-compose` · `--aa`)이 있으면 한 v2 서버를 compose 로
+    가른다. `--aa` 는 두 arm 모두 `--a-compose` 다(A/A 점검). 없으면 기존대로 `--mode ab` 는
+    v1 대 v2, `--mode aa` 는 둘 다 v2(compose 없음 = 서버 기본 generate)다.
+    """
+    if args.aa:
+        if not args.a_compose:
+            raise ValueError("--aa 에는 --a-compose 가 필요합니다")
+        return {"A": ("v2", args.v2_url, args.a_compose), "B": ("v2", args.v2_url, args.a_compose)}
+    if args.a_compose or args.b_compose:
+        return {"A": ("v2", args.v2_url, args.a_compose or "generate"),
+                "B": ("v2", args.v2_url, args.b_compose or "generate")}
+    if args.mode == "ab":
+        if not args.v1_url:
+            raise ValueError("--mode ab 에는 --v1-url 이 필요합니다")
+        return {"A": ("v1", args.v1_url, None), "B": ("v2", args.v2_url, None)}
+    return {"A": ("v2", args.v2_url, None), "B": ("v2", args.v2_url, None)}
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     started = time.monotonic()
     base = config.data_dir()
@@ -110,20 +135,20 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         np.asarray(buyers), size=taken, replace=False).tolist())
     transactions = eval_transactions(normalized / "transactions.parquet", chosen, request)
     customers = pd.read_parquet(normalized / "customers.parquet")
-    users, prices = build_eval_users(vocab, transactions, customers, attributes, content_map, request=request)
+    users, prices = build_eval_users(vocab, transactions, customers, attributes, content_map,
+                                     request=request, history_events=int(args.history_events))
     users.sort(key=lambda user: user.customer_id)
     arm_users = {"A": [user for user in users if arm_of(user.customer_id) == "A"],
                  "B": [user for user in users if arm_of(user.customer_id) == "B"]}
-    if args.mode == "ab":
-        if not args.v1_url:
-            raise ValueError("--mode ab 에는 --v1-url 이 필요합니다")
-        kinds = {"A": ("v1", args.v1_url), "B": ("v2", args.v2_url)}
-    else:
-        kinds = {"A": ("v2", args.v2_url), "B": ("v2", args.v2_url)}
+    # S1(#454): compose 옵션이 있으면 한 v2 서버를 compose 로 가른다. 없으면 기존 v1 대 v2 · A/A.
+    kinds = _arms(args)
     arm_pages: dict[str, dict[str, list[Any]]] = {}
+    sources: dict[str, HttpSource] = {}
     for arm in ("A", "B"):
-        kind, url = kinds[arm]
-        source = HttpSource(url, kind, vocab, sections)
+        kind, url, compose = kinds[arm]
+        source = HttpSource(url, kind, vocab, sections, compose=compose,
+                            history_events=int(args.history_events))
+        sources[arm] = source
         arm_pages[arm] = _by_customer(simulate(arm_users[arm], source, vocab=vocab, attributes=attributes,
                                                content_rows_map=content_map, prices=prices))
     rng = np.random.default_rng(int(args.seed))
@@ -136,7 +161,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
               "bootstrap_draws": int(args.bootstrap), "holdout_buyers": len(buyers),
               "users": {"A": len(arm_users["A"]), "B": len(arm_users["B"])},
               "policies": {arm: kinds[arm][0] for arm in ("A", "B")},
+              "compose": {arm: kinds[arm][2] for arm in ("A", "B")},
               "urls": {arm: kinds[arm][1] for arm in ("A", "B")},
+              # S1: 응답의 실제 composition · fallback 개수(대체 경로가 얼마나 탔는지).
+              "response_composition": {arm: dict(sources[arm].composition_counts) for arm in ("A", "B")},
+              "response_fallback": {arm: dict(sources[arm].fallback_counts) for arm in ("A", "B")},
               "metrics": metrics, "elapsed_seconds": time.monotonic() - started}
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -163,6 +192,12 @@ def _table(report: dict[str, Any]) -> str:
         lines.append(f"| {METRIC_LABELS[name]} | {_num(value['a'])} | {_num(value['b'])} | {_num(value['diff'])}"
                      f" | [{_num(value['ci95'][0])}, {_num(value['ci95'][1])}] |")
     lines.append("")
+    for arm in ("A", "B"):
+        composition = report.get("response_composition", {}).get(arm) or {}
+        fallback = report.get("response_fallback", {}).get(arm) or {}
+        lines.append(f"- {arm} `{report.get('compose', {}).get(arm)}` · 응답 composition `{composition}`"
+                     f" · fallback `{fallback}`")
+    lines.append("")
     return "\n".join(lines) + "\n"
 
 
@@ -171,9 +206,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--v1-url")
     parser.add_argument("--v2-url", required=True)
     parser.add_argument("--customers", type=int, default=5000)
+    parser.add_argument("--history-events", type=int, default=config.HISTORY_EVENTS,
+                        help="요청 본문에 실을 최근 구매 이벤트 수(기본 config.HISTORY_EVENTS). "
+                             "S1 은 dataset 이력 상한과 같은 100 을 준다")
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--bootstrap", type=int, default=2000)
     parser.add_argument("--mode", choices=("ab", "aa"), default="ab")
+    parser.add_argument("--a-compose", choices=("generate", "rule", "hybrid", "hybrid-cached"),
+                        help="S1: 한 v2 서버에서 A arm 이 쓸 compose")
+    parser.add_argument("--b-compose", choices=("generate", "rule", "hybrid", "hybrid-cached"),
+                        help="S1: 한 v2 서버에서 B arm 이 쓸 compose")
+    parser.add_argument("--aa", action="store_true",
+                        help="S1: 두 arm 모두 --a-compose 로 보낸다(A/A 점검)")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
     run(args)
