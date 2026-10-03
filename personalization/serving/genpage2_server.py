@@ -14,7 +14,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 import pandas as pd
 
@@ -24,6 +24,8 @@ if str(ROOT) not in sys.path:
 
 from genpage2 import config  # noqa: E402
 from genpage2.evaluate import _load_decoder  # noqa: E402
+from genpage2.page_compose import (THIN_DECODE_KWARGS, compose_b, h_thin_example,  # noqa: E402
+                                    read_page_store, read_scores)
 from genpage2.prompt import build_prompt  # noqa: E402
 from genpage2.vocab import _article_id  # noqa: E402
 
@@ -34,7 +36,9 @@ def _int_article(value: str) -> int:
 
 
 class Engine:
-    def __init__(self, ckpt: Path, mode: str, device: str = "cpu", data: Path | None = None):
+    def __init__(self, ckpt: Path, mode: str, device: str = "cpu", data: Path | None = None, *,
+                 scores: Path | None = None, page_stores: Sequence[Path] = (),
+                 hybrid_lambda: float = 4.0):
         self.mode = mode
         self.data = data or config.data_dir()
         self.mode_dir = self.data / "hm" / "model" / "genpage2" / mode
@@ -42,6 +46,13 @@ class Engine:
         self.ckpt = Path(ckpt).name
         self.lock = threading.Lock()
         self.price_by_article, self.default_price = self._prices()
+        # S1(#454): 순위 모델 점수(상위 200)와 미리 계산한 H'(4) 페이지 저장소.
+        # ``--scores`` · ``--page-store`` 가 없으면 rule · hybrid 는 대체 경로로 간다.
+        self.scores = read_scores(scores) if scores else {}
+        self.page_store: dict[str, Any] = {}
+        for path in page_stores:
+            self.page_store.update(read_page_store(path))
+        self.hybrid_lambda = float(hybrid_lambda)
         # X5(#328): one JSON line per request with what the server understood — the
         # events it parsed and the prompt token names. Off unless the variable is set.
         self.prompt_log = os.environ.get("GENPAGE2_PROMPT_LOG") or None
@@ -168,6 +179,17 @@ class Engine:
                                                       items_per_row=config.ITEMS_PER_ROW, prefix=2)
             return {"items": [_int_article(item) for row in rows for item in row.items][:k],
                     "violations": violations, "context": report}
+        compose = request.get("compose")
+        if compose is None:
+            return self._generate_body(request, tokens, content, report, history,
+                                       exclude, excluded_rows, prev_page, allowed_items)
+        return self._composed(request, compose, tokens, content, report, history,
+                              exclude, excluded_rows, prev_page, allowed_items)
+
+    def _generate_body(self, request: dict[str, Any], tokens: list[int], content: list[int], report: dict[str, Any],
+                       history: list[str], exclude: set[str], excluded_rows: set[int], prev_page: list[int],
+                       allowed_items: set[str] | None) -> dict[str, Any]:
+        """지금까지의 생성 응답. ``compose`` 가 없으면 이 모양 그대로 돌려준다."""
         n_rows, items = int(request.get("rows", 3)), int(request.get("items_per_row", 8))
         prefix = int(request.get("prefix", 2))
         pinned = {0: self.vocab.id("ROW_REPEAT")} if request.get("pin_repeat") else None
@@ -186,6 +208,58 @@ class Engine:
                                    + sum(len(row.items) > max(0, prefix) for row in rows)),
                 "violations": violations, "context": report,
                 "model": {"ckpt": self.ckpt, "level": self.decoder.level}}
+
+    def _rows_body(self, rows: list[Any], report: dict[str, Any], *, composition: str, fallback: str | None,
+                   violations: int, forward_passes: int) -> dict[str, Any]:
+        """rule · hybrid 의 행 응답(기존 필드 모양 유지, composition · fallback 추가)."""
+        return {"rows": [{"category": self.row_names.get(row.row_token, self.vocab.tokens[row.row_token]),
+                           "row": self.vocab.tokens[row.row_token],
+                           "title": self.row_titles.get(row.row_token, self.vocab.tokens[row.row_token]),
+                           "items": [_int_article(item) for item in row.items]} for row in rows],
+                "forward_passes": forward_passes,
+                "violations": violations, "context": report,
+                "model": {"ckpt": self.ckpt, "level": self.decoder.level},
+                "composition": composition, "fallback": fallback}
+
+    def _composed(self, request: dict[str, Any], compose: str, tokens: list[int], content: list[int],
+                  report: dict[str, Any], history: list[str], exclude: set[str], excluded_rows: set[int],
+                  prev_page: list[int], allowed_items: set[str] | None) -> dict[str, Any]:
+        """``compose`` 요청을 계약대로 처리한다(BACKEND "S1" 절)."""
+        if compose not in ("generate", "rule", "hybrid", "hybrid-cached"):
+            raise ValueError(f"compose 는 generate · rule · hybrid · hybrid-cached 중 하나: {compose}")
+        if compose == "generate":
+            body = self._generate_body(request, tokens, content, report, history,
+                                       exclude, excluded_rows, prev_page, allowed_items)
+            body["composition"], body["fallback"] = "generate", None
+            return body
+        customer = request.get("customer")
+        scored = self.scores.get(str(customer)) if customer is not None else None
+        if not scored:
+            # 점수가 없으면 지금 방식(generate)으로 만들고 이유를 남긴다.
+            body = self._generate_body(request, tokens, content, report, history,
+                                       exclude, excluded_rows, prev_page, allowed_items)
+            body["composition"], body["fallback"] = "generate", "no_scores"
+            return body
+        # exclude(앞 쪽에서 보여 준 상품)는 상위 200개에서 먼저 뺀 뒤 줄을 구성한다.
+        scored = [(article, score) for article, score in scored if article not in exclude]
+        if compose == "rule":
+            rows = compose_b(scored, history, self.vocab)
+            return self._rows_body(rows, report, composition="rule", fallback=None,
+                                   violations=0, forward_passes=0)
+        composition, fallback = compose, None
+        if compose == "hybrid-cached":
+            cached = self.page_store.get(str(customer))
+            if cached is not None and not exclude:
+                return self._rows_body(cached, report, composition="hybrid-cached", fallback=None,
+                                       violations=0, forward_passes=0)
+            composition = "hybrid"
+            fallback = "exclude" if cached is not None else "not_in_store"
+        # hybrid: 오프라인 build_pages 의 H-thin 분기와 같은 함수 · 같은 인자.
+        example = h_thin_example(tokens, content, scored, history, self.vocab, self.hybrid_lambda)
+        rows, violations = self.decoder.generate_batch([example], **THIN_DECODE_KWARGS)[0]
+        forward_passes = 1 + sum(1 + len(row.items) for row in rows)
+        return self._rows_body(rows, report, composition=composition, fallback=fallback,
+                               violations=violations, forward_passes=forward_passes)
 
     def page(self, request: dict[str, Any], *, recommend: bool = False) -> tuple[dict[str, Any], float, float]:
         waiting = time.perf_counter()
@@ -225,7 +299,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         if self.path == "/health":
-            self._send(200, {"status": "UP", "vocab": len(ENGINE.vocab.tokens)})  # type: ignore[union-attr]
+            engine = ENGINE  # type: ignore[assignment]
+            self._send(200, {"status": "UP", "vocab": len(engine.vocab.tokens),
+                             "scores": len(getattr(engine, "scores", {})),
+                             "page_store": len(getattr(engine, "page_store", {}))})
         else:
             self._send(404, {"error": "no such path"})
 
@@ -259,11 +336,18 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8766)
     parser.add_argument("--device", choices=("cpu", "mps"), default="cpu")
     parser.add_argument("--threads", type=int, default=int(os.environ.get("GENPAGE_THREADS", "2")))
+    # S1(#454): 순위 모델 점수(상위 200)와 미리 계산한 H'(4) 페이지 저장소. 없으면 rule · hybrid 는 대체 경로.
+    parser.add_argument("--scores", type=Path, help="page_compose.read_scores 형식(scores.json.gz)")
+    parser.add_argument("--page-store", type=Path, nargs="+", default=[],
+                        help="page_compose 조각(pages[]) — 여러 개")
+    parser.add_argument("--hybrid-lambda", type=float, default=4.0)
     args = parser.parse_args()
     import torch
     torch.set_num_threads(args.threads)
-    ENGINE = Engine(args.ckpt, args.mode, args.device)
-    print(f"GenPage v2 모델 서버 :{args.port} · 어휘 {len(ENGINE.vocab.tokens):,}", flush=True)
+    ENGINE = Engine(args.ckpt, args.mode, args.device, scores=args.scores, page_stores=args.page_store,
+                    hybrid_lambda=args.hybrid_lambda)
+    print(f"GenPage v2 모델 서버 :{args.port} · 어휘 {len(ENGINE.vocab.tokens):,} "
+          f"· 점수 {len(ENGINE.scores):,} · 저장소 {len(ENGINE.page_store):,}", flush=True)
     ThreadingHTTPServer(("127.0.0.1", args.port), Handler).serve_forever()
 
 

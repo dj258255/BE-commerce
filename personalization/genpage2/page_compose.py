@@ -46,6 +46,10 @@ VARIANTS = ("B", "G-row", "G-full", "H", "G-row-thin", "H-thin")
 # 행 후보 자격의 최소 상품 수. D3 · D4 는 8개 미만 행을 막았지만 D5 는 B 처럼
 # 상품이 1개 이상이면 받는다.
 MIN_ROW_ITEMS = 1
+# D5 H-thin 의 디코딩 인자. 오프라인 ``build_pages`` 와 서빙(``genpage2_server``)이
+# 같은 값을 쓰도록 한 곳에 둔다.
+THIN_DECODE_KWARGS: dict[str, Any] = {"n_rows": ROWS, "items_per_row": ITEMS, "prefix": 2,
+                                      "min_row_items": MIN_ROW_ITEMS, "row_items_only": True}
 
 
 def _read_json(path: Path) -> Any:
@@ -60,6 +64,19 @@ def read_scores(path: str | Path) -> dict[str, list[tuple[str, float]]]:
     records = _read_json(Path(path))
     return {str(record["customer_id"]): [(str(article), float(score)) for article, score in record["scores"]]
             for record in records}
+
+
+def read_page_store(path: str | Path) -> dict[str, list[GeneratedRow]]:
+    """``page_compose`` 조각(``pages[].customer_id`` · ``rows[].row_token`` · ``items``)을 읽는다.
+
+    서빙의 ``--page-store``(미리 계산한 H'(4) 첫 페이지)가 쓴다.
+    """
+    record = _read_json(Path(path))
+    pages: dict[str, list[GeneratedRow]] = {}
+    for page in record["pages"]:
+        pages[str(page["customer_id"])] = [GeneratedRow(int(row["row_token"]), [str(a) for a in row["items"]])
+                                           for row in page["rows"]]
+    return pages
 
 
 def _row_groups(scored: list[tuple[str, float]], history: set[str], vocab: Any, *,
@@ -208,6 +225,21 @@ def h_thin_inputs(scored: list[tuple[str, float]], history: list[str], vocab: An
     return allowed_items, row_items, allowed_rows, row_bias
 
 
+def h_thin_example(ctx_tokens: list[int], ctx_content: list[int], scored: list[tuple[str, float]],
+                   history: list[str], vocab: Any, row_lambda: float
+                   ) -> dict[str, Any]:
+    """H-thin 한 명 분의 ``generate_batch`` 예제(오프라인과 서빙이 함께 쓴다).
+
+    ``THIN_DECODE_KWARGS`` 와 함께 쓰면 두 경로가 같은 함수 · 같은 인자로 페이지를
+    만든다. 오프라인은 ``ctx_tokens`` · ``ctx_content`` 를 학습 보관본에서, 서빙은
+    ``build_prompt`` 에서 받는다.
+    """
+    allowed_items, row_items, allowed_rows, row_bias = h_thin_inputs(scored, history, vocab, row_lambda)
+    return {"ctx_tokens": list(ctx_tokens), "ctx_content": list(ctx_content),
+            "history_articles": list(history), "row_items": row_items,
+            "allowed_rows": allowed_rows, "row_bias": row_bias, "allowed_items": allowed_items}
+
+
 def g_full_inputs(scored: list[tuple[str, float]], history: list[str], vocab: Any, *,
                   top: int = TOP) -> tuple[set[str], dict[int, list[str]]]:
     """G-full 의 ``allowed_items`` · ``row_items`` 를 만든다.
@@ -244,15 +276,13 @@ def build_pages(variant: str, meta: Any, archive: Any, scores: dict[str, list[tu
             ctx_tokens, ctx_content = _context_at(archive, int(index))
             history = _as_articles(row.history)
             scored = scores.get(customer, [])
-            if variant in ("G-row", "G-row-thin", "H", "H-thin"):
+            if variant == "H-thin":
+                example = h_thin_example(ctx_tokens, ctx_content, scored, history, vocab, row_lambda)
+            elif variant in ("G-row", "G-row-thin", "H"):
                 allowed_items = None
                 row_bias = None
-                if variant in ("H", "H-thin"):
-                    if variant == "H":
-                        row_items, allowed_rows, row_bias = h_inputs(scored, history, vocab, row_lambda)
-                    else:
-                        allowed_items, row_items, allowed_rows, row_bias = h_thin_inputs(
-                            scored, history, vocab, row_lambda)
+                if variant == "H":
+                    row_items, allowed_rows, row_bias = h_inputs(scored, history, vocab, row_lambda)
                 elif variant == "G-row":
                     row_items, allowed_rows = g_row_inputs(scored, history, vocab)
                 else:
@@ -271,8 +301,7 @@ def build_pages(variant: str, meta: Any, archive: Any, scores: dict[str, list[tu
         decode_kwargs: dict[str, Any] = {"n_rows": ROWS, "items_per_row": ITEMS, "prefix": 2}
         if variant in ("G-row-thin", "H-thin"):
             # 8개 미만 행도 허용하고, 행은 row_items 앞에서 끝낸다(모델이 채우지 않는다).
-            decode_kwargs["min_row_items"] = MIN_ROW_ITEMS
-            decode_kwargs["row_items_only"] = True
+            decode_kwargs.update(THIN_DECODE_KWARGS)
         decoded = decoder.generate_batch(examples, **decode_kwargs)
         for (_, row), (page, bad) in zip(part, decoded):
             customer = str(row.customer_id)
