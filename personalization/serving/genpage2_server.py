@@ -27,6 +27,8 @@ from genpage2.evaluate import _load_decoder  # noqa: E402
 from genpage2.page_compose import (THIN_DECODE_KWARGS, compose_b, h_thin_example,  # noqa: E402
                                     read_page_store, read_scores)
 from genpage2.prompt import build_prompt  # noqa: E402
+from genpage2.simulate import (HISTORY_STORE_EVENTS, TRANSACTION_COLUMNS,  # noqa: E402
+                               build_history_store, eval_transactions)
 from genpage2.vocab import _article_id  # noqa: E402
 
 
@@ -38,7 +40,8 @@ def _int_article(value: str) -> int:
 class Engine:
     def __init__(self, ckpt: Path, mode: str, device: str = "cpu", data: Path | None = None, *,
                  scores: Path | None = None, page_stores: Sequence[Path] = (),
-                 hybrid_lambda: float = 4.0):
+                 hybrid_lambda: float = 4.0, history_store: bool = False,
+                 transactions: pd.DataFrame | None = None):
         self.mode = mode
         self.data = data or config.data_dir()
         self.mode_dir = self.data / "hm" / "model" / "genpage2" / mode
@@ -53,6 +56,13 @@ class Engine:
         for path in page_stores:
             self.page_store.update(read_page_store(path))
         self.hybrid_lambda = float(hybrid_lambda)
+        # S2(#455): `--history-store`. 켜면 고객 이력을 H&M 거래(모드 요청 시각 이전 최근 100건)
+        # 에서 읽어 둔다. `/page` 에 `customer` 가 있고 그 고객이 있으면 요청의 history · events
+        # 대신 이벤트를 프롬프트와 다시 사기 행 이력에 쓴다. 끄면(기본) 지금과 완전히 같다.
+        # 서버가 아는 고객(점수 키)만 담아 메모리를 묶는다 — H&M 고객 137만 명 전부는 담을 수 없다.
+        self.history_store: dict[str, list[dict[str, Any]]] | None = None
+        if history_store:
+            self.history_store = self._build_history_store(transactions)
         # X5(#328): one JSON line per request with what the server understood — the
         # events it parsed and the prompt token names. Off unless the variable is set.
         self.prompt_log = os.environ.get("GENPAGE2_PROMPT_LOG") or None
@@ -90,17 +100,46 @@ class Engine:
             self.row_names[token] = name
             self.row_titles[token] = name
 
-    def _events(self, request: dict[str, Any]) -> list[dict[str, Any]]:
+    def _build_history_store(self, transactions: pd.DataFrame | None) -> dict[str, list[dict[str, Any]]]:
+        """S2(#455): 요청 시각 이전 고객별 최근 100건 구매 이벤트(``build_history_store``).
+
+        테스트는 ``transactions`` 를 직접 준다. 실제 기동에서는 서버가 아는 고객(점수 키)의
+        거래만 읽어 담는다 — ``build_eval_users`` 와 같은 함수를 쓰므로 이벤트가 같고,
+        고객 단위 그룹화라 부분집합으로 줄여도 그 고객의 이벤트는 전체 표와 같다.
+        """
+        request = config.request_of(self.mode)
+        if transactions is not None:
+            frame = transactions
+        elif self.scores:
+            frame = eval_transactions(self.data / "hm" / "normalized" / "transactions.parquet",
+                                      sorted(self.scores), request)
+        else:
+            frame = pd.read_parquet(self.data / "hm" / "normalized" / "transactions.parquet",
+                                    columns=list(TRANSACTION_COLUMNS))
+        return build_history_store(self.vocab, frame, request=request,
+                                   history_events=HISTORY_STORE_EVENTS)
+
+    def _request_events(self, request: dict[str, Any]) -> list[dict[str, Any]]:
         if "events" in request:
             raw = request.get("events") or []
             if not isinstance(raw, list):
                 raise ValueError("events 는 배열이어야 합니다")
-            events = [dict(x) for x in raw]
+            return [dict(x) for x in raw]
+        history = request.get("history", [])
+        if not isinstance(history, list):
+            raise ValueError("history 는 배열이어야 합니다")
+        return [{"item": item} for item in reversed(history)]
+
+    def _events(self, request: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
+        """(이벤트, history_source). S2(#455): 저장소가 있고 그 고객이 있으면 저장소 이벤트."""
+        customer = request.get("customer")
+        store = self.history_store
+        if store is not None and customer is not None and str(customer) in store:
+            events = [dict(x) for x in store[str(customer)]]
+            source = "store"
         else:
-            history = request.get("history", [])
-            if not isinstance(history, list):
-                raise ValueError("history 는 배열이어야 합니다")
-            events = [{"item": item} for item in reversed(history)]
+            events = self._request_events(request)
+            source = "request"
         session = request.get("session", [])
         if session:
             if not isinstance(session, list):
@@ -110,7 +149,7 @@ class Engine:
             article = _article_id(event.get("item", ""))
             if event.get("price") is None:
                 event["_inferred_price"] = self.price_by_article.get(article, self.default_price)
-        return events
+        return events, source
 
     def _prev_page(self, value: Any, report: dict[str, Any]) -> list[int]:
         tokens: list[int] = []
@@ -129,18 +168,21 @@ class Engine:
                     tokens.append(item_token)
         return tokens
 
-    def _prompt(self, request: dict[str, Any], kind: str = "page") -> tuple[list[int], list[int], dict[str, Any], list[str]]:
-        events = self._events(request)
+    def _prompt(self, request: dict[str, Any], kind: str = "page"
+                ) -> tuple[list[int], list[int], dict[str, Any], list[str], str]:
+        events, history_source = self._events(request)
+        # S2(#455): 저장소 이벤트는 모드 요청 시각 기준이라 요청의 `now` 를 쓰지 않는다.
+        now = config.request_of(self.mode) if history_source == "store" else request.get("now")
         tokens, content, report = build_prompt(self.vocab,
-                                               now=request.get("now") or config.request_of(self.mode), profile=request.get("profile"),
+                                               now=now or config.request_of(self.mode), profile=request.get("profile"),
                                                events=events, content_rows=self.content_rows)
-        report["missing"]["now"] = request.get("now") is None
+        report["missing"]["now"] = now is None
         report["level"] = self.decoder.level
         if self.prompt_log:
             self._log_prompt(kind, request, events, tokens)
         history = [_article_id(x["item"]) for x in events
                    if str(x.get("action") or "ONLINE").upper() in ("STORE", "ONLINE") and "item" in x]
-        return tokens, content, report, list(reversed(history))
+        return tokens, content, report, list(reversed(history)), history_source
 
     def _log_prompt(self, kind: str, request: dict[str, Any], events: list[dict[str, Any]], tokens: list[int]) -> None:
         """Append the parsed prompt. Called under ``self.lock``, so lines never interleave."""
@@ -162,7 +204,7 @@ class Engine:
         return rows
 
     def _page_unlocked(self, request: dict[str, Any], *, recommend: bool = False) -> dict[str, Any]:
-        tokens, content, report, history = self._prompt(request, "recommend" if recommend else "page")
+        tokens, content, report, history, history_source = self._prompt(request, "recommend" if recommend else "page")
         exclude = {_article_id(x) for x in request.get("exclude", [])}
         excluded_rows = self._excluded_rows(request.get("exclude_categories", []), report)
         prev_page = self._prev_page(request.get("prev_rows", []), report)
@@ -177,14 +219,20 @@ class Engine:
                                                       prev_page=prev_page, allowed_items=allowed_items,
                                                       n_rows=min(config.MAX_ROWS, max(1, math.ceil(k / config.ITEMS_PER_ROW))),
                                                       items_per_row=config.ITEMS_PER_ROW, prefix=2)
-            return {"items": [_int_article(item) for row in rows for item in row.items][:k],
+            body = {"items": [_int_article(item) for row in rows for item in row.items][:k],
                     "violations": violations, "context": report}
-        compose = request.get("compose")
-        if compose is None:
-            return self._generate_body(request, tokens, content, report, history,
-                                       exclude, excluded_rows, prev_page, allowed_items)
-        return self._composed(request, compose, tokens, content, report, history,
-                              exclude, excluded_rows, prev_page, allowed_items)
+        else:
+            compose = request.get("compose")
+            if compose is None:
+                body = self._generate_body(request, tokens, content, report, history,
+                                           exclude, excluded_rows, prev_page, allowed_items)
+            else:
+                body = self._composed(request, compose, tokens, content, report, history,
+                                      exclude, excluded_rows, prev_page, allowed_items)
+        # S2(#455): 저장소를 켰을 때만 응답에 이력 출처를 남긴다(끄면 지금과 완전히 같다).
+        if self.history_store is not None:
+            body["history_source"] = history_source
+        return body
 
     def _generate_body(self, request: dict[str, Any], tokens: list[int], content: list[int], report: dict[str, Any],
                        history: list[str], exclude: set[str], excluded_rows: set[int], prev_page: list[int],
@@ -341,13 +389,20 @@ def main() -> None:
     parser.add_argument("--page-store", type=Path, nargs="+", default=[],
                         help="page_compose 조각(pages[]) — 여러 개")
     parser.add_argument("--hybrid-lambda", type=float, default=4.0)
+    # S2(#455): 고객 이력을 H&M 거래(모드 요청 시각 이전 최근 100건)에서 읽어 둔다.
+    parser.add_argument("--history-store", action="store_true",
+                        help="요청 customer 의 이력을 서버가 만든 저장소에서 읽는다(기본: 요청 이력)")
     args = parser.parse_args()
     import torch
     torch.set_num_threads(args.threads)
+    began = time.perf_counter()
     ENGINE = Engine(args.ckpt, args.mode, args.device, scores=args.scores, page_stores=args.page_store,
-                    hybrid_lambda=args.hybrid_lambda)
+                    hybrid_lambda=args.hybrid_lambda, history_store=args.history_store)
+    history_store = getattr(ENGINE, "history_store", None)
     print(f"GenPage v2 모델 서버 :{args.port} · 어휘 {len(ENGINE.vocab.tokens):,} "
-          f"· 점수 {len(ENGINE.scores):,} · 저장소 {len(ENGINE.page_store):,}", flush=True)
+          f"· 점수 {len(ENGINE.scores):,} · 페이지 저장소 {len(ENGINE.page_store):,} "
+          f"· 이력 저장소 {'끔' if history_store is None else f'{len(history_store):,}'} "
+          f"· 기동 {time.perf_counter() - began:.1f}s", flush=True)
     ThreadingHTTPServer(("127.0.0.1", args.port), Handler).serve_forever()
 
 
