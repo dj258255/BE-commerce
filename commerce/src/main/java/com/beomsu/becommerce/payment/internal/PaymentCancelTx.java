@@ -39,6 +39,13 @@ public class PaymentCancelTx {
     public static final List<PaymentStatus> CANCELABLE =
             List.of(PaymentStatus.DONE, PaymentStatus.PARTIAL_CANCELED);
 
+    /**
+     * 아직 결과가 확정되지 않은 상태 — 승인 응답을 못 받았거나(UNKNOWN) 진행 중(IN_PROGRESS)이다.
+     * 이 결제들은 "취소 대상 없음"이 아니라 "아직 취소를 판단할 수 없음"이다.
+     */
+    private static final List<PaymentStatus> UNRESOLVED =
+            List.of(PaymentStatus.UNKNOWN, PaymentStatus.IN_PROGRESS);
+
     private final PaymentRepository paymentRepository;
     private final ApplicationEventPublisher events;
 
@@ -72,21 +79,74 @@ public class PaymentCancelTx {
     }
 
     /**
-     * 취소 가능한 결제가 없을 때, <b>이미 취소된 것</b>과 <b>아예 없는 것</b>을 나눈다.
+     * 취소 가능한 결제가 없을 때 <b>실제 존재하는 상태를 조회해</b> 사유를 나눈다:
+     * <ul>
+     *   <li>행 없음 → {@code PAYMENT_NOT_FOUND}(보상 실행기가 FAILED로 올린다)</li>
+     *   <li>미확정(UNKNOWN·IN_PROGRESS) 또는 설명되지 않는 상태 조합 → {@code PAYMENT_UNRESOLVED}(보류, PENDING 유지)</li>
+     *   <li>이미 취소 확정(CANCELED) → {@code PAYMENT_ALREADY_SETTLED}(보상 완료로 DONE)</li>
+     *   <li>ABORTED 있음 → {@code PAYMENT_APPROVAL_FAILED}(DONE, 사유에 "승인 실패")</li>
+     *   <li>EXPIRED·READY 뿐 → {@code PAYMENT_APPROVAL_FAILED}(DONE, 사유에 실제 상태 — "승인 실패" 아님)</li>
+     * </ul>
      *
-     * <p>보상 실행기가 이 둘을 같은 코드로 받으면 "없다 = 이미 보상됐다"로 읽는다.
-     * 그런데 없는 이유는 여럿이다 — 잘못된 주문번호, 승인된 적 없음, 전파 지연.
-     * <b>확정할 수 없는 것을 완료로 확정하면 보상이 조용히 사라진다.</b>
+     * <p>보상 실행기가 이 사유들을 같은 코드로 받으면 "없다 = 이미 보상됐다"로 읽는다.
+     * 그런데 없는 이유는 여럿이다 — 잘못된 주문번호, 아직 확정 전, 승인된 적 없음, 유효시간 경과.
+     * <b>확정할 수 없는 것을 완료로 확정하면 보상이 조용히 사라진다.</b> 완료로 닫는 경우에도
+     * 원인을 사실대로 적어, "승인 실패"와 "승인된 원거래 없음"이 운영에서 구분되게 한다.
      */
     private PaymentException notCancelable(String orderNo) {
         boolean everExisted = paymentRepository.existsByOrderNo(orderNo);
-        if (everExisted) {
-            // 결제는 있는데 취소 가능 상태가 아니다 = 이미 취소됐거나 종결됐다.
+        if (!everExisted) {
+            return new PaymentException("PAYMENT_NOT_FOUND",
+                    "취소할 결제를 찾을 수 없습니다: " + orderNo);
+        }
+        // 결제는 있는데 취소 가능(DONE·PARTIAL_CANCELED) 상태가 아니다. "없다 = 이미 보상됐다"로
+        // 뭉뚱그리면 안 된다 — 사유가 여럿이고, 그중 미확정은 "아직"일 뿐이다.
+        if (paymentRepository.findFirstByOrderNoAndStatusIn(orderNo, UNRESOLVED).isPresent()) {
+            // UNKNOWN·IN_PROGRESS — 취소할지 말지를 아직 판단할 수 없다. 복구 배치가 조회로 확정한
+            // 뒤 다음 주기에 정상 경로를 탄다. 완료로 닫으면 보상이 조용히 사라진다.
+            return new PaymentException("PAYMENT_UNRESOLVED",
+                    "결제 결과가 확정되지 않아 취소할 수 없습니다(미확정 결제 존재): " + orderNo
+                            + ". 복구 배치가 조회로 확정한 뒤 취소하십시오.");
+        }
+        if (paymentRepository.findFirstByOrderNoAndStatusIn(orderNo,
+                List.of(PaymentStatus.CANCELED)).isPresent()) {
+            // 이미 (전액) 취소 확정됐다 = 보상이 이미 이뤄졌다.
             return new PaymentException("PAYMENT_ALREADY_SETTLED",
                     "이미 취소됐거나 취소할 수 없는 상태입니다: " + orderNo);
         }
-        return new PaymentException("PAYMENT_NOT_FOUND",
-                "취소할 결제를 찾을 수 없습니다: " + orderNo);
+        // 취소 확정(DONE·PARTIAL_CANCELED)도 미확정도 아니다. 남을 수 있는 건 READY·ABORTED·EXPIRED 뿐이다
+        // (그 밖의 상태는 위에서 걸러졌다). <b>실제 존재하는 상태를 조회</b>해 사유를 사실대로 만든다 —
+        // READY·EXPIRED 를 "승인 실패"로 뭉뚱그리면 운영이 원인을 잘못 읽는다.
+        boolean aborted = present(orderNo, PaymentStatus.ABORTED);
+        boolean expired = present(orderNo, PaymentStatus.EXPIRED);
+        boolean ready = present(orderNo, PaymentStatus.READY);
+        if (!aborted && !expired && !ready) {
+            // 결제 행은 있는데 우리가 아는 어느 사유로도 설명되지 않는 상태 조합이다 — 조용히 닫지 않고 보류한다.
+            return new PaymentException("PAYMENT_UNRESOLVED",
+                    "취소 대상 상태를 확정할 수 없습니다(알 수 없는 상태 조합): " + orderNo
+                            + ". 복구 배치가 조회로 확정한 뒤 취소하십시오.");
+        }
+        if (aborted) {
+            // 승인 실패가 하나라도 있으면 "승인 실패" 문구를 유지한다(운영 알림 계약).
+            return new PaymentException("PAYMENT_APPROVAL_FAILED",
+                    "승인 실패 확정 — 취소할 원거래 없음: " + orderNo);
+        }
+        // EXPIRED·READY 뿐 — 승인이 난 원거래 자체가 없다. 실제 상태를 담아 사실대로 적는다.
+        return new PaymentException("PAYMENT_APPROVAL_FAILED",
+                "승인된 원거래 없음(상태: " + statusList(ready, expired) + "): " + orderNo);
+    }
+
+    /** 주문에 해당 상태의 결제 행이 하나라도 있는지. */
+    private boolean present(String orderNo, PaymentStatus status) {
+        return paymentRepository.findFirstByOrderNoAndStatusIn(orderNo, List.of(status)).isPresent();
+    }
+
+    /** READY·EXPIRED 중 실제로 존재하는 것만 나열한다(둘 다면 둘 다). */
+    private static String statusList(boolean ready, boolean expired) {
+        if (ready && expired) {
+            return "READY, EXPIRED";
+        }
+        return ready ? "READY" : "EXPIRED";
     }
 
     /** Phase 1 — 결제 식별자로 취소 대상을 확정한다. */

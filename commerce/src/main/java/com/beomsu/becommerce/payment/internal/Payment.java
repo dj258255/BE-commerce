@@ -250,6 +250,16 @@ public class Payment {
      * 취소를 걸러내는 데 쓴다. {@link #cancel}도 같은 검사를 통과한 뒤 전이하므로 규칙이 한 곳에 있다.
      */
     public void validateCancelable(Money cancelAmount) {
+        // 취소는 <승인된> 결제에만 보낸다. 전이표는 UNKNOWN→CANCELED를 허용하지만 그건 복구 배치가
+        // PG 조회로 "이미 취소됨"을 확인했을 때 쓰는 전이다(markCanceledByPg). 여기서 그 전이에
+        // 기대면, PG 취소가 실제로 나간 뒤 apply가 CANCELABLE 목록에 UNKNOWN이 없어 아무 기록도
+        // 남기지 않는다 — PG에는 취소가 나갔는데 장부는 UNKNOWN으로 남는다. 미확정 결제의 취소는
+        // 복구 배치가 조회로 확정한 뒤로 미룬다.
+        if (status != PaymentStatus.DONE && status != PaymentStatus.PARTIAL_CANCELED) {
+            throw new PaymentException("PAYMENT_UNRESOLVED",
+                    ("결제 결과가 확정되지 않아 취소할 수 없습니다(현재 %s). "
+                            + "복구 배치가 조회로 확정한 뒤 취소하십시오.").formatted(status));
+        }
         if (cancelAmount.minorUnit() > balanceAmount) {
             throw PaymentException.cancelAmountExceeded(cancelAmount.minorUnit(), balanceAmount);
         }
