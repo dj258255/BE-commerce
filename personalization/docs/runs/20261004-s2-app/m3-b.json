@@ -1,0 +1,225 @@
+{
+  "stage": "m3",
+  "case": "b",
+  "app_url": "http://localhost:18090",
+  "accounts": 20,
+  "responses": 20,
+  "errors": 0,
+  "all_200": true,
+  "all_rule": false,
+  "wall": {
+    "n": 20,
+    "mean_ms": 96.71307905518916,
+    "p50_ms": 90.2176455128938,
+    "p95_ms": 108.03037945588592,
+    "p99_ms": 186.34020871191737
+  },
+  "compose_delta": {
+    "generate/no_scores": 20.0
+  },
+  "page_delta": {
+    "ok": 20.0
+  },
+  "records": [
+    {
+      "i": 0,
+      "status": 200,
+      "ms": 93.33950001746416,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 1,
+      "status": 200,
+      "ms": 102.87841700483114,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 2,
+      "status": 200,
+      "ms": 89.40166601678357,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 3,
+      "status": 200,
+      "ms": 94.50279199518263,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 4,
+      "status": 200,
+      "ms": 87.4179580132477,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 5,
+      "status": 200,
+      "ms": 91.03362500900403,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 6,
+      "status": 200,
+      "ms": 94.3383330013603,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 7,
+      "status": 200,
+      "ms": 84.77416698588058,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 8,
+      "status": 200,
+      "ms": 86.85295801842585,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 9,
+      "status": 200,
+      "ms": 92.21933304797858,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 10,
+      "status": 200,
+      "ms": 86.77191700553522,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 11,
+      "status": 200,
+      "ms": 96.62274998845533,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 12,
+      "status": 200,
+      "ms": 96.7887089936994,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 13,
+      "status": 200,
+      "ms": 87.76708296500146,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 14,
+      "status": 200,
+      "ms": 87.94649998890236,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 15,
+      "status": 200,
+      "ms": 92.27133303647861,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 16,
+      "status": 200,
+      "ms": 87.69295801175758,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 17,
+      "status": 200,
+      "ms": 86.85333299217746,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 18,
+      "status": 200,
+      "ms": 205.91766602592543,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 19,
+      "status": 200,
+      "ms": 88.87058298569173,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    }
+  ]
+}

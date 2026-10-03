@@ -1,0 +1,9 @@
+{
+  "seed": 7,
+  "mapped": 200,
+  "no_scores": 20,
+  "unmapped": 20,
+  "holdout_buyers": 68984,
+  "validate_buyers": 72019,
+  "scores_customers": 68984
+}

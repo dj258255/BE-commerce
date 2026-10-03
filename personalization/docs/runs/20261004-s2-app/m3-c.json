@@ -1,0 +1,225 @@
+{
+  "stage": "m3",
+  "case": "c",
+  "app_url": "http://localhost:18090",
+  "accounts": 20,
+  "responses": 20,
+  "errors": 0,
+  "all_200": true,
+  "all_rule": true,
+  "wall": {
+    "n": 20,
+    "mean_ms": 23.71243114466779,
+    "p50_ms": 23.29945849487558,
+    "p95_ms": 25.94666283403058,
+    "p99_ms": 28.56859896855894
+  },
+  "compose_delta": {
+    "none/none": 20.0
+  },
+  "page_delta": {
+    "failed": 20.0
+  },
+  "records": [
+    {
+      "i": 0,
+      "status": 200,
+      "ms": 24.013041984289885,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 1,
+      "status": 200,
+      "ms": 29.224083002191037,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 2,
+      "status": 200,
+      "ms": 23.817165987566113,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 3,
+      "status": 200,
+      "ms": 24.35595798306167,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 4,
+      "status": 200,
+      "ms": 21.916040976066142,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 5,
+      "status": 200,
+      "ms": 22.474292025435716,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 6,
+      "status": 200,
+      "ms": 23.609665979165584,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 7,
+      "status": 200,
+      "ms": 23.347874986939132,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 8,
+      "status": 200,
+      "ms": 24.622666998766363,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 9,
+      "status": 200,
+      "ms": 22.65499997884035,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 10,
+      "status": 200,
+      "ms": 25.702583021484315,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 11,
+      "status": 200,
+      "ms": 21.96508302586153,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 12,
+      "status": 200,
+      "ms": 22.68941595684737,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 13,
+      "status": 200,
+      "ms": 23.251042002812028,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 14,
+      "status": 200,
+      "ms": 25.77416703570634,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 15,
+      "status": 200,
+      "ms": 22.030541964340955,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 16,
+      "status": 200,
+      "ms": 22.55316701484844,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 17,
+      "status": 200,
+      "ms": 22.558792028576136,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 18,
+      "status": 200,
+      "ms": 25.626332964748144,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    },
+    {
+      "i": 19,
+      "status": 200,
+      "ms": 22.06170797580853,
+      "rows": 3,
+      "strategies": [
+        "CATEGORY_POPULAR"
+      ],
+      "all_genpage": false
+    }
+  ]
+}

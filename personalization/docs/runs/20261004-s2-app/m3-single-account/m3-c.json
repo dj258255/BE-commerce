@@ -1,0 +1,17 @@
+{
+  "stage": "m3",
+  "case": "c",
+  "app_url": "http://localhost:18090",
+  "status": 200,
+  "rows": 3,
+  "strategies": [
+    "CATEGORY_POPULAR"
+  ],
+  "all_genpage": false,
+  "compose_delta": {
+    "none/none": 1.0
+  },
+  "page_delta": {
+    "failed": 1.0
+  }
+}

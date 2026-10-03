@@ -48,6 +48,10 @@ FEEDBACK_KINDS = ("unseen", "skip", "click", "buy")
 TRANSACTION_COLUMNS = ("t_dat", "customer_id", "article_id", "sales_channel_id", "price")
 # S1(#454): /page 요청 본문의 compose 값. 계약은 docs/genpage-v2/BACKEND.md "S1" 절.
 COMPOSES = ("generate", "rule", "hybrid", "hybrid-cached")
+# S2(#455): 서버 이력 저장소(``build_history_store``)가 고객마다 담는 최근 구매 이벤트 수.
+# dataset.py 의 이력 상한(``articles[max(0, start - 100):start]``, dataset.py:298 · 324)과
+# 같은 값이라 서버의 다시 사기 행 이력이 오프라인과 같아진다(``_events_of`` 참고).
+HISTORY_STORE_EVENTS = 100
 
 
 # ---------------------------------------------------------------------------
@@ -892,6 +896,28 @@ def build_eval_users(vocab: Vocab, transactions: pd.DataFrame, customers: pd.Dat
             raise ValueError("요청 시각 이후 거래가 문맥에 섞였다")
         users.append(user)
     return users, prices
+
+
+def build_history_store(vocab: Vocab, transactions: pd.DataFrame, *,
+                        request: Any | None = None,
+                        history_events: int = HISTORY_STORE_EVENTS) -> dict[str, list[dict]]:
+    """S2(#455) 서버 이력 저장소: 고객별 **요청 시각 이전** 최근 ``history_events`` 건 구매 이벤트.
+
+    ``build_eval_users`` 가 홀드아웃 고객마다 만드는 이벤트와 **같은 함수**를 쓴다
+    (``_customer_event_groups`` + ``_events_of``). 그룹화가 고객 단위라 거래 표를 고객
+    부분집합으로 줄여도 그 고객의 이벤트는 전체 표와 같다. 그래서 서버는 담을 고객만
+    골라 읽어도(메모리) 같은 저장소를 얻는다.
+
+    반환 이벤트는 ``_events_of`` 모양(오래된 것부터 ``item`` · ``at`` · ``action`` ·
+    ``price``)이고 ``config.request_of(mode)`` 이전 거래만 담는다(요청 시각 이후 누설 없음).
+    """
+    reference = pd.Timestamp(request if request is not None else config.request_of("final"))
+    request_day = _day(reference)
+    store: dict[str, list[dict]] = {}
+    for customer_id, events in _customer_event_groups(transactions, vocab, {}):
+        start = int(events["dates"].searchsorted(request_day, side="left"))
+        store[str(customer_id)] = _events_of(events, start, history_events)
+    return store
 
 
 def eval_buyers(path: Path, request: Any | None = None) -> list[str]:

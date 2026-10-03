@@ -20,7 +20,7 @@ from genpage2 import config
 from genpage2.simulate import (HttpSource, PageRequest, PriceIndex, ReactionModel, SimUser, _page_prefix,
                                build_eval_users, load_attributes, persona_of, rule_policy_class, simulate)
 from genpage2.vocab import Vocab, _article_id, content_rows
-from tools.v2_virtual_ab import arm_of, bootstrap_ci
+from tools.v2_virtual_ab import arm_of, bootstrap_ci, notation
 
 
 def _frame(rows):
@@ -161,6 +161,20 @@ class AllocationTest(unittest.TestCase):
         arms = [arm_of(customer) for customer in ids]
         self.assertEqual(arms, [arm_of(customer) for customer in ids])
         self.assertLess(abs(arms.count("A") / len(arms) - 0.5), 0.03)
+
+
+class ComposeNotationTest(unittest.TestCase):
+    """compose 로 가른 A/B 는 모드 · 정책 표기가 compose 값을 따른다(S1 결함 수정)."""
+
+    def test_compose_aa_and_ab(self):
+        aa = {"A": ("v2", "u", "hybrid"), "B": ("v2", "u", "hybrid")}
+        self.assertEqual(notation(aa, split=True, mode="aa"), ("aa", {"A": "hybrid", "B": "hybrid"}))
+        ab = {"A": ("v2", "u", "rule"), "B": ("v2", "u", "hybrid")}
+        self.assertEqual(notation(ab, split=True, mode="aa"), ("ab", {"A": "rule", "B": "hybrid"}))
+
+    def test_without_compose_keeps_mode_and_kinds(self):
+        kinds = {"A": ("v1", "u1", None), "B": ("v2", "u2", None)}
+        self.assertEqual(notation(kinds, split=False, mode="ab"), ("ab", {"A": "v1", "B": "v2"}))
 
 
 class BootstrapTest(unittest.TestCase):

@@ -22,7 +22,8 @@ import torch
 from genpage2 import config
 from genpage2.decode import PageDecoder
 from genpage2.model import GenPageV2, ModelConfig
-from genpage2.page_compose import build_pages, compose_b, read_scores
+from genpage2.page_compose import (THIN_DECODE_KWARGS, build_pages, compose_b, h_thin_example,  # noqa: E501
+                                    read_scores)
 from genpage2.prompt import build_prompt
 from genpage2.ranker import write_scores
 from genpage2.vocab import Vocab, _article_id, content_rows
@@ -85,11 +86,16 @@ class ServingComposeTest(unittest.TestCase):
             return genpage2_server.Engine(Path("ckpt"), "validate", "cpu", data=Path(self.tmp.name),
                                           scores=scores, page_stores=page_stores, hybrid_lambda=4.0)
 
-    def _offline_h_thin(self, history):
-        """서버가 만드는 것과 같은 ctx 로 오프라인 H-thin 페이지를 만든다."""
+    def _ctx(self, history):
+        """서버 `_prompt` 와 같은 ctx — 이력의 최근 것부터를 이벤트로 되돌려 만든다."""
         events = [{"item": article} for article in reversed(history)]
         ctx_tokens, ctx_content, _ = build_prompt(self.vocab, now=config.request_of("validate"),
                                                   profile=None, events=events, content_rows=self.content_rows_map)
+        return ctx_tokens, ctx_content
+
+    def _offline_h_thin(self, history):
+        """서버가 만드는 것과 같은 ctx 로 오프라인 H-thin 페이지를 만든다."""
+        ctx_tokens, ctx_content = self._ctx(history)
         archive = {"ctx_tokens": np.asarray(ctx_tokens, dtype=np.int64),
                    "ctx_content": np.asarray(ctx_content, dtype=np.int64),
                    "ctx_offsets": np.asarray([0, len(ctx_tokens)], dtype=np.int64)}
@@ -124,6 +130,28 @@ class ServingComposeTest(unittest.TestCase):
         self.assertIsNone(body["fallback"])
         self.assertEqual(_response_rows(self.vocab, body), _normalize(self._offline_h_thin(_HISTORY)))
         self.assertTrue(body["rows"])
+
+    def test_rule_honors_request_rows_and_items(self):
+        """rows 3 을 보내면 rule 이 3행까지만 만든다(앱 2쪽과 같은 요청, S2 M2 공정성)."""
+        engine = self._engine(scores=self.scores_path)
+        body = engine._page_unlocked({"history": _HISTORY, "customer": "c1", "compose": "rule",
+                                      "rows": 3, "items_per_row": 8})
+        self.assertLessEqual(len(body["rows"]), 3)
+        self.assertEqual(_response_rows(self.vocab, body),
+                         _normalize(compose_b(list(_SCORED), _HISTORY, self.vocab, rows=3, items=8)))
+
+    def test_hybrid_honors_request_rows(self):
+        """rows 3 을 보내면 hybrid 가 3행까지만 만든다 — 요청 없으면 지금처럼 6(위 test)."""
+        engine = self._engine(scores=self.scores_path)
+        body = engine._page_unlocked({"history": _HISTORY, "customer": "c1", "compose": "hybrid",
+                                      "rows": 3, "items_per_row": 8})
+        ctx_tokens, ctx_content = self._ctx(_HISTORY)
+        example = h_thin_example(ctx_tokens, ctx_content, list(_SCORED), _HISTORY, self.vocab, 4.0)
+        kwargs = dict(THIN_DECODE_KWARGS)
+        kwargs["n_rows"] = 3
+        expected, _ = self.decoder.generate_batch([example], **kwargs)[0]
+        self.assertLessEqual(len(body["rows"]), 3)
+        self.assertEqual(_response_rows(self.vocab, body), _normalize(expected))
 
     def test_exclude_products_are_not_shown(self):
         engine = self._engine(scores=self.scores_path)

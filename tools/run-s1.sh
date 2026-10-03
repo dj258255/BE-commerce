@@ -84,7 +84,7 @@ if [ ! -f "$OUT/l4-aa/result.json" ]; then
   note "L4 A/A 시작"
   (cd personalization && "$PY" ../tools/v2_virtual_ab.py --mode aa --v2-url "$URL" \
      --a-compose hybrid --aa --customers 5000 --seed 7 --bootstrap 2000 \
-     --history-events "$HISTORY_EVENTS" --out "../$OUT/l4-aa") | tee "$OUT/l4-aa.txt"
+     --history-events "$HISTORY_EVENTS" --out "$OUT/l4-aa") | tee "$OUT/l4-aa.txt"
 else
   note "L4 A/A 건너뜀(결과 있음)"
 fi
@@ -92,7 +92,7 @@ if [ ! -f "$OUT/l4-ab/result.json" ]; then
   note "L4 A/B 시작"
   (cd personalization && "$PY" ../tools/v2_virtual_ab.py --mode aa --v2-url "$URL" \
      --a-compose rule --b-compose hybrid --customers 5000 --seed 7 --bootstrap 2000 \
-     --history-events "$HISTORY_EVENTS" --out "../$OUT/l4-ab") | tee "$OUT/l4-ab.txt"
+     --history-events "$HISTORY_EVENTS" --out "$OUT/l4-ab") | tee "$OUT/l4-ab.txt"
 else
   note "L4 A/B 건너뜀(결과 있음)"
 fi

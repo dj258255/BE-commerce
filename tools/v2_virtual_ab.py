@@ -12,7 +12,8 @@
 
 S1(#454) L4 는 한 v2 서버를 compose 로 가른다. A/A 는 `--a-compose hybrid --aa`, A/B 는
 `--a-compose rule --b-compose hybrid` 다. 결과에 두 arm 응답의 `composition` · `fallback`
-개수도 남긴다(대체 경로가 얼마나 탔는지).
+개수도 남긴다(대체 경로가 얼마나 탔는지). compose 로 가르면 두 arm 이 모두 v2 라 모드 ·
+정책 표기도 compose 값을 따른다 — A/A 는 "aa", A/B 는 "ab", 정책은 `rule` · `hybrid` 다.
 """
 from __future__ import annotations
 
@@ -116,6 +117,20 @@ def _arms(args: argparse.Namespace) -> dict[str, tuple[str, str, str | None]]:
     return {"A": ("v2", args.v2_url, None), "B": ("v2", args.v2_url, None)}
 
 
+def notation(kinds: dict[str, tuple[str, str, str | None]], *, split: bool,
+             mode: str) -> tuple[str, dict[str, str]]:
+    """결과의 모드 · 정책 표기(S1, #454).
+
+    compose 로 가르면 두 arm 이 모두 v2 라 기존 `aa` · `v2` 표기가 안 맞는다 — 모드를 compose
+    값에서 만들고(A/A 는 "aa", A/B 는 "ab"), 정책도 compose 값으로 적는다. compose 를 안 쓰면
+    기존대로 `--mode` 와 arm 의 kind(v1 · v2)를 쓴다.
+    """
+    if not split:
+        return mode, {arm: kinds[arm][0] for arm in ("A", "B")}
+    return ("aa" if kinds["A"][2] == kinds["B"][2] else "ab",
+            {arm: (kinds[arm][2] or "generate") for arm in ("A", "B")})
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     started = time.monotonic()
     base = config.data_dir()
@@ -142,6 +157,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                  "B": [user for user in users if arm_of(user.customer_id) == "B"]}
     # S1(#454): compose 옵션이 있으면 한 v2 서버를 compose 로 가른다. 없으면 기존 v1 대 v2 · A/A.
     kinds = _arms(args)
+    split = bool(args.aa or args.a_compose or args.b_compose)
+    mode, policies = notation(kinds, split=split, mode=args.mode)
     arm_pages: dict[str, dict[str, list[Any]]] = {}
     sources: dict[str, HttpSource] = {}
     for arm in ("A", "B"):
@@ -156,11 +173,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     for name in METRICS:
         values = {arm: _metric_values(arm_pages[arm], arm_users[arm])[name] for arm in ("A", "B")}
         metrics[name] = bootstrap_ci(values["A"], values["B"], int(args.bootstrap), rng)
-    report = {"mode": args.mode, "request_date": str(request.date()),
+    report = {"mode": mode, "request_date": str(request.date()),
               "customers_requested": int(args.customers), "seed": int(args.seed),
               "bootstrap_draws": int(args.bootstrap), "holdout_buyers": len(buyers),
               "users": {"A": len(arm_users["A"]), "B": len(arm_users["B"])},
-              "policies": {arm: kinds[arm][0] for arm in ("A", "B")},
+              "policies": policies,
               "compose": {arm: kinds[arm][2] for arm in ("A", "B")},
               "urls": {arm: kinds[arm][1] for arm in ("A", "B")},
               # S1: 응답의 실제 composition · fallback 개수(대체 경로가 얼마나 탔는지).

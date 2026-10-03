@@ -1,0 +1,225 @@
+{
+  "stage": "m3",
+  "case": "a",
+  "app_url": "http://localhost:18090",
+  "accounts": 20,
+  "responses": 20,
+  "errors": 0,
+  "all_200": true,
+  "all_rule": false,
+  "wall": {
+    "n": 20,
+    "mean_ms": 95.33692719996907,
+    "p50_ms": 92.96452099806629,
+    "p95_ms": 114.14108187891543,
+    "p99_ms": 116.95494995452464
+  },
+  "compose_delta": {
+    "none/no_mapping": 20.0
+  },
+  "page_delta": {
+    "ok": 20.0
+  },
+  "records": [
+    {
+      "i": 0,
+      "status": 200,
+      "ms": 117.65841697342694,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 1,
+      "status": 200,
+      "ms": 98.00979204010218,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 2,
+      "status": 200,
+      "ms": 101.2675830279477,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 3,
+      "status": 200,
+      "ms": 100.76995799317956,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 4,
+      "status": 200,
+      "ms": 94.11933401133865,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 5,
+      "status": 200,
+      "ms": 99.410374998115,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 6,
+      "status": 200,
+      "ms": 95.35933297593147,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 7,
+      "status": 200,
+      "ms": 113.9559589792043,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 8,
+      "status": 200,
+      "ms": 101.64758400060236,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 9,
+      "status": 200,
+      "ms": 90.07866698084399,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 10,
+      "status": 200,
+      "ms": 101.94191697519273,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 11,
+      "status": 200,
+      "ms": 88.18937500473112,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 12,
+      "status": 200,
+      "ms": 89.87187501043081,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 13,
+      "status": 200,
+      "ms": 86.9819590006955,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 14,
+      "status": 200,
+      "ms": 90.2148750028573,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 15,
+      "status": 200,
+      "ms": 84.68683302635327,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 16,
+      "status": 200,
+      "ms": 88.3025000221096,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 17,
+      "status": 200,
+      "ms": 89.67220800695941,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 18,
+      "status": 200,
+      "ms": 91.80970798479393,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    },
+    {
+      "i": 19,
+      "status": 200,
+      "ms": 82.79029198456556,
+      "rows": 3,
+      "strategies": [
+        "GENPAGE"
+      ],
+      "all_genpage": true
+    }
+  ]
+}

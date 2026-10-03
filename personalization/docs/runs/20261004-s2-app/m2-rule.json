@@ -1,0 +1,25 @@
+{
+  "responses": 200,
+  "errors": 0,
+  "throughput": 37.61589604539982,
+  "wall": {
+    "n": 200,
+    "mean_ms": 26.536019988707267,
+    "p50_ms": 26.046832965221256,
+    "p95_ms": 31.036868758383203,
+    "p99_ms": 36.48954799398773
+  },
+  "genpage_rate": 0.99,
+  "rule_rate": 0.0,
+  "other_rate": 0.01,
+  "strategies": {
+    "GENPAGE": 471
+  },
+  "stage": "m2",
+  "app_url": "http://localhost:18090",
+  "setting": "RULE",
+  "compose": "rule",
+  "accounts": 200,
+  "concurrency": 1,
+  "app_settings": "앱 기본 설정 (모델 타임아웃 300ms · page-capacity shared)"
+}

@@ -103,6 +103,34 @@ class GenPageClientWireTest {
     }
 
     @Test
+    @DisplayName("compose 를 주면 본문에 compose · customer 가 실리고, 응답의 composition · fallback 을 읽는다(S2, #455)")
+    void pageSendsComposeAndReadsComposition() throws Exception {
+        GenPagePageClient client = new GenPagePageClient(start(
+                "{\"rows\":[{\"category\":\"kids\",\"items\":[7,8]}],\"violations\":0,"
+                        + "\"composition\":\"hybrid\",\"fallback\":null}"), Duration.ofSeconds(2), 2);
+
+        GenPagePageClient.Page page = client.generateComposed(List.of(5L), null, null, List.of(9L), List.of(),
+                3, 8, "hybrid", "c1");
+
+        assertThat(body.get().path("compose").asText()).isEqualTo("hybrid");
+        assertThat(body.get().path("customer").asText()).isEqualTo("c1");
+        assertThat(page.composition()).isEqualTo("hybrid");
+        assertThat(page.fallback()).isNull();
+        assertThat(page.rows()).containsExactly(new GenPagePageClient.Row("kids", List.of(7L, 8L)));
+    }
+
+    @Test
+    @DisplayName("compose 없이 부르면 본문에 compose · customer 가 없다 — OFF 의 요청 모양은 그대로다(S2, #455)")
+    void pageWithoutComposeKeepsOldShape() throws Exception {
+        GenPagePageClient client = new GenPagePageClient(start("{\"rows\":[],\"violations\":0}"), Duration.ofSeconds(2), 2);
+
+        client.generateComposed(List.of(5L), null, null, List.of(9L), List.of(), 3, 8, null, null);
+
+        assertThat(body.get().has("compose")).isFalse();
+        assertThat(body.get().has("customer")).isFalse();
+    }
+
+    @Test
     @DisplayName("2쪽은 추천 행과 자리를 같이 쓰고, 자리가 없으면 서버를 부르지 않고 포기한다(#271)")
     void pageGivesUpWithoutFreeCapacity() throws Exception {
         GenPageCapacity capacity = new GenPageCapacity(1);
