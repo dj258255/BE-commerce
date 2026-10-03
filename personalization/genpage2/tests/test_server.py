@@ -13,6 +13,8 @@ class _Engine:
         tokens = list(range(17))
 
     vocab = _Vocab()
+    scores = {}
+    page_store = {}
 
     def page(self, request, *, recommend=False):
         if recommend:
@@ -49,7 +51,7 @@ class ServerTest(unittest.TestCase):
 
     def test_health_and_v1_routes(self):
         status, health = self.request("/health")
-        self.assertEqual((status, health), (200, {"status": "UP", "vocab": 17}))
+        self.assertEqual((status, health), (200, {"status": "UP", "vocab": 17, "scores": 0, "page_store": 0}))
         status, page = self.request("/page", {"history": []})
         self.assertEqual(status, 200)
         self.assertEqual(page["violations"], 0)
