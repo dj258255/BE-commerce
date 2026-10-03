@@ -1,0 +1,17 @@
+{
+  "stage": "m3",
+  "case": "b",
+  "app_url": "http://localhost:18090",
+  "status": 200,
+  "rows": 3,
+  "strategies": [
+    "GENPAGE"
+  ],
+  "all_genpage": true,
+  "compose_delta": {
+    "generate/no_scores": 1.0
+  },
+  "page_delta": {
+    "ok": 1.0
+  }
+}

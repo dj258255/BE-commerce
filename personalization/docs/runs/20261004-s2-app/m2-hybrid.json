@@ -1,0 +1,25 @@
+{
+  "responses": 200,
+  "errors": 0,
+  "throughput": 10.227655291152093,
+  "wall": {
+    "n": 200,
+    "mean_ms": 97.71225790987955,
+    "p50_ms": 99.929957970744,
+    "p95_ms": 119.43238334206399,
+    "p99_ms": 127.65372927300629
+  },
+  "genpage_rate": 1.0,
+  "rule_rate": 0.0,
+  "other_rate": 0.0,
+  "strategies": {
+    "GENPAGE": 513
+  },
+  "stage": "m2",
+  "app_url": "http://localhost:18090",
+  "setting": "HYBRID",
+  "compose": "hybrid",
+  "accounts": 200,
+  "concurrency": 1,
+  "app_settings": "앱 기본 설정 (모델 타임아웃 300ms · page-capacity shared)"
+}

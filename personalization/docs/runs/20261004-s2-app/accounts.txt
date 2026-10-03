@@ -1,0 +1,1 @@
+{'mapped': 200, 'no_scores': 20, 'unmapped': 20}
