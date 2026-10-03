@@ -31,6 +31,13 @@ public class GenPagePageClient {
     public record Row(String category, List<Long> itemIds) {
     }
 
+    /**
+     * {@code /page} 응답(S2). {@code compose} 요청에만 서버가 {@code composition} · {@code fallback} 을 싣는다 —
+     * 없으면 둘 다 null 이다. 응답의 값은 지표의 태그가 되므로 파싱해 올린다.
+     */
+    public record Page(List<Row> rows, String composition, String fallback) {
+    }
+
     /** 세션 행동 하나(X5, #328). {@code action} 은 CLICK · VIEW, {@code at} 은 null 이면 서버가 요청일로 본다. */
     public record SessionEvent(long itemId, String action, Instant at) {
     }
@@ -65,7 +72,7 @@ public class GenPagePageClient {
 
     public List<Row> generate(List<Long> history, Collection<Long> exclude, Collection<String> excludeCategories,
                               int rows, int itemsPerRow) {
-        return generate(history, null, null, exclude, excludeCategories, rows, itemsPerRow);
+        return generateComposed(history, null, null, exclude, excludeCategories, rows, itemsPerRow, null, null).rows();
     }
 
     /**
@@ -77,20 +84,39 @@ public class GenPagePageClient {
      */
     public List<Row> generate(List<Long> history, List<SessionEvent> session, Instant now, Collection<Long> exclude,
                               Collection<String> excludeCategories, int rows, int itemsPerRow) {
+        return generateComposed(history, session, now, exclude, excludeCategories, rows, itemsPerRow, null, null).rows();
+    }
+
+    /**
+     * 결합 방식({@code compose} · {@code customer})을 실어 보내고 서버가 밝힌 {@code composition} · {@code fallback} 까지
+     * 돌려준다(S2, #455). 둘 다 null 이면 본문 · 응답이 위의 호출과 <b>완전히 같다</b> — {@code OFF} 의 회귀가 여기 걸린다.
+     *
+     * @param compose  {@code rule} · {@code hybrid}. null 이면 보내지 않는다
+     * @param customer 고객 키. 서버가 순위 점수 · 이력을 이 키로 찾는다. null 이면 보내지 않는다
+     */
+    public Page generateComposed(List<Long> history, List<SessionEvent> session, Instant now, Collection<Long> exclude,
+                                 Collection<String> excludeCategories, int rows, int itemsPerRow,
+                                 String compose, String customer) {
         Map<String, Object> body = new LinkedHashMap<>(Map.of("history", history, "exclude", exclude,
                 "exclude_categories", excludeCategories, "rows", rows, "items_per_row", itemsPerRow, "prefix", prefix));
         if (session != null) {
             body.put("session", session.stream().map(GenPagePageClient::wire).toList());
             body.put("now", now.toString());
         }
+        if (compose != null) {
+            body.put("compose", compose);
+        }
+        if (customer != null) {
+            body.put("customer", customer);
+        }
         if (capacity == null) {
-            return call(body);
+            return callPage(body);
         }
         if (!capacity.tryAcquire(0)) {
             throw new ModelBusyException("모델 자리가 없다 — 2쪽은 규칙 행으로 간다");
         }
         try {
-            return call(body);
+            return callPage(body);
         } finally {
             capacity.release();
         }
@@ -107,13 +133,13 @@ public class GenPagePageClient {
         return out;
     }
 
-    private List<Row> call(Map<String, Object> request) {
+    private Page callPage(Map<String, Object> request) {
         JsonNode body = client.post().uri("/page").contentType(MediaType.APPLICATION_JSON)
                 .body(ModelRequestBody.of(request))
                 .retrieve().body(JsonNode.class);
         List<Row> out = new ArrayList<>();
         if (body == null) {
-            return out;
+            return new Page(out, null, null);
         }
         if (body.path("violations").asInt(0) != 0) {
             // 서버가 스스로 센 규칙 위반. 0 이 아니면 마스크가 틀린 것이다 — 그 페이지를 쓰지 않는다
@@ -124,6 +150,12 @@ public class GenPagePageClient {
             row.path("items").forEach(n -> ids.add(n.asLong()));
             out.add(new Row(row.path("category").asText(), ids));
         }
-        return out;
+        // compose 요청에만 있는 필드. 없으면 null 이고, 지표의 태그가 none 이 된다.
+        return new Page(out, textOrNull(body, "composition"), textOrNull(body, "fallback"));
+    }
+
+    private static String textOrNull(JsonNode body, String field) {
+        JsonNode node = body.get(field);
+        return node == null || node.isNull() ? null : node.asText();
     }
 }

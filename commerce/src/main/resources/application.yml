@@ -676,6 +676,13 @@ app:
     #   RICH — history 에는 구매만, 조회 · 클릭은 session 에 {item, action, at} 으로, 요청 시각은 now 로 보낸다.
     #          page-history 규칙은 쓰지 않는다
     genpage-session: ${APP_RECOMMENDATION_GENPAGE_SESSION:OFF}
+    # 홈 2쪽 GenPage 요청의 **결합 방식**(S2, #455). 플래그가 OFF 가 아니면 요청에 compose · customer 를 싣는다.
+    #   OFF(기본) — 지금 그대로. 매핑을 읽지도, 요청 · 지표가 변하지도 않는다
+    #   RULE      — 서버의 규칙 줄 구성(B)
+    #   HYBRID    — 순위 점수 + GenPage 하이브리드(H'(λ))
+    # customer 는 personalization_user_map(V66)에서 찾는다. 매핑이 없으면 compose 를 보내지 않는다(표의 규칙
+    # "행이 있으면 매핑, 없으면 폴백"). 결과는 recommendation.genpage.compose{composition, fallback} 로 센다.
+    genpage-compose: ${APP_RECOMMENDATION_GENPAGE_COMPOSE:OFF}
     # 추천이 **무엇을 추천할 수 있는가** — 후보 집합의 원천(M7).
     #   CATALOG   — 실제 커머스 카탈로그(기본). 홈이 상품 카드를 그릴 수 있고, 제약 확인이 실제
     #               재고를 읽는다. **이것이 "제품 연결"이다** — 추천 id 가 products 에 있어야 한다

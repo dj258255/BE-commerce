@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.recommendation;
 
+import com.beomsu.becommerce.personalization.PersonalizationUserMapFacts;
 import com.beomsu.becommerce.personalization.RecentActivityFacts;
 import com.beomsu.becommerce.recommendation.internal.GenPagePageClient;
 import com.beomsu.becommerce.recommendation.internal.ItemPoolSource;
@@ -45,11 +46,17 @@ public class RecommendationFacts {
     private final Counter pageOk;
     private final Counter pageFailed;
     private final Counter pageBusy;
+    /** 결합 방식 지표를 만들 때 쓴다. 태그가 응답마다 달라 카운터를 호출 시점에 만든다. */
+    private final MeterRegistry registry;
     private final boolean pageSessionFirst;
     /** 저장소의 행동을 종류 · 시각과 함께 읽는다. {@code sessionRich} 일 때만 쓴다. */
     private final RecentActivityFacts recentActivity;
     private final boolean sessionRich;
     private final int contextLimit;
+    /** 홈 2쪽의 결합 방식(S2, #455). OFF 면 요청 · 지표가 지금과 같다. */
+    private final GenPageCompose composeMode;
+    /** {@code userId → hm_customer_id}. 매핑이 있는 회원만 {@code compose} 를 보낸다. */
+    private final PersonalizationUserMapFacts userMap;
 
     /** 홈 다음 쪽의 모델 입력(#270). 구매만 넣거나, 세션의 조회·클릭을 앞에 붙인다. */
     static final String PAGE_HISTORY_PURCHASES = "purchases";
@@ -63,6 +70,16 @@ public class RecommendationFacts {
         RICH
     }
 
+    /** 홈 2쪽 GenPage 요청의 결합 방식(S2, #455). */
+    enum GenPageCompose {
+        /** 지금 그대로 — 매핑을 읽지도, {@code compose} 를 보내지도 않는다 */
+        OFF,
+        /** 서버의 규칙 줄 구성(B) */
+        RULE,
+        /** 순위 점수 + GenPage 하이브리드(H'(λ)) */
+        HYBRID
+    }
+
     RecommendationFacts(RecommendationService service, ItemPoolSource pool,
                         ObjectProvider<GenPagePageClient> pageModel, MeterRegistry registry) {
         this(service, pool, pageModel, registry, PAGE_HISTORY_PURCHASES);
@@ -70,7 +87,16 @@ public class RecommendationFacts {
 
     RecommendationFacts(RecommendationService service, ItemPoolSource pool,
                         ObjectProvider<GenPagePageClient> pageModel, MeterRegistry registry, String pageHistory) {
-        this(service, pool, pageModel, registry, pageHistory, null, GenPageSession.OFF, 20);
+        this(service, pool, pageModel, registry, pageHistory, null, GenPageSession.OFF, 20,
+                GenPageCompose.OFF, null);
+    }
+
+    /** 테스트용(#328 의 X5): 결합 방식은 {@code OFF}, 매핑은 없다. */
+    RecommendationFacts(RecommendationService service, ItemPoolSource pool,
+                        ObjectProvider<GenPagePageClient> pageModel, MeterRegistry registry, String pageHistory,
+                        RecentActivityFacts recentActivity, GenPageSession genPageSession, int contextLimit) {
+        this(service, pool, pageModel, registry, pageHistory, recentActivity, genPageSession, contextLimit,
+                GenPageCompose.OFF, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -79,11 +105,16 @@ public class RecommendationFacts {
                         @Value("${app.recommendation.page-history:purchases}") String pageHistory,
                         RecentActivityFacts recentActivity,
                         @Value("${app.recommendation.genpage-session:OFF}") GenPageSession genPageSession,
-                        @Value("${app.recommendation.context-limit:20}") int contextLimit) {
+                        @Value("${app.recommendation.context-limit:20}") int contextLimit,
+                        @Value("${app.recommendation.genpage-compose:OFF}") GenPageCompose genPageCompose,
+                        PersonalizationUserMapFacts userMap) {
         this.pageSessionFirst = PAGE_HISTORY_SESSION_THEN_PURCHASES.equals(pageHistory);
         this.recentActivity = recentActivity;
         this.sessionRich = genPageSession == GenPageSession.RICH && recentActivity != null;
         this.contextLimit = contextLimit;
+        this.composeMode = genPageCompose;
+        this.userMap = userMap;
+        this.registry = registry;
         this.service = service;
         this.pool = pool;
         this.pageModel = pageModel.getIfAvailable();
@@ -114,6 +145,10 @@ public class RecommendationFacts {
      * 구매(설정에 따라 세션을 앞에 붙여)를, 아니면 세션을 넣는다. 모델이 꺼져 있으면 구매를 읽지 않는다.
      * {@code genpage-session=RICH} 면 이 규칙 대신 구매는 구매로, 세션은 종류 · 시각과 함께 따로 보낸다(X5, #328).
      *
+     * <p>{@code genpage-compose} 가 {@code OFF} 가 아니면(S2, #455) 이 회원의 {@code hm_customer_id} 를 찾아
+     * {@code compose} · {@code customer} 를 함께 보낸다. 매핑이 없으면 보내지 않고 그 사실을 지표로 남긴다 —
+     * 표의 규칙("행이 있으면 매핑, 없으면 폴백")을 그대로 따른다.
+     *
      * @param session 이 요청 시점의 최근 조회·클릭(최근 것부터)
      */
     public List<GeneratedRow> generatePageRows(long userId, List<Long> session, Collection<Long> exclude,
@@ -121,6 +156,14 @@ public class RecommendationFacts {
         if (pageModel == null) {
             return List.of();
         }
+        // OFF 면 매핑을 읽지 않는다 — 요청도 지표도 지금과 같아야 한다.
+        String compose = composeValue();
+        String customer = compose == null ? null : customerOf(userId);
+        if (compose != null && customer == null) {
+            // 매핑이 없으면 compose 를 보내지 않는다(지금 동작). 이유를 지표에 남긴다.
+            composeMetric("none", "no_mapping");
+        }
+        boolean composed = compose != null && customer != null;
         if (sessionRich) {
             // X5(#328): id 만 넘기면 서버가 클릭을 요청일의 구매로 읽는다. 저장소가 가진 종류 · 시각을 그대로 넘긴다
             List<Long> bought = service.purchaseHistoryForModel(userId);
@@ -128,10 +171,34 @@ public class RecommendationFacts {
             for (RecentActivityFacts.RecentActivity a : recentActivity.recentActivities(userId, contextLimit).reversed()) {
                 events.add(new GenPagePageClient.SessionEvent(a.itemId(), a.type(), a.occurredAt()));
             }
-            return generated(() -> pageModel.generate(bought == null ? List.of() : bought, events, Instant.now(),
+            List<Long> history = bought == null ? List.of() : bought;
+            if (composed) {
+                return generatedComposed(() -> pageModel.generateComposed(history, events, Instant.now(),
+                        exclude, excludeCategories, rows, itemsPerRow, compose, customer));
+            }
+            return generated(() -> pageModel.generate(history, events, Instant.now(),
                     exclude, excludeCategories, rows, itemsPerRow));
         }
-        return generatePageRows(pageHistory(userId, session), exclude, excludeCategories, rows, itemsPerRow);
+        List<Long> history = pageHistory(userId, session);
+        if (composed) {
+            return generatedComposed(() -> pageModel.generateComposed(history, null, null,
+                    exclude, excludeCategories, rows, itemsPerRow, compose, customer));
+        }
+        return generated(() -> pageModel.generate(history, exclude, excludeCategories, rows, itemsPerRow));
+    }
+
+    /** 설정된 결합 방식의 요청 값. {@code OFF} 면 null 이다 — 이 값이 있으면 매핑을 읽는다. */
+    String composeValue() {
+        return switch (composeMode) {
+            case OFF -> null;
+            case RULE -> "rule";
+            case HYBRID -> "hybrid";
+        };
+    }
+
+    /** 매핑 표에서 이 회원의 H&amp;M 고객 키를 찾는다. 매핑이 없거나 읽을 수 없으면 null 이다(폴백 경로). */
+    private String customerOf(long userId) {
+        return userMap == null ? null : userMap.hmCustomerId(userId).orElse(null);
     }
 
     /**
@@ -171,8 +238,7 @@ public class RecommendationFacts {
     /** 모델 호출 하나를 결과 · 실패 · 자리 없음으로 센다. 실패하면 빈 목록이다(홈은 규칙 행으로 물러선다). */
     private List<GeneratedRow> generated(Supplier<List<GenPagePageClient.Row>> call) {
         try {
-            List<GeneratedRow> out = call.get()
-                    .stream().map(r -> new GeneratedRow(r.category(), r.itemIds())).toList();
+            List<GeneratedRow> out = toRows(call.get());
             pageOk.increment();
             return out;
         } catch (ModelBusyException e) {
@@ -184,6 +250,46 @@ public class RecommendationFacts {
             log.warn("GenPage 행 생성 실패 → 규칙 행으로 물러선다: {}", e.toString());
             return List.of();
         }
+    }
+
+    /**
+     * {@code compose} 요청의 호출 하나를 세고, 서버가 밝힌 {@code composition} · {@code fallback} 을 지표 태그로 남긴다(S2).
+     * 응답이 없으면(자리 없음 · 실패) 둘 다 {@code none} 이다 — <b>시도했지만 결합 결과가 없다</b>는 뜻이다.
+     */
+    private List<GeneratedRow> generatedComposed(Supplier<GenPagePageClient.Page> call) {
+        try {
+            GenPagePageClient.Page page = call.get();
+            composeMetric(orNone(page.composition()), orNone(page.fallback()));
+            List<GeneratedRow> out = toRows(page.rows());
+            pageOk.increment();
+            return out;
+        } catch (ModelBusyException e) {
+            composeMetric("none", "none");
+            pageBusy.increment();
+            return List.of();
+        } catch (RuntimeException e) {
+            composeMetric("none", "none");
+            pageFailed.increment();
+            log.warn("GenPage 행 생성 실패 → 규칙 행으로 물러선다: {}", e.toString());
+            return List.of();
+        }
+    }
+
+    private static List<GeneratedRow> toRows(List<GenPagePageClient.Row> rows) {
+        return rows.stream().map(r -> new GeneratedRow(r.category(), r.itemIds())).toList();
+    }
+
+    /**
+     * 결합 결과를 센다. 태그가 응답 값이라 카운터를 호출 시점에 만든다 — 값의 가짓수는 composition 셋 ·
+     * fallback 넷으로 좁다(no_mapping · none · no_scores · exclude …).
+     */
+    private void composeMetric(String composition, String fallback) {
+        registry.counter("recommendation.genpage.compose",
+                "composition", composition, "fallback", fallback).increment();
+    }
+
+    private static String orNone(String value) {
+        return value == null || value.isBlank() ? "none" : value;
     }
 
     /**
