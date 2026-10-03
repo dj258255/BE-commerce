@@ -403,6 +403,17 @@ app:
       enabled: ${APP_OUTBOX_CLEANUP_ENABLED:false}
       interval-ms: 3600000
       retention-days: ${APP_OUTBOX_RETENTION_DAYS:7}
+    # 미완료 이벤트 상시 재제출(B3). 리스너 실패로 남은 미완료 발행은 지금 재기동 시점
+    # (republish-outstanding-events-on-restart)에만 재제출된다 — 이 스케줄러가 떠 있는 동안 주기적으로
+    # 다시 제출한다. 기본 off(게이트 관례): enabled=true 일 때만 스케줄러 빈과 @EnableScheduling 짝이 함께 뜬다.
+    resubmit:
+      enabled: ${APP_OUTBOX_RESUBMIT_ENABLED:false}
+      interval-ms: 60000
+      # 이 나이보다 어린 미완료는 건드리지 않는다 — 방금 발행돼 리스너가 처리 중일 수 있는 건을 다시 쏘지 않기 위해.
+      min-age: PT5M
+      # 한 틱에 재제출하는 건수 상한. 리스너가 계속 실패하는 이벤트가 매 틱 끝없이 다시 도는 것을 묶는다.
+      # 포기(dead-letter) 개념이 없어, 이 값과 min-age 가 결국 재시도 비용을 정한다(작을수록 폭주는 줄고 회복은 느리다).
+      max-per-tick: 100
   # 멱등키(idempotency_keys) 정리 스케줄러 → 무한 성장 방지. TTL은 15일(토스페이먼츠 정합)로 그대로 두고,
   # 유효기간 지난 레코드만 주기 삭제해 15일치로 크기 유지. 기본 1시간 주기.
   idempotency:
