@@ -1,0 +1,4 @@
+# 결과 JSON 중복을 뺐다. 시간 · 메모리 · 학습 손실 줄만 남겼다
+     1773.58 real       594.51 user       596.65 sys
+          1938128896  maximum resident set size
+          9395571544  peak memory footprint
