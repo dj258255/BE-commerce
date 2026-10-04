@@ -71,8 +71,8 @@ class CancelServiceTest {
         verify(paymentService).cancelByOrderNo(order.getOrderNo(), Money.krw(14_000), "고객변심");
         verify(stockDeductionService).restore(100L, 2); // 전액취소 재고 복원
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELED);
-        // 전액취소 상태 전이가 명시 saveAndFlush로 영속된다(OSIV off에서 dirty-checking 자동 flush에 의존하지 않음).
-        verify(orderRepository).saveAndFlush(order);
+        // 환불 전 직렬화용 버전 증가 flush(1) + 전액취소 상태 전이 flush(2) — 둘 다 명시 영속한다.
+        verify(orderRepository, times(2)).saveAndFlush(order);
         assertThat(result.fullyCanceled()).isTrue();
         assertThat(result.refundedPoint()).isEqualTo(6_000);
         assertThat(result.refundedCard()).isEqualTo(14_000);
@@ -126,7 +126,7 @@ class CancelServiceTest {
         verify(paymentService, never()).cancelByOrderNo(anyString(), any(Money.class), anyString());
         verify(stockDeductionService).restore(100L, 2);
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELED);
-        verify(orderRepository).saveAndFlush(order); // 전액취소 상태 전이 명시 영속
+        verify(orderRepository, times(2)).saveAndFlush(order); // 버전 증가 flush + 전액취소 상태 전이 flush
         assertThat(result.fullyCanceled()).isTrue();
         assertThat(result.refundedCard()).isZero();
     }
@@ -143,7 +143,10 @@ class CancelServiceTest {
         verify(pointService).refund(1L, 5_000, order.getOrderNo());     // 포인트 잔액 내라 전액 포인트로
         verify(paymentService, never()).cancelByOrderNo(anyString(), any(Money.class), anyString());
         verify(stockDeductionService, never()).restore(anyLong(), anyInt()); // 부분취소 재고 복원 안 함
-        verify(orderRepository, never()).save(any(Order.class)); // 부분취소는 상태 전이가 없어 저장도 없음
+        // 부분취소는 상태 전이는 없지만, 동시 부분취소를 Order @Version 으로 직렬화하려고 버전을 올려
+        // saveAndFlush 한다(이중 환불 방지) — save 는 쓰지 않는다.
+        verify(orderRepository).saveAndFlush(order);
+        verify(orderRepository, never()).save(any(Order.class));
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);      // 주문 PAID 유지
         assertThat(result.fullyCanceled()).isFalse();
         assertThat(result.refundedPoint()).isEqualTo(5_000);

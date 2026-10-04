@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.order.recovery;
 
+import com.beomsu.becommerce.order.catalog.StockReservationService;
 import org.springframework.data.domain.Pageable;
 
 import com.beomsu.becommerce.order.internal.OrderStatus;
@@ -15,19 +16,23 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class OrderExpiryServiceTest {
 
     private OrderRepository orderRepository;
+    private StockReservationService stockReservationService;
     private OrderExpiryService service;
 
     @BeforeEach
     void setUp() {
         orderRepository = mock(OrderRepository.class);
-        service = new OrderExpiryService(orderRepository,
-                org.mockito.Mockito.mock(com.beomsu.becommerce.order.catalog.StockReservationService.class));
+        stockReservationService = mock(StockReservationService.class);
+        // 만료 한 건의 트랜잭션 경계 빈을 실제로 조립해 넣는다 — 스캔과 건별 처리를 함께 검증한다.
+        OrderExpiryTx expiryTx = new OrderExpiryTx(orderRepository, stockReservationService);
+        service = new OrderExpiryService(orderRepository, expiryTx);
     }
 
     /** PENDING_PAYMENT 상태의 실제 주문 하나. */
@@ -59,6 +64,7 @@ class OrderExpiryServiceTest {
         Order ok = pendingOrder();
         Order bad = mock(Order.class);
         when(bad.getOrderNo()).thenReturn("ord-bad");
+        when(bad.getStatus()).thenReturn(OrderStatus.PENDING_PAYMENT);
         doThrow(new IllegalStateException("전이 불가")).when(bad).markExpired();
         when(orderRepository.findByStatusAndExpiresAtBefore(eq(OrderStatus.PENDING_PAYMENT), any(Instant.class), any(Pageable.class)))
                 .thenReturn(List.of(bad, ok));
@@ -79,5 +85,6 @@ class OrderExpiryServiceTest {
 
         assertThat(service.expireOverdue(Instant.now())).isZero();
         verify(orderRepository, never()).saveAndFlush(any());
+        verify(stockReservationService, never()).release(anyString(), anyString());
     }
 }
