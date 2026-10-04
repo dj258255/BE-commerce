@@ -79,7 +79,7 @@ tests:
               severity: warning
               domain: payment
             exp_annotations:
-              description: "5분 넘게 소비되지 않은 이벤트가 있습니다. 비동기 실행기 스레드 고갈, 리스너 예외 반복, DB 잠금을 확인하세요. 재기동 시에는 republish-outstanding-events-on-restart로 재발행됩니다."
+              description: "5분 넘게 소비되지 않은 이벤트가 있습니다. 비동기 실행기 스레드 고갈, 리스너 예외 반복, DB 잠금을 확인하세요. 미완료는 재기동 시 republish-outstanding-events-on-restart로, 떠 있는 동안에는 재제출 스케줄러(app.outbox.resubmit.enabled)로 재발행됩니다. 이 알림이 계속 발화한다면 원인을 못 고치는 독약 이벤트를 의심하세요(OutboxResubmittedRepeatedly 참고)."
               summary: "아웃박스 소비 정체 (최고령 1200초)"
       - eval_time: 30m
         alertname: OptimisticLockRetryRising
