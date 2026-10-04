@@ -8,6 +8,7 @@ import org.springframework.boot.convert.ApplicationConversionService;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.modulith.events.EventPublication;
 import org.springframework.modulith.events.IncompleteEventPublications;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -97,6 +98,35 @@ class OutboxResubmitSchedulerTest {
 
         assertThat(incomplete.resubmitted).hasSize(2);
         assertThat(registry.counter("outbox.resubmitted").count()).isEqualTo(2.0);
+    }
+
+    @Test
+    @DisplayName("(e) 독약이 선두를 막아도 쿨다운이 슬롯을 뒤 건에 넘긴다 — 쿨다운이 지나면 독약이 다시 뽑힌다")
+    void cooldownLetsLaterItemsThrough() throws InterruptedException {
+        RecordingIncomplete incomplete = new RecordingIncomplete();
+        EventPublication poison1 = aged();
+        EventPublication poison2 = aged();
+        EventPublication normal = aged();
+        incomplete.publications.addAll(List.of(poison1, poison2, normal));
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        OutboxResubmitScheduler scheduler =
+                new OutboxResubmitScheduler(incomplete, registry, Duration.ofMinutes(5), 2);
+        ReflectionTestUtils.setField(scheduler, "cooldown", Duration.ofMillis(100));
+
+        // 1틱: 상한 2 를 선두의 독약 둘이 소모한다(뒤 정상 건은 차례가 없다).
+        scheduler.run();
+        assertThat(incomplete.resubmitted).containsExactly(poison1, poison2);
+
+        // 2틱: 독약은 쿨다운이라 슬롯을 비우고, 그 슬롯이 뒤의 정상 건에게 간다.
+        incomplete.resubmitted.clear();
+        scheduler.run();
+        assertThat(incomplete.resubmitted).containsExactly(normal);
+
+        // 쿨다운이 지나면 독약이 다시 뽑힌다 — 공정성 장치지 포기 장치가 아니다.
+        incomplete.resubmitted.clear();
+        Thread.sleep(150);
+        scheduler.run();
+        assertThat(incomplete.resubmitted).containsExactly(poison1, poison2);
     }
 
     /** @Value String→Duration 변환은 부트가 등록하는 ConversionService 가 필요하다 — 러너에도 같은 것을 붙인다. */
