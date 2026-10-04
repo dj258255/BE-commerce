@@ -7,6 +7,7 @@ import unittest
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -17,10 +18,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from genpage2 import config
-from genpage2.simulate import (HttpSource, PageRequest, PriceIndex, ReactionModel, SimUser, _page_prefix,
-                               build_eval_users, load_attributes, persona_of, rule_policy_class, simulate)
+from genpage2.simulate import (GeneratedRow, HttpSource, Impression, PageRequest, PriceIndex, ReactionModel,
+                               SimUser, _page_prefix, build_eval_users, load_attributes, persona_of,
+                               rule_policy_class, simulate)
 from genpage2.vocab import Vocab, _article_id, content_rows
-from tools.v2_virtual_ab import arm_of, bootstrap_ci, notation
+from tools.v2_virtual_ab import (METRICS, RecordingSource, arm_of, bootstrap_ci, min_items_hit, notation,
+                                 paired_bootstrap_ci, paired_kept, paired_metrics, run_paired_arms)
 
 
 def _frame(rows):
@@ -367,6 +370,143 @@ class HttpSourceSimulateTest(unittest.TestCase):
 
     def test_v2_second_page_skips_the_first_page_items(self):
         self._check("v2")
+
+
+class PairedBootstrapTest(unittest.TestCase):
+    """짝 부트스트랩 — 같은 정책 둘이면 차이 0 · 구간 [0, 0]. """
+
+    def test_identical_arms_have_zero_difference_and_interval(self):
+        values = [0.0, 1.0, 0.0, 0.25, 0.75]
+        result = paired_bootstrap_ci(values, values, 2000, np.random.default_rng(7))
+        self.assertEqual(result["diff"], 0.0)
+        self.assertEqual(result["ci95"], [0.0, 0.0])
+
+    def test_constant_difference_is_exact(self):
+        result = paired_bootstrap_ci([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], 100, np.random.default_rng(7))
+        self.assertAlmostEqual(result["diff"], 1.0)
+        self.assertEqual(result["ci95"], [1.0, 1.0])
+
+    def test_length_mismatch_raises(self):
+        with self.assertRaises(ValueError):
+            paired_bootstrap_ci([0.0], [0.0, 1.0], 10, np.random.default_rng(7))
+
+
+def _response(items=(1, 2, 3)):
+    return {"rows": [{"row": "ROW_S1", "category": "S1", "title": "S1", "items": list(items)}],
+            "violations": 0}
+
+
+class PairedRunTest(unittest.TestCase):
+    """짝 모드가 모든 사용자에게 A · B 두 정책을 돌린다(가짜 서버)."""
+
+    def setUp(self):
+        self.articles = _articles()
+        self.vocab = _vocab(self.articles)
+        self.attributes = load_attributes(self.articles)
+        self.content = content_rows(self.articles)
+        self.prices = PriceIndex(self.vocab)
+        self.sections = {"0000000001": 1.0, "0000000002": 1.0, "0000000003": 5.0, "0000000004": 5.0}
+
+    def _users(self):
+        return [SimUser(f"c{index}", pd.Timestamp("2020-09-16"), [self.vocab.id("SEP_PAGE")], [-1], [],
+                        [f"000000000{index}"], "mobile",
+                        persona_of(f"c{index}", [f"000000000{index}"], self.attributes))
+                for index in (1, 2, 3)]
+
+    def _pair(self, compose_a, compose_b, response_a=None, response_b=None):
+        users = self._users()
+        server_a = _StubServer(response_a or _response())
+        server_b = _StubServer(response_b or _response())
+        try:
+            a = RecordingSource(HttpSource(server_a.url, "v2", self.vocab, self.sections, compose=compose_a))
+            b = RecordingSource(HttpSource(server_b.url, "v2", self.vocab, self.sections, compose=compose_b))
+            pages_a, pages_b = run_paired_arms(users, a, b, vocab=self.vocab, attributes=self.attributes,
+                                               content_map=self.content, prices=self.prices, chunk=2)
+        finally:
+            server_a.stop(), server_b.stop()
+        return users, a, b, pages_a, pages_b, server_a, server_b
+
+    def test_both_policies_run_for_every_user(self):
+        users, _a, _b, pages_a, pages_b, server_a, server_b = self._pair("rule", "hybrid")
+        wanted = sorted(user.customer_id for user in users)
+        self.assertEqual(sorted({page.customer_id for page in pages_a}), wanted)
+        self.assertEqual(sorted({page.customer_id for page in pages_b}), wanted)
+        # 각 정책이 사용자마다 최소 한 번(1쪽) 요청을 받았고, 보낸 compose · customer 가 맞다.
+        self.assertGreaterEqual(len(server_a.requests), len(users))
+        self.assertGreaterEqual(len(server_b.requests), len(users))
+        self.assertEqual(server_a.requests[0][3]["compose"], "rule")
+        self.assertEqual(server_b.requests[0][3]["compose"], "hybrid")
+        self.assertEqual(server_a.requests[0][3]["customer"], "c1")
+
+    def test_same_policy_yields_zero_difference_and_interval(self):
+        users, _a, _b, pages_a, pages_b, _sa, _sb = self._pair("rule", "rule")
+        metrics, _frame = paired_metrics(users, pages_a, pages_b, draws=2000, seed=7)
+        for name in list(METRICS) + ["purchase_hit_min_items"]:
+            self.assertEqual(metrics[name]["diff"], 0.0)
+            self.assertEqual(metrics[name]["ci95"], [0.0, 0.0])
+
+
+class MinItemsTest(unittest.TestCase):
+    """앱의 min-items 필터가 상품 3개 미만 행만 버린다."""
+
+    def _impression(self, article, row_rank):
+        return Impression("c1", pd.Timestamp("2020-09-16"), 1, row_rank, 1, 0, article, 1, "skip", 0.0, "mobile")
+
+    def setUp(self):
+        # 0행: 1개(짧은 행) · 1행: 3개.
+        self.pages = [SimpleNamespace(impressions=[self._impression("0000000001", 0),
+                                                   self._impression("0000000002", 1),
+                                                   self._impression("0000000003", 1),
+                                                   self._impression("0000000004", 1)])]
+
+    def test_only_short_rows_are_dropped(self):
+        self.assertEqual(min_items_hit(self.pages, ["0000000001"], 3), 0.0)   # 짧은 행에만 있다
+        self.assertEqual(min_items_hit(self.pages, ["0000000002"], 3), 1.0)   # 3개 행에 있다
+        self.assertEqual(min_items_hit(self.pages, ["0000000001"], 2), 0.0)   # 기준 2 도 버린다
+        self.assertEqual(min_items_hit(self.pages, ["0000000001"], 1), 1.0)   # 안 버리면 있다
+
+
+class _FailingSource:
+    """정해진 고객의 요청에서 예외를 올리는 PageSource(실패 집계 확인용)."""
+
+    name = "failing"
+
+    def __init__(self, fails):
+        self.fails = set(fails)
+        self.seen = []
+
+    def pages(self, examples):
+        result = []
+        for example in examples:
+            self.seen.append(str(example.customer_id))
+            if str(example.customer_id) in self.fails:
+                raise RuntimeError("boom")
+            result.append([GeneratedRow(1, ["0000000001", "0000000002", "0000000003"])])
+        return result
+
+
+class PairedFailureTest(unittest.TestCase):
+    """실패한 사용자는 두 정책 모두에서 빠진다(짝 유지)."""
+
+    def test_failed_user_is_dropped_from_both_policies(self):
+        articles = _articles()
+        vocab = _vocab(articles)
+        attributes = load_attributes(articles)
+        content = content_rows(articles)
+        users = [SimUser(f"c{index}", pd.Timestamp("2020-09-16"), [vocab.id("SEP_PAGE")], [-1], [],
+                         ["0000000001"], "mobile", persona_of(f"c{index}", ["0000000001"], attributes))
+                 for index in (1, 2, 3)]
+        a = RecordingSource(_FailingSource({"c2"}))
+        b = RecordingSource(_FailingSource(set()))
+        run_paired_arms(users, a, b, vocab=vocab, attributes=attributes, content_map=content,
+                        prices=PriceIndex(vocab), chunk=2)
+        kept, failed = paired_kept(users, a, b)
+        self.assertEqual(failed, {"c2"})
+        self.assertEqual([user.customer_id for user in kept], ["c1", "c3"])
+        self.assertEqual(len(a.failed), 1)          # 실패는 세어 둔다
+        self.assertEqual(len(b.failed), 0)
+        metrics, _frame = paired_metrics(kept, [], [], draws=10, seed=7)
+        self.assertIsNotNone(metrics["purchase_hit"]["diff"])
 
 
 if __name__ == "__main__":
