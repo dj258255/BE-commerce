@@ -1,0 +1,20 @@
+# 결과 JSON 중복을 뺐다. 시간 · 메모리 · 학습 손실 줄만 남겼다
+  "epochs": 5,
+      "epoch": 1,
+      "train_loss": 2.436731884876387,
+      "val_loss": 2.42928931425102
+      "epoch": 2,
+      "train_loss": 2.430029307676235,
+      "val_loss": 2.426934402844946
+      "epoch": 3,
+      "train_loss": 2.4285815431291122,
+      "val_loss": 2.425288534782764
+      "epoch": 4,
+      "train_loss": 2.42773425331206,
+      "val_loss": 2.4251475090001438
+      "epoch": 5,
+      "train_loss": 2.4271446159505357,
+      "val_loss": 2.4256970746840367
+      336.89 real       154.57 user        27.31 sys
+          9317974016  maximum resident set size
+          7496735968  peak memory footprint

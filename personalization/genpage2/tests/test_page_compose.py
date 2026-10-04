@@ -16,8 +16,9 @@ from genpage2.merge_eval import _collect_pages
 from genpage2.model import GenPageV2, ModelConfig
 from genpage2.page_compose import (_row_groups, build_pages, compose_b, g_full_inputs, g_row_inputs,
                                    g_row_thin_inputs, h_inputs, h_thin_inputs, read_scores,
-                                   row_score_sums, run)
+                                   row_score_sums, run, t3_row_features)
 from genpage2.ranker import write_scores
+from genpage2.row_side import RowHead
 
 _TOKENS = (["ROW_REPEAT", "ROW_S1", "ROW_S2"]
            + [f"ITEM_{letter}" for letter in "ABCDEFGHIJKLMNOP"])
@@ -215,6 +216,45 @@ class ThinInputsTest(unittest.TestCase):
         self.assertEqual(row_bias, {1: 0.0})
 
 
+class T3RowFeaturesTest(unittest.TestCase):
+    """STATUS T3 의 행 특징 6개를 손으로 검산한다."""
+
+    def setUp(self):
+        self.vocab = FakeVocab()
+
+    def test_hand_calculated_features_and_standardization(self):
+        # row1(A..H) 점수 합 6, row2(I..P) 합 8 → 평균 7, 표준편차 1.
+        scored = [("A", 3.0), ("B", 2.0), ("C", 1.0)] + [(letter, 0.0) for letter in "DEFGH"]
+        scored += [(letter, 1.0) for letter in "IJKLMNOP"]
+        allowed_items, row_items, allowed_rows, features = t3_row_features(scored, [], self.vocab)
+        self.assertEqual(allowed_rows, {1, 2})
+        self.assertEqual(row_items[1], ["A", "B", "C", "D", "E", "F", "G", "H"])
+        # [표준화 합, 표준화 최댓값, 표준화 평균, 상위 200개 상품 수, 다시 사기 행, 순위]
+        self.assertEqual(features[1], [-1.0, 1.0, -1.0, 8.0, 0.0, 1.0])
+        self.assertEqual(features[2], [1.0, -1.0, 1.0, 8.0, 0.0, 0.0])
+        self.assertEqual(allowed_items, set("ABCDEFGHIJKLMNOP"))
+
+    def test_single_allowed_row_standardizes_to_zero(self):
+        scored = [("A", 0.9), ("B", 0.8), ("C", 0.7)]
+        _allowed_items, _row_items, allowed_rows, features = t3_row_features(scored, [], self.vocab)
+        self.assertEqual(allowed_rows, {1})
+        self.assertEqual(features[1][:3], [0.0, 0.0, 0.0])
+        self.assertEqual(features[1][3], 3.0)
+        self.assertEqual(features[1][4], 0.0)
+        self.assertEqual(features[1][5], 0.0)
+
+    def test_repeat_row_flag_and_rank(self):
+        # 이력의 A 는 다시 사기 행으로 가고, 그 행이 점수 합이 가장 크다.
+        scored = [("A", 9.0), ("B", 0.8), ("C", 0.7)]
+        scored += [(letter, 0.1) for letter in "IJKLMNOP"]
+        _allowed_items, _row_items, allowed_rows, features = t3_row_features(scored, ["A"], self.vocab)
+        repeat = self.vocab.id("ROW_REPEAT")
+        self.assertIn(repeat, allowed_rows)
+        self.assertEqual(features[repeat][4], 1.0)
+        self.assertEqual(features[repeat][5], 0.0)  # 점수 합 9 가 가장 커 순위 0
+        self.assertEqual(features[2][4], 0.0)
+
+
 _SMALL_TOKENS = (["PAD", "SEP_HISTORY", "SEP_PAGE", "ROW_REPEAT", "ROW_A", "ROW_B"]
                  + [f"ITEM_{letter}" for letter in "ABCDEFGHIJKLMNOP"])
 
@@ -336,6 +376,52 @@ class ThinPageTest(unittest.TestCase):
             thin = pages[customer]
             self.assertEqual([row.row_token for row in thin], [row.row_token for row in b_rows])
             self.assertEqual([row.items for row in thin], [row.items for row in b_rows])
+
+
+class T3PageTest(unittest.TestCase):
+    """실제 GenPageV2 로 T3 페이지가 G-row-thin 과 배치/단일에서 같게 나오는지 본다."""
+
+    def setUp(self):
+        self.vocab = DecodeVocab()
+        cfg = ModelConfig(vocab_size=len(self.vocab.tokens), dim=8, layers=1, heads=2,
+                          ffn=16, dropout=0.0, maxlen=64, content_dim=384)
+        torch.manual_seed(37)
+        model = GenPageV2(cfg, torch.zeros((16, 384)), tokens=self.vocab.tokens).eval()
+        content_rows = {letter: index for index, letter in enumerate("ABCDEFGHIJKLMNOP")}
+        self.decoder = PageDecoder(model, self.vocab, content_rows, "cpu")
+        self.meta = pd.DataFrame({"customer_id": ["c1", "c2"], "history": [[], ["A"]]})
+        self.archive = {"ctx_tokens": np.array([1, 2, 1, 2]),
+                        "ctx_content": np.array([-1, -1, -1, -1]),
+                        "ctx_offsets": np.array([0, 2, 4])}
+        self.scored = [("A", 0.9), ("B", 0.8), ("C", 0.7)]
+        self.scored += [(letter, 0.1) for letter in "IJKLMNOP"]
+
+    def _zero_head(self):
+        head = RowHead()
+        for parameter in head.parameters():
+            parameter.data.zero_()
+        return head
+
+    def test_t3_with_zero_head_matches_g_row_thin(self):
+        pages_t3, violations_t3 = build_pages("T3", self.meta, self.archive, {"c1": self.scored, "c2": self.scored},
+                                              vocab=self.vocab, decoder=self.decoder, head=self._zero_head())
+        pages_thin, violations_thin = build_pages("G-row-thin", self.meta, self.archive,
+                                                  {"c1": self.scored, "c2": self.scored},
+                                                  vocab=self.vocab, decoder=self.decoder)
+        self.assertEqual(pages_t3, pages_thin)
+        self.assertEqual(violations_t3, violations_thin)
+
+    def test_t3_batch_equals_single(self):
+        torch.manual_seed(41)
+        head = RowHead()
+        head.net[0].weight.data.normal_(0, 0.5)
+        head.net[2].weight.data.normal_(0, 0.5)
+        batched, _ = build_pages("T3", self.meta, self.archive, {"c1": self.scored, "c2": self.scored},
+                                 vocab=self.vocab, decoder=self.decoder, head=head, batch=2)
+        single, _ = build_pages("T3", self.meta, self.archive, {"c1": self.scored, "c2": self.scored},
+                                vocab=self.vocab, decoder=self.decoder, head=head, batch=1)
+        self.assertEqual(batched, single)
+        self.assertTrue(batched["c1"])
 
 
 class BuildPagesTest(unittest.TestCase):

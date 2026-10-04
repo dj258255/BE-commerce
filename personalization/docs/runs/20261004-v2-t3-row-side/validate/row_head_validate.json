@@ -1,0 +1,41 @@
+{
+  "mode": "validate",
+  "ckpt": "personalization/data/hm/model/genpage2/validate/ckpt/b-base-full",
+  "scores": "personalization/docs/runs/20261004-v2-t3-row-side/validate/train/r/scores.json.gz",
+  "device": "mps",
+  "customers": 70356,
+  "supervised_steps": 132442,
+  "features": 6,
+  "hidden": 16,
+  "epochs": 5,
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 2.436731884876387,
+      "val_loss": 2.42928931425102
+    },
+    {
+      "epoch": 2,
+      "train_loss": 2.430029307676235,
+      "val_loss": 2.426934402844946
+    },
+    {
+      "epoch": 3,
+      "train_loss": 2.4285815431291122,
+      "val_loss": 2.425288534782764
+    },
+    {
+      "epoch": 4,
+      "train_loss": 2.42773425331206,
+      "val_loss": 2.4251475090001438
+    },
+    {
+      "epoch": 5,
+      "train_loss": 2.4271446159505357,
+      "val_loss": 2.4256970746840367
+    }
+  ],
+  "elapsed_seconds": 333.24288095900556,
+  "peak_memory_mb": 8886.31,
+  "head": "personalization/docs/runs/20261004-v2-t3-row-side/validate/train/head.pt"
+}

@@ -1,0 +1,73 @@
+{
+  "mode": "validate",
+  "ckpt": "personalization/data/hm/model/genpage2/validate/ckpt/b-base-full",
+  "args": {
+    "mode": "validate",
+    "limit": 10000,
+    "scores": "personalization/data/hm/runs-archive/20260929-v2-d3-page/validate/scores.json.gz",
+    "variant": "T3",
+    "ckpt": "personalization/data/hm/model/genpage2/validate/ckpt/b-base-full",
+    "row_head": "personalization/docs/runs/20261004-v2-t3-row-side/validate/train/head.pt",
+    "batch": 256,
+    "device": "auto",
+    "data_dir": null,
+    "out": "personalization/docs/runs/20261004-v2-t3-row-side/validate/merged-T3.json"
+  },
+  "elapsed_seconds": 3537.724825082987,
+  "results": {
+    "repeat_last": {
+      "map_at_12": 0.023456881230101468,
+      "map_at_12_has_vocab_history": 0.025257759481104196,
+      "page_recall": 0.039963099662777335,
+      "new_item_recall": 0.0,
+      "repeat_item_recall": 0.07243440476190476,
+      "row_recall": 0.0,
+      "page_ndcg": 0.030748603705377697,
+      "row_hit": 0.0746,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 10.0526,
+      "ms_per_page": null,
+      "customers": 10000,
+      "device": "cpu"
+    },
+    "popular_last_week": {
+      "map_at_12": 0.005989454395402176,
+      "map_at_12_has_vocab_history": 0.005982405749452282,
+      "page_recall": 0.019291943314238873,
+      "new_item_recall": 0.018174407760399584,
+      "repeat_item_recall": 0.0034166666666666664,
+      "row_recall": 0.0,
+      "page_ndcg": 0.011154293607465076,
+      "row_hit": 0.0546,
+      "diversity": 0.0,
+      "violations": 0,
+      "rows_mean": 0.0,
+      "items_mean": 12.0,
+      "ms_per_page": null,
+      "customers": 10000,
+      "device": "cpu"
+    },
+    "model": {
+      "map_at_12": 0.016490166204666746,
+      "map_at_12_has_vocab_history": 0.0174211970002078,
+      "page_recall": 0.0765433912786288,
+      "new_item_recall": 0.05751778684929651,
+      "repeat_item_recall": 0.03612964285714286,
+      "row_recall": 0.5649351184110705,
+      "page_ndcg": 0.03861529458958843,
+      "row_hit": 0.03191666666666666,
+      "diversity": 0.14831566320583225,
+      "violations": 0,
+      "rows_mean": 6.0,
+      "items_mean": 43.8315,
+      "ms_per_page": 353.15790294589823,
+      "customers": 10000,
+      "device": "mps"
+    }
+  },
+  "options": {
+    "compose": "T3"
+  }
+}

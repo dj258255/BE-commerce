@@ -13,7 +13,7 @@ from genpage2 import ranker
 from genpage2.evaluate import _candidates_for
 from genpage2.ranker import (FEATURE_NAMES, RANKER_CONFIGS, SOURCE_NAMES, Transactions, _copurchase_counts,
                              _day_number, build_features, build_ranker_candidates, build_training_week,
-                             candidate_pool, run_ranker)
+                             candidate_pool, parse_train_weeks, run_ranker, training_weeks)
 
 REQUEST = pd.Timestamp("2020-09-09")
 
@@ -311,6 +311,34 @@ class EvaluateRankerCandidatesTest(unittest.TestCase):
         self.assertIsNone(_candidates_for(self.meta, tx, REQUEST, vocab=self.vocab, content=self.content,
                                           content_rows=self.content_rows, candidate_config=None,
                                           similar_config=None))
+
+
+class LeakFreeWeeksTest(unittest.TestCase):
+    """누설 방지: r − 7(채점 주)이 학습 · 검증 어느 쪽에도 없다."""
+
+    def test_default_train_weeks_match_d2(self):
+        self.assertEqual(parse_train_weeks(None), (7, 14, 21))
+
+    def test_leakfree_train_weeks_exclude_the_scored_week(self):
+        self.assertEqual(parse_train_weeks("14,21"), (14, 21))
+        request = pd.Timestamp("2020-09-09")
+        weeks = training_weeks(request, parse_train_weeks("14,21"))
+        # 가장 가까운 주(r − 14)가 검증, 나머지(r − 21)가 학습 주다(train_ranker 구조).
+        validation, train_only = weeks[0], weeks[1:]
+        self.assertEqual(validation, pd.Timestamp("2020-08-26"))
+        self.assertEqual(train_only, [pd.Timestamp("2020-08-19")])
+        scored_week = request - pd.Timedelta(days=7)
+        self.assertNotIn(scored_week, weeks)
+        self.assertNotEqual(validation, scored_week)
+        self.assertNotIn(scored_week, train_only)
+
+    def test_train_weeks_are_sorted_closest_first(self):
+        # 순서를 뒤집어 줘도 가장 가까운 주가 검증이 되도록 정렬한다.
+        self.assertEqual(parse_train_weeks("21,14"), (14, 21))
+        with self.assertRaises(ValueError):
+            parse_train_weeks("0,14")
+        with self.assertRaises(ValueError):
+            parse_train_weeks("")
 
 
 class CopurchaseUnitTest(unittest.TestCase):
