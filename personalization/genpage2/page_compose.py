@@ -17,6 +17,9 @@ H · G-row-thin · H-thin 을 그대로 구현한다. 공통 조건은 상품(�
   행으로 넓히고 행 안을 그 행의 점수 순 최대 8개로 못박는다(모델이 채우지 않는다).
   그래서 8개 미만인 행도 B 처럼 짧은 행으로 나온다
 - ``H-thin``(= H'): G-row-thin 과 같되, 행 로그 확률에 λ × z 를 더한다(D4 와 같은 z)
+- ``T3``: G-row-thin 과 같되, 행 로그 확률에 순위 통계로 학습한 머리(6 → 16 → 1)의 출력을
+  더한다(``--row-head``). λ 는 두지 않는다. ``t3_row_features`` 가 STATUS T3 의 행 특징
+  6개를 만들고, 학습은 :mod:`genpage2.row_side` 가 한다
 
 출력은 :mod:`genpage2.evaluate` 조각과 같은 모양(``mode`` · ``ckpt`` · ``args`` ·
 ``device`` · ``shard`` · ``pages[].rows[].items``)이라 :mod:`genpage2.merge_eval` 과
@@ -42,7 +45,7 @@ from .evaluate import (_as_articles, _context_at, _load_decoder, _load_examples,
 TOP = 200
 ROWS = MAX_ROWS
 ITEMS = ITEMS_PER_ROW
-VARIANTS = ("B", "G-row", "G-full", "H", "G-row-thin", "H-thin")
+VARIANTS = ("B", "G-row", "G-full", "H", "G-row-thin", "H-thin", "T3")
 # 행 후보 자격의 최소 상품 수. D3 · D4 는 8개 미만 행을 막았지만 D5 는 B 처럼
 # 상품이 1개 이상이면 받는다.
 MIN_ROW_ITEMS = 1
@@ -240,6 +243,55 @@ def h_thin_example(ctx_tokens: list[int], ctx_content: list[int], scored: list[t
             "allowed_rows": allowed_rows, "row_bias": row_bias, "allowed_items": allowed_items}
 
 
+def _standardized(values: list[float]) -> list[float]:
+    """모집단 평균 0 · 표준편차 1 로 표준화한다. 하나거나 표준편차가 0 이면 0."""
+    if len(values) < 2:
+        return [0.0] * len(values)
+    mean = sum(values) / len(values)
+    variance = sum((value - mean) ** 2 for value in values) / len(values)
+    if variance <= 0:
+        return [0.0] * len(values)
+    std = variance ** 0.5
+    return [(value - mean) / std for value in values]
+
+
+def t3_row_features(scored: list[tuple[str, float]], history: list[str], vocab: Any, *,
+                    items: int = ITEMS, top: int = TOP
+                    ) -> tuple[set[str], dict[int, list[str]], set[int], dict[int, list[float]]]:
+    """STATUS T3 의 행 특징 6개를 허용 행마다 만든다(허용 행은 thin 규칙 = B 와 같다).
+
+    반환은 ``(allowed_items, row_items, allowed_rows, features)`` 이고 ``features[row]`` 는
+    여섯 값이다: [그 행 상위 ``items`` 개 R 점수의 합, 최댓값, 평균, 그 행에 든 상위
+    ``top`` 개 상품 수, 다시 사기 행 여부, 고객 허용 행 안에서 행 점수 합의 순위].
+    앞 세 점수 특징은 허용 행 안에서 평균 0 · 표준편차 1 로 표준화한다(허용 행이
+    하나거나 표준편차가 0 이면 0 이라 머리 입력이 0 이 된다).
+    """
+    groups = _row_groups(scored, set(history), vocab, top=top)
+    allowed_items, row_items, allowed_rows = _thin_inputs(groups, scored, vocab, items=items, top=top)
+    rows = sorted(allowed_rows)
+    sums = row_score_sums(groups, items=items)
+    raw_sums: list[float] = []
+    raw_max: list[float] = []
+    raw_mean: list[float] = []
+    for row in rows:
+        values = [score for score, _ in groups[row][:items]]
+        raw_sums.append(sum(values))
+        raw_max.append(max(values) if values else 0.0)
+        raw_mean.append(sum(values) / len(values) if values else 0.0)
+    std_sums = _standardized(raw_sums)
+    std_max = _standardized(raw_max)
+    std_mean = _standardized(raw_mean)
+    order = sorted(rows, key=lambda row: (-sums[row], row))
+    rank = {row: index for index, row in enumerate(order)}
+    repeat = vocab.id("ROW_REPEAT")
+    features = {
+        row: [std_sums[index], std_max[index], std_mean[index], float(len(groups[row])),
+              1.0 if row == repeat else 0.0, float(rank[row])]
+        for index, row in enumerate(rows)
+    }
+    return allowed_items, row_items, allowed_rows, features
+
+
 def g_full_inputs(scored: list[tuple[str, float]], history: list[str], vocab: Any, *,
                   top: int = TOP) -> tuple[set[str], dict[int, list[str]]]:
     """G-full 의 ``allowed_items`` · ``row_items`` 를 만든다.
@@ -256,9 +308,14 @@ def g_full_inputs(scored: list[tuple[str, float]], history: list[str], vocab: An
 
 
 def build_pages(variant: str, meta: Any, archive: Any, scores: dict[str, list[tuple[str, float]]], *,
-                vocab: Any, decoder: Any = None, batch: int = 256, row_lambda: float = 0.0
+                vocab: Any, decoder: Any = None, batch: int = 256, row_lambda: float = 0.0, head: Any = None
                 ) -> tuple[dict[str, list[GeneratedRow]], dict[str, int]]:
     """고객마다 변형 페이지를 만든다. ``meta`` 순서대로 돌려준다."""
+    head_bias = None
+    if variant == "T3":
+        if head is None:
+            raise ValueError("T3 변형에는 --row-head 가 필요합니다")
+        from .row_side import head_bias
     pages: dict[str, list[GeneratedRow]] = {}
     violations: dict[str, int] = {}
     queued = list(meta.iterrows())
@@ -278,6 +335,14 @@ def build_pages(variant: str, meta: Any, archive: Any, scores: dict[str, list[tu
             scored = scores.get(customer, [])
             if variant == "H-thin":
                 example = h_thin_example(ctx_tokens, ctx_content, scored, history, vocab, row_lambda)
+            elif variant == "T3":
+                # thin 규칙(허용 행 · 행 안)은 H-thin 과 같고, row_bias 자리에 머리 출력을
+                # 넣는다. λ 는 두지 않는다(STATUS T3).
+                allowed_items, row_items, allowed_rows, features = t3_row_features(scored, history, vocab)
+                example = {"ctx_tokens": ctx_tokens, "ctx_content": ctx_content,
+                           "history_articles": history, "row_items": row_items,
+                           "allowed_rows": allowed_rows, "row_bias": head_bias(head, features),
+                           "allowed_items": allowed_items}
             elif variant in ("G-row", "G-row-thin", "H"):
                 allowed_items = None
                 row_bias = None
@@ -299,7 +364,7 @@ def build_pages(variant: str, meta: Any, archive: Any, scores: dict[str, list[tu
                            "row_items": row_items}
             examples.append(example)
         decode_kwargs: dict[str, Any] = {"n_rows": ROWS, "items_per_row": ITEMS, "prefix": 2}
-        if variant in ("G-row-thin", "H-thin"):
+        if variant in ("G-row-thin", "H-thin", "T3"):
             # 8개 미만 행도 허용하고, 행은 row_items 앞에서 끝낸다(모델이 채우지 않는다).
             decode_kwargs.update(THIN_DECODE_KWARGS)
         decoded = decoder.generate_batch(examples, **decode_kwargs)
@@ -323,6 +388,9 @@ def _report_args(args: argparse.Namespace) -> dict[str, Any]:
     # λ 는 H 의 옵션이라 H 가 아니면 종전 조각 모양을 유지한다.
     if args.variant not in ("H", "H-thin"):
         report_args.pop("row_lambda", None)
+    # 머리 파일 경로는 T3 의 옵션이라 T3 가 아니면 조각 모양을 유지한다.
+    if args.variant != "T3":
+        report_args.pop("row_head", None)
     return report_args
 
 
@@ -354,9 +422,17 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         decoder, vocab, _content, _content_rows, device = _load_decoder(mode_dir, Path(args.ckpt),
                                                                         args.device)
 
+    head: Any = None
+    if args.variant == "T3":
+        if not getattr(args, "row_head", None):
+            raise ValueError("T3 변형에는 --row-head 가 필요합니다")
+        from .row_side import load_head
+        head = load_head(Path(args.row_head))
+
     generated_at = time.perf_counter()
     pages, violations = build_pages(args.variant, shard_meta, archive, scores, vocab=vocab,
-                                    decoder=decoder, batch=args.batch, row_lambda=row_lambda or 0.0)
+                                    decoder=decoder, batch=args.batch, row_lambda=row_lambda or 0.0,
+                                    head=head)
     generation_seconds = time.perf_counter() - generated_at
 
     options: dict[str, Any] = {"compose": args.variant}
@@ -391,6 +467,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--ckpt", help="G · H 변형의 체크포인트")
     parser.add_argument("--row-lambda", type=float,
                         help="H · H-thin 변형에서 행 로그 확률에 더하는 λ×z 의 λ")
+    parser.add_argument("--row-head", help="T3 변형의 행 머리 파일(row_side 가 저장한 MLP)")
     parser.add_argument("--shard", metavar="K/N")
     parser.add_argument("--out", required=True, help="결과 JSON 경로")
     parser.add_argument("--batch", type=int, default=256)

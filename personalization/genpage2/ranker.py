@@ -470,29 +470,39 @@ def _sample(values: list[str], count: int, rng: np.random.Generator) -> list[str
     return [values[i] for i in sorted(chosen.tolist())]
 
 
+def _buyer_frame(txn: Transactions, request_day: int, cfg: dict[str, Any], rng: np.random.Generator,
+                 limit: int | None) -> tuple[list[str], dict[str, dict[str, np.ndarray]], pd.DataFrame]:
+    """요청 주에 산 고객(최대 상한, 시드 고정)의 ``meta``(customer_id · history)와 이벤트를 만든다.
+
+    ``build_training_week`` 와 누설 없는 학습 주 점수(:func:`run_training_scores`)가 같은
+    고객 추출을 쓰도록 한 곳에 둔다. ``meta`` 에는 아직 ``truth`` 가 없다.
+    """
+    window = (txn.day >= request_day) & (txn.day < request_day + config.TARGET_DAYS)
+    buyer_codes = np.unique(txn.cust[window])
+    cap = cfg["max_train_customers"] if limit is None else limit
+    if buyer_codes.size > cap:
+        buyer_codes = np.sort(rng.choice(buyer_codes, size=cap, replace=False))
+    buyers = [str(txn.customers[c]) for c in buyer_codes.tolist()]
+    events = _events_for(txn, request_day, buyers)
+    meta = pd.DataFrame({"customer_id": buyers,
+                         "history": [_history_for(events.get(c), txn) for c in buyers]})
+    return buyers, events, meta
+
+
 def build_training_week(txn: Transactions, request: object, *, vocab: Any, content: np.ndarray,
                         content_rows: dict[str, int], ages: dict[str, float], cfg: dict[str, Any],
                         limit: int | None, rng: np.random.Generator
                         ) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[tuple[str, str]]]:
     """한 주의 (특징 행렬, 라벨, 질의 크기, 행 키)를 만든다."""
     request_day = _day_number(request)
-    window = (txn.day >= request_day) & (txn.day < request_day + config.TARGET_DAYS)
-    buyer_codes = np.unique(txn.cust[window])
-    if buyer_codes.size == 0:
-        return (np.empty((0, len(FEATURE_NAMES)), dtype=np.float32), np.empty(0, dtype=np.int32),
-                np.empty(0, dtype=np.int64), [])
-    cap = cfg["max_train_customers"] if limit is None else limit
-    if buyer_codes.size > cap:
-        buyer_codes = np.sort(rng.choice(buyer_codes, size=cap, replace=False))
-    buyers = [str(txn.customers[c]) for c in buyer_codes.tolist()]
+    empty = (np.empty((0, len(FEATURE_NAMES)), dtype=np.float32), np.empty(0, dtype=np.int32),
+             np.empty(0, dtype=np.int64), [])
+    buyers, events, meta = _buyer_frame(txn, request_day, cfg, rng, limit)
+    if not buyers:
+        return empty
 
     truth = _truth_by_customer(txn, request_day, config.TARGET_DAYS, buyers)
-    events = _events_for(txn, request_day, buyers)
-    meta = pd.DataFrame({
-        "customer_id": buyers,
-        "history": [_history_for(events.get(c), txn) for c in buyers],
-        "truth": [sorted(truth.get(c, set())) for c in buyers],
-    })
+    meta["truth"] = [sorted(truth.get(c, set())) for c in buyers]
     candidates = build_ranker_candidates(meta, txn, request, vocab=vocab, content=content,
                                          content_rows=content_rows, cfg=cfg, events=events)
     item_stats = _item_stats(txn, request_day, vocab)
@@ -546,7 +556,14 @@ def _lightgbm_params(cfg: dict[str, Any]) -> dict[str, Any]:
 
 def train_ranker(weeks: list[tuple[np.ndarray, np.ndarray, np.ndarray]], cfg: dict[str, Any]
                  ) -> tuple[Any, int, np.ndarray]:
-    """r − 14 · r − 21 로 학습하고 r − 7 로 조기 종료한 뒤 세 주로 재학습한다."""
+    """첫 주(가장 가까운 주)로 조기 종료해 반복 수를 정하고, 모든 주로 다시 학습한다.
+
+    ``weeks`` 는 가까운 주부터 온다. ``weeks[0]`` 을 검증으로 떼어 나머지로 학습하고,
+    조기 종료(:data:`RANKER_CONFIGS` 의 ``early_stopping``, base 는 50)가 고른 반복
+    수로 ``weeks`` 전체를 다시 학습한다. D2 는 ``[r−7, r−14, r−21]`` 을 주고, 누설 없는
+    학습 주 점수는 같은 구조를 한 주 앞으로 밀어 ``[r−14, r−21]`` 을 준다(r−7 은 어디에도
+    쓰지 않는다).
+    """
     import lightgbm as lgb
 
     train_x = [week[0] for week in weeks[1:] if len(week[1])]
@@ -678,6 +695,90 @@ def run_ranker(mode: str, txn: Transactions, meta: pd.DataFrame, *, vocab: Any, 
     }
 
 
+def parse_train_weeks(value: str | tuple[int, ...] | list[int] | None) -> tuple[int, ...]:
+    """학습 주(요청에서 며칠 전) 목록을 파싱한다. 기본은 D2 와 같은 세 주다.
+
+    가까운 주(작은 offset)부터 오도록 정렬한다. 첫 주가 검증, 나머지가 학습 주가
+    되는 :func:`train_ranker` 구조를 그대로 쓰기 위해서다.
+    """
+    if value is None:
+        return (7, 14, 21)
+    if isinstance(value, (tuple, list)):
+        offsets = tuple(int(v) for v in value)
+    else:
+        offsets = tuple(int(part) for part in str(value).split(",") if part.strip())
+    if not offsets or any(offset <= 0 for offset in offsets):
+        raise ValueError("--train-weeks 는 1 이상의 정수를 쉼표로 이어야 합니다")
+    return tuple(sorted(offsets))
+
+
+def training_weeks(request: object, offsets: tuple[int, ...] | list[int]) -> list[pd.Timestamp]:
+    """요청 시각에서 ``offsets`` 일 전 주들의 요청 시각을 돌려준다(가까운 주부터).
+
+    누설 방지 확인용: ``offsets=(14, 21)`` 이면 r − 7 은 나오지 않는다. 이 목록의
+    첫 주(r − 14)가 검증, 나머지(r − 21)가 학습 주가 된다.
+    """
+    base = pd.Timestamp(request)
+    return [base - pd.Timedelta(days=int(offset)) for offset in offsets]
+
+
+def run_training_scores(args: argparse.Namespace, txn: Transactions, *, vocab: Any, content: np.ndarray,
+                        content_rows: dict[str, int], ages: dict[str, float], cfg: dict[str, Any]
+                        ) -> tuple[dict[str, Any], pd.DataFrame, dict[str, list[tuple[str, float]]]]:
+    """누설 없게 D2 절차를 한 주 앞으로 밀어 r − 7 주 구매 고객의 후보에 점수를 매긴다.
+
+    D2 는 r − 14 · r − 21 로 학습하고 r − 7 로 조기 종료한다. 여기서는 한 주 앞으로
+    밀어 가장 가까운 주(r − 14)를 검증으로, 나머지(r − 21)를 학습 주로 쓴다. 즉
+    :func:`train_ranker` 에 [r − 14, r − 21] 을 넘기면 r − 21 로 학습하고 r − 14 로
+    조기 종료(D2 와 같은 50 라운드 patience)해 반복 수를 정한 뒤, 그 반복 수로
+    r − 14 · r − 21 을 합쳐 다시 학습한다. 평가에 쓰는 D3 순위 모델과 같은 절차라
+    점수 분포가 맞는다. **r − 7 은 어디에도(학습 · 검증) 쓰지 않는다.**
+
+    평가 고객이 아니라 r − 7 주 구매 고객을 채점하며, ``scores.json.gz`` 로 남겨 행
+    머리 학습(:mod:`genpage2.row_side`)이 쓴다.
+    """
+    request = config.request_of(args.mode)
+    offsets = parse_train_weeks(getattr(args, "train_weeks", None))
+    score_week = int(getattr(args, "score_week", 7) or 7)
+    score_request = request - pd.Timedelta(days=score_week)
+    rng = np.random.default_rng(cfg["seed"])
+    started = time.perf_counter()
+
+    week_requests = training_weeks(request, offsets)
+    weeks = [build_training_week(txn, week_request, vocab=vocab, content=content,
+                                 content_rows=content_rows, ages=ages, cfg=cfg,
+                                 limit=args.train_customers, rng=rng)
+             for week_request in week_requests]
+    model, iterations, importance = train_ranker(weeks, cfg)
+
+    _buyers, _events, meta = _buyer_frame(txn, _day_number(score_request), cfg, rng, args.train_customers)
+    ranked: dict[str, list[tuple[str, float]]] = {}
+    rank_customers(model, meta, txn, score_request, vocab=vocab, content=content,
+                   content_rows=content_rows, ages=ages, cfg=cfg, ranked_sink=ranked)
+    top = int(args.dump_scores) if getattr(args, "dump_scores", None) is not None else 200
+    scores = {customer: values[:top] for customer, values in ranked.items()}
+    top_features = sorted(zip(FEATURE_NAMES, importance.tolist()), key=lambda pair: -pair[1])[:20]
+    report: dict[str, Any] = {
+        "mode": args.mode,
+        "config": cfg.get("_name", "custom"),
+        "request": str(request.date()),
+        "train_week_offsets": list(offsets),
+        "train_weeks": [str(week.date()) for week in week_requests],
+        "validation_week": str(week_requests[0].date()) if week_requests else None,
+        "train_only_weeks": [str(week.date()) for week in week_requests[1:]],
+        "score_week_offset": score_week,
+        "score_week": str(score_request.date()),
+        "customers": int(len(meta)),
+        "train_rows": int(sum(len(week[1]) for week in weeks)),
+        "iterations": iterations,
+        "score_top": top,
+        "train_customers": args.train_customers,
+        "elapsed_seconds": time.perf_counter() - started,
+        "feature_importance_top20": [[name, float(gain)] for name, gain in top_features],
+    }
+    return report, meta, scores
+
+
 def write_pages(path: Path, meta: pd.DataFrame, pages: dict[str, list[str]]) -> Path:
     """고객별 페이지(상위 상품, 순위 순)를 ``pages.json.gz`` 로 따로 쓴다.
 
@@ -720,6 +821,24 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     mode = args.mode
     request = config.request_of(mode)
     mode_dir = base / "hm" / "model" / "genpage2" / mode
+    if getattr(args, "train_scores_out", None):
+        frame = pd.read_parquet(base / "hm" / "normalized" / "transactions.parquet",
+                                columns=["t_dat", "customer_id", "article_id", "price"])
+        frame = frame[pd.to_datetime(frame["t_dat"]) < request]
+        txn = Transactions.from_frame(frame)
+        del frame
+        vocab, content, content_rows = load_eval_assets(mode_dir)
+        ages = _load_ages(base, txn)
+        report, meta, scores = run_training_scores(args, txn, vocab=vocab, content=content,
+                                                   content_rows=content_rows, ages=ages, cfg=cfg)
+        report["wall_seconds"] = time.perf_counter() - began
+        destination = Path(args.train_scores_out)
+        destination.mkdir(parents=True, exist_ok=True)
+        write_scores(destination / "scores.json.gz", meta, scores)
+        (destination / f"ranker_train_scores_{mode}.json").write_text(
+            json.dumps(report, ensure_ascii=False, indent=2, default=float), encoding="utf-8")
+        print(json.dumps(report, ensure_ascii=False, indent=2, default=float))
+        return report
     meta = pd.read_parquet(mode_dir / "eval_meta.parquet")
     if args.limit is not None and args.limit < len(meta):
         meta = meta.sample(n=args.limit, random_state=config.SEED).sort_index()
@@ -762,14 +881,24 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", choices=("validate", "final"), required=True)
     parser.add_argument("--limit", type=int)
-    parser.add_argument("--out", required=True, help="결과 JSON 을 쓸 폴더")
+    parser.add_argument("--out", help="결과 JSON 을 쓸 폴더")
     parser.add_argument("--config", default=DEFAULT_CONFIG, choices=sorted(RANKER_CONFIGS))
     parser.add_argument("--data-dir")
     parser.add_argument("--train-customers", type=int, default=None,
                         help="스모크용 학습 고객 상한(기본은 config 값)")
     parser.add_argument("--dump-scores", type=int, default=None, metavar="N",
                         help="고객마다 점수 상위 N 개를 scores.json.gz 에 쓴다")
+    parser.add_argument("--train-scores-out", metavar="DIR",
+                        help="누설 없는 학습 주 모델로 r − 7 주 구매 고객 점수를 써 이 폴더에 남긴다"
+                             "(누설 방지: --train-weeks 주로만 학습)")
+    parser.add_argument("--train-weeks", metavar="D,D",
+                        help="학습 주(요청에서 며칠 전). 가까운 주가 검증, 나머지가 학습 주다."
+                             " 기본은 config 의 세 주(7,14,21)")
+    parser.add_argument("--score-week", type=int, default=7, metavar="D",
+                        help="점수를 매길 주(요청에서 며칠 전). 기본 7")
     args = parser.parse_args(argv)
+    if not args.train_scores_out and not args.out:
+        parser.error("--out 또는 --train-scores-out 중 하나가 필요합니다")
     run(args)
     return 0
 
