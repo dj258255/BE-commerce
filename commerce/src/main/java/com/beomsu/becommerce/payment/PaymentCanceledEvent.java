@@ -5,8 +5,10 @@ import org.springframework.modulith.events.Externalized;
 /**
  * 결제 취소(전액/부분) 이벤트. ledger가 역분개를, settlement가 정산액 반영을 위해 구독한다.
  *
- * <p>승인 이벤트와 마찬가지로 {@code @Externalized}로 Kafka에 외부화하며, 라우팅 키를
- * {@code orderNo}로 잡아 같은 주문의 승인/취소 이벤트가 같은 파티션에서 순서대로 흐르게 한다.
+ * <p>{@code @Externalized}로 Kafka에 외부화한다. 라우팅 키를 {@code orderNo}로 잡지만, 승인과 취소는
+ * <b>서로 다른 토픽</b>이고 외부화 리스너도 비동기라 <b>같은 주문의 confirmed→canceled 순서는 보장되지 않는다</b>
+ * (ADR-005 정정). 순서 역전은 경로별 장치로 막는다 — 취소 순번 가드({@code SettlementItem.lastCancelSeq}),
+ * 상태 조건부 전이, 그리고 "없음 = 미도착"을 예외로 보류하는 패턴.
  *
  * <p>{@code cancelAmount}는 이번 취소분(델타)이고, {@code settleableBalance}는 <b>취소 후 남은
  * 정산 가능 잔액(절대값)</b>이다. 정산은 델타를 빼는 대신 이 절대 잔액으로 항목 금액을 세팅해,

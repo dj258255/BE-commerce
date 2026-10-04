@@ -57,3 +57,5 @@
 - 동시 결제 경로에 대한 실제 지연 영향(같은 MySQL 버퍼 풀·redo·원장 hot account 행 락)은 재지 않았다. 순수 JUnit이라 실제 DB 경합을 재현할 방법이 없다.
 - `SettlementService`에 실제로 배선하지 않았다. 26·27절의 다른 실험과 같은 스코프로, 비교 근거만 남긴다.
 - RANGE가 만드는 "판매자별 집계 동시 쓰기"가 이 실험처럼 항상 원자적 자료구조로 안전하게 병합된다는 보장은 실제 `SettlementService`(JPA 엔티티 dirty-check, `saveAndFlush`)에는 없다 — 같은 판매자의 `Settlement` 행을 두 스레드가 동시에 갱신하면 낙관적 락 충돌이나 갱신 유실이 생길 수 있다. 이 실험은 "쪼개짐 자체가 위험 신호"라는 것만 보여주지, 실제 JPA 엔티티에서 그 위험이 어떤 형태로 나타나는지는 재지 않았다.
+
+> **정산 lost update 는 닫았다 (2026-10-04).** 위 "이 실험이 답하지 못하는 것" 마지막 항목이 인정만 하던 실제 `SettlementService` 의 lost update 는 `SettlementItem` 에 `@Version`(V72)을 달아 낙관적 락으로 막았다 — `settle`(CONFIRMED→SETTLED)과 취소 반영이 같은 항목을 동시에 쓰면 늦게 커밋하는 쪽이 충돌로 실패한다.

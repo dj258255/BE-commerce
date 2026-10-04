@@ -23,7 +23,8 @@ SPRING_PROFILES_ACTIVE=kafka ./gradlew -p commerce bootRun            # 메인 �
 
 ## 설계 메모
 
-- **String + Jackson 역직렬화**: producer의 JsonSerializer 타입 헤더(메인 앱 클래스명)에
-  결합되지 않도록 값을 String으로 받아 `readTree`로 파싱한다.
+- **String + Jackson 역직렬화**: producer(메인 앱)는 `ByteArraySerializer`를 쓴다 — Modulith
+  외부화가 이벤트를 이미 JSON `byte[]`로 직렬화해 넘기므로 와이어에 타입 헤더(`__TypeId__`)가
+  붙지 않는다. 그래서 값을 String으로 받아 `readTree`로 파싱한다 — producer 내부 타입에 결합되지 않는다.
 - **at-least-once**: Outbox 재발행으로 중복 수신이 가능하다. 실소비자는 멱등 처리가 필수다(여기선 로그 데모).
 - **Zero-Payload**: 페이로드는 식별자+최소 정보. 상세는 orderNo로 조회 API를 되읽어 확정한다.
