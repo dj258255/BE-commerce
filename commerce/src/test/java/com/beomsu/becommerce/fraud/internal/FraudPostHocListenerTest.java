@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -164,10 +165,11 @@ class FraudPostHocListenerTest {
     }
 
     @Test
-    @DisplayName("이력 저장이 터져도 판정은 돈다 — 관찰이 판정을 막으면 안 된다")
-    void historyFailureDoesNotStopDetection() {
+    @DisplayName("이력 저장이 터져도 판정은 돈다 — 저장(관찰) 실패가 판정을 막으면 안 된다")
+    void historySaveFailureDoesNotStopDetection() {
         when(paymentService.historyKeyOf(10L)).thenReturn(Optional.of("card-xyz"));
-        when(transactionRepository.existsByOrderNo("ord-1"))
+        when(transactionRepository.existsByOrderNo("ord-1")).thenReturn(false);
+        when(transactionRepository.save(any()))
                 .thenThrow(new IllegalStateException("DB 죽음"));
         when(fraudService.evaluate(any())).thenReturn(
                 new FraudResult(70, FdsDecision.REVIEW, List.of("HIGH_AMOUNT")));
@@ -175,6 +177,19 @@ class FraudPostHocListenerTest {
         listener.onConfirmed(event());
 
         org.mockito.Mockito.verify(reviewRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("가드 조회가 실패하면 예외를 전파해 발행을 미완료로 남긴다 — fail-open 금지")
+    void guardLookupFailurePropagatesForRedelivery() {
+        when(paymentService.historyKeyOf(10L)).thenReturn(Optional.of("card-xyz"));
+        when(transactionRepository.existsByOrderNo("ord-1"))
+                .thenThrow(new IllegalStateException("DB 죽음"));
+
+        assertThatThrownBy(() -> listener.onConfirmed(event()))
+                .isInstanceOf(IllegalStateException.class);
+
+        org.mockito.Mockito.verify(fraudService, never()).evaluate(any());
     }
 
     @Test
@@ -260,5 +275,36 @@ class FraudPostHocListenerTest {
                 .thenThrow(new org.springframework.dao.DataIntegrityViolationException("dup"));
 
         listener.onConfirmed(event());   // 예외가 밖으로 새지 않아야 한다
+    }
+
+    @Test
+    @DisplayName("재전달은 평가를 다시 돌리지 않는다 — velocity 재증가·섀도 재기록·큐 중복 없이 끝난다")
+    void redeliveryDoesNotReevaluate() {
+        // 실제 FraudService 에 스파이 카운터를 물려, 재전달이 velocity 를 다시 올리는지 본다.
+        com.beomsu.becommerce.fraud.velocity.VelocityCounter velocity =
+                mock(com.beomsu.becommerce.fraud.velocity.VelocityCounter.class);
+        when(velocity.recordAndCount(anyString())).thenReturn(1);
+        CardBlocklist blocklist = mock(CardBlocklist.class);
+        when(blocklist.contains(any())).thenReturn(false);
+        FraudService real = new FraudService(velocity, blocklist);
+        // 직접 생성하면 @Value 임계가 0 이라 판정이 흐려진다 — REVIEW 가 나오게 최소한만 세운다.
+        org.springframework.test.util.ReflectionTestUtils.setField(real, "velocityThreshold", 0);
+        org.springframework.test.util.ReflectionTestUtils.setField(real, "velocityWeight", 70);
+        org.springframework.test.util.ReflectionTestUtils.setField(real, "reviewThreshold", 60);
+        org.springframework.test.util.ReflectionTestUtils.setField(real, "blockThreshold", 100);
+        FraudPostHocListener realListener = new FraudPostHocListener(
+                paymentService, real, reviewRepository, transactionRepository, shadowScorer);
+
+        when(paymentService.historyKeyOf(10L)).thenReturn(Optional.of("card-xyz"));
+        // 1차: 가드(없음) → 이력 저장(없음) 확인. 2차 재전달: 가드에서 "이미 있음" → 즉시 끝.
+        when(transactionRepository.existsByOrderNo("ord-1")).thenReturn(false, false, true);
+
+        PaymentConfirmedEvent e = event();
+        realListener.onConfirmed(e);   // 1차: 이력 + 평가(velocity 1회) + 심사 적재
+        realListener.onConfirmed(e);   // 2차(재전달): 평가·적재 없음
+
+        verify(velocity, times(1)).recordAndCount(anyString());
+        verify(transactionRepository, times(1)).save(any());
+        verify(reviewRepository, times(1)).save(any());
     }
 }

@@ -174,6 +174,19 @@ public class Order {
         this.updatedAt = Instant.now();
     }
 
+    /**
+     * 부분취소 시도 — <b>상태는 바꾸지 않고 버전만 올린다.</b>
+     *
+     * <p>부분취소는 상태 전이가 없어 저장이 일어나지 않고, 그러면 주문의 {@code @Version} 이 동시 실행을
+     * 직렬화하지 못한다. 포인트·월렛 환불은 부분취소가 여러 번 가능해 의도적으로 비멱등이라, 같은 주문의
+     * 동시 부분취소가 겹치면 <b>둘 다 환불해 이중 환불</b>이 된다. {@code updatedAt} 을 갱신해 dirty 로
+     * 만들고 호출부가 {@code saveAndFlush} 하면 버전이 올라, 늦게 커밋하는 쪽이 낙관 충돌로 환불째
+     * 롤백된다 — 전액취소가 상태 전이 저장으로 이미 받는 것과 같은 직렬화다.
+     */
+    public void markCancelAttempted() {
+        this.updatedAt = Instant.now();
+    }
+
     public Money totalAsMoney() {
         return Money.krw(totalAmount);
     }

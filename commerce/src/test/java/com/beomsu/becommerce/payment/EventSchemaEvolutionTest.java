@@ -2,10 +2,10 @@ package com.beomsu.becommerce.payment;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.json.JsonTest;
 
 import java.time.Instant;
 
@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 것이다. 필드 추가가 안전한 이유는 <b>Jackson 설정 하나</b>({@code FAIL_ON_UNKNOWN_PROPERTIES}
  * 비활성)에 달려 있다 — 그래서 그 설정도 같이 못 박는다.
  */
+@JsonTest
 class EventSchemaEvolutionTest {
 
     /** 지금의 계약. */
@@ -32,10 +33,10 @@ class EventSchemaEvolutionTest {
     record V2(String orderNo, long paymentId, long amount, Instant approvedAt, String currency) {
     }
 
-    // Spring Boot 가 쓰는 것과 같은 방식으로 만든다(Jackson2ObjectMapperBuilder). Boot 는
-    // FAIL_ON_UNKNOWN_PROPERTIES 를 기본 비활성으로 둔다 — 이벤트 외부화도 이 매퍼를 탄다.
-    private final ObjectMapper mapper = Jackson2ObjectMapperBuilder.json()
-            .modules(new JavaTimeModule()).build();
+    // 앱이 실제로 쓰는 ObjectMapper 빈을 그대로 주입받는다 — 앱의 Jackson 설정(yml·커스터마이저)이
+    // 바뀌면 이 테스트도 같이 움직인다. 직접 만든 매퍼를 쓰면 앱 설정과 갈라진다.
+    @Autowired
+    private ObjectMapper mapper;
 
     @Test
     @DisplayName("필드 추가: 새 페이로드를 옛 소비자가 읽어도 깨지지 않는다(모르는 필드는 무시)")

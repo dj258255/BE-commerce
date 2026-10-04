@@ -19,15 +19,16 @@ ADR-002에서 "외부 Kafka로의 발행은 브릿지로 다시 내보낸다(Pha
 public record PaymentConfirmedEvent(String orderNo, Long paymentId, long amount, Instant approvedAt) {}
 
 @Externalized("payment.canceled::#{orderNo}")
-public record PaymentCanceledEvent(String orderNo, Long paymentId, long cancelAmount, boolean fullyCanceled) {}
+public record PaymentCanceledEvent(String orderNo, Long paymentId, int cancelSeq, long cancelAmount,
+                                   long settleableBalance, boolean fullyCanceled, Instant canceledAt) {}
 ```
 
-형식은 `토픽명::SpEL_라우팅키`다.
+형식은 `토픽명::SpEL_라우팅키`다. (위 `PaymentCanceledEvent` 시그니처는 2026-10-04 에 실제 코드로 갱신했다 — 원래는 `cancelAmount`·`fullyCanceled` 만 적혀 있었다. 끝의 "정정" 절 참고.)
 
 ## 근거
 
 1. **Outbox + Kafka = at-least-once (유실 없음).** Modulith는 이벤트를 발행 트랜잭션과 **같은 로컬 트랜잭션**으로 `event_publication`에 기록한다(ADR-002). 커밋 후 외부화 리스너가 Kafka로 발행하고, 성공해야 완료로 마킹한다. 발행 실패/앱 다운이면 미완료로 남아 재기동 시 재발행된다(`republish-outstanding-events-on-restart`). "DB 커밋과 Kafka 발행"의 dual-write 문제를 Outbox가 흡수하므로 **at-least-once**가 보장된다 → 프로세스 밖 소비자도 인프로세스 소비자와 똑같이 멱등 컨슈머로 설계한다.
-2. **orderNo를 파티션 키로 → 주문 단위 순서 보존.** 라우팅 키 `#{orderNo}`가 Kafka 메시지 키가 되고, 같은 키는 같은 파티션으로 간다. Kafka는 파티션 내 순서만 보장하므로, 같은 주문의 `confirmed → canceled`가 **역전 없이** 순서대로 도착한다. (전역 순서가 아니라 주문 단위 순서만 필요하다. Zero-Payload 이벤트라 소비자가 최신 상태를 조회로 확정할 수도 있다.)
+2. **orderNo를 파티션 키로 → 주문 단위 순서 보존.** 라우팅 키 `#{orderNo}`가 Kafka 메시지 키가 되고, 같은 키는 같은 파티션으로 간다. Kafka는 파티션 내 순서만 보장하므로, 같은 주문의 `confirmed → canceled`가 **역전 없이** 순서대로 도착한다. (전역 순서가 아니라 주문 단위 순서만 필요하다. Zero-Payload 이벤트라 소비자가 최신 상태를 조회로 확정할 수도 있다.) **(→ 2026-10-04 정정: 이 주장은 성립하지 않는다. 끝의 "정정" 절 참고.)**
 3. **바퀴를 다시 발명하지 않는다.** 브릿지·직렬화·라우팅을 프레임워크가 검증된 형태로 제공한다.
 
 ## 브로커 부재 안전장치 (프로퍼티 게이트)
@@ -46,3 +47,15 @@ public record PaymentCanceledEvent(String orderNo, Long paymentId, long cancelAm
 ## 실증
 
 - 프로세스 밖 소비자 실증: 별도 프로세스 앱 [`consumer-app/`](../../commerce/consumer-app/README.md)(독립 Gradle 프로젝트)이 `payment.confirmed`/`payment.canceled`를 구독한다. 도메인 코드는 무수정이다.
+
+## 정정 (2026-10-04)
+
+**위 "근거 2"의 "orderNo 파티션 키로 confirmed→canceled 역전 없음"은 성립하지 않는다.** 세 가지가 겹친다.
+
+- `payment.confirmed` 와 `payment.canceled` 는 **서로 다른 토픽**이다 — 파티션 순서는 토픽을 넘지 못한다.
+- 외부화 리스너 자체가 비동기(`@ApplicationModuleListener`)라 send 순서도 보장되지 않는다.
+- 인프로세스 리스너도 전부 `@Async` 라 같은 주문의 이벤트도 무순서다.
+
+**실제 방어는 순서가 아니라 경로별 장치다.** 취소 순번 가드(SettlementItem 의 `lastCancelSeq`)와 상태 조건부 전이, 그리고 2026-10-04 부터 "없음 = 미도착"을 예외로 보류하는 패턴(정산 `reflectCancellation`·`confirmSettlement`, 에스크로 `refundIfHeld`)이다. 이 보류는 대사(`ReconciliationService`)가 이미 쓰던 것과 같은 모양이다.
+
+같은 주장이 `PaymentCanceledEvent.java` 주석에도 있어 그쪽도 함께 정정했다. 위 "결정" 절의 `PaymentCanceledEvent` 시그니처도 실제 코드로 갱신했다.

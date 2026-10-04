@@ -12,6 +12,7 @@ import com.beomsu.becommerce.payment.pg.PgApproveResult;
 import com.beomsu.becommerce.payment.pg.PgCancelCommand;
 import com.beomsu.becommerce.payment.pg.PgCancelResult;
 import com.beomsu.becommerce.payment.pg.PgCancelNotRetryableException;
+import com.beomsu.becommerce.payment.pg.PgUnreachableException;
 import com.beomsu.becommerce.payment.pg.PgClient;
 import com.beomsu.becommerce.payment.pg.PgQueryResult;
 import com.beomsu.becommerce.shared.Money;
@@ -252,6 +253,23 @@ public class PaymentService {
             // PG 내부 예외를 모듈 밖으로 새게 두지 않는다. 호출자(보상 실행기)는 "재시도해도 같다"는
             // 사실만 알면 되므로 payment 모듈의 코드로 번역해 넘긴다.
             throw new PaymentException("CANCEL_NOT_RETRYABLE", e.getMessage());
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            // 취소 결과가 미확정인 실패도 같은 이유로 payment 모듈의 코드로 번역한다. 보상 실행기가
+            // "재시도하면 되나"뿐 아니라 "결과를 아나"까지 구분해 기록해야 하는데, 그 판별 기준
+            // (connect 단계 실패 = 요청 바이트 미전송)은 PG 어댑터 계층에만 있다. order 모듈이
+            // payment.pg 를 직접 참조할 수 없으므로(모듈 경계) 여기서 판별해 코드로 실어 보낸다.
+            if (PgUnreachableException.isConnectFailure(e)) {
+                throw new PaymentException("CANCEL_CONNECT_FAILED", e.getMessage());
+            }
+            throw new PaymentException("CANCEL_OUTCOME_UNKNOWN", e.getMessage());
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            // 5xx 는 코드와 무관하게 결과 미확정이다(승인 쪽 TossPgClient 와 같은 규칙) — PG 가 처리를
+            // 마쳤을 수 있으므로 확정 실패로 적으면 안 된다. 4xx 는 어댑터가 확정 실패/재시도 무의미로
+            // 이미 분류했거나 그대로 올라온 확정 실패라 기존 흐름을 유지한다.
+            if (e.getStatusCode().is5xxServerError()) {
+                throw new PaymentException("CANCEL_OUTCOME_UNKNOWN", e.getMessage());
+            }
+            throw e;
         }
         cancelTx.apply(target.paymentKey(), target.cancelSeq(), cancelAmount, reason,
                 result.transactionKey());

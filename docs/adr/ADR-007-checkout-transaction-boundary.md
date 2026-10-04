@@ -35,7 +35,7 @@
 바꿔서 등) 주문번호가 같으니 PG가 이전 거절 응답을 그대로 돌려줄 위험이 있었다 — 실제로 새 카드가 승인될 상황에서도 거절로
 막힐 수 있었다. `PaymentService.beginApproval`이 시도마다 새 `Payment` 행을 만들고 id를 돌려주므로, 그 id를 주문번호와
 묶어(`orderNo:paymentId`) 시도마다 다른 키를 쓴다. 같은 시도 안의 재전송(`ResilientPgClient`)은 같은 커맨드 객체를 그대로
-재사용해 키가 그대로 유지된다(#395와 충돌하지 않는다). 데드락 재시도(`IdempotencyService`, 위 3항 참고)가 `confirm`을 처음부터
+재사용해 키가 그대로 유지된다(#395와 충돌하지 않는다). 데드락 재시도(`IdempotencyService` — 근거는 그 클래스 javadoc 과 `docs/performance/README.md` 204-211)가 `confirm`을 처음부터
 다시 돌려도 `resolvePendingAttempt` + `order.startPayment()`의 조건부 전이가 이미 확정된 시도의 재승인을 막아, 재실행이
 PG를 같은 시도로 두 번 부르지 않는다.
 

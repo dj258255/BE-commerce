@@ -62,6 +62,23 @@ public class FraudPostHocListener {
             return;
         }
 
+        // 재전달 가드 — 이 주문의 거래 이력이 이미 있으면 이미 처리한 이벤트다. 여기서 끝내지 않으면
+        // 아래 evaluate 가 velocity 카운터(Redis INCR)를 한 번 더 올려 그 분 버킷을 오염시키고
+        // (오탐으로 이어질 수 있다), 섀도 점수도 다시 기록된다. 이력 저장의 멱등 키와 <같은 키>
+        // (orderNo)로 조회한다 — 새 테이블을 만들지 않는다.
+        //
+        // 잔여 한계: 동시 재전달(둘 다 이 검사를 통과)이면 유니크 제약이 이력은 한 줄로 막지만,
+        // velocity 는 두 번 오를 수 있다. Redis INCR 는 트랜잭션으로 되돌릴 수 없어 완전 차단은
+        // 범위 밖이다(이 검사는 흔한 순차 재전달을 막는다).
+        //
+        // <b>확인이 실패하면 예외를 전파해 발행을 미완료로 남긴다</b>(C1 부터 쓰는 보류 패턴,
+        // {@code SettlementService}·{@code ReconciliationService} 와 같다). fail-open(평가 계속)하면
+        // 이력 조회 실패와 이력 저장 실패가 겹칠 때 재전달마다 velocity 를 또 올려 이 가드가
+        // 무력해진다 — "처리됐는지 모른다"를 "처리 안 됐다"로 읽지 않는다.
+        if (transactionRepository.existsByOrderNo(e.orderNo())) {
+            return;   // 이미 처리한 이벤트(순차 재전달) — 부작용 없이 끝낸다
+        }
+
         // 이번 건이 창에 들어야 escalation·windowCount 가 이번 결제를 반영한다. 판정보다 먼저 한다.
         var current = new TxnRecord(e.amount(), java.time.Instant.now(), null, null, 0);
         record(cardKey, e.orderNo(), current);

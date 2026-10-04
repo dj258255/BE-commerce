@@ -1,5 +1,6 @@
 package com.beomsu.becommerce.payment.webhook;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ public class WebhookPendingScheduler {
 
     private final WebhookEventRepository repository;
     private final WebhookService webhookService;
+    private final MeterRegistry meterRegistry;
 
     /** 이 횟수를 넘기면 FAILED. 5초 간격이므로 기본값은 약 1분을 기다린다는 뜻이다. */
     @Value("${app.webhook.pending-max-retry:12}")
@@ -46,6 +48,8 @@ public class WebhookPendingScheduler {
             if (event.getRetryCount() >= maxRetry) {
                 event.markFailed("결제 행이 끝내 생기지 않음 — 재시도 " + event.getRetryCount() + "회 소진");
                 repository.save(event);
+                // FAILED 는 종단이다(자동 재처리 없음) — 소진이 몇 건 나는지가 운영 알림의 소스다.
+                meterRegistry.counter("payment.webhook.pending.exhausted").increment();
                 log.warn("웹훅 보류 재시도 소진 webhookEventId={}", event.getId());
                 continue;
             }

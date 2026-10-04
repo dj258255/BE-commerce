@@ -77,7 +77,11 @@ public class WebhookEvent {
         this.failReason = null;
     }
 
-    /** 처리 실패 — 사유를 남기고 다음 주기 재처리 대상이 된다. */
+    /**
+     * 처리 실패 — <b>종단 상태다.</b> 자동 재처리는 없고(이 행을 다시 읽는 코드가 없다), 운영이
+     * 지표({@code payment.webhook.failed.count}·{@code payment.webhook.failed.oldest.age})를 보고
+     * 수동 대응한다. 원본 페이로드는 {@code rawPayload} 에 남아 있어 감사·수동 재처리의 근거가 된다.
+     */
     public void markFailed(String reason) {
         this.status = WebhookEventStatus.FAILED;
         this.processedAt = Instant.now();

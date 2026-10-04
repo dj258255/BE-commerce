@@ -77,6 +77,14 @@ class CancelTx {
                 .orElseThrow(() -> OrderException.orderNotFound(orderNo));
         RefundAllocation alloc = plan.alloc();
 
+        // 환불·상태 변경보다 <b>먼저</b> Order 버전을 올려 직렬화한다 — 모든 취소 유형에 건다. 부분취소는
+        // 상태를 바꾸지 않아 저장이 없고, 전액취소도 지금까지는 상태 전이 저장이 환불 <b>뒤</b>여서, 같은
+        // 주문의 동시 취소가 겹치면 환불(비멱등)이 먼저 나간 뒤에야 충돌이 드러났다. 앞에서 flush 하면
+        // 낙관 충돌이 환불 실행 전에 서고, 늦게 커밋하는 쪽은 환불째 롤백된다. 전액취소의 아래 상태 전이
+        // 저장은 그대로 두어 flush 가 두 번이어도 무방하다.
+        order.markCancelAttempted();
+        orderRepository.saveAndFlush(order);
+
         if (alloc.fromPoint() > 0) {
             pointService.refund(plan.userId(), alloc.fromPoint(), orderNo);
         }

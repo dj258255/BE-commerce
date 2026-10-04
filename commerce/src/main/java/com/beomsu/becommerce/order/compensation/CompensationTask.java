@@ -57,6 +57,14 @@ public class CompensationTask {
     @Column(length = 500)
     private String lastError;
 
+    /** 마지막 시도의 결과 분류 — 취소 성공/확정 실패/결과 미확정/미확정 보류. 기존 행은 null. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private CompensationOutcome lastOutcome;
+
+    /** 마지막으로 시도한 시각. 시도할 때마다 갱신한다. 기존 행은 null. */
+    private Instant lastAttemptAt;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -85,16 +93,58 @@ public class CompensationTask {
     /** 보상 성공(또는 멱등 완료) 확정. */
     public void markDone() {
         this.status = CompensationStatus.DONE;
+        this.lastOutcome = CompensationOutcome.SUCCEEDED;
+        this.lastAttemptAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * 취소할 원거래가 없음이 <b>확정</b>됐지만(승인 실패 확정 등) 보상할 대상이 없어 완료로 닫는다.
+     * 사유를 lastError 에 남겨 "이미 취소됨"과 구분한다.
+     */
+    public void markDoneWithReason(String reason) {
+        this.status = CompensationStatus.DONE;
+        this.lastError = truncate(reason);
+        this.lastOutcome = CompensationOutcome.SUCCEEDED;
+        this.lastAttemptAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * 결제가 아직 미확정이라 이번 시도를 <b>보류</b>한다. 실패가 아니므로 retryCount 를 올리지 않고
+     * (재시도 예산을 태우지 않는다), 다음 시도 시각만 뒤로 민다. 복구 배치가 결제를 확정하면 다음
+     * 주기에 정상 경로를 탄다.
+     */
+    public void holdUnresolved(String reason, Instant nextAttempt) {
+        this.status = CompensationStatus.PENDING;
+        this.nextAttemptAt = nextAttempt;
+        this.lastError = truncate(reason);
+        this.lastOutcome = CompensationOutcome.SKIPPED_UNRESOLVED;
+        this.lastAttemptAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 
     /**
      * 실패 기록 — retryCount를 올리고 다음 시도 시각을 잡는다. maxRetries에 도달하면 FAILED로 두어
      * 더는 재시도하지 않고(무한 재시도 방지) 운영 개입 신호로 남긴다.
+     *
+     * <p><b>결과를 단정하지 않는다.</b> 이 경로는 예외를 분류할 수 없는 catch-all(호출자가 예외
+     * 종류를 모르는 경우)이 쓴다. 결과를 모르는데 {@code FAILED_DEFINITE}로 적으면 확정 실패와
+     * 결과 미확정이 뒤섞인다 — 그래서 {@code lastOutcome} 을 null(미분류)로 둔다.
      */
     public void recordFailure(String error, Instant nextAttempt) {
+        recordFailure(error, nextAttempt, null);
+    }
+
+    /**
+     * 결과 분류를 함께 남기는 실패 기록. 타임아웃처럼 결과를 모르는 실패는 {@code OUTCOME_UNKNOWN} 으로
+     * 적어, 확정 실패와 구분한다(둘 다 재시도하지만 재시도의 의미가 다르다).
+     */
+    public void recordFailure(String error, Instant nextAttempt, CompensationOutcome outcome) {
         this.retryCount++;
         this.lastError = truncate(error);
+        this.lastOutcome = outcome;
+        this.lastAttemptAt = Instant.now();
         this.updatedAt = Instant.now();
         if (this.retryCount >= this.maxRetries) {
             this.status = CompensationStatus.FAILED;
@@ -113,6 +163,9 @@ public class CompensationTask {
         this.retryCount = this.maxRetries;
         this.lastError = error;
         this.status = CompensationStatus.FAILED;
+        this.lastOutcome = CompensationOutcome.FAILED_DEFINITE;
+        this.lastAttemptAt = Instant.now();
+        this.updatedAt = Instant.now();
     }
 
     public boolean isExhausted() {

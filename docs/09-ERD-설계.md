@@ -143,11 +143,11 @@ CREATE TABLE payment_cancels (   -- (미구현) 취소 이력은 payment_history
 ```
 
 **설계 결정**
-- **orders : payments = 1:N**이다. 결제 실패 후 재시도하면 payment 레코드가 새로 생긴다. "주문당 성공한 결제는 1건"은 UNIQUE로 못 걸므로(MySQL은 partial unique index 없음) **주문 상태 조건부 UPDATE**(`WHERE status = 'PENDING_PAYMENT'`)로 이중 지불을 차단한다. 이 결정 자체가 설계 판단이다
+- **orders : payments = 1:N**이다. 결제 실패 후 재시도하면 payment 레코드가 새로 생긴다. "주문당 성공한 결제는 1건"은 UNIQUE로 못 걸므로(MySQL은 partial unique index 없음) **주문 전이표 + `@Version`**(`startPayment`)으로 이중 지불을 차단한다. 이 결정 자체가 설계 판단이다
 - **`UNKNOWN` 상태가 스키마에 존재**한다. 카카오페이 3-상태 모델(04 문서)을 상태머신에 1급 시민으로 반영. `unknown_reason`으로 진입 원인 추적
-- **`balance_amount`**: 부분취소 누적 관리. `cancel_amount ≤ balance_amount` 검증 + 차감을 조건부 UPDATE로
+- **`balance_amount`**: 부분취소 누적 관리. `cancel_amount ≤ balance_amount` 검증 후 엔티티에서 차감하고 `@Version` 으로 동시 갱신을 감지한다(조건부 UPDATE 가 아니다)
 - **payment_history는 감사(audit)의 최소 단위**: triggered_by로 "누가 이 전이를 일으켰나"(웹훅인지 배치인지 어드민인지)를 남긴다. 전자금융거래법 기록 보존(08 문서)의 기반이다
-- 상태 전이는 항상 `UPDATE payments SET status=:to, version=version+1 WHERE id=:id AND status=:from`이고, 영향 행 0이면 동시 전이 발생으로 판단한다
+- 상태 전이는 엔티티 전이표가 강제하고, 낙관적 락(`@Version`)이 동시 전이를 감지한다 — 늦게 커밋하는 쪽이 `version` 불일치로 실패한다(`UPDATE … WHERE id=:id AND version=:version`)
 
 ## 3. 멱등키 (idempotency_keys)
 

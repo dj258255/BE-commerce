@@ -40,6 +40,7 @@ EXPOSE 8080
 
 # 컨테이너 메모리를 인식하고 힙 상한을 limit의 75%로 잡는다.
 # ExitOnOutOfMemoryError: 힙이 터지면 반쪽짜리로 버티지 말고 즉시 죽어 재시작되게 한다.
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+UseContainerSupport -XX:+ExitOnOutOfMemoryError"
+# retryPost=false: JDK HttpURLConnection 의 암묵 POST 재전송을 끈다. 전송 횟수를 우리 코드(타임아웃당 1회, docs/29)만 정하게 한다.
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+UseContainerSupport -XX:+ExitOnOutOfMemoryError -Dsun.net.http.retryPost=false"
 
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]

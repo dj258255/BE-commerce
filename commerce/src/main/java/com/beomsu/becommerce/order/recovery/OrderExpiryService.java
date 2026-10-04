@@ -1,9 +1,5 @@
 package com.beomsu.becommerce.order.recovery;
 
-import com.beomsu.becommerce.order.catalog.StockReservationService;
-
-import com.beomsu.becommerce.payment.va.VirtualAccountService;
-import com.beomsu.becommerce.payment.recovery.PaymentRecoveryService;
 import com.beomsu.becommerce.order.internal.OrderStatus;
 import com.beomsu.becommerce.order.internal.OrderRepository;
 import com.beomsu.becommerce.order.internal.Order;
@@ -11,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -23,16 +18,20 @@ import java.util.List;
  * 유효시간(30분)이 지난 주문이 EXPIRED로 넘어가지 못하고 방치됐다. 이 서비스가 그런 주문을 스캔해
  * 만료시킨다. 건별 예외를 격리해 한 건 실패가 배치 전체를 멈추지 않게 하고(다음 주기 재시도),
  * 처리한 건수를 반환한다({@code VirtualAccountService.expireOverdue}·{@code PaymentRecoveryService}와 동일 패턴).
+ *
+ * <p><b>건별 트랜잭션은 {@link OrderExpiryTx} 가 진다.</b> 이 서비스에 {@code @Transactional} 을 두면,
+ * 루프 안에서 잡은 예외가 트랜잭션 참여 빈({@code saveAndFlush}·{@code release})에서 나온 경우 공유
+ * 트랜잭션이 rollback-only 로 오염돼 성공한 건까지 함께 롤백된다(실 MySQL 통합 테스트로 재현). 그래서
+ * 스캔만 하고(저장소 자체 readOnly tx) 건별 일은 분리 빈에 위임한다.
  */
 @Service
-@Transactional
 @RequiredArgsConstructor
 public class OrderExpiryService {
 
     private static final Logger log = LoggerFactory.getLogger(OrderExpiryService.class);
 
     private final OrderRepository orderRepository;
-    private final StockReservationService stockReservationService;
+    private final OrderExpiryTx expiryTx;
 
     /**
      * PENDING_PAYMENT이며 만료 예정 시각이 지난 주문을 EXPIRED로 전이한다. 반환값은 처리한 건수.
@@ -44,12 +43,8 @@ public class OrderExpiryService {
         int processed = 0;
         for (Order order : targets) {
             try {
-                order.markExpired();
-                // 상태 전이(EXPIRED)를 saveAndFlush로 명시 영속한다. dirty-check 자동 flush는 readOnly
-                // 조회로 세션 FlushMode가 MANUAL이거나 detached 엔티티인 경우 신뢰할 수 없어(pay-26 교훈) 확정을 강제한다.
-                orderRepository.saveAndFlush(order);
-                // 잡아 둔 재고가 있으면 되돌린다(#374, 주로 AT_ORDER 의 이탈 주문). 없으면 아무것도 안 한다
-                stockReservationService.release(order.getOrderNo(), "order_expired");
+                // 건별 트랜잭션 — 한 건의 rollback-only 가 다른 건을 되돌리지 않는다.
+                expiryTx.expire(order);
                 processed++;
             } catch (Exception e) {
                 // 한 건 실패가 배치 전체를 멈추지 않게 한다. 다음 주기에 다시 시도된다.
