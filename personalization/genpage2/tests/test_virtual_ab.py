@@ -22,8 +22,9 @@ from genpage2.simulate import (GeneratedRow, HttpSource, Impression, PageRequest
                                SimUser, _page_prefix, build_eval_users, load_attributes, persona_of,
                                rule_policy_class, simulate)
 from genpage2.vocab import Vocab, _article_id, content_rows
-from tools.v2_virtual_ab import (METRICS, RecordingSource, arm_of, bootstrap_ci, min_items_hit, notation,
-                                 paired_bootstrap_ci, paired_kept, paired_metrics, run_paired_arms)
+from tools.v2_virtual_ab import (METRICS, RecordingSource, _paired_table, arm_of, bootstrap_ci, build_parser,
+                                 min_items_hit, notation, paired_bootstrap_ci, paired_kept, paired_metrics,
+                                 run_paired_arms)
 
 
 def _frame(rows):
@@ -507,6 +508,52 @@ class PairedFailureTest(unittest.TestCase):
         self.assertEqual(len(b.failed), 0)
         metrics, _frame = paired_metrics(kept, [], [], draws=10, seed=7)
         self.assertIsNotNone(metrics["purchase_hit"]["diff"])
+
+
+class S4AppConfigTest(unittest.TestCase):
+    """S4(#467) 앱 구성 인자 — 기본값이면 지금과 같고, 주면 본문 · 표가 따라간다."""
+
+    def test_parser_defaults_keep_current_shape(self):
+        args = build_parser().parse_args(["--v2-url", "u", "--out", "o"])
+        self.assertEqual(args.rows, config.MAX_ROWS)
+        self.assertEqual(args.items_per_row, config.ITEMS_PER_ROW)
+        self.assertEqual(args.primary, "raw")
+
+    def test_app_config_flags_are_parsed(self):
+        args = build_parser().parse_args(["--v2-url", "u", "--out", "o",
+                                          "--rows", "3", "--primary", "min-items"])
+        self.assertEqual(args.rows, 3)
+        self.assertEqual(args.primary, "min-items")
+
+    def test_rows_reach_the_request_body(self):
+        vocab = _vocab(_articles())
+        request = PageRequest("c1", pd.Timestamp("2020-09-16"), [1], [-1], [], [], [])
+        default = HttpSource("http://127.0.0.1:1", "v2", vocab, {})
+        body = default.request_body(request)
+        self.assertEqual((body["rows"], body["items_per_row"]), (6, 8))
+        narrowed = HttpSource("http://127.0.0.1:1", "v2", vocab, {}, rows=3)
+        self.assertEqual(narrowed.request_body(request)["rows"], 3)
+
+    def _report(self, primary):
+        return {"mode": "paired-ab", "request_date": "2020-09-16", "customers_sampled": 1, "seed": 7,
+                "holdout_buyers": 1, "users_paired": 1, "users": 1,
+                "failures": {"A": 0, "B": 0, "dropped": 0},
+                "bootstrap_draws": 2000, "min_items": 3, "rows": 3, "items_per_row": 8,
+                "primary": primary, "policies": {"A": "rule", "B": "hybrid"},
+                "compose": {"A": "rule", "B": "hybrid"}, "response_composition": {}, "response_fallback": {},
+                "metrics": {name: {"a": 0.0, "b": 0.0, "diff": 0.0, "ci95": [0.0, 0.0]}
+                            for name in list(METRICS) + ["purchase_hit_min_items"]}}
+
+    def test_paired_table_marks_only_the_primary_row(self):
+        marked = [line for line in _paired_table(self._report("min-items")).splitlines()
+                  if "**(주 지표)**" in line]
+        self.assertEqual(len(marked), 1)
+        self.assertIn("3개 미만 행 제거", marked[0])
+        raw = [line for line in _paired_table(self._report("raw")).splitlines()
+               if "**(주 지표)**" in line]
+        self.assertEqual(len(raw), 1)
+        self.assertIn("실제 구매 적중", raw[0])
+        self.assertNotIn("3개 미만", raw[0])
 
 
 if __name__ == "__main__":
