@@ -19,6 +19,10 @@ S3(#462) `--paired` 는 사용자를 나누지 않는다. **모든 사용자에�
 돌려, 사용자 사이 분산이 (B − A) 에서 빠지는 짝 설계로 잰다. 반응 난수는 `rng_for(customer,
 date)` 그대로라 두 정책이 같은 시드에서 시작한다. `--customers 0` 은 홀드아웃 구매 고객
 전원이다. 결과는 고객별 값을 따로 parquet 로도 남긴다(`--paired-customers`, 저장소 밖 경로).
+
+S4(#467) 는 S3 과 같되 페이지 모양을 앱 구성 그대로 바꾼다. `--rows`(기본 6) · `--items-per-row`
+(기본 8)로 요청 본문을 정하고, `--primary {raw,min-items}` 로 짝 표의 주 지표 줄을 바꿔 표시한다
+(계산은 둘 다 한다). 기본값이면 지금과 완전히 같다.
 """
 from __future__ import annotations
 
@@ -53,6 +57,9 @@ METRIC_LABELS = {"page_reward": "페이지 보상 합", "click_rate": "클릭률
 MIN_ITEMS = 3
 # S3(#462) 진행 로그 단위(사용자 수). 이 수마다 진행 수 · 경과 시간을 찍는다.
 PAIRED_CHUNK = 1000
+# S4(#467) 짝 표의 주 지표 선택 — `raw` 는 버리기 전 실제 구매 적중, `min-items` 는 3개 미만
+# 행을 버린 뒤의 실제 구매 적중(앱이 실제로 보여 주는 것 기준). 계산은 둘 다 한다.
+PRIMARY_METRICS = {"raw": "purchase_hit", "min-items": "purchase_hit_min_items"}
 
 
 def arm_of(customer_id: Any) -> str:
@@ -300,6 +307,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     for arm in ("A", "B"):
         kind, url, compose = kinds[arm]
         source = HttpSource(url, kind, vocab, sections, compose=compose,
+                            rows=int(args.rows), items_per_row=int(args.items_per_row),
                             history_events=int(args.history_events))
         sources[arm] = source
         arm_pages[arm] = _by_customer(simulate(arm_users[arm], source, vocab=vocab, attributes=attributes,
@@ -312,6 +320,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     report = {"mode": mode, "request_date": str(request.date()),
               "customers_requested": int(args.customers), "seed": int(args.seed),
               "bootstrap_draws": int(args.bootstrap), "holdout_buyers": len(buyers),
+              "rows": int(args.rows), "items_per_row": int(args.items_per_row),
+              "primary": args.primary,
               "users": {"A": len(arm_users["A"]), "B": len(arm_users["B"])},
               "policies": policies,
               "compose": {arm: kinds[arm][2] for arm in ("A", "B")},
@@ -391,8 +401,10 @@ def run_paired(args: argparse.Namespace) -> dict[str, Any]:
     a_compose = args.a_compose or "rule"
     b_compose = args.b_compose or "hybrid"
     source_a = RecordingSource(HttpSource(args.v2_url, "v2", vocab, sections, compose=a_compose,
+                                          rows=int(args.rows), items_per_row=int(args.items_per_row),
                                           history_events=int(args.history_events)))
     source_b = RecordingSource(HttpSource(args.v2_url, "v2", vocab, sections, compose=b_compose,
+                                          rows=int(args.rows), items_per_row=int(args.items_per_row),
                                           history_events=int(args.history_events)))
     print(f"짝 설계 A/B — 사용자 {len(users):,}명 · A `{a_compose}` · B `{b_compose}`", flush=True)
     pages_a, pages_b = run_paired_arms(users, source_a, source_b, vocab=vocab, attributes=attributes,
@@ -405,7 +417,9 @@ def run_paired(args: argparse.Namespace) -> dict[str, Any]:
               "customers_requested": int(args.customers), "seed": int(args.seed),
               "bootstrap_draws": int(args.bootstrap), "holdout_buyers": len(buyers),
               "customers_sampled": len(chosen), "users": len(users), "users_paired": len(kept),
-              "min_items": int(args.min_items), "policies": {"A": a_compose, "B": b_compose},
+              "min_items": int(args.min_items), "rows": int(args.rows),
+              "items_per_row": int(args.items_per_row), "primary": args.primary,
+              "policies": {"A": a_compose, "B": b_compose},
               "compose": {"A": a_compose, "B": b_compose},
               "urls": {"A": str(args.v2_url), "B": str(args.v2_url)},
               # 실패한 요청은 조용히 넘기지 않는다 — 센 수 · 뺀 수 · 표본을 남긴다(짝 유지).
@@ -440,9 +454,11 @@ def _paired_table(report: dict[str, Any]) -> str:
              f"`{report['policies']['A']}` · 정책 B `{report['policies']['B']}` · "
              f"최소 항목 {report['min_items']}", "",
              "| 지표 | A | B | B − A | 95% 구간 |", "|---|---:|---:|---:|---|"]
+    primary = PRIMARY_METRICS.get(report.get("primary", "raw"), "purchase_hit")
     for name in list(METRICS) + ["purchase_hit_min_items"]:
         value = report["metrics"][name]
-        lines.append(f"| {METRIC_LABELS[name]} | {_num(value['a'])} | {_num(value['b'])} | {_num(value['diff'])}"
+        label = METRIC_LABELS[name] + (" **(주 지표)**" if name == primary else "")
+        lines.append(f"| {label} | {_num(value['a'])} | {_num(value['b'])} | {_num(value['diff'])}"
                      f" | [{_num(value['ci95'][0])}, {_num(value['ci95'][1])}] |")
     lines.append("")
     for arm in ("A", "B"):
@@ -454,7 +470,7 @@ def _paired_table(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--v1-url")
     parser.add_argument("--v2-url", required=True)
@@ -480,8 +496,19 @@ def main(argv: list[str] | None = None) -> int:
                         help="S3 보조 지표가 버리는 행의 최소 항목 수(app.home.min-items, 기본 3)")
     parser.add_argument("--paired-chunk", type=int, default=PAIRED_CHUNK,
                         help="S3 진행 로그 단위(사용자 수, 기본 1000)")
+    # S4(#467) 앱 구성 그대로 — 요청 본문의 페이지 모양을 바꾼다. 기본값이면 지금과 완전히 같다.
+    parser.add_argument("--rows", type=int, default=config.MAX_ROWS,
+                        help="요청 본문의 rows(기본 config.MAX_ROWS=6). S4 는 앱 2쪽과 같은 3")
+    parser.add_argument("--items-per-row", type=int, default=config.ITEMS_PER_ROW,
+                        help="요청 본문의 items_per_row(기본 config.ITEMS_PER_ROW=8)")
+    parser.add_argument("--primary", choices=tuple(PRIMARY_METRICS), default="raw",
+                        help="S4 짝 표에서 주 지표로 표시할 지표(계산은 둘 다 한다, 기본 raw=지금과 같음)")
     parser.add_argument("--out", type=Path, required=True)
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
     run(args)
     return 0
 
