@@ -81,10 +81,11 @@ public class SettlementService {
     private final int maxPages;
 
     /**
-     * 구매확정이 왔는데 정산 항목이 없을 때 이를 사고로 볼지.
+     * 구매확정이 왔는데 정산 항목이 없을 때 로그를 error 로 올릴지.
      *
-     * <p>기본은 {@code false} 다. 인프로세스에서는 이벤트 순서 레이스라 재전달로 풀린다.
-     * <b>서비스 분리 전환 기간에만 켠다</b> — 그때는 같은 상황이 영구 누락이기 때문이다(ADR-024).
+     * <p>동작은 플래그와 무관하게 <b>예외로 보류</b>한다(재전달 대기). 이 플래그는 심각도만 정한다 —
+     * 기본 {@code false} 면 warn, {@code true} 면 error. 서비스 분리 전환 기간처럼 같은 상황을
+     * 사고 신호로 크게 보고 싶을 때 켠다(ADR-024).
      */
     private final boolean missingItemIsIncident;
 
@@ -138,10 +139,15 @@ public class SettlementService {
      * 승인일 그대로 두면 {@code settle(D)}는 D+1에 이미 지났고 재실행도 멱등 skip돼 <b>영구 미정산</b>이
      * 된다. 릴리스일 R로 재스탬프하면 R+1의 {@code settle(R)}이 정확히 집계한다.
      *
-     * <p>항목이 없으면 {@code settlement.confirm.missing_item} 을 올리고 warn 후 return한다 —
-     * 승인/릴리스 이벤트 순서 레이스(릴리스가 적재보다 먼저 도착) 방어. Outbox at-least-once라
-     * 릴리스는 재전달되므로, 다음 배달에서 적재된 항목을 만나 전이한다.
-     * {@code app.settlement.missing-item-is-incident} 를 켜면 대신 예외를 던진다(전환 기간, ADR-024).
+     * <p>항목이 없으면 {@code settlement.confirm.missing_item} 을 올리고 <b>재시도 가능한 예외를 던져
+     * 발행을 미완료로 남긴다</b> — 승인/릴리스 이벤트 순서 레이스(릴리스가 적재보다 먼저 도착) 방어.
+     * 정상 반환하면 발행이 완료로 마킹돼 재전달이 영영 오지 않고 조용한 미정산이 된다. Outbox 가 미완료를
+     * 다시 배달하면 그때는 적재된 항목을 만나 전이한다({@code ReconciliationService} 와 같은 패턴).
+     * {@code app.settlement.missing-item-is-incident} 는 로그 심각도만 정한다(true=error, false=warn) —
+     * 보류 동작 자체는 플래그와 무관하다.
+     *
+     * <p><b>상대 이벤트가 영영 오지 않으면 미완료가 남는다.</b> 포기(dead-letter) 로직은 두지 않는다 —
+     * 그 적체는 나이 지표(outbox oldest-age)가 드러낸다.
      * 이 트랜잭션 안에서 로드한 엔티티라 커밋 시 dirty-check flush되지만, 전이 의도를 명시하려 saveAndFlush한다.
      *
      * @param orderNo     릴리스된 주문 번호
@@ -151,24 +157,18 @@ public class SettlementService {
     public void confirmSettlement(String orderNo, LocalDate releaseDate) {
         Optional<SettlementItem> found = itemRepository.findByOrderNo(orderNo);
         if (found.isEmpty()) {
-            // 인프로세스에서는 이벤트 순서 레이스이고 재전달로 풀린다. 그래서 경고만 찍고 지나간다.
-            //
-            // <b>서비스를 분리한 뒤에는 같은 코드가 다른 뜻이 된다.</b> 새 서비스가 빈 저장소로
-            // 뜨면, 전환 전에 승인된 주문의 항목은 옛 저장소에만 있다. 그 구매확정이 도착해도
-            // 대응할 항목이 없고, 재전달해도 영원히 생기지 않는다. 성공으로 처리되어 DLT 에도
-            // 안 가므로 <b>조용한 지급 누락</b>이 된다. 에스크로 보류가 7일이라 전환 직전
-            // 7일치가 통째로 여기 걸린다(ADR-024).
-            //
-            // 그래서 <b>세기부터 한다.</b> 지금까지는 이 일이 몇 번 일어났는지조차 남지 않았다.
+            // 승인 리스너가 모든 승인 결제에 항목을 적재하므로, 항목이 없다는 건 "정산 비대상"이 아니라
+            // 아직 승인 이벤트가 처리되지 않았다는 뜻이다(순서 역전). 조용히 완료로 닫으면 발행이
+            // 완료로 마킹돼 재전달이 영영 오지 않는다 — 예외로 보류해 재전달을 기다린다.
             meterRegistry.counter("settlement.confirm.missing_item").increment();
+            String message = "에스크로 릴리스 수신했으나 정산 항목 없음 orderNo=" + orderNo
+                    + " — 이벤트 순서 레이스, 재전달 대기";
             if (missingItemIsIncident) {
-                // 전환 기간에는 이것이 레이스가 아니라 사고 신호다. 예외로 올려 컨슈머 재시도와
-                // DLT 격리에 태운다. 조용히 지나가는 것보다 시끄럽게 막히는 편이 낫다.
-                throw new SettlementException("SETTLEMENT_ITEM_MISSING",
-                        "정산 항목 없이 구매확정이 도착했다. 전환 기간 사고 신호: " + orderNo);
+                log.error(message); // 전환 기간 등 원인 조사가 필요할 때 시끄럽게
+            } else {
+                log.warn(message);
             }
-            log.warn("에스크로 릴리스 수신했으나 정산 항목 없음 orderNo={} — 이벤트 순서 레이스, 재전달 대기", orderNo);
-            return;
+            throw new SettlementException("SETTLEMENT_ITEM_MISSING", message);
         }
         SettlementItem item = found.get();
         item.confirm(releaseDate); // 멱등: PENDING_CONFIRMATION일 때만 CONFIRMED + 집계일 재스탬프
@@ -189,12 +189,20 @@ public class SettlementService {
      * <p>다만 <b>절대값 세팅은 순서 역전에는 안전하지 않다</b>. 2차 취소가 먼저 소비되면 늦게 온 1차가
      * 잔액을 되돌린다. 파티션 순서에 기대지 않고 {@code cancelSeq}로 직접 막는다
      * ({@link SettlementItem#applySettleableBalance}).
+     *
+     * <p><b>항목이 없으면 skip 하지 않는다.</b> 승인 리스너가 모든 승인 결제에 항목을 적재하므로,
+     * 항목이 없다는 건 "정산 비대상"이 아니라 <b>아직 승인 이벤트가 처리되지 않았다</b>는 뜻이다(순서
+     * 역전). 조용히 넘기면 뒤늦게 승인이 재전달돼도 이 취소가 사라진다 — 예외를 던져 미완료로 남기고
+     * 재전달을 기다린다({@code ReconciliationService} 와 같은 패턴). 포기 로직은 두지 않는다 — 적체는
+     * 나이 지표(outbox oldest-age)가 드러낸다.
      */
     @Transactional
     public void reflectCancellation(PaymentCanceledEvent event) {
         Optional<SettlementItem> found = itemRepository.findByPaymentId(event.paymentId());
         if (found.isEmpty()) {
-            return; // 정산에 잡히지 않은 결제(비-정산 대상 등) — skip
+            meterRegistry.counter("settlement.cancel.deferred").increment();
+            throw new SettlementException("SETTLEMENT_ITEM_NOT_READY",
+                    "승인 항목이 아직 없어 취소를 반영할 수 없습니다. 재전달 대기: " + event.orderNo());
         }
         SettlementItem item = found.get();
 

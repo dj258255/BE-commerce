@@ -6,11 +6,12 @@ import com.beomsu.becommerce.escrow.internal.EscrowHoldView;
 import com.beomsu.becommerce.escrow.internal.EscrowHoldRepository;
 import com.beomsu.becommerce.escrow.internal.EscrowHold;
 import com.beomsu.becommerce.escrow.internal.EscrowException;
+import com.beomsu.becommerce.escrow.internal.EscrowReleaseTx;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,7 +37,14 @@ public class EscrowService {
     private static final Logger log = LoggerFactory.getLogger(EscrowService.class);
 
     private final EscrowHoldRepository repository;
-    private final ApplicationEventPublisher events;
+    private final MeterRegistry meterRegistry;
+
+    /**
+     * 릴리스의 트랜잭션 경계. {@link #autoReleaseDue}가 같은 빈의 release 를 자기호출하면 프록시를 타지
+     * 않아 {@code @Transactional} 이 무시되고 이벤트가 트랜잭션 밖에서 발행된다 — 별도 빈으로 두어
+     * 배치가 건별로 프록시를 경유하게 한다.
+     */
+    private final EscrowReleaseTx releaseTx;
 
     /** 보류 기간(일). 이 기간이 지나도록 구매확정이 없으면 자동 릴리스된다. 기본 7일. */
     @Value("${app.escrow.hold-period-days:7}")
@@ -57,41 +65,34 @@ public class EscrowService {
     }
 
     /**
-     * 구매확정 → 릴리스. 홀드를 RELEASED로 전이하고 {@link EscrowReleasedEvent}를 발행한다.
-     *
-     * <p>멱등: 이미 RELEASED면 이벤트를 재발행하지 않고 조용히 반환한다(구매확정 재요청·재시도 대비).
-     * REFUNDED된 홀드를 릴리스하려 하면 엔티티 가드가 INVALID_ESCROW_STATE로 막는다.
+     * 구매확정 → 릴리스. 트랜잭션 경계는 {@link EscrowReleaseTx} 가 진다 — 이 메서드는 프록시를 경유해
+     * 그쪽으로 위임한다. 배치({@link #autoReleaseDue})가 자기호출로 프록시를 우회해 이벤트를 트랜잭션
+     * 밖에서 발행하던 문제를 구조로 막는다.
      *
      * @throws EscrowException 홀드가 없으면 ESCROW_NOT_FOUND
      */
-    @Transactional
     public void release(String orderNo) {
-        EscrowHold hold = repository.findByOrderNo(orderNo)
-                .orElseThrow(() -> EscrowException.notFound(orderNo));
-
-        if (hold.getStatus() == EscrowStatus.RELEASED) {
-            return; // 멱등: 이미 릴리스됨 — 이벤트 재발행 안 함
-        }
-
-        Instant now = Instant.now();
-        hold.release(now);
-        // 상태 전이(RELEASED)를 saveAndFlush로 명시 영속한다. dirty-check 자동 flush는 readOnly 조회로 세션
-        // FlushMode가 MANUAL이거나 detached 엔티티인 경우 신뢰할 수 없어(pay-26 교훈), 이벤트 발행 전에 확정을 강제한다.
-        repository.saveAndFlush(hold);
-        events.publishEvent(new EscrowReleasedEvent(hold.getOrderNo(), hold.getAmount(), now));
+        releaseTx.release(orderNo);
     }
 
     /**
      * 취소에 따른 환불 — 홀드가 HELD면 REFUNDED로 전이한다(판매자 미정산 확정).
      *
-     * <p>멱등: 홀드가 없거나 이미 종결(RELEASED/REFUNDED)됐으면 skip한다. 취소는 구매확정 전
-     * (HELD)에만 회수 의미가 있으므로, 이미 릴리스된 홀드는 환불하지 않고 그대로 둔다.
+     * <p><b>보류 자체가 없으면 skip 하지 않는다.</b> 승인 리스너가 모든 승인 결제에 보류를 만들므로,
+     * 보류가 없다는 건 "비-에스크로"가 아니라 아직 승인 이벤트가 처리되지 않았다는 뜻이다(순서 역전).
+     * 조용히 넘기면 뒤늦게 승인이 재전달돼도 이 환불이 사라진다 — 예외를 던져 미완료로 남기고 재전달을
+     * 기다린다. 포기 로직은 두지 않는다 — 적체는 나이 지표(outbox oldest-age)가 드러낸다.
+     *
+     * <p>이미 종결(RELEASED/REFUNDED)된 홀드는 환불하지 않고 그대로 둔다(멱등). 취소는 구매확정 전
+     * (HELD)에만 회수 의미가 있고, 릴리스 뒤 취소의 회수는 정산 adjustment 가 담당한다.
      */
     @Transactional
     public void refundIfHeld(String orderNo) {
         Optional<EscrowHold> found = repository.findByOrderNo(orderNo);
         if (found.isEmpty()) {
-            return; // 에스크로에 잡히지 않은 주문(비-에스크로 결제 등) — skip
+            meterRegistry.counter("escrow.refund.deferred").increment();
+            throw new EscrowException("ESCROW_HOLD_NOT_READY",
+                    "에스크로 보류가 아직 없어 환불할 수 없습니다. 재전달 대기: " + orderNo);
         }
         EscrowHold hold = found.get();
         if (!hold.isHeld()) {
@@ -108,6 +109,10 @@ public class EscrowService {
      *
      * <p>한 건의 실패가 배치 전체를 멈추지 않도록 홀드별 try/catch로 격리한다
      * ({@code PaymentRecoveryService} 패턴). 실패분은 다음 주기에 다시 시도된다.
+     *
+     * <p>릴리스는 {@link EscrowReleaseTx} 를 <b>건별로</b> 부른다 — 배치 전체를 한 트랜잭션으로 묶지
+     * 않으므로 한 건의 실패가 다른 건을 롤백하지 않고, 릴리스 이벤트도 각자의 트랜잭션 커밋에 실려
+     * 리스너에게 전달된다.
      */
     public int autoReleaseDue() {
         List<EscrowHold> due =
@@ -115,7 +120,9 @@ public class EscrowService {
         int released = 0;
         for (EscrowHold hold : due) {
             try {
-                release(hold.getOrderNo());
+                // releaseTx 를 직접 부른다 — 같은 빈의 release 를 부르면 자기호출이라 @Transactional 이
+                // 무시되고 이벤트가 트랜잭션 밖에서 발행된다. 건별로 프록시를 경유해 릴리스한다.
+                releaseTx.release(hold.getOrderNo());
                 released++;
             } catch (Exception e) {
                 log.warn("에스크로 자동 릴리스 실패 orderNo={} : {}", hold.getOrderNo(), e.getMessage());

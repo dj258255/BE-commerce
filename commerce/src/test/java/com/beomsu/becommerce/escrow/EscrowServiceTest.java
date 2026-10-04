@@ -7,6 +7,8 @@ import com.beomsu.becommerce.escrow.internal.EscrowHoldView;
 import com.beomsu.becommerce.escrow.internal.EscrowHoldRepository;
 import com.beomsu.becommerce.escrow.internal.EscrowHold;
 import com.beomsu.becommerce.escrow.internal.EscrowException;
+import com.beomsu.becommerce.escrow.internal.EscrowReleaseTx;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,13 +31,17 @@ class EscrowServiceTest {
 
     private EscrowHoldRepository repository;
     private ApplicationEventPublisher events;
+    private SimpleMeterRegistry meterRegistry;
+    private EscrowReleaseTx releaseTx;
     private EscrowService service;
 
     @BeforeEach
     void setUp() {
         repository = mock(EscrowHoldRepository.class);
         events = mock(ApplicationEventPublisher.class);
-        service = new EscrowService(repository, events);
+        meterRegistry = new SimpleMeterRegistry();
+        releaseTx = new EscrowReleaseTx(repository, events);
+        service = new EscrowService(repository, meterRegistry, releaseTx);
         // @Value 기본값을 테스트에서 명시 설정 (보류 기간 7일)
         ReflectionTestUtils.setField(service, "holdPeriodDays", 7L);
     }
@@ -146,11 +152,29 @@ class EscrowServiceTest {
     }
 
     @Test
-    @DisplayName("refundIfHeld: 홀드 없으면 조용히 skip (비-에스크로 결제)")
-    void refundIfHeldSkipsMissing() {
+    @DisplayName("refundIfHeld: 홀드가 아예 없으면 보류(예외)로 남긴다 — 승인 재전달 뒤 풀린다")
+    void refundIfHeldDefersWhenHoldMissing() {
         when(repository.findByOrderNo("ord-x")).thenReturn(Optional.empty());
 
-        service.refundIfHeld("ord-x"); // 예외 없이 skip
+        assertThatThrownBy(() -> service.refundIfHeld("ord-x"))
+                .isInstanceOf(EscrowException.class)
+                .satisfies(e -> assertThat(((EscrowException) e).code()).isEqualTo("ESCROW_HOLD_NOT_READY"));
+
+        assertThat(meterRegistry.counter("escrow.refund.deferred").count()).isEqualTo(1.0);
+        verify(repository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("refundIfHeld 멱등: 이미 REFUNDED 면 다시 환불하지 않는다 — '없음'과 '이미 끝남'을 구분한다")
+    void refundIfHeldSkipsAlreadyRefunded() {
+        EscrowHold hold = heldHold("ord-1", 20_000);
+        hold.refund(Instant.now()); // 이미 REFUNDED
+        when(repository.findByOrderNo("ord-1")).thenReturn(Optional.of(hold));
+
+        service.refundIfHeld("ord-1"); // 예외 없이 skip
+
+        assertThat(hold.getStatus()).isEqualTo(EscrowStatus.REFUNDED);
+        verify(repository, never()).saveAndFlush(any());
     }
 
     // ---- autoReleaseDue ----

@@ -71,6 +71,14 @@ public class SettlementItem {
     @Column
     private Long settlementId;
 
+    /**
+     * 낙관적 락 버전. 배치의 {@link #markSettled}(CONFIRMED→SETTLED)와 취소 반영의 {@link #cancel}·
+     * {@link #applySettleableBalance}(→CANCELED/금액 변경)이 같은 항목을 동시에 쓰면 한쪽 변경이
+     * 사라진다(lost update). 늦게 커밋하는 쪽이 예외로 실패하게 해 그 유실을 막는다(ADR-073:59).
+     */
+    @Version
+    private long version;
+
     private SettlementItem(long paymentId, String orderNo, long amount, LocalDate confirmedDate) {
         this.paymentId = paymentId;
         this.orderNo = orderNo;
@@ -131,9 +139,9 @@ public class SettlementItem {
      * (부분취소 후에도 잔액은 여전히 정산 대상).
      *
      * <p><b>멱등</b>: 델타를 빼는 게 아니라 절대 잔액으로 세팅하므로, 같은 취소 이벤트가 at-least-once로
-     * 여러 번 배달돼도 같은 값이 되어 이중 차감되지 않는다. (같은 주문의 취소 이벤트는 orderNo 라우팅으로
-     * 같은 파티션에서 순서 보존되므로, 더 과거 취소가 뒤늦게 재배달되는 역전은 실질적으로 배제된다.)
-     * SETTLED 항목엔 호출하지 않는다(서비스에서 분기).
+     * 여러 번 배달돼도 같은 값이 되어 이중 차감되지 않는다. 순서 역전은 <b>orderNo 파티션 순서가 아니라</b>
+     * {@code lastCancelSeq} 가드가 막는다 — 인프로세스 리스너는 전부 {@code @Async} 라 같은 주문의 취소도
+     * 선착순이 보장되지 않는다. SETTLED 항목엔 호출하지 않는다(서비스에서 분기).
      */
     /**
      * 취소 후 <b>잔액을 그대로 세팅</b>한다. 델타를 빼면 재배달 때 두 배로 깎인다.

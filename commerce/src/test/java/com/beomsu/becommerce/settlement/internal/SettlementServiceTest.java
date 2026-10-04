@@ -304,39 +304,53 @@ class SettlementServiceTest {
     }
 
     @Test
-    @DisplayName("항목 없는 구매확정은 이제 세어진다 — 전에는 몇 번 일어났는지조차 안 남았다")
-    void missingItemIsCounted() {
+    @DisplayName("항목 없는 구매확정은 세어지고 보류된다 — 전에는 몇 번 일어났는지조차 안 남았다")
+    void missingItemIsCountedAndDeferred() {
         when(itemRepository.findByOrderNo("order-x")).thenReturn(Optional.empty());
 
-        service.confirmSettlement("order-x", DATE);
+        assertThatThrownBy(() -> service.confirmSettlement("order-x", DATE))
+                .isInstanceOf(SettlementException.class)
+                .satisfies(e -> assertThat(((SettlementException) e).code()).isEqualTo("SETTLEMENT_ITEM_MISSING"));
 
         assertThat(meterRegistry.counter("settlement.confirm.missing_item").count()).isEqualTo(1.0);
     }
 
     @Test
-    @DisplayName("전환 기간 스위치를 켜면 항목 없는 구매확정이 예외가 된다 — 조용한 지급 누락을 막는다")
-    void missingItemIsIncidentWhenSwitchedOn() {
-        // 서비스를 분리해 새 저장소로 옮기면, 전환 전 승인된 주문의 항목은 새 쪽에 없다.
-        // 재전달해도 생기지 않으므로 이건 레이스가 아니라 사고다(ADR-024).
+    @DisplayName("missing-item-is-incident 는 로그 심각도만 바꾼다 — 켜도 꺼도 동일하게 예외로 보류한다")
+    void missingItemFlagOnlyChangesLogLevel() {
+        // 플래그는 예외/정상반환을 가르지 않는다. 보류(예외 → 미완료 → 재전달)는 두 값에서 같고,
+        // 로그만 warn/error 로 갈린다.
         SettlementService strict = new SettlementService(itemRepository, settlementRepository,
                 adjustmentRepository, meterRegistry, alwaysAllow, 270L, 2, true, 20);
         when(itemRepository.findByOrderNo("order-cutover")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> strict.confirmSettlement("order-cutover", DATE))
                 .isInstanceOf(SettlementException.class)
-                .hasMessageContaining("전환 기간");
+                .satisfies(e -> assertThat(((SettlementException) e).code()).isEqualTo("SETTLEMENT_ITEM_MISSING"));
 
         verify(itemRepository, never()).saveAndFlush(any());
     }
 
     @Test
-    @DisplayName("에스크로 릴리스: 항목이 없으면(순서 레이스) 무시하고 저장하지 않는다")
-    void confirmSettlementMissingItemIsIgnored() {
-        when(itemRepository.findByOrderNo("order-x")).thenReturn(Optional.empty());
+    @DisplayName("released 선도착: 항목이 없으면 보류(예외)로 남기고, 재전달에서는 CONFIRMED 로 전이한다")
+    void confirmSettlementDefersThenConfirmsOnRedelivery() {
+        when(itemRepository.findByOrderNo("order-1")).thenReturn(Optional.empty());
 
-        service.confirmSettlement("order-x", DATE);
-
+        // 1차: 승인 적재가 아직 안 됐다 — 정상 반환하면 발행이 완료로 마킹돼 재전달이 오지 않는다.
+        assertThatThrownBy(() -> service.confirmSettlement("order-1", DATE))
+                .isInstanceOf(SettlementException.class)
+                .satisfies(e -> assertThat(((SettlementException) e).code()).isEqualTo("SETTLEMENT_ITEM_MISSING"));
+        assertThat(meterRegistry.counter("settlement.confirm.missing_item").count()).isEqualTo(1.0);
         verify(itemRepository, never()).saveAndFlush(any());
+
+        // 재전달: 그 사이 승인 적재가 끝나 항목이 생겼다 → 이번엔 CONFIRMED 로 전이한다.
+        SettlementItem item = SettlementItem.of(1L, "order-1", 10_000, DATE, PLATFORM);
+        when(itemRepository.findByOrderNo("order-1")).thenReturn(Optional.of(item));
+
+        service.confirmSettlement("order-1", DATE);
+
+        assertThat(item.getStatus()).isEqualTo(SettlementItemStatus.CONFIRMED);
+        verify(itemRepository).saveAndFlush(item);
     }
 
     @Test
@@ -513,14 +527,26 @@ class SettlementServiceTest {
     }
 
     @Test
-    @DisplayName("취소: 정산에 없는 결제면 무시")
-    void reflectCancellationMissingItemIsIgnored() {
-        when(itemRepository.findByPaymentId(999L)).thenReturn(Optional.empty());
-        PaymentCanceledEvent event = new PaymentCanceledEvent("order-x", 999L, 1, 10_000, 0, true, java.time.Instant.now());
+    @DisplayName("취소 선도착: 승인 항목이 없으면 보류(예외)로 남기고, 재전달에서는 취소가 반영된다")
+    void reflectCancellationDefersThenAppliesOnRedelivery() {
+        PaymentCanceledEvent event = new PaymentCanceledEvent("order-1", 100L, 1, 10_000, 0, true, java.time.Instant.now());
+        when(itemRepository.findByPaymentId(100L)).thenReturn(Optional.empty());
+
+        // 1차: 승인 적재가 아직 안 됐다 — 조용히 skip 하면 뒤늦게 승인이 재전달돼도 이 취소가 사라진다.
+        assertThatThrownBy(() -> service.reflectCancellation(event))
+                .isInstanceOf(SettlementException.class)
+                .satisfies(e -> assertThat(((SettlementException) e).code()).isEqualTo("SETTLEMENT_ITEM_NOT_READY"));
+        assertThat(meterRegistry.counter("settlement.cancel.deferred").count()).isEqualTo(1.0);
+        verify(itemRepository, never()).saveAndFlush(any());
+
+        // 재전달: 그 사이 승인 적재가 끝나 항목이 생겼다 → 이번엔 취소가 반영된다.
+        SettlementItem item = confirmedItem(100L, "order-1", 10_000);
+        when(itemRepository.findByPaymentId(100L)).thenReturn(Optional.of(item));
 
         service.reflectCancellation(event);
 
-        verify(itemRepository, never()).saveAndFlush(any());
+        assertThat(item.getStatus()).isEqualTo(SettlementItemStatus.CANCELED);
+        verify(itemRepository).saveAndFlush(item);
     }
 
     @Test
