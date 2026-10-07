@@ -212,3 +212,117 @@ mv imageio_ffmpeg/binaries/ffmpeg-linux-aarch64-v7.0.2 ffmpeg && chmod +x ffmpeg
 - **검증은 길이·존재·비어있지 않음만 본다.** 세그먼트의 실제 화질(해상도가 요청대로
   나왔는지 픽셀 단위로, 또는 디코드해서 깨짐이 없는지)까지는 확인하지 않는다 — ffprobe가
   없는 환경에서도 돌아야 해서 재생목록이 보장하는 선(길이·구조)까지만 본다.
+
+## R24: 업로드 완료 → READY(실제 경로)
+
+위 숫자는 전부 "FFmpeg 변환만" 떼어 쟀다. R24가 실제로 요구하는 것은 **업로드 완료부터
+`READY`까지**다 — 그 사이에는 변환 말고도 Outbox 이벤트 발행·커밋, `@ApplicationModuleListener`
+비동기 핸드오프, probe(메타 점검) 단계가 더 있다(R23 2·3단계). 이 절은 그 전체를 실제
+업로드 API로 재서, 변환 단독 시간과 실제 경로 사이에 숨은 비용이 있는지 본다.
+
+### 어떻게 쟀나
+
+`tools/run-shorts-upload-to-ready-bench.sh`가 commerce를 **worker 프로파일**
+(`SPRING_PROFILES_ACTIVE=worker`, 변환 리스너 켜짐)로 띄운 상태에서:
+
+1. 로그인(판매자 데모 계정) → 업로드 시작 API(`POST /api/v1/shorts`)로 presigned URL을 받는다.
+2. 60초·1080x1920·30fps 세로 합성 영상(`lavfi testsrc2` + 오디오, R21 상한과 같은 모양)을
+   그 저장소 경로(로컬 파일, ADR-081)에 실제로 쓴다.
+3. 업로드 완료 API(`POST /api/v1/shorts/{id}/complete`)를 부른다 — 이 응답의 `updatedAt`이
+   `UPLOADED` 전이 시각이다(ShortVideo가 상태 전이마다 기록하는 값을 API가 그대로 노출한다 —
+   폴링이 만든 값이 아니다).
+4. `READY`가 될 때까지 조회 API(`GET /api/v1/shorts/{id}`)를 0.5초 간격으로 폴링한다. `READY`가
+   되면 그 응답의 `updatedAt`이 `READY` 전이 시각이다.
+5. 두 시각의 차이가 "업로드 완료 → READY" 시간이다. 동시에 1건만 처리한다(순차 3회 이상).
+
+### 결과 (3회, 동시 변환 1건)
+
+| rep | short_video_id | UPLOADED | READY | 경과(초) |
+|---|---|---|---|---:|
+| 1 | 5 | 2026-10-07T21:04:34.728603875Z | 2026-10-07T21:04:46.663810Z | 11.935 |
+| 2 | 6 | 2026-10-07T21:04:46.927028434Z | 2026-10-07T21:04:58.773198Z | 11.846 |
+| 3 | 7 | 2026-10-07T21:04:59.109704043Z | 2026-10-07T21:05:10.747180Z | 11.637 |
+
+(원자료: `docs/performance/runs/r24-shorts-upload-to-ready/raw.csv`, `.gitignore` 대상)
+
+- **중앙값 11.846초, 최소~최대 11.637~11.935초**
+- **60초 목표 대비 여유(중앙값 기준): +48.15초**
+- **3회 모두 성공(`READY` 도달), 실패·타임아웃 0건**
+
+**R24를 통과한다.** 세 회차 전부 60초 목표의 5분의 1 수준이고, 변동 폭(11.6~12.0초)도 좁다.
+
+### 변환 단독 시간과의 차이 — 어디서 더 걸리나
+
+**단계별(PROBING·TRANSCODING 진입 시각)은 폴링으로 보이지 않았다.** `ShortsTranscodeService.
+processUploaded`가 `@Transactional` 메서드 하나라 probe→transcode→READY 전체가 **하나의
+DB 트랜잭션** 안에서 일어난다 — 다른 트랜잭션(조회 API의 GET)은 그 트랜잭션이 커밋되기
+전까지 중간 상태(PROBING·TRANSCODING)를 전혀 보지 못한다. 그래서 폴링은 매번 `UPLOADED`에서
+곧장 `READY`로 건너뛰는 것만 관측했다 — 이건 폴링 간격이 거칠어서가 아니라 **트랜잭션
+경계가 중간 상태를 가린다는 구조적 사실**이다(스크립트의 `phases.csv`가 그 증거다 — PROBING·
+TRANSCODING 행이 한 번도 없다).
+
+그래서 "변환 단독 시간"과의 차이는 **같은 소스로 별도 측정한 값끼리 비교**하는 간접적인
+방법으로만 본다 — 정밀한 구간 분해는 아니고, 전체 중 비-FFmpeg 비용이 대략 어느 수준인지
+가늠하는 참고값이다.
+
+| 구간 | 측정 방법 | 중앙값(초) |
+|---|---|---:|
+| probe(메타 점검, 전체 디코드) | `ffmpeg -i <60초 소스> -f null -`을 단독으로 3회 측정 | 1.477 |
+| transcode(filtersplit+superfast) | `tools/run-shorts-transcode-bench.sh`로 같은 세션에서 다시 측정(3회) | 8.980 |
+| **probe + transcode 합** | 위 둘의 합 | **10.457** |
+| **실제 경로(업로드 완료→READY)** | 이 절의 측정값(중앙값) | **11.846** |
+| 차이(대기·DB·이벤트 전달 등) | 실제 경로 − (probe+transcode) | **약 1.39초** |
+
+**주의해서 읽을 것**: 이 "차이"는 같은 회차를 짝지어 뺀 값이 아니라 **서로 다른 측정(각각
+3회의 중앙값)끼리의 차이**다. 이 문서가 이미 여러 번 확인했듯 이 샌드박스는 같은 조건에서도
+회차 간 변동이 크다(단일 회차가 3배까지 튄 전례가 있다, 위 "구 스크립트와 교차 비교" 절) —
+그 변동 폭(수백 ms~수 초)이 여기서 말하는 "차이"(약 1.4초)와 같은 자릿수다. 그래서 **"대기·
+DB·이벤트 전달에 정확히 1.4초가 든다"고 읽지 말고, "전체 시간의 대부분(약 88%)이 순수
+FFmpeg 작업(probe+transcode)이고 나머지는 변동 범위 안에 있다"는 방향으로만 읽을 것.**
+비동기 리스너 핸드오프(커밋 후 별도 스레드로 이벤트가 전달되는 지연)가 이 나머지에 들어
+있을 가능성이 가장 높지만, 이 측정만으로 그 크기를 단정하지 않는다.
+
+### 측정 환경
+
+```
+measured_at    : 2026-10-07T21:04:34+00:00 (업로드→READY) / 같은 세션에서 transcode 교차 측정
+base_url       : http://localhost:8080 (commerce, SPRING_PROFILES_ACTIVE=worker)
+ffmpeg_version : ffmpeg version 8.0.1-3ubuntu2 (studio.yaml의 systemPackages: [ffmpeg]로 설치)
+os             : Linux 6.8.0-50-generic aarch64
+cpu_cores      : 8
+duration_sec   : 60
+reps           : 3 (업로드→READY), 3 (probe 단독), 3 (transcode 교차 측정)
+```
+
+이 수치도 위 섹션들과 같은 샌드박스(가상화 8코어)에서 쟀다 — 같은 "다른 기계와 직접 비교하지
+말 것" 주의가 적용된다. `ffmpeg` 버전이 위 섹션(7.0.2-static)과 다른데, 그때는 샌드박스에
+ffmpeg가 아예 없어 PyPI 휠에서 정적 바이너리를 꺼내 썼고(그 절 참고) 지금은 R23 3단계가
+`studio.yaml`의 `systemPackages: [ffmpeg]`로 apt 설치한 8.0.1을 쓴다 — 운영 경로와 같은
+설치 방법이라 이쪽이 더 대표성 있는 환경이다.
+
+### 재현
+
+```bash
+# commerce를 worker 프로파일로 띄운 상태에서(SPRING_PROFILES_ACTIVE=worker)
+./tools/run-shorts-upload-to-ready-bench.sh
+
+# 여러 번 나눠 이어붙이기(같은 OUT_DIR)
+OUT_DIR=docs/performance/runs/my-run REPS=1 ./tools/run-shorts-upload-to-ready-bench.sh
+```
+
+원자료는 `docs/performance/runs/<이름>/`(`.gitignore` 대상) — `raw.csv`(회차별 UPLOADED·READY
+시각과 경과), `phases.csv`(폴링이 관측한 상태 변화, 이번 측정에서는 UPLOADED→READY만 보임),
+`environment.txt`, `report.md`.
+
+### 이 측정이 말하지 않는 것
+
+- **"대기·DB·이벤트 전달"의 정확한 크기를 분해하지 못했다.** 위에서 설명한 대로 probe·
+  transcode가 같은 트랜잭션 안에 있어 중간 시각을 못 보고, 비교는 서로 다른 세션의 측정치를
+  맞세운 것이다 — 변동 폭과 "차이"가 같은 자릿수라 정밀한 결론은 아니다.
+- **동시 변환 1건만 쟀다.** 여러 영상이 동시에 올라와 변환이 큐에 쌓이는 상황(worker가
+  순차로 처리하며 뒤의 영상이 기다리는 시간)은 재지 않았다 — ADR-081의 "다시 볼 조건"
+  (워커 다중화·대기열) 대상이다.
+- **합성 테스트 패턴, 가상화 공유 CPU라는 한계는 위 섹션들과 같다.**
+- **로그인·presigned URL 발급·로컬 파일 쓰기 같은 스크립트 자체의 오버헤드는 측정 구간
+  (UPLOADED 응답 이후)에 들어가지 않는다** — "업로드 완료"가 R24의 시작점이라 그 이전 단계는
+  이 숫자에 포함될 필요가 없다(요구사항 문구와 일치).
