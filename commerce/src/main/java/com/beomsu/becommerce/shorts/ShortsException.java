@@ -48,4 +48,22 @@ public class ShortsException extends DomainException {
     public static ShortsException forbidden(long id) {
         return new ShortsException("SHORT_VIDEO_FORBIDDEN", "이 숏폼 영상에 대한 권한이 없습니다: " + id);
     }
+
+    /**
+     * R25: 연결하려는 상품이 카탈로그에 없음. 새 코드를 만들지 않는다 — 카탈로그·위시리스트와
+     * 같은 상황이므로 같은 코드({@code PRODUCT_NOT_FOUND})를 쓴다({@code WishlistException} 참고).
+     */
+    public static ShortsException productNotFound(long productId) {
+        return new ShortsException("PRODUCT_NOT_FOUND", "상품을 찾을 수 없습니다: " + productId);
+    }
+
+    /**
+     * R25 경계: 영상 하나에 연결 가능한 상품 수(기본 10개)를 넘는 새 상품을 연결하려 함.
+     * {@code shortVideoId}는 저장 전(id 미발급) 애그리거트에서도 호출될 수 있어 {@code Long}으로
+     * 받는다 — {@code long}이면 {@code null} 자동 언박싱이 NPE가 된다.
+     */
+    public static ShortsException tooManyLinkedProducts(Long shortVideoId, int max) {
+        return new ShortsException("TOO_MANY_LINKED_PRODUCTS",
+                "영상 하나에 연결할 수 있는 상품은 %d개까지입니다: 영상 %s".formatted(max, shortVideoId));
+    }
 }

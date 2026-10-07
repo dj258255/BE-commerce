@@ -25,14 +25,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 숏폼 업로드 API 통합 테스트(R21) — 판매자 전용 인가, 메타 검증, presigned 업로드→완료 흐름을
- * 실제 서버·실 MySQL로 끝까지 검증한다.
+ * 숏폼 업로드·상품 연결 API 통합 테스트(R21·R25) — 판매자 전용 인가, 메타 검증, presigned
+ * 업로드→완료 흐름, 상품 연결·해제를 실제 서버·실 MySQL로 끝까지 검증한다.
  *
  * <p>{@code @Tag("integration")}이라 기본 스위트에서 제외된다. CI는 {@code ./gradlew integrationTest}로 돌린다.
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@DisplayName("숏폼 업로드 API 통합(R21) — 판매자 인가, 메타 검증, 업로드 완료 흐름")
+@DisplayName("숏폼 업로드·상품 연결 API 통합(R21·R25) — 판매자 인가, 메타 검증, 업로드 완료·상품 연결 흐름")
 class ShortsApiIntegrationTest {
 
     @DynamicPropertySource
@@ -126,6 +126,53 @@ class ShortsApiIntegrationTest {
         assertThat(res.getStatusCode().value()).isEqualTo(401);
     }
 
+    @Test
+    @DisplayName("R25: 판매자가 상품을 연결하면 조회 응답에 id·이름·가격이 담긴다")
+    void linkingProductAppearsInGetResponse() {
+        String seller = authToken("3", "seller-local-only");
+        long id = start(seller, validRequest()).getBody().get("shortVideoId").asLong();
+
+        ResponseEntity<JsonNode> linked = linkProduct(seller, id, 1L);
+        assertThat(linked.getStatusCode().is2xxSuccessful()).isTrue();
+        JsonNode products = linked.getBody().get("products");
+        assertThat(products).hasSize(1);
+        assertThat(products.get(0).get("productId").asLong()).isEqualTo(1L);
+        assertThat(products.get(0).get("name").asText()).isEqualTo("테스트 상품 A");
+        assertThat(products.get(0).get("price").asLong()).isEqualTo(10000L);
+
+        ResponseEntity<JsonNode> fetched = get(seller, id);
+        assertThat(fetched.getBody().get("products")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("R25: 없는 상품을 연결하면 404 PRODUCT_NOT_FOUND로 거절되고 연결되지 않는다")
+    void linkingNonexistentProductIsRejected() {
+        String seller = authToken("3", "seller-local-only");
+        long id = start(seller, validRequest()).getBody().get("shortVideoId").asLong();
+
+        ResponseEntity<JsonNode> res = linkProduct(seller, id, 999_999L);
+
+        assertThat(res.getStatusCode().value()).isEqualTo(404);
+        assertThat(res.getBody().get("code").asText()).isEqualTo("PRODUCT_NOT_FOUND");
+        assertThat(get(seller, id).getBody().get("products")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("R25: 상품 연결을 해제하면 조회 응답에서 사라진다")
+    void unlinkingProductRemovesItFromResponse() {
+        String seller = authToken("3", "seller-local-only");
+        long id = start(seller, validRequest()).getBody().get("shortVideoId").asLong();
+        linkProduct(seller, id, 1L);
+        linkProduct(seller, id, 2L);
+
+        ResponseEntity<JsonNode> unlinked = unlinkProduct(seller, id, 1L);
+
+        assertThat(unlinked.getStatusCode().is2xxSuccessful()).isTrue();
+        JsonNode products = unlinked.getBody().get("products");
+        assertThat(products).hasSize(1);
+        assertThat(products.get(0).get("productId").asLong()).isEqualTo(2L);
+    }
+
     // --- 헬퍼 ---
 
     private Map<String, Object> validRequest() {
@@ -151,6 +198,16 @@ class ShortsApiIntegrationTest {
 
     private ResponseEntity<JsonNode> get(String token, long id) {
         return rest.exchange("/api/v1/shorts/" + id, HttpMethod.GET,
+                new HttpEntity<>(null, bearer(token)), JsonNode.class);
+    }
+
+    private ResponseEntity<JsonNode> linkProduct(String token, long id, long productId) {
+        return rest.exchange("/api/v1/shorts/" + id + "/products", HttpMethod.POST,
+                new HttpEntity<>(Map.of("productId", productId), bearer(token)), JsonNode.class);
+    }
+
+    private ResponseEntity<JsonNode> unlinkProduct(String token, long id, long productId) {
+        return rest.exchange("/api/v1/shorts/" + id + "/products/" + productId, HttpMethod.DELETE,
                 new HttpEntity<>(null, bearer(token)), JsonNode.class);
     }
 

@@ -60,7 +60,9 @@ public class GlobalExceptionHandler {
                  // 순서 위반은 오류가 아니라 설계된 거절이다(ADR-014 블라인드 리뷰)
                  "REVIEW_OUT_OF_ORDER", "PAYMENT_ALREADY_SETTLED",
                  // 동시 요청이 유니크 제약에 부딪힌 경우(위시리스트 동시 추가). 결과는 이미 의도한 대로다.
-                 "DUPLICATE_REQUEST" -> HttpStatus.CONFLICT; // 409
+                 "DUPLICATE_REQUEST",
+                 // 영상 하나에 연결 가능한 상품 수(R25)를 넘는 새 상품 연결 시도.
+                 "TOO_MANY_LINKED_PRODUCTS" -> HttpStatus.CONFLICT; // 409
             case "IDEMPOTENCY_KEY_REUSED" -> HttpStatus.UNPROCESSABLE_ENTITY;                // 422
             // 대기열 게이트: 요청 자체는 유효하나 지금은 받아줄 수 없다(줄 서면 됨) → 403(권한 문제)이
             // 아니라 429가 의미에 맞다. 클라이언트는 enter → status 폴링 후 재시도하면 된다.
