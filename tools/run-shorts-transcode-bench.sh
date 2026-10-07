@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 #
 # 숏폼 변환(R23) 벤치마크 — 60초·1080x1920·9:16 합성 영상을 세 화질
-# (1080x1920/5Mbps, 720x1280/2.5Mbps, 480x854/1Mbps) fMP4 HLS + 썸네일로 바꾸는 데
-# 걸리는 시간을 재서 docs/performance/에 표로 남긴다. R24 목표(업로드 완료→READY 60초 이내)
-# 대비 여유를 숫자로 본다.
+# (1080x1920/5Mbps, 720x1280/2.5Mbps, 480x854/1Mbps) fMP4 HLS + 썸네일 + 마스터 재생목록으로
+# 바꾸는 데 걸리는 시간을 재서 docs/performance/에 표로 남긴다. R24 목표(업로드 완료→READY
+# 60초 이내) 대비 여유를 숫자로 본다.
+#
+# 회차마다 지우기 전에 산출물을 확인한다(validate_outputs) — 재생목록·세그먼트 존재, 세그먼트
+# duration 합이 원본과 ±1초 안에서 맞는지, 썸네일이 비어있지 않은지, 마스터 재생목록이 세
+# 렌디션을 해상도·대역폭과 함께 참조하는지(R23 인수 조건). 하나라도 틀리면 그 회차를
+# raw.csv에 FAIL로 남기고 스크립트가 즉시 0이 아닌 코드로 끝난다 — 잰 시간이 맞는 산출물의
+# 시간이라는 보장이 없으면 그 숫자는 쓸모가 없다.
 #
 # 비교하는 세 방식:
 #   serial      — 화질마다 ffmpeg 프로세스를 따로 띄워 차례로 디코드+인코드(가장 단순)
@@ -106,6 +112,7 @@ fi
 LABELS=(1080 720 480)
 SCALES=(1080:1920 720:1280 480:854)
 BITRATES=(5M 2.5M 1M)
+BANDWIDTHS=(5000000 2500000 1000000)   # 마스터 재생목록의 BANDWIDTH(bit/s)는 숫자여야 한다("5M" 불가)
 
 # 화질 하나를 fMP4 HLS로. $1=프리셋 $2=출력 디렉터리 $3=인덱스(0/1/2 → LABELS/SCALES/BITRATES)
 encode_one() {
@@ -124,10 +131,76 @@ thumbnail() {
   "$FFMPEG_BIN" -hide_banner -loglevel error -y -i "$SRC" -vframes 1 -vf "scale=480:-1" "$outdir/thumb.jpg"
 }
 
+# R23 인수 조건 — 세 렌디션을 참조하는 마스터 재생목록(해상도·대역폭 포함). ffmpeg의 hls
+# 먹서는 출력마다 따로 돌려 마스터를 자동으로 만들어주지 않으므로 직접 쓴다. 만드는 시간도
+# 변환 시간에 포함해야 하므로(요구사항) run_*() 안에서, 측정 구간을 멈추기 전에 호출한다.
+write_master() {
+  local outdir="$1"
+  # 한 줄에 "local a=1 b=$a"로 쓰면 $a가 이 local이 만들기 전의(바깥 스코프) 값으로 먼저
+  # 치환돼 버린다 — 실제로 이 버그로 master가 "$outdir" 없이 "/master.m3u8"(파일시스템 루트)로
+  # 풀려 산출물이 엉뚱한 곳에 쓰였다(별도 호출 스코프 없이 직접 테스트해서 드러났다).
+  # 줄을 나눠 $outdir가 먼저 확정된 뒤에 master를 만든다.
+  local master="$outdir/master.m3u8"
+  {
+    echo "#EXTM3U"
+    echo "#EXT-X-VERSION:7"
+    local i
+    for i in 0 1 2; do
+      echo "#EXT-X-STREAM-INF:BANDWIDTH=${BANDWIDTHS[$i]},RESOLUTION=${SCALES[$i]/:/x}"
+      echo "${LABELS[$i]}/out.m3u8"
+    done
+  } > "$master"
+}
+
+# 화질마다: 재생목록·세그먼트가 실제로 있고 전체 길이가 원본과 ±1초 안에서 맞는지(세그먼트
+# duration은 ffmpeg가 매긴 실제 값이라 디코드 실패로 영상이 조기 종료돼도 짧게 잡힌다 —
+# ffprobe 없이도 이 검사면 충분하다). 썸네일이 비었는지, 마스터 재생목록이 세 렌디션을
+# 해상도·대역폭과 함께 참조하는지도 본다. 실패 사유를 stdout에 적고 1을 돌려준다.
+validate_outputs() {
+  local outdir="$1"
+  local i label pl dir segs seg total diff master cnt
+
+  for i in 0 1 2; do
+    label="${LABELS[$i]}"
+    pl="$outdir/$label/out.m3u8"
+    if [ ! -s "$pl" ]; then echo "재생목록 없음/비어있음: $pl"; return 1; fi
+
+    dir="$(dirname "$pl")"
+    segs="$(grep -v '^#' "$pl" | grep -v '^[[:space:]]*$' || true)"
+    if [ -z "$segs" ]; then echo "세그먼트 참조 없음: $pl"; return 1; fi
+    while IFS= read -r seg; do
+      [ -n "$seg" ] || continue
+      if [ ! -s "$dir/$seg" ]; then echo "세그먼트 파일 없음/비어있음: $dir/$seg"; return 1; fi
+    done <<< "$segs"
+
+    total="$(grep '^#EXTINF:' "$pl" | sed -E 's/#EXTINF:([0-9.]+).*/\1/' | awk '{s+=$1} END{printf "%.2f", s+0}')"
+    diff="$(awk -v a="$total" -v b="$DURATION" 'BEGIN{d=a-b; if(d<0)d=-d; printf "%.2f", d}')"
+    if ! awk -v d="$diff" 'BEGIN{exit !(d<=1.0)}'; then
+      echo "길이 불일치($label): 세그먼트 합=${total}s 원본=${DURATION}s 차이=${diff}s(허용 ±1s)"
+      return 1
+    fi
+  done
+
+  if [ ! -s "$outdir/thumb.jpg" ]; then echo "썸네일 없음/비어있음: $outdir/thumb.jpg"; return 1; fi
+
+  master="$outdir/master.m3u8"
+  if [ ! -s "$master" ]; then echo "마스터 재생목록 없음/비어있음: $master"; return 1; fi
+  cnt="$(grep -c '^#EXT-X-STREAM-INF' "$master" || true)"
+  if [ "${cnt:-0}" -ne 3 ]; then echo "마스터 재생목록의 EXT-X-STREAM-INF 개수가 3이 아님: ${cnt:-0}"; return 1; fi
+  if ! grep -q 'RESOLUTION=' "$master"; then echo "마스터에 RESOLUTION 속성 없음"; return 1; fi
+  if ! grep -q 'BANDWIDTH=' "$master"; then echo "마스터에 BANDWIDTH 속성 없음"; return 1; fi
+  for i in 0 1 2; do
+    label="${LABELS[$i]}"
+    if ! grep -q "$label/out.m3u8" "$master"; then echo "마스터에 $label 항목 없음"; return 1; fi
+  done
+  return 0
+}
+
 run_serial() {
   local preset="$1" outdir="$2"
   for i in 0 1 2; do encode_one "$preset" "$outdir" "$i"; done
   thumbnail "$outdir"
+  write_master "$outdir"
 }
 
 # 한 번만 디코드하고(split=3) 세 화질을 한 ffmpeg 프로세스가 동시에 출력한다.
@@ -145,6 +218,7 @@ run_filtersplit() {
     -map "[v3o]" -map 0:a -c:v libx264 -preset "$preset" -b:v 1M -maxrate 1M -bufsize 1M -g 60 -c:a aac -b:a 128k \
       -f hls -hls_time 4 -hls_playlist_type vod -hls_segment_type fmp4 "$outdir/480/out.m3u8"
   thumbnail "$outdir"
+  write_master "$outdir"
 }
 
 run_parallel() {
@@ -159,6 +233,7 @@ run_parallel() {
   local fail=0
   for p in "${pids[@]}"; do wait "$p" || fail=1; done
   [ "$fail" -eq 0 ] || die "parallel 인코딩 중 하나가 실패했습니다"
+  write_master "$outdir"
 }
 
 now() { date +%s.%N 2>/dev/null || date +%s; }
@@ -176,6 +251,16 @@ measure() {
   esac
   t1="$(now)"
   elapsed="$(awk -v a="$t0" -v b="$t1" 'BEGIN{printf "%.2f", b-a}')"
+
+  # 지우기 전에 확인한다 — 시간을 쟀다는 것과 그 시간에 맞는 산출물이 나왔다는 것은 다른
+  # 주장이다. 검증은 측정 구간(t0~t1) 밖에서 하므로 elapsed에 검증 비용이 섞이지 않는다.
+  local verr
+  if ! verr="$(validate_outputs "$outdir" 2>&1)"; then
+    echo "$method,$preset,$rep,FAIL" >> "$RAW_CSV"
+    rm -rf "$outdir"
+    die "[$method/$preset rep $rep] 산출물 검증 실패 — $verr (쟀던 ${elapsed}s는 신뢰할 수 없어 버린다)"
+  fi
+
   rm -rf "$outdir"
   echo "$method,$preset,$rep,$elapsed" >> "$RAW_CSV"
   printf '%s\n' "$elapsed"
@@ -229,7 +314,11 @@ REPORT="$OUT_DIR/report.md"
   echo "측정 시각: $(date -Iseconds)"
   echo
   echo "60초·1080x1920·30fps 세로 합성 영상을 1080x1920(5Mbps)·720x1280(2.5Mbps)·480x854(1Mbps)"
-  echo "fMP4 HLS + 썸네일로 바꾸는 데 걸린 시간이다(합성 소스 생성 시간은 제외, 변환만 잰다)."
+  echo "fMP4 HLS + 썸네일 + 마스터 재생목록(해상도·대역폭 포함, R23 인수 조건)으로 바꾸는 데"
+  echo "걸린 시간이다(합성 소스 생성 시간은 제외, 변환+마스터 작성만 잰다). 회차마다 지우기"
+  echo "전에 산출물을 검증했다(재생목록·세그먼트 존재, 길이 ±1초, 썸네일 비어있지 않음, 마스터"
+  echo "재생목록의 해상도·대역폭) — 검증에 실패한 회차는 즉시 스크립트를 중단시키므로 이 표에"
+  echo "있는 숫자는 전부 산출물이 맞는 것으로 확인된 시간이다."
   echo "각 조합 ${REPS}회 측정의 **중앙값**. R24 목표: 업로드 완료부터 READY까지 60초 이내."
   echo
   cat "$TABLE"
