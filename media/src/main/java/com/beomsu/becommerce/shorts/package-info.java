@@ -27,10 +27,17 @@
  *
  * <p>업로드 완료(UPLOADED)는 {@link com.beomsu.becommerce.shorts.ShortUploadedEvent}로 Outbox에
  * 적재되고(R23, ADR-002와 같은 구조), {@link com.beomsu.becommerce.shorts.ShortsTranscodeListener}가
- * 커밋 후 받아 {@link com.beomsu.becommerce.shorts.ShortsTranscodeService}로 PROBING →
- * TRANSCODING → READY(실패는 FAILED, 3회 재시도 소진 시 QUARANTINED)를 끌고 간다. 실제 FFmpeg
- * 호출은 {@link com.beomsu.becommerce.shorts.TranscodeRunner} 포트 뒤에 있고, 운영 빈은
- * {@code FfmpegTranscodeRunner}(ProcessBuilder로 실제 ffmpeg를 부른다, R23 3단계)뿐이다 —
+ * 커밋 후 받아 {@link com.beomsu.becommerce.shorts.ShortsTranscodeService}(오케스트레이터,
+ * {@code @Transactional}이 아니다)로 PROBING → TRANSCODING → READY(실패는 FAILED, 3회 재시도
+ * 소진 시 QUARANTINED)를 끌고 간다. 상태 전이 하나하나는
+ * {@link com.beomsu.becommerce.shorts.ShortVideoTransitionService}의 짧은
+ * {@code @Transactional} 메서드가 커밋하고, FFmpeg 호출(probe·transcode, 수 초~수십 초)은
+ * 그 트랜잭션 밖에서 돈다 — 변환 중 DB 커넥션을 붙잡지 않는다. UPLOADED/FAILED→PROBING·
+ * PROBING→TRANSCODING 전이는 조건부 UPDATE
+ * ({@link com.beomsu.becommerce.shorts.ShortVideoRepository#claimTransition})라 두 워커가
+ * 동시에 같은 영상을 집어도 하나만 성공한다(지금은 워커가 하나지만 이 보장은 코드로 남아 있다).
+ * 실제 FFmpeg 호출은 {@link com.beomsu.becommerce.shorts.TranscodeRunner} 포트 뒤에 있고, 운영
+ * 빈은 {@code FfmpegTranscodeRunner}(ProcessBuilder로 실제 ffmpeg를 부른다, R23 3단계)뿐이다 —
  * 결정적인 가짜({@code FakeTranscodeRunner})는 테스트 소스에만 있고 빈으로 등록되지 않는다.
  * 명세 5절의 MinIO·Kafka·FFmpeg 워커 출발점과 다른 선택(같은 jar의 worker 프로파일, Outbox,
  * 로컬 저장소)의 근거는 ADR-081에 있다. 변환 리스너는 {@code app.shorts.transcode.enabled=true}

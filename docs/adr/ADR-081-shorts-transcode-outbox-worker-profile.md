@@ -103,6 +103,25 @@ Kafka를 새로 들이면 ADR-002가 이미 경고한 것(검증된 구현이라
   기본 컨텍스트에서도 `FfmpegTranscodeRunner` 빈 하나만 있어 `ShortsApiIntegrationTest`의
   수동 `markReady()` 경로와 충돌하지 않는다 — 리스너만 꺼져 있을 뿐 실행기 빈은 항상 있다).
 
+## 현행화 (R23 트랜잭션 경계 수정)
+
+`ShortsTranscodeService.processUploaded`가 `@Transactional` 메서드 하나였던 시절에는
+probe→transcode→기록 전체가 하나의 DB 트랜잭션으로 묶여 FFmpeg가 도는 10초 넘는 동안
+커넥션을 붙잡았다(동시 변환 몇 건만 겹쳐도 커넥션 풀이 말라 주문·결제까지 막힐 수 있는
+구조). 상태 전이(PROBING·TRANSCODING·READY/FAILED/QUARANTINED)마다 짧은 트랜잭션으로
+커밋하고 FFmpeg는 트랜잭션 밖에서 돌도록 고쳤다(`ShortVideoTransitionService`). 여기에
+숨은 두 번째 원인이 있었다 — `@ApplicationModuleListener`는 `@Async` +
+`@Transactional(propagation = REQUIRES_NEW)` + `@TransactionalEventListener`를 합성한
+애너테이션이라(`javap -v`로 확인), 리스너 메서드 자체가 이미 새 트랜잭션에 들어간 채로
+시작돼 하위의 "짧은" 트랜잭션들이 그 안에 합류해 버렸다. 리스너 메서드에
+`@Transactional(propagation = NOT_SUPPORTED)`를 추가해 바깥 트랜잭션을 꺼야(suspend)
+비로소 의도한 짧은 트랜잭션들이 독립적으로 커밋됐다. UPLOADED/FAILED→PROBING,
+PROBING→TRANSCODING 전이는 조건부 UPDATE(`ShortVideoRepository.claimTransition`)로 바꿔
+두 워커(또는 이벤트 중복 전달)가 동시에 같은 영상을 집어도 하나만 성공하게 했다 — 지금은
+워커가 하나뿐이지만 이 보장은 코드로 남겼다. 재측정 결과와 상세 원인은
+[docs/performance/shorts-transcode.md](../performance/shorts-transcode.md)의 "R24: 업로드
+완료 → READY" 절에, 재현 테스트는 `ShortVideoTransitionBoundaryTest`(media)에 있다.
+
 ## 다시 볼 조건
 
 - **변환 대기열이 API 프로세스의 CPU를 실제로 갉아먹기 시작하면**(같은 jar라 격리가

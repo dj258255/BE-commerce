@@ -54,6 +54,9 @@ dependencies {
     // (ShortsApiIntegrationTest)는 commerce 쪽에 남아 있다(BeCommerceApplication·SharedContainers
     // 둘 다 commerce 소유라 media가 몰라야 한다, ADR-080).
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // 트랜잭션 경계·동시성 테스트(R23) 전용 — 인메모리, Docker 불필요(commerce/build.gradle의
+    // 같은 줄과 같은 이유). MySQL Flyway 마이그레이션은 H2에서 돌리지 않는다(ddl-auto=create-drop).
+    testImplementation 'com.h2database:h2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
