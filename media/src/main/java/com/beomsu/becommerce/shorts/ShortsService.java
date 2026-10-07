@@ -3,6 +3,7 @@ package com.beomsu.becommerce.shorts;
 import com.beomsu.becommerce.shared.Ulid;
 import com.beomsu.becommerce.shorts.storage.ShortsStorage;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +31,7 @@ public class ShortsService {
     private final ShortVideoRepository repository;
     private final ShortsStorage storage;
     private final ProductLookup productLookup;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** 업로드 시작 — 메타를 검증하고 객체 키를 발급해 UPLOADING 레코드를 만든다. */
     public StartUploadResult startUpload(long sellerId, UploadMeta meta) {
@@ -40,13 +42,18 @@ public class ShortsService {
         return new StartUploadResult(video.getId(), uploadUrl);
     }
 
-    /** 업로드 완료 알림 — 저장소에 객체가 실제로 있을 때만 UPLOADED로 전이한다. */
+    /**
+     * 업로드 완료 알림 — 저장소에 객체가 실제로 있을 때만 UPLOADED로 전이한다. 전이와 같은
+     * 트랜잭션에서 {@link ShortUploadedEvent}를 발행해(R23) Outbox에 적재하고, 커밋 후
+     * {@code ShortsTranscodeListener}(worker 프로파일)가 변환 파이프라인을 깨운다.
+     */
     public ShortVideoView completeUpload(long sellerId, long id) {
         ShortVideo video = findOwned(sellerId, id);
         if (!storage.exists(video.getObjectKey())) {
             throw ShortsException.uploadNotFound(video.getObjectKey());
         }
         video.markUploaded();
+        eventPublisher.publishEvent(new ShortUploadedEvent(video.getId()));
         return toView(video);
     }
 

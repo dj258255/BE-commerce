@@ -109,6 +109,22 @@ public class ShortVideo {
     @Column(name = "product_id", nullable = false)
     private Set<Long> productIds = new LinkedHashSet<>();
 
+    /** 변환 산출물(R23) — TRANSCODING 전까지는 전부 null이고, READY가 되려면 다섯 개 모두 채워진다. */
+    @Column(name = "rendition_1080p_path", length = 300)
+    private String rendition1080pPath;
+
+    @Column(name = "rendition_720p_path", length = 300)
+    private String rendition720pPath;
+
+    @Column(name = "rendition_480p_path", length = 300)
+    private String rendition480pPath;
+
+    @Column(name = "master_playlist_path", length = 300)
+    private String masterPlaylistPath;
+
+    @Column(name = "thumbnail_path", length = 300)
+    private String thumbnailPath;
+
     private ShortVideo(long sellerId, String objectKey, UploadMeta meta) {
         Instant now = Instant.now();
         this.sellerId = sellerId;
@@ -153,6 +169,28 @@ public class ShortVideo {
     /** 변환 완료 — TRANSCODING → READY. */
     public void markReady() {
         changeStatus(ShortVideoStatus.READY);
+    }
+
+    /**
+     * 변환 결과를 받아 완결 짓는다(R23) — TRANSCODING에서만 호출된다.
+     *
+     * <p>{@code output}의 다섯 항목(세 렌디션·마스터 재생목록·썸네일) 중 하나라도 비어 있으면
+     * 변환 실패로 취급해 {@link #fail}을 거쳐 FAILED(또는 재시도 소진 시 QUARANTINED)로 남긴다
+     * (R23.2) — 산출물이 불완전한 채로는 READY가 될 수 없다. 다섯 항목이 전부 있으면 그 경로를
+     * 기록하고 READY로 전이한다.
+     */
+    public void completeTranscoding(TranscodeOutput output) {
+        String missing = output == null ? "변환 산출물" : output.missingField();
+        if (missing != null) {
+            fail("변환 결과 불완전: " + missing + " 없음");
+            return;
+        }
+        this.rendition1080pPath = output.rendition1080pPath();
+        this.rendition720pPath = output.rendition720pPath();
+        this.rendition480pPath = output.rendition480pPath();
+        this.masterPlaylistPath = output.masterPlaylistPath();
+        this.thumbnailPath = output.thumbnailPath();
+        markReady();
     }
 
     /**

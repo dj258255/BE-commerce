@@ -41,13 +41,18 @@ dependencies {
     // package-info.java의 @ApplicationModule 애너테이션 — 모듈 경계 검증은 commerce 쪽
     // ModularityTests가 (이 프로젝트의 클래스가 올라간) 합쳐진 classpath를 스캔해서 한다.
     implementation 'org.springframework.modulith:spring-modulith-starter-core'
+    // @ApplicationModuleListener(R23 변환 리스너) — Event Publication Registry(Outbox)의
+    // JPA 영속화 자체는 commerce의 spring-modulith-starter-jpa가 앱 전체에 한 번만 설정한다.
+    implementation 'org.springframework.modulith:spring-modulith-events-api'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    // 이 모듈의 테스트는 전부 순수 단위 테스트다(Spring 컨텍스트를 안 띄운다) — 전체
-    // 애플리케이션을 띄우는 통합 테스트(ShortsApiIntegrationTest)는 commerce 쪽에 남아 있다
-    // (BeCommerceApplication·SharedContainers 둘 다 commerce 소유라 media가 몰라야 한다, ADR-080).
+    // 이 모듈의 테스트는 DB·전체 애플리케이션을 띄우지 않는다. 대부분은 순수 단위 테스트이고,
+    // 일부(ShortsTranscodeListenerConditionalTest)는 ApplicationContextRunner로 @ConditionalOnProperty
+    // 평가만 가벼운 컨텍스트로 본다 — 둘 다 DB가 없다. 전체 애플리케이션을 띄우는 통합 테스트
+    // (ShortsApiIntegrationTest)는 commerce 쪽에 남아 있다(BeCommerceApplication·SharedContainers
+    // 둘 다 commerce 소유라 media가 몰라야 한다, ADR-080).
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testCompileOnly 'org.projectlombok:lombok'

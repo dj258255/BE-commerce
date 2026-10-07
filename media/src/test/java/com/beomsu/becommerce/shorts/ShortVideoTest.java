@@ -148,4 +148,45 @@ class ShortVideoTest {
         assertThat(v.getStatus()).isEqualTo(ShortVideoStatus.FAILED);
         assertThat(v.getRetryCount()).isEqualTo(1);
     }
+
+    private static final TranscodeOutput COMPLETE_OUTPUT = new TranscodeOutput(
+            "shorts/1/1080/master.m3u8", "shorts/1/720/master.m3u8", "shorts/1/480/master.m3u8",
+            "shorts/1/master.m3u8", "shorts/1/thumb.jpg");
+
+    @Test
+    @DisplayName("R23: TRANSCODING에서 완전한 산출물로 completeTranscoding을 호출하면 READY로 전이하고 경로를 기록한다")
+    void completeTranscodingWithFullOutputReachesReady() {
+        ShortVideo v = video();
+        v.markUploaded();
+        v.startProbing();
+        v.startTranscoding();
+
+        v.completeTranscoding(COMPLETE_OUTPUT);
+
+        assertThat(v.getStatus()).isEqualTo(ShortVideoStatus.READY);
+        assertThat(v.getRendition1080pPath()).isEqualTo("shorts/1/1080/master.m3u8");
+        assertThat(v.getRendition720pPath()).isEqualTo("shorts/1/720/master.m3u8");
+        assertThat(v.getRendition480pPath()).isEqualTo("shorts/1/480/master.m3u8");
+        assertThat(v.getMasterPlaylistPath()).isEqualTo("shorts/1/master.m3u8");
+        assertThat(v.getThumbnailPath()).isEqualTo("shorts/1/thumb.jpg");
+    }
+
+    @Test
+    @DisplayName("R23 경계: 썸네일이 빠진 산출물은 READY로 가지 않고 FAILED와 사유를 남긴다")
+    void completeTranscodingWithMissingThumbnailFailsInstead() {
+        ShortVideo v = video();
+        v.markUploaded();
+        v.startProbing();
+        v.startTranscoding();
+        TranscodeOutput missingThumbnail = new TranscodeOutput(
+                "shorts/1/1080/master.m3u8", "shorts/1/720/master.m3u8", "shorts/1/480/master.m3u8",
+                "shorts/1/master.m3u8", null);
+
+        v.completeTranscoding(missingThumbnail);
+
+        assertThat(v.getStatus()).isEqualTo(ShortVideoStatus.FAILED);
+        assertThat(v.getFailureReason()).contains("썸네일");
+        assertThat(v.getRetryCount()).isEqualTo(1);
+        assertThat(v.getThumbnailPath()).isNull();
+    }
 }

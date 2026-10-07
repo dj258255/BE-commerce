@@ -786,6 +786,12 @@ app:
       enabled: ${APP_ESCROW_AUTO_RELEASE_ENABLED:false}
       interval-ms: 60000
 
+  # 숏폼 변환 파이프라인(R23) — 업로드 완료(UPLOADED) 이벤트를 받아 PROBING → TRANSCODING → READY로
+  # 끌고 가는 리스너. 기본 off(API 배포에는 이 리스너가 없어야 한다) — worker 프로파일에서 켠다.
+  shorts:
+    transcode:
+      enabled: ${APP_SHORTS_TRANSCODE_ENABLED:false}
+
 # 웹훅 서명 검증(HMAC-SHA256) 시크릿. 아래는 로컬 개발 전용 기본값(16바이트 이상)이고, 운영은
 # 반드시 env/시크릿 매니저로 오버라이드한다. 미설정/약한 키면 기동을 실패시킨다(WebhookSignatureVerifier fail-fast).
 payment:
@@ -1000,4 +1006,7 @@ app:
       enabled: true
   webhook:
     pending-retry:
+      enabled: true
+  shorts:
+    transcode:
       enabled: true

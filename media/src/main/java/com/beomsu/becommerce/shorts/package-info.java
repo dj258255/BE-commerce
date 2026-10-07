@@ -25,8 +25,21 @@
  * 내림차순(최신순)으로 커서 페이지네이션해 내준다(R26) — 비로그인도 호출할 수 있게
  * {@code SecurityConfig}가 이 경로만 예외로 연다. 세로 스와이프·프리페치 화면은 apps/web에 있다.
  *
- * <p>변환 워커(FFmpeg)는 다음 단계다. 주문·결제·재고 확정 로직은 이 모듈에 두지 않는다 —
- * 필요하면 {@link com.beomsu.becommerce.shorts.ProductLookup} 같은 포트를 추가로 정의한다.
+ * <p>업로드 완료(UPLOADED)는 {@link com.beomsu.becommerce.shorts.ShortUploadedEvent}로 Outbox에
+ * 적재되고(R23, ADR-002와 같은 구조), {@link com.beomsu.becommerce.shorts.ShortsTranscodeListener}가
+ * 커밋 후 받아 {@link com.beomsu.becommerce.shorts.ShortsTranscodeService}로 PROBING →
+ * TRANSCODING → READY(실패는 FAILED, 3회 재시도 소진 시 QUARANTINED)를 끌고 간다. 실제 FFmpeg
+ * 호출은 {@link com.beomsu.becommerce.shorts.TranscodeRunner} 포트 뒤에 있고, 이번 단계는
+ * 결정적인 가짜({@link com.beomsu.becommerce.shorts.FakeTranscodeRunner})만 쓴다 — 명세 5절의
+ * MinIO·Kafka·FFmpeg 워커 출발점과 다른 선택(같은 jar의 worker 프로파일, Outbox, 로컬 저장소)의
+ * 근거는 ADR-081에 있다. 변환 리스너는 {@code app.shorts.transcode.enabled=true}(worker
+ * 프로파일)에서만 빈으로 등록되고 API 배포에는 없다.
+ *
+ * <p>변환 결과(세 화질 렌디션·마스터 재생목록·썸네일)는
+ * {@link com.beomsu.becommerce.shorts.ShortVideo#completeTranscoding}이 다섯 항목이 모두 있을
+ * 때만 READY로 기록한다(R23.2) — 하나라도 없으면 FAILED와 이유를 남긴다. 주문·결제·재고 확정
+ * 로직은 이 모듈에 두지 않는다 — 필요하면
+ * {@link com.beomsu.becommerce.shorts.ProductLookup} 같은 포트를 추가로 정의한다.
  */
 @org.springframework.modulith.ApplicationModule(
         allowedDependencies = { "shared", "order" }
