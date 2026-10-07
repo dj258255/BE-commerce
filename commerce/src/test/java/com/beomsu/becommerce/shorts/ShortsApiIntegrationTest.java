@@ -261,7 +261,12 @@ class ShortsApiIntegrationTest {
         v.markUploaded();
         v.startProbing();
         v.startTranscoding();
-        v.markReady();
+        // R26 재생: READY는 다섯 산출물이 전부 있어야 한다(R23.2) — ShortsFeedItemView가
+        // masterPlaylistUrl·thumbnailUrl을 만들 때 그 경로가 비어 있으면 안 된다.
+        v.completeTranscoding(new TranscodeOutput(
+                "shorts/1/" + id + ".out/1080/out.m3u8", "shorts/1/" + id + ".out/720/out.m3u8",
+                "shorts/1/" + id + ".out/480/out.m3u8", "shorts/1/" + id + ".out/master.m3u8",
+                "shorts/1/" + id + ".out/thumb.jpg"));
         videoRepository.save(v);
     }
 

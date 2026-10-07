@@ -4,13 +4,23 @@ import {
   appendPage,
   applyFetchResult,
   isPreloaded,
+  pickHlsPlaybackStrategy,
   pickMostVisibleIndex,
   PRELOAD_AHEAD,
   shouldPrefetchNext,
 } from './shortsFeed';
 
 function item(id: number): ShortsFeedItem {
-  return { id, durationSeconds: 20, width: 1080, height: 1920, createdAt: '2026-01-01T00:00:00Z', products: [] };
+  return {
+    id,
+    durationSeconds: 20,
+    width: 1080,
+    height: 1920,
+    createdAt: '2026-01-01T00:00:00Z',
+    masterPlaylistUrl: `/api/v1/shorts/${id}/media/master.m3u8`,
+    thumbnailUrl: `/api/v1/shorts/${id}/media/thumb.jpg`,
+    products: [],
+  };
 }
 
 function page(items: ShortsFeedItem[], nextCursor: number | null, hasNext: boolean): ShortsFeedPage {
@@ -106,5 +116,23 @@ describe('R26.4: 조회 실패 — 오류 문구가 뜨고 재시도하면 복�
     expect(afterLoadMoreFails).toEqual({ status: 'error', message: 'HTTP 500', url: '/api/v1/shorts/feed?cursor=2' });
     // items 자체는 함수 바깥(React 상태)에 남아 있어야 한다는 계약 — prevItems를 그대로 썼는지 확인.
     expect(prevItems.map((i) => i.id)).toEqual([1, 2]);
+  });
+});
+
+describe('R26: 재생 — hls.js vs 네이티브 HLS 전략 선택', () => {
+  it('canPlayType이 "probably"면 네이티브로 튼다(hls.js를 안 띄운다)', () => {
+    expect(pickHlsPlaybackStrategy('probably', true)).toBe('native');
+  });
+
+  it('canPlayType이 "maybe"여도 네이티브를 쓴다(Safari가 종종 이렇게 답한다)', () => {
+    expect(pickHlsPlaybackStrategy('maybe', true)).toBe('native');
+  });
+
+  it('네이티브가 안 되고(canPlayType === "") hls.js가 되면 hls.js를 쓴다', () => {
+    expect(pickHlsPlaybackStrategy('', true)).toBe('hls.js');
+  });
+
+  it('네이티브도 hls.js도 안 되면 재생할 방법이 없다(unsupported)', () => {
+    expect(pickHlsPlaybackStrategy('', false)).toBe('unsupported');
   });
 });

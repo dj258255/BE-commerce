@@ -83,3 +83,20 @@ export function applyFetchResult(prevItems: ShortsFeedItem[], result: Result<Sho
     hasNext: result.data.hasNext,
   };
 }
+
+/** HLS 재생 전략 — 영상 엘리먼트가 직접 트는지, hls.js가 붙는지, 둘 다 안 되는지(R26 재생). */
+export type HlsPlaybackStrategy = 'native' | 'hls.js' | 'unsupported';
+
+/**
+ * Safari/iOS처럼 `<video>`가 HLS를 네이티브로 틀 수 있으면({@code canPlayType}이 `"probably"`
+ * 또는 `"maybe"`) hls.js를 아예 띄우지 않는다 — 두 재생기를 동시에 붙이면 충돌한다. 네이티브가
+ * 안 되면 hls.js가 되는지 본다. 둘 다 안 되면 재생할 방법이 없다(포스터만 보여준다).
+ *
+ * <p>DOM이 필요한 "canPlayType 호출 자체"가 아니라 그 **결과 문자열**을 받아 결정만 하므로
+ * jsdom 없이 테스트할 수 있다.
+ */
+export function pickHlsPlaybackStrategy(nativeCanPlayType: string, hlsJsSupported: boolean): HlsPlaybackStrategy {
+  if (nativeCanPlayType === 'probably' || nativeCanPlayType === 'maybe') return 'native';
+  if (hlsJsSupported) return 'hls.js';
+  return 'unsupported';
+}

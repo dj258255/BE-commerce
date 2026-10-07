@@ -47,7 +47,9 @@ import java.util.Map;
  *   <li>{@code /actuator} → ADMIN. 단 {@code health/info}와 {@code prometheus}(수집기 스크레이프)는 공개</li>
  *   <li>{@code /api/v1/shorts/**} → ROLE_SELLER(R21). 숏폼 업로드·조회는 판매자만 하고,
  *       본인 영상만 보게 sellerId는 principal에서 얻는다(IDOR 방지). 단
- *       {@code GET /api/v1/shorts/feed}(R26, READY 피드)만 예외로 개방한다 — 비로그인 시청 허용.</li>
+ *       {@code GET /api/v1/shorts/feed}(R26, READY 피드)와
+ *       {@code GET /api/v1/shorts/{id}/media/**}(R26, HLS 재생·썸네일)만 예외로 개방한다 —
+ *       비로그인 시청 허용.</li>
  * </ul>
  *
  * <p>인증은 <b>JWT Bearer(OAuth2 Resource Server, Nimbus HS256 대칭키)</b>로 한다. 무상태 HTTP
@@ -105,6 +107,10 @@ public class SecurityConfig {
                         // 숏폼 피드(R26)는 비로그인 포함 누구나 본다 — 더 구체적인 이 규칙이
                         // 아래의 넓은 /api/v1/shorts/** 규칙보다 먼저 와야 먼저 매칭된다.
                         .requestMatchers(HttpMethod.GET, "/api/v1/shorts/feed").permitAll()
+                        // 숏폼 변환 산출물(HLS 재생목록·세그먼트·썸네일) 서빙도 피드와 같은
+                        // 공개 수준이다(R26 비로그인 시청) — ShortsMediaController, 개발용
+                        // 로컬 저장소 전제(운영은 CDN/오브젝트 스토리지가 대신한다, ADR-081).
+                        .requestMatchers(HttpMethod.GET, "/api/v1/shorts/*/media/**").permitAll()
                         // 숏폼 업로드(R21)는 판매자만. 소유권(sellerId) 검증은 principal에서 얻은
                         // userId로 ShortsService가 한다 — 남의 영상 id로 조회·완료 처리 못 하게.
                         .requestMatchers("/api/v1/shorts/**").hasRole("SELLER")

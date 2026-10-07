@@ -122,6 +122,25 @@ PROBING→TRANSCODING 전이는 조건부 UPDATE(`ShortVideoRepository.claimTran
 [docs/performance/shorts-transcode.md](../performance/shorts-transcode.md)의 "R24: 업로드
 완료 → READY" 절에, 재현 테스트는 `ShortVideoTransitionBoundaryTest`(media)에 있다.
 
+## 현행화 (R26 재생 — 로컬 저장소를 Spring이 직접 서빙한다)
+
+READY 영상을 실제로 재생하려면 HLS 재생목록·세그먼트·썸네일을 어딘가가 HTTP로 내줘야 한다.
+운영 목표(명세 5절)는 이 역할을 CDN이나 오브젝트 스토리지가 맡는 것이다 — Spring 프로세스가
+비디오 바이트를 중계하지 않는다는 뜻이고, 이건 R21이 업로드에서 이미 지킨 "서버를 거치지
+않는다" 원칙과 같은 방향이다. 하지만 지금은 `LocalFileShortsStorage`(로컬 디스크) 전제라
+그 역할을 대신할 CDN·오브젝트 스토리지가 없다 — 그래서 `ShortsMediaController`/
+`ShortsMediaService`(media)가 **임시로** Spring을 통해 파일을 서빙한다
+(`GET /api/v1/shorts/{id}/media/**`, 피드와 같은 공개 수준). Range 요청(`ResourceRegion`)과
+경로 조작 방어(요청 경로를 정규화해 산출물 디렉터리 밖으로 못 나가게)는 갖췄지만, **이 컨트롤러·
+서비스 전체가 결정 1(로컬 저장소)과 같은 운명이다** — 로컬 저장소를 벗어나는 순간 이 둘도
+함께 없어져야 한다(아래 "다시 볼 조건"에 추가).
+
+로컬 개발에서 변환이 바로 보이게 `local` 프로파일(`SPRING_PROFILES_ACTIVE=local`,
+`application.yml`)을 새로 뒀다 — `worker` 프로파일(배포 단위 분리, 결정 3)과는 다른 축이다.
+`worker`는 "운영에서 변환을 API와 같은 프로세스에 두지 않는다"는 배포 결정이고, `local`은
+"내 컴퓨터(또는 이 샌드박스)에서는 바로 보고 싶다"는 개발 편의다. 운영 API 배포는 `local`을
+켜지 않으므로 `app.shorts.transcode.enabled` 기본값(false)이 그대로 지켜진다.
+
 ## 다시 볼 조건
 
 - **변환 대기열이 API 프로세스의 CPU를 실제로 갉아먹기 시작하면**(같은 jar라 격리가
@@ -136,4 +155,8 @@ PROBING→TRANSCODING 전이는 조건부 UPDATE(`ShortVideoRepository.claimTran
   ADR-002의 "포기한 것"). 그때 Kafka 브릿지를 켜고 별도 소비자를 둔다 — 지금 당장
   Kafka를 들일 근거는 없다.
 - **운영 환경에 실제 오브젝트 스토리지가 생기면** → `ShortsStorage`를 MinIO(S3 호환)
-  구현으로 바꾼다. 인터페이스가 이미 그 교체를 전제로 설계돼 있다.
+  구현으로 바꾼다. 인터페이스가 이미 그 교체를 전제로 설계돼 있다. **같은 순간
+  `ShortsMediaController`/`ShortsMediaService`(R26 재생 서빙)도 걷어낸다** — 피드가 돌려주는
+  `masterPlaylistUrl`·`thumbnailUrl`을 Spring 경로 대신 CDN 오리진 주소(또는 presigned GET)로
+  바꾸면 된다. `ShortsFeedItemView`가 그 URL을 만드는 자리를 이미 `ShortsMediaUrls` 하나로
+  모아 뒤서, 교체 지점이 한 곳이다.

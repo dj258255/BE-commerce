@@ -1019,3 +1019,21 @@ app:
   shorts:
     transcode:
       enabled: true
+
+---
+# local 프로파일: 로컬 개발 전용(SPRING_PROFILES_ACTIVE=local) — 변환 리스너를 바로 켠다.
+#
+# worker 프로파일은 "배치 실행 주체를 API와 분리"가 목적(ADR-029)이라 운영 배포 단위를 가른다.
+# 이 local 프로파일은 그것과 무관하다 — 그냥 "내 컴퓨터(또는 이 샌드박스)에서 숏폼을 올리면
+# 바로 변환돼 보이게" 하려는 개발 편의용이다. 운영 API 배포(Dockerfile, 이 프로파일을 안 켠다)는
+# 여전히 app.shorts.transcode.enabled 기본값(false)을 그대로 쓴다 — worker에서만 켠다(R23 설계).
+# b-studio 샌드박스는 compose.b-studio.yaml이 이 프로파일을 켠다.
+spring:
+  config:
+    activate:
+      on-profile: local
+
+app:
+  shorts:
+    transcode:
+      enabled: true

@@ -69,13 +69,19 @@ export type Homepage = {
 /** 숏폼 영상에 연결된 상품 요약(R25) — 피드 항목 아래에 보여 준다. */
 export type ShortsFeedProduct = { productId: number; name: string; price: number };
 
-/** 피드 항목 — READY인 영상만. 재생 URL은 아직 없다(변환 워커가 다음 단계). */
+/**
+ * 피드 항목 — READY인 영상만(변환 완료). `masterPlaylistUrl`·`thumbnailUrl`(R26 재생)은
+ * `GET /api/v1/shorts/{id}/media/**`(공개)로 바로 재생·표시할 수 있는 이 사이트 기준 상대
+ * 경로다 — `next.config.ts`의 `/api/:path*` rewrite가 Spring으로 보낸다.
+ */
 export type ShortsFeedItem = {
   id: number;
   durationSeconds: number;
   width: number;
   height: number;
   createdAt: string;
+  masterPlaylistUrl: string;
+  thumbnailUrl: string;
   products: ShortsFeedProduct[];
 };
 

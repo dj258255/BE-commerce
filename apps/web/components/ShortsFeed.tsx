@@ -1,17 +1,19 @@
 'use client';
 
+import Hls from 'hls.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Result } from '@/lib/api';
 import type { ShortsFeedItem, ShortsFeedPage } from '@/lib/contracts';
 import {
   applyFetchResult,
   isPreloaded,
+  pickHlsPlaybackStrategy,
   pickMostVisibleIndex,
   SHORTS_FEED_PATH,
   shouldPrefetchNext,
   type FeedLoadState,
 } from '@/lib/shortsFeed';
-import { gradient, won } from '@/lib/ui';
+import { won } from '@/lib/ui';
 
 const PAGE_SIZE = 10;
 
@@ -147,21 +149,16 @@ function ShortsFeedCard({
 }) {
   return (
     <section className="shorts-card" ref={registerRef} data-index={index} data-active={active} data-preload={preloaded}>
-      {/*
-        변환 워커(R21~R24)가 아직 없어 재생 가능한 HLS URL이 없다 — 그래서 실제 <video>가 아니라
-        재생 상태를 보여주는 자리다. IntersectionObserver가 고른 "active" 카드만 재생 표시를 하고
-        나머지는 일시정지 표시를 한다는 제어 로직 자체는 그대로이므로, 나중에 재생 URL이 생기면
-        이 div를 <video src=... autoPlay={active} />로 바꾸기만 하면 된다.
-      */}
-      <div className="shorts-frame" style={{ background: gradient(String(item.id)) }}>
-        <div />
-        <div>
-          <div className="shorts-frame-state">{active ? '▶ 재생 중' : '❙❙ 일시정지'}</div>
-          <div className="shorts-frame-meta mono">
-            {item.durationSeconds}s · {item.width}×{item.height}
-          </div>
+      <div className="shorts-frame">
+        <ShortsVideoPlayer
+          src={item.masterPlaylistUrl}
+          poster={item.thumbnailUrl}
+          active={active}
+          preloaded={preloaded}
+        />
+        <div className="shorts-frame-meta mono">
+          {item.durationSeconds}s · {item.width}×{item.height}
         </div>
-        {!active && preloaded ? <div className="shorts-frame-preload mono">미리 불러옴</div> : null}
       </div>
       {item.products.length > 0 ? (
         <div className="shorts-products">
@@ -174,5 +171,79 @@ function ShortsFeedCard({
         </div>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * HLS 재생(R26) — `active`인 카드만 재생하고 나머지는 멈춘다(R26.2 규칙은 그대로, 이제 실제
+ * `<video>`를 움직인다). `preloaded`(현재 카드 포함 다음 {@code PRELOAD_AHEAD}개, R26.1)가 되는
+ * 순간에만 소스를 붙여 미리 버퍼링한다 — 화면 밖 카드까지 전부 내려받지 않는다.
+ *
+ * <p>Safari/iOS처럼 `<video>`가 HLS를 네이티브로 틀 수 있으면 hls.js를 띄우지 않는다
+ * ({@link pickHlsPlaybackStrategy}, 순수 로직이라 `lib/shortsFeed.ts`에서 단위 테스트한다).
+ * 자동재생은 브라우저 정책상 소리가 있으면 막히므로 `muted`로 둔다.
+ */
+function ShortsVideoPlayer({
+  src,
+  poster,
+  active,
+  preloaded,
+}: {
+  src: string;
+  poster: string;
+  active: boolean;
+  preloaded: boolean;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const sourceAttached = useRef(false);
+
+  // preloaded(보이는 카드 자신 포함 다음 몇 개)가 되는 첫 순간에만 소스를 붙인다 — 그 뒤로는
+  // active가 왔다 갔다 해도(위아래로 다시 스와이프) 다시 붙이지 않는다.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !preloaded || sourceAttached.current) return;
+    sourceAttached.current = true;
+
+    const strategy = pickHlsPlaybackStrategy(video.canPlayType('application/vnd.apple.mpegurl'), Hls.isSupported());
+    if (strategy === 'native') {
+      video.src = src;
+    } else if (strategy === 'hls.js') {
+      const hls = new Hls();
+      hls.loadSource(src);
+      hls.attachMedia(video);
+      hlsRef.current = hls;
+    }
+    // 'unsupported'면 아무것도 붙이지 않는다 — poster만 보인다.
+
+    return () => {
+      hlsRef.current?.destroy();
+      hlsRef.current = null;
+    };
+  }, [preloaded, src]);
+
+  // 화면에 보이는 카드만 재생한다(R26.2) — 나머지는 멈춘다.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (active) {
+      // 자동재생 거부(브라우저 정책)는 조용히 무시한다 — 사용자가 직접 상호작용하면 다음
+      // 활성화 때 다시 시도된다. muted라 대부분 브라우저에서 거부되지 않는다.
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+    }
+  }, [active]);
+
+  return (
+    <video
+      ref={videoRef}
+      className="shorts-video"
+      poster={poster}
+      muted
+      playsInline
+      loop
+      preload={preloaded ? 'auto' : 'none'}
+    />
   );
 }
