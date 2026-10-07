@@ -1,7 +1,5 @@
 package com.beomsu.becommerce.shorts;
 
-import com.beomsu.becommerce.order.ProductCatalogFacts.ProductCardFacts;
-
 import java.time.Instant;
 import java.util.List;
 
@@ -20,11 +18,11 @@ public record ShortsFeedItemView(
         Instant createdAt,
         List<ShortVideoView.LinkedProduct> products) {
 
-    public static ShortsFeedItemView from(ShortVideo v, List<ProductCardFacts> productCards) {
-        List<ShortVideoView.LinkedProduct> products = productCards.stream()
-                .map(c -> new ShortVideoView.LinkedProduct(c.productId(), c.name(), c.price()))
+    public static ShortsFeedItemView from(ShortVideo v, List<ProductLookup.Product> products) {
+        List<ShortVideoView.LinkedProduct> linked = products.stream()
+                .map(p -> new ShortVideoView.LinkedProduct(p.productId(), p.name(), p.price()))
                 .toList();
         return new ShortsFeedItemView(v.getId(), v.getDurationSeconds(), v.getWidth(), v.getHeight(),
-                v.getCreatedAt(), products);
+                v.getCreatedAt(), linked);
     }
 }

@@ -1,6 +1,5 @@
 package com.beomsu.becommerce.shorts;
 
-import com.beomsu.becommerce.order.ProductCatalogFacts;
 import com.beomsu.becommerce.shared.Ulid;
 import com.beomsu.becommerce.shorts.storage.ShortsStorage;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>상품 연결({@link #linkProduct}·{@link #unlinkProduct}, R25)은 카탈로그 실존 확인만 여기서
  * 하고(엔티티는 카탈로그를 모른다), 중복 방지·개수 상한은 {@link ShortVideo}가 막는다. 조회 응답의
- * 상품 카드(이름·가격)는 {@link ProductCatalogFacts}로 한 번에 읽는다(ADR-018, wishlist와 같은 경로).
+ * 상품 카드(이름·가격)는 {@link ProductLookup}(media가 정의한 포트, R32·ADR-080)으로 한 번에
+ * 읽는다 — 구현은 commerce 쪽에 있지만 이 클래스는 그 사실을 모른다.
  *
  * <p>소유권은 전부 {@code sellerId}(principal에서 얻은 값)로 검증한다(IDOR 방지) — 남의 영상
  * id를 넣어도 {@link ShortsException#forbidden}으로 막힌다.
@@ -29,7 +29,7 @@ public class ShortsService {
 
     private final ShortVideoRepository repository;
     private final ShortsStorage storage;
-    private final ProductCatalogFacts productCatalogFacts;
+    private final ProductLookup productLookup;
 
     /** 업로드 시작 — 메타를 검증하고 객체 키를 발급해 UPLOADING 레코드를 만든다. */
     public StartUploadResult startUpload(long sellerId, UploadMeta meta) {
@@ -62,7 +62,7 @@ public class ShortsService {
      */
     public ShortVideoView linkProduct(long sellerId, long id, long productId) {
         ShortVideo video = findOwned(sellerId, id);
-        if (!productCatalogFacts.exists(productId)) {
+        if (!productLookup.exists(productId)) {
             throw ShortsException.productNotFound(productId);
         }
         video.linkProduct(productId);
@@ -86,7 +86,7 @@ public class ShortsService {
 
     /** 연결 상품 카드를 한 번에 읽어(N+1 방지) 뷰에 담는다(R25). */
     private ShortVideoView toView(ShortVideo video) {
-        return ShortVideoView.from(video, productCatalogFacts.findAll(video.getLinkedProductIds()));
+        return ShortVideoView.from(video, productLookup.findAll(video.getLinkedProductIds()));
     }
 
     /** 업로드 시작 응답 — 발급된 숏폼 id와 업로드 대상 URL. */

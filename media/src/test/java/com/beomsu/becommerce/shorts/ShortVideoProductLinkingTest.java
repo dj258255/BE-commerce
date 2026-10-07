@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * R25: 숏폼 영상-상품 다중 연결(연결·해제·멱등·개수 상한)을 검증한다.
  *
- * <p>상품이 카탈로그에 실존하는지는 {@code ShortsService}가 미리 확인하므로({@code ProductCatalogFacts})
+ * <p>상품이 카탈로그에 실존하는지는 {@code ShortsService}가 미리 확인하므로({@code ProductLookup})
  * 여기서는 {@link ShortVideo}가 스스로 지키는 규칙(중복 방지·상한)만 다룬다.
  */
 class ShortVideoProductLinkingTest {

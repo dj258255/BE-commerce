@@ -1,7 +1,5 @@
 package com.beomsu.becommerce.shorts;
 
-import com.beomsu.becommerce.order.ProductCatalogFacts;
-import com.beomsu.becommerce.order.ProductCatalogFacts.ProductCardFacts;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,11 +27,11 @@ public class ShortsFeedService {
     static final int MAX_PAGE_SIZE = 50;
 
     private final ShortVideoRepository repository;
-    private final ProductCatalogFacts productCatalogFacts;
+    private final ProductLookup productLookup;
 
-    public ShortsFeedService(ShortVideoRepository repository, ProductCatalogFacts productCatalogFacts) {
+    public ShortsFeedService(ShortVideoRepository repository, ProductLookup productLookup) {
         this.repository = repository;
-        this.productCatalogFacts = productCatalogFacts;
+        this.productLookup = productLookup;
     }
 
     /**
@@ -49,9 +47,9 @@ public class ShortsFeedService {
 
         ShortsFeedPage.Result page = ShortsFeedPage.assemble(fetched, pageSize);
 
-        Map<Long, ProductCardFacts> cardsById = new HashMap<>();
+        Map<Long, ProductLookup.Product> cardsById = new HashMap<>();
         List<Long> allLinkedIds = page.items().stream().flatMap(v -> v.getLinkedProductIds().stream()).toList();
-        for (ProductCardFacts card : productCatalogFacts.findAll(allLinkedIds)) {
+        for (ProductLookup.Product card : productLookup.findAll(allLinkedIds)) {
             cardsById.put(card.productId(), card);
         }
 

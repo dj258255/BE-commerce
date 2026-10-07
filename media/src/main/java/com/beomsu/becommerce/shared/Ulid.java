@@ -12,6 +12,10 @@ import java.time.Instant;
  *   <li>시간 정렬 가능 — 앞 48비트가 밀리초 타임스탬프라 UUID보다 인덱스에 우호적이다.</li>
  * </ul>
  * 내부 조인 키는 여전히 BIGINT PK를 쓰고, 외부 식별만 ULID로 분리한다.
+ *
+ * <p>물리적으로 media 모듈에 있다(R32, ADR-080) — {@link DomainException}과 같은 이유다.
+ * commerce 쪽 호출자({@link com.beomsu.becommerce.order.internal.Order} 등)는 여전히
+ * {@code com.beomsu.becommerce.shared.Ulid}로 그대로 쓴다.
  */
 public final class Ulid {
 

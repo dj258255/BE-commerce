@@ -38,7 +38,7 @@ import java.util.Set;
  * 이미 검증했다. 실제 파일 내용 검증(코덱·정확한 해상도 등)은 PROBING 단계(변환 워커)의 몫이다.
  *
  * <p>상품 연결(R25)은 {@code productIds}에 카탈로그 상품 id만 담는다 — 상품 실존 확인은 엔티티가
- * 카탈로그를 모르므로 {@code ShortsService}가 {@code ProductCatalogFacts}로 먼저 하고, 여기서는
+ * 카탈로그를 모르므로 {@code ShortsService}가 {@code ProductLookup}으로 먼저 하고, 여기서는
  * 중복 방지(멱등)와 {@link #MAX_LINKED_PRODUCTS} 상한만 지킨다.
  */
 @Entity

@@ -28,6 +28,11 @@ ext {
 }
 
 dependencies {
+    // --- media(R32, ADR-080) — 숏폼 등 미디어 기능. 같은 jar로 포함하되(별도 서비스로 안 나눈다)
+    // media는 commerce에 의존하지 않는다(ShortsProductLookupAdapter만 commerce 쪽에 physically
+    // 남아 media가 정의한 포트를 구현한다 — 순환을 피하는 방향).
+    implementation project(':media')
+
     // --- Web / Core ---
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'

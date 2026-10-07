@@ -148,6 +148,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-066](adr/ADR-066-next-page-follows-purchase-history.md) | 홈 다음 쪽의 GenPage 입력은 추천 행과 같은 이력을 따르고, 구매를 쓸 때는 구매만 넣는다 |
 | [ADR-067](adr/ADR-067-genpage-page-shares-capacity.md) | 홈 다음 쪽의 GenPage 호출도 추천 행과 같은 동시 호출 자리를 쓰고, 자리가 없으면 기다리지 않는다 |
 | [ADR-068](adr/ADR-068-genpage-v2-not-default.md) | 넷플릭스 GenPage 를 옮긴 v2 도 선을 넘지 못해 기본으로 켜지 않는다. 백엔드 경로는 v2 로 다시 쟀다 |
+| [ADR-080](adr/ADR-080-media-gradle-submodule.md) | `media/`를 별도 Gradle 하위 프로젝트로 떼면서 포트/어댑터로 commerce↔media 순환을 막는다 |
 
 ## 보조 문서
 
