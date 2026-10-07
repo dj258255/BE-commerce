@@ -25,14 +25,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 숏폼 업로드·상품 연결 API 통합 테스트(R21·R25) — 판매자 전용 인가, 메타 검증, presigned
- * 업로드→완료 흐름, 상품 연결·해제를 실제 서버·실 MySQL로 끝까지 검증한다.
+ * 숏폼 업로드·상품 연결·피드 API 통합 테스트(R21·R25·R26) — 판매자 전용 인가, 메타 검증, presigned
+ * 업로드→완료 흐름, 상품 연결·해제, 공개 피드 조회를 실제 서버·실 MySQL로 끝까지 검증한다.
  *
  * <p>{@code @Tag("integration")}이라 기본 스위트에서 제외된다. CI는 {@code ./gradlew integrationTest}로 돌린다.
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@DisplayName("숏폼 업로드·상품 연결 API 통합(R21·R25) — 판매자 인가, 메타 검증, 업로드 완료·상품 연결 흐름")
+@DisplayName("숏폼 업로드·상품 연결·피드 API 통합(R21·R25·R26) — 판매자 인가, 메타 검증, 업로드·상품 연결·피드 흐름")
 class ShortsApiIntegrationTest {
 
     @DynamicPropertySource
@@ -42,6 +42,14 @@ class ShortsApiIntegrationTest {
 
     @Autowired
     TestRestTemplate rest;
+
+    /**
+     * 변환 워커가 아직 없어(다음 단계) READY로 가는 API가 없다 — 테스트에서만 저장소를 직접 조작해
+     * READY를 만든다(UPLOADING→UPLOADED→PROBING→TRANSCODING→READY, {@link ShortVideo}의 상태
+     * 전이 규칙을 그대로 따라간다).
+     */
+    @Autowired
+    ShortVideoRepository videoRepository;
 
     private static final Map<String, String> TOKENS = new ConcurrentHashMap<>();
 
@@ -173,7 +181,111 @@ class ShortsApiIntegrationTest {
         assertThat(products.get(0).get("productId").asLong()).isEqualTo(2L);
     }
 
+    @Test
+    @DisplayName("R26: 비로그인도 피드를 볼 수 있고, READY가 아닌 숏폼은 나오지 않는다")
+    void anonymousCanSeeFeedWithOnlyReadyVideos() {
+        String seller = authToken("3", "seller-local-only");
+        long readyId = start(seller, validRequest()).getBody().get("shortVideoId").asLong();
+        long uploadingId = start(seller, validRequest()).getBody().get("shortVideoId").asLong();
+        markReady(readyId);
+        // uploadingId는 그대로 UPLOADING — complete()도 부르지 않았다.
+
+        ResponseEntity<JsonNode> res = feed(null, null); // 토큰 없이 호출 — 비로그인 시청(R5와 같은 원칙)
+
+        assertThat(res.getStatusCode().is2xxSuccessful()).isTrue();
+        JsonNode ids = res.getBody().get("items");
+        boolean containsReady = false;
+        for (JsonNode item : ids) {
+            long itemId = item.get("id").asLong();
+            assertThat(itemId).isNotEqualTo(uploadingId); // READY가 아닌 숏폼은 절대 나오지 않는다
+            if (itemId == readyId) {
+                containsReady = true;
+            }
+        }
+        assertThat(containsReady).isTrue();
+    }
+
+    @Test
+    @DisplayName("R26: 피드 항목에는 연결 상품 요약(id·이름·가격)이 담긴다")
+    void feedItemIncludesLinkedProductSummary() {
+        String seller = authToken("3", "seller-local-only");
+        long id = start(seller, validRequest()).getBody().get("shortVideoId").asLong();
+        linkProduct(seller, id, 2L);
+        markReady(id);
+
+        JsonNode item = findFeedItem(feed(null, null), id);
+
+        assertThat(item).isNotNull();
+        JsonNode products = item.get("products");
+        assertThat(products).hasSize(1);
+        assertThat(products.get(0).get("productId").asLong()).isEqualTo(2L);
+        assertThat(products.get(0).get("name").asText()).isEqualTo("테스트 상품 B");
+        assertThat(products.get(0).get("price").asLong()).isEqualTo(5000L);
+    }
+
+    @Test
+    @DisplayName("R26 경계: 커서로 다음 쪽을 받으면 이전 쪽 항목과 겹치지 않는다")
+    void cursorPaginationMovesToNextDistinctPage() {
+        String seller = authToken("3", "seller-local-only");
+        long id1 = start(seller, validRequest()).getBody().get("shortVideoId").asLong();
+        long id2 = start(seller, validRequest()).getBody().get("shortVideoId").asLong();
+        long id3 = start(seller, validRequest()).getBody().get("shortVideoId").asLong();
+        markReady(id1);
+        markReady(id2);
+        markReady(id3);
+
+        ResponseEntity<JsonNode> firstPage = feed(null, 2);
+        JsonNode firstItems = firstPage.getBody().get("items");
+        assertThat(firstItems).hasSize(2);
+        // id3가 가장 나중에 READY된(가장 최신) 것이므로 첫 쪽 맨 앞이어야 한다.
+        assertThat(firstItems.get(0).get("id").asLong()).isEqualTo(id3);
+        assertThat(firstItems.get(1).get("id").asLong()).isEqualTo(id2);
+        assertThat(firstPage.getBody().get("hasNext").asBoolean()).isTrue();
+        long nextCursor = firstPage.getBody().get("nextCursor").asLong();
+        assertThat(nextCursor).isEqualTo(id2);
+
+        ResponseEntity<JsonNode> secondPage = feed(nextCursor, 2);
+        JsonNode secondItems = secondPage.getBody().get("items");
+        assertThat(secondItems.get(0).get("id").asLong()).isEqualTo(id1);
+        for (JsonNode item : secondItems) {
+            long itemId = item.get("id").asLong();
+            assertThat(itemId).isNotIn(id2, id3); // 이전 쪽에서 이미 본 항목과 겹치지 않는다
+        }
+    }
+
     // --- 헬퍼 ---
+
+    /** 변환 워커 없이 테스트에서 직접 READY로 만든다({@link ShortVideo}의 상태 전이를 그대로 탄다). */
+    private void markReady(long id) {
+        ShortVideo v = videoRepository.findById(id).orElseThrow();
+        v.markUploaded();
+        v.startProbing();
+        v.startTranscoding();
+        v.markReady();
+        videoRepository.save(v);
+    }
+
+    private ResponseEntity<JsonNode> feed(Long cursor, Integer size) {
+        StringBuilder path = new StringBuilder("/api/v1/shorts/feed");
+        String sep = "?";
+        if (cursor != null) {
+            path.append(sep).append("cursor=").append(cursor);
+            sep = "&";
+        }
+        if (size != null) {
+            path.append(sep).append("size=").append(size);
+        }
+        return rest.exchange(path.toString(), HttpMethod.GET, new HttpEntity<>(null, json()), JsonNode.class);
+    }
+
+    private JsonNode findFeedItem(ResponseEntity<JsonNode> feedResponse, long id) {
+        for (JsonNode item : feedResponse.getBody().get("items")) {
+            if (item.get("id").asLong() == id) {
+                return item;
+            }
+        }
+        return null;
+    }
 
     private Map<String, Object> validRequest() {
         return Map.of("durationSeconds", 30, "fileSizeBytes", 10_000_000, "width", 1080, "height", 1920,

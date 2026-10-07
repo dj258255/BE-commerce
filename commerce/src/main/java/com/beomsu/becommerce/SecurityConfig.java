@@ -46,7 +46,8 @@ import java.util.Map;
  *       위조가 만드는 헛조회는 발신 IP 허용 목록으로 좁힐 수 있다 — 기본 off, 프록시 뒤에서는 앞단이 맡는다)</li>
  *   <li>{@code /actuator} → ADMIN. 단 {@code health/info}와 {@code prometheus}(수집기 스크레이프)는 공개</li>
  *   <li>{@code /api/v1/shorts/**} → ROLE_SELLER(R21). 숏폼 업로드·조회는 판매자만 하고,
- *       본인 영상만 보게 sellerId는 principal에서 얻는다(IDOR 방지).</li>
+ *       본인 영상만 보게 sellerId는 principal에서 얻는다(IDOR 방지). 단
+ *       {@code GET /api/v1/shorts/feed}(R26, READY 피드)만 예외로 개방한다 — 비로그인 시청 허용.</li>
  * </ul>
  *
  * <p>인증은 <b>JWT Bearer(OAuth2 Resource Server, Nimbus HS256 대칭키)</b>로 한다. 무상태 HTTP
@@ -101,6 +102,9 @@ public class SecurityConfig {
                         // 선착순 대기열: 로그인 사용자만 줄 서기(멤버=인증 principal userId). 결제 경로와는
                         // 결합하지 않는 독립 프리미티브(입장/상태/이탈)이지만 참가자 식별을 위해 인증은 요구한다.
                         .requestMatchers("/api/v1/queue/**").hasRole("USER")
+                        // 숏폼 피드(R26)는 비로그인 포함 누구나 본다 — 더 구체적인 이 규칙이
+                        // 아래의 넓은 /api/v1/shorts/** 규칙보다 먼저 와야 먼저 매칭된다.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/shorts/feed").permitAll()
                         // 숏폼 업로드(R21)는 판매자만. 소유권(sellerId) 검증은 principal에서 얻은
                         // userId로 ShortsService가 한다 — 남의 영상 id로 조회·완료 처리 못 하게.
                         .requestMatchers("/api/v1/shorts/**").hasRole("SELLER")

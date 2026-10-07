@@ -1,5 +1,5 @@
 /**
- * 숏폼(shorts) 모듈 — 세로 짧은 영상의 업로드~변환 파이프라인과 상품 연결(R21·R22·R25).
+ * 숏폼(shorts) 모듈 — 세로 짧은 영상의 업로드~변환 파이프라인·상품 연결·피드(R21·R22·R25·R26).
  *
  * <p>{@link com.beomsu.becommerce.shorts.ShortVideo}가 상태 전이
  * (UPLOADING → UPLOADED → PROBING → TRANSCODING → READY/FAILED)와 재시도(3회)·격리를 갖는다(R22).
@@ -12,6 +12,10 @@
  * <p>영상 하나에 상품을 여러 개 연결·해제할 수 있다(R25) — 상품 실존 확인과 조회 응답의
  * 이름·가격은 order가 공개한 읽기 포트({@link com.beomsu.becommerce.order.ProductCatalogFacts},
  * ADR-018, wishlist와 같은 경로)로만 얻는다. order는 shorts를 모르므로 순환은 없다.
+ *
+ * <p>{@link com.beomsu.becommerce.shorts.web.ShortsFeedController}가 READY 숏폼만 id
+ * 내림차순(최신순)으로 커서 페이지네이션해 내준다(R26) — 비로그인도 호출할 수 있게
+ * {@code SecurityConfig}가 이 경로만 예외로 연다. 세로 스와이프·프리페치 화면은 다음 단계(웹)다.
  *
  * <p>변환 워커·피드·media/ 분리는 다음 단계다. 결제·재고 확정은 호출하지 않는다
  * (allowedDependencies는 shared·order뿐).
