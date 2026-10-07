@@ -45,6 +45,8 @@ import java.util.Map;
  *       토스 경로는 서명이 없어 <b>페이로드를 믿지 않고 조회 API로 재검증</b>하는 것이 방어선이다.
  *       위조가 만드는 헛조회는 발신 IP 허용 목록으로 좁힐 수 있다 — 기본 off, 프록시 뒤에서는 앞단이 맡는다)</li>
  *   <li>{@code /actuator} → ADMIN. 단 {@code health/info}와 {@code prometheus}(수집기 스크레이프)는 공개</li>
+ *   <li>{@code /api/v1/shorts/**} → ROLE_SELLER(R21). 숏폼 업로드·조회는 판매자만 하고,
+ *       본인 영상만 보게 sellerId는 principal에서 얻는다(IDOR 방지).</li>
  * </ul>
  *
  * <p>인증은 <b>JWT Bearer(OAuth2 Resource Server, Nimbus HS256 대칭키)</b>로 한다. 무상태 HTTP
@@ -99,6 +101,9 @@ public class SecurityConfig {
                         // 선착순 대기열: 로그인 사용자만 줄 서기(멤버=인증 principal userId). 결제 경로와는
                         // 결합하지 않는 독립 프리미티브(입장/상태/이탈)이지만 참가자 식별을 위해 인증은 요구한다.
                         .requestMatchers("/api/v1/queue/**").hasRole("USER")
+                        // 숏폼 업로드(R21)는 판매자만. 소유권(sellerId) 검증은 principal에서 얻은
+                        // userId로 ShortsService가 한다 — 남의 영상 id로 조회·완료 처리 못 하게.
+                        .requestMatchers("/api/v1/shorts/**").hasRole("SELLER")
                         // health/info와 Prometheus 스크레이프 엔드포인트는 개방한다. prometheus는
                         // 메트릭 수집기가 Bearer 없이 주기 GET 해야 하므로 인증을 걸면 스크레이프가 401로
                         // 막힌다. 운영에선 management.server.port를 내부망 전용으로 분리해 스크레이프하는
@@ -144,7 +149,7 @@ public class SecurityConfig {
     }
 
     /**
-     * 복합 UserDetailsService — 로그인 식별자로 (a) 먼저 인메모리 데모 계정(admin/admin2/"1"/"2")을
+     * 복합 UserDetailsService — 로그인 식별자로 (a) 먼저 인메모리 데모 계정(admin/admin2/"1"/"2"/"3")을
      * 찾고, 없으면 (b) MemberRepository로 이메일 회원을 찾는다. 둘 다 없으면 UsernameNotFoundException.
      *
      * <p><b>숫자 userId 계약 보존</b>: DaoAuthenticationProvider는 인증 성공 시 <i>로드된 UserDetails의
@@ -162,6 +167,7 @@ public class SecurityConfig {
             @Value("${app.admin.username:admin}") String adminUsername,
             @Value("${app.admin.password:admin-local-only}") String adminPassword,
             @Value("${app.user.password:user-local-only}") String userPassword,
+            @Value("${app.seller.password:seller-local-only}") String sellerPassword,
             PasswordEncoder encoder,
             MemberRepository memberRepository) {
         UserDetails admin = User.withUsername(adminUsername)
@@ -175,10 +181,15 @@ public class SecurityConfig {
                 .password(encoder.encode(userPassword)).roles("USER").build();
         UserDetails user2 = User.withUsername("2")
                 .password(encoder.encode(userPassword)).roles("USER").build();
-        InMemoryUserDetailsManager inMemory = new InMemoryUserDetailsManager(admin, admin2, user1, user2);
+        // 숏폼 업로드 등 판매자 전용 표면을 위한 데모 계정 — Seller(정산용 엔티티)와는 아직 연결되지
+        // 않는다(ADR 없이 임시 역할 분리). username "3"은 user1/user2 번호 체계를 그대로 잇는다.
+        UserDetails seller1 = User.withUsername("3")
+                .password(encoder.encode(sellerPassword)).roles("SELLER").build();
+        InMemoryUserDetailsManager inMemory =
+                new InMemoryUserDetailsManager(admin, admin2, user1, user2, seller1);
 
         return username -> {
-            // (a) 데모 계정 우선 — admin/admin2/"1"/"2"는 인메모리 그대로 유지(기존 로그인 무중단).
+            // (a) 데모 계정 우선 — admin/admin2/"1"/"2"/"3"은 인메모리 그대로 유지(기존 로그인 무중단).
             try {
                 return inMemory.loadUserByUsername(username);
             } catch (UsernameNotFoundException notDemo) {

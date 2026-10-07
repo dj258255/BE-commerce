@@ -9,10 +9,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /** R22: 숏폼 상태머신(전이 허용/거절, 실패 사유, 재시도 3회 뒤 격리)을 검증한다. */
 class ShortVideoTest {
 
+    private static final UploadMeta VALID_META = new UploadMeta(30, 10_000_000L, 1080, 1920, "video/mp4");
+
+    private ShortVideo video() {
+        return ShortVideo.upload(1L, "shorts/1/" + System.nanoTime(), VALID_META);
+    }
+
     @Test
     @DisplayName("R22: 업로드 직후 UPLOADING, retryCount=0")
     void uploadStartsAtUploading() {
-        ShortVideo v = ShortVideo.upload(1L);
+        ShortVideo v = video();
         assertThat(v.getStatus()).isEqualTo(ShortVideoStatus.UPLOADING);
         assertThat(v.getRetryCount()).isEqualTo(0);
         assertThat(v.getMaxRetries()).isEqualTo(3);
@@ -22,7 +28,7 @@ class ShortVideoTest {
     @Test
     @DisplayName("R22: 허용된 전이 — UPLOADING→UPLOADED→PROBING→TRANSCODING→READY")
     void happyPathReachesReady() {
-        ShortVideo v = ShortVideo.upload(1L);
+        ShortVideo v = video();
 
         v.markUploaded();
         assertThat(v.getStatus()).isEqualTo(ShortVideoStatus.UPLOADED);
@@ -40,7 +46,7 @@ class ShortVideoTest {
     @Test
     @DisplayName("R22: 허용되지 않은 전이는 거절 — UPLOADING에서 바로 PROBING 불가")
     void skippingStepsIsRejected() {
-        ShortVideo v = ShortVideo.upload(1L);
+        ShortVideo v = video();
 
         assertThatThrownBy(v::startProbing)
                 .isInstanceOf(ShortsException.class)
@@ -51,7 +57,7 @@ class ShortVideoTest {
     @Test
     @DisplayName("R22: 허용되지 않은 전이는 거절 — READY(종료 상태)에서는 아무 전이도 안 된다")
     void terminalReadyRejectsAnyTransition() {
-        ShortVideo v = ShortVideo.upload(1L);
+        ShortVideo v = video();
         v.markUploaded();
         v.startProbing();
         v.startTranscoding();
@@ -64,7 +70,7 @@ class ShortVideoTest {
     @Test
     @DisplayName("R22: 실패 기록 — FAILED로 전이하고 사유를 남기며 retryCount를 올린다")
     void failRecordsReasonAndIncrementsRetryCount() {
-        ShortVideo v = ShortVideo.upload(1L);
+        ShortVideo v = video();
         v.markUploaded();
         v.startProbing();
 
@@ -79,7 +85,7 @@ class ShortVideoTest {
     @Test
     @DisplayName("R22: FAILED에서 재시도 — startProbing()으로 PROBING에 재진입한다")
     void retryReentersProbingFromFailed() {
-        ShortVideo v = ShortVideo.upload(1L);
+        ShortVideo v = video();
         v.markUploaded();
         v.startProbing();
         v.fail("일시 오류");
@@ -93,7 +99,7 @@ class ShortVideoTest {
     @Test
     @DisplayName("R22 경계: 실패가 3회(maxRetries)에 도달하면 QUARANTINED로 격리되고 더는 재시도할 수 없다")
     void thirdFailureQuarantines() {
-        ShortVideo v = ShortVideo.upload(1L);
+        ShortVideo v = video();
         v.markUploaded();
 
         v.startProbing();
@@ -120,7 +126,7 @@ class ShortVideoTest {
     @Test
     @DisplayName("R22: 실패 사유 500자 초과분은 잘라 저장한다")
     void failureReasonIsTruncated() {
-        ShortVideo v = ShortVideo.upload(1L);
+        ShortVideo v = video();
         v.markUploaded();
         v.startProbing();
 
@@ -132,7 +138,7 @@ class ShortVideoTest {
     @Test
     @DisplayName("R22: TRANSCODING에서도 실패하면 FAILED로 전이한다")
     void transcodingFailureTransitionsToFailed() {
-        ShortVideo v = ShortVideo.upload(1L);
+        ShortVideo v = video();
         v.markUploaded();
         v.startProbing();
         v.startTranscoding();
