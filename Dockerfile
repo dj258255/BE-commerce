@@ -21,9 +21,11 @@ RUN --mount=type=cache,target=/root/.gradle \
 # ── 실행 ─────────────────────────────────────────────────────────────────────
 FROM eclipse-temurin:21-jre AS runtime
 
-# healthcheck가 쓴다. JRE 이미지에는 curl이 없다.
+# healthcheck가 쓴다(curl). ffmpeg는 R23 3단계 변환 실행기(ProcessBuilder)가 ProcessBuilder로
+# 직접 부른다 — 다른 경로로 바이너리를 받지 않고 apt로만 설치한다(샌드박스는 studio.yaml의
+# systemPackages로 같은 패키지를 받는다).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl \
+ && apt-get install -y --no-install-recommends curl ffmpeg \
  && rm -rf /var/lib/apt/lists/* \
  && useradd --system --uid 1001 appuser
 

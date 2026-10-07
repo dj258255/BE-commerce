@@ -69,9 +69,21 @@ Kafka를 새로 들이면 ADR-002가 이미 경고한 것(검증된 구현이라
   [docs/performance/shorts-transcode.md](../performance/shorts-transcode.md)에서 별도로
   쟀다(FFmpeg 바이너리를 직접 구해 돌린 벤치마크, 운영 Dockerfile에는 아직 설치하지 않았다).
   실제 FFmpeg 구현을 붙이는 다음 단계는 그 비교 결과(`filtersplit`)를 따른다.
+
+  **(→ 2026-10-08 3단계에서 붙였다.)** `FfmpegTranscodeRunner`(ProcessBuilder, media
+  src/main)가 운영 빈이 됐다 — `filtersplit`+`superfast`로 세 화질을 한 번에 뽑는다.
+  `FakeTranscodeRunner`는 테스트 소스로 옮기고 `@Component`를 뗐다(운영 코드에 가짜가
+  남아 있으면 worker 프로파일에서도 가짜가 이길 위험이 있었다). FFmpeg는 다른 경로로
+  바이너리를 받지 않고 패키지로 설치한다 — 샌드박스는 `studio.yaml`의
+  `commerce.systemPackages: [ffmpeg]`, 운영은 `Dockerfile`의 apt 설치.
 - **재시도 간 지연·백오프.** 가짜 실행기는 지연이 없으므로 실패하면 같은 호출 안에서 즉시
   재시도한다(최대 3회, 소진하면 QUARANTINED). 실제 FFmpeg로 바뀌면 재시도 사이에 지연을
   둘지(일시적 자원 부족과 영구적 실패를 구분)를 다시 본다.
+
+  **(→ 2026-10-08 현행화)** 아직 지연을 넣지 않았다 — 실제 FFmpeg가 붙은 뒤에도 재시도는
+  여전히 같은 호출 안에서 즉시 돈다. FFmpeg 실패의 대부분(코덱 인식 불가, 입력 손상)은
+  재시도해도 결과가 바뀌지 않는 영구적 실패라, 지연을 넣는 것의 효과를 아직 확인하지
+  못했다. 일시적 자원 부족(동시 변환 과다로 인한 타임아웃)이 실제로 보이면 다시 본다.
 
 ## 검증
 
@@ -83,9 +95,13 @@ Kafka를 새로 들이면 ADR-002가 이미 경고한 것(검증된 구현이라
   확인한다(DB 없이, Spring Boot 조건 평가만 본다).
 - `ShortVideoTest`에 R23 경계 테스트 추가 — `completeTranscoding`이 완전한 산출물에서만
   READY로 가고, 하나라도 없으면(예: 썸네일 누락) FAILED와 사유를 남긴다.
+- `FfmpegTranscodeRunnerTest`(media, 2026-10-08 3단계) — FFmpeg가 PATH에 있을 때만 돈다
+  (없으면 건너뜀). 5초 세로 합성 영상(`lavfi testsrc2`)을 실제로 변환해 세 렌디션·마스터
+  재생목록·썸네일이 전부 생기는지, 존재하지 않는 원본을 probe하면 실패 사유를 남기는지
+  확인한다. 샌드박스(`studio.yaml`의 `systemPackages: [ffmpeg]`)에서 실제로 통과했다.
 - `./gradlew -p commerce test` — media·commerce 전체 통과(worker 프로파일 없이 뜨는
-  기본 컨텍스트에서는 리스너가 등록되지 않아 기존 `ShortsApiIntegrationTest`의 수동
-  `markReady()` 경로와 충돌하지 않는다).
+  기본 컨텍스트에서도 `FfmpegTranscodeRunner` 빈 하나만 있어 `ShortsApiIntegrationTest`의
+  수동 `markReady()` 경로와 충돌하지 않는다 — 리스너만 꺼져 있을 뿐 실행기 빈은 항상 있다).
 
 ## 다시 볼 조건
 

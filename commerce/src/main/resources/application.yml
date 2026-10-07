@@ -791,6 +791,15 @@ app:
   shorts:
     transcode:
       enabled: ${APP_SHORTS_TRANSCODE_ENABLED:false}
+      ffmpeg:
+        # 샌드박스는 studio.yaml의 systemPackages: [ffmpeg]로, 운영은 Dockerfile의 apt 설치로
+        # PATH에 있다. 다른 경로(바이너리 직접 다운로드 등)로 바꾸지 않는다(R23 3단계).
+        bin: ${APP_SHORTS_FFMPEG_BIN:ffmpeg}
+        # docs/performance/shorts-transcode.md 비교에서 가장 빨랐던 프리셋.
+        preset: ${APP_SHORTS_FFMPEG_PRESET:superfast}
+        # 60초 영상 기준 R24 목표(60초 이내)보다 넉넉히 잡은 상한 — 넘으면 프로세스를 강제
+        # 종료하고 FAILED로 남긴다(무한정 매달리는 ffmpeg 하나가 재시도 전체를 막지 않게).
+        timeout-seconds: ${APP_SHORTS_FFMPEG_TIMEOUT_SECONDS:120}
 
 # 웹훅 서명 검증(HMAC-SHA256) 시크릿. 아래는 로컬 개발 전용 기본값(16바이트 이상)이고, 운영은
 # 반드시 env/시크릿 매니저로 오버라이드한다. 미설정/약한 키면 기동을 실패시킨다(WebhookSignatureVerifier fail-fast).

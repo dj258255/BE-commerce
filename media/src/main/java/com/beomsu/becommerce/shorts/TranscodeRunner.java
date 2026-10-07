@@ -3,10 +3,12 @@ package com.beomsu.becommerce.shorts;
 /**
  * 변환(probe → transcode) 실행기 포트(R23) — 실제 FFmpeg 호출을 이 인터페이스 뒤로 숨긴다.
  *
- * <p>이번 단계는 결정적인 가짜 구현({@link FakeTranscodeRunner})만 쓴다 — 기본 게이트
- * ({@code ./gradlew -p commerce test})가 실제 FFmpeg를 부르면 환경마다 결과가 흔들리고 느려지기
- * 때문이다(도구 설치 전제도 생긴다). 실제 FFmpeg 구현(docs/performance/shorts-transcode.md의
- * 비교 결과를 따른다)은 다음 단계에서 이 인터페이스 뒤에 붙는다.
+ * <p>운영 빈은 {@code FfmpegTranscodeRunner}(ProcessBuilder로 실제 ffmpeg를 부른다,
+ * docs/performance/shorts-transcode.md의 비교 결과를 따른다 — filtersplit·superfast)뿐이다.
+ * 결정적인 가짜 구현({@code FakeTranscodeRunner})은 테스트 소스에만 있다 — 기본 게이트
+ * ({@code ./gradlew -p commerce test})의 대부분이 실제 FFmpeg를 부르면 환경마다 결과가
+ * 흔들리고 느려지기 때문이다. 실제 FFmpeg를 부르는 테스트는 ffmpeg가 있을 때만 돈다
+ * ({@code FfmpegTranscodeRunnerTest}, 없으면 건너뜀).
  */
 public interface TranscodeRunner {
 
