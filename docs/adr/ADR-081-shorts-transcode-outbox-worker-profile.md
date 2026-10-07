@@ -141,6 +141,64 @@ READY 영상을 실제로 재생하려면 HLS 재생목록·세그먼트·썸네
 "내 컴퓨터(또는 이 샌드박스)에서는 바로 보고 싶다"는 개발 편의다. 운영 API 배포는 `local`을
 켜지 않으므로 `app.shorts.transcode.enabled` 기본값(false)이 그대로 지켜진다.
 
+## 현행화 (R26 재생 — 브라우저가 웹 출처로 미디어를 받게 한다)
+
+`ShortsFeedItemView`가 돌려주는 `masterPlaylistUrl`·`thumbnailUrl`은 `/api/v1/shorts/{id}/
+media/...`처럼 **이 사이트(apps/web) 기준 상대 경로**다 — 브라우저는 이 경로를 `apps/web`의
+출처(예: `http://<web-host>:3000`)로 요청한다. 그런데 실제로 그 바이트를 들고 있는 건
+commerce(Spring)다. 그래서 `apps/web` 쪽에서 이 요청을 commerce로 넘겨주는 장치가 필요하다
+— 아니면 브라우저가 "web 서버에 그런 경로 없음"으로 404를 받는다(실제로 겪은 증상: 첫 구현
+직후 브라우저로 확인하지 않고 commerce에 **직접** curl로만 확인해, "web을 거친 요청"이라는
+실제 조건을 재지 않았다 — 겹친 원인은 아래 "무엇이 실제로 404였나" 참고).
+
+**두 선택지**:
+
+| 선택 | 무엇 | Range 처리 |
+|---|---|---|
+| **A. Next.js rewrites** | `next.config.ts`의 `rewrites()`가 요청을 그대로 `SPRING_API`로 넘긴다(서버가 대신 접속해 응답을 그대로 돌려준다) | Next.js가 요청을 **원시 HTTP 레벨에서 재전송**한다 — 헤더·메서드·바디를 가공하지 않으므로 `Range`·`Accept-Ranges`·`Content-Range`·206 상태코드가 손 안 대고 그대로 오간다 |
+| **B. Route Handler** | `app/api/v1/shorts/[...path]/route.ts`를 만들어 `fetch(SPRING_API + path, { headers: req.headers })`로 수동 중계 | 직접 짜야 한다 — 요청의 `Range` 헤더를 그대로 전달하고, 응답의 상태코드(206)·`Content-Range`·스트림 바디를 전부 손으로 복사해야 한다. Node의 `Response`/`ReadableStream` 경계를 넘는 바이너리 스트리밍이라 끊기거나 버퍼링되는 실수가 나기 쉽다 |
+
+**결정: A(Next.js rewrites)를 쓴다 — 사실 처음부터 그렇게 돼 있었다.** `next.config.ts`의
+`/api/:path*` → `${SPRING_API}/api/:path*` 규칙은 이미 `/api/v1/shorts/feed`·카탈로그·
+`/uploads`·`/product.html`·`/assets`가 쓰는 바로 그 규칙이고, `/api/v1/shorts/{id}/media/**`
+도 `/api/:path*`에 포함되므로 **새 규칙이 필요 없다.** B를 버린 이유: rewrites가 이미 공짜로
+주는 것(원시 바이트 재전송, 모든 헤더·상태코드 보존)을 Route Handler로 다시 만들면 코드가
+늘어나는 만큼 Range 처리를 놓칠 자리만 늘어난다 — 지킬 게 늘어나는데 얻는 게 없다.
+
+**무엇이 실제로 404였나**: rewrites 자체는 처음부터 문제가 없었다(아래 검증에서 web 출처로
+재현해 확인). 실제 원인은 두 가지가 겹쳤다.
+1. **검증 방법이 틀렸다.** 이전 턴의 "확인"은 commerce에 **직접** 쳤다 — `apps/web`을 거친
+   요청(브라우저가 실제로 보내는 경로)을 한 번도 재지 않았다. "브라우저가 쓰는 경로로 재라"는
+   지적이 정확하다.
+2. **데모 데이터의 파일이 사라져 있었다.** `LocalFileShortsStorage`의 base-dir는 commerce
+   컨테이너의 `/tmp` 아래다(결정 1) — 컨테이너를 재시작하면 비워진다. MySQL(별도 영속
+   볼륨)은 그 사이 `short_videos` 행을 `READY`로 그대로 갖고 있어 **DB와 파일이 서로 다른
+   생명주기를 가진 채 어긋났다**(DB는 READY라는데 파일은 없음) — `ShortsMediaService`는
+   파일이 없으면 "찾을 수 없음"(404)으로 응답하도록 설계돼 있어(의도한 동작, 내부 구조를
+   드러내지 않으려고 이유를 구분해 주지 않는다) 이번에도 404가 났다. `tools/seed-shorts-dev.sh`를
+   다시 돌려 파일을 다시 만들었다 — 이 어긋남 자체는 로컬 파일 저장소를 쓰는 한 반복될 수
+   있는, 이미 알려진 한계다(결정 1의 "대가").
+
+**검증(web 출처, commerce 컨테이너에서 `web:3000`으로 직접 curl — 브라우저가 실제로 보는
+경로와 같다)**:
+
+```
+$ curl -s -o /dev/null -w '%{http_code} %{content_type}\n' http://web:3000/api/v1/shorts/8/media/master.m3u8
+200 application/vnd.apple.mpegurl
+$ curl -s -o /dev/null -w '%{http_code} %{content_type}\n' http://web:3000/api/v1/shorts/8/media/thumb.jpg
+200 image/jpeg
+$ curl -s -D - -o /dev/null -H 'Range: bytes=0-10' http://web:3000/api/v1/shorts/8/media/1080/out0.m4s
+HTTP/1.1 206 Partial Content
+accept-ranges: bytes
+content-range: bytes 0-10/2513605
+content-type: video/iso.segment
+content-length: 11
+```
+
+마스터 재생목록·썸네일은 200, Range를 건 세그먼트는 206 + 정확한 `Content-Range`로 — rewrites가
+그대로 중계한다. 코드 변경은 없었다(이미 맞는 규칙이 있었다) — 변경은 이 ADR 절과
+`tools/seed-shorts-dev.sh` 재실행(데이터 복구)뿐이다.
+
 ## 다시 볼 조건
 
 - **변환 대기열이 API 프로세스의 CPU를 실제로 갉아먹기 시작하면**(같은 jar라 격리가
@@ -160,3 +218,9 @@ READY 영상을 실제로 재생하려면 HLS 재생목록·세그먼트·썸네
   `masterPlaylistUrl`·`thumbnailUrl`을 Spring 경로 대신 CDN 오리진 주소(또는 presigned GET)로
   바꾸면 된다. `ShortsFeedItemView`가 그 URL을 만드는 자리를 이미 `ShortsMediaUrls` 하나로
   모아 뒤서, 교체 지점이 한 곳이다.
+- **DB(`short_videos`)는 `READY`인데 로컬 파일은 사라진 상태(컨테이너 재시작으로 `/tmp`가
+  비워짐)가 반복돼 데모·개발에서 불편해지면** → 로컬 저장소 base-dir를 컨테이너 재시작에도
+  남는 볼륨으로 옮기거나(`compose.b-studio.yaml`에 바인드 마운트 추가), 또는 기동 시 파일이
+  없는 `READY` 행을 감지해 경고 로그를 남기는 점검을 추가한다. 지금은 `tools/seed-shorts-dev.sh`를
+  다시 돌려 수동으로 복구한다 — 오브젝트 스토리지로 바뀌면(바로 위 항목) 이 문제 자체가
+  없어진다(그 스토리지는 컨테이너 생명주기와 독립이다).
