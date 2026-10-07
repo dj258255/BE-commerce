@@ -41,16 +41,30 @@ h1, h2, h3 { margin: 0; letter-spacing: -0.02em; }
 /* ---------- 상단 ---------- */
 .topbar { position: sticky; top: 0; z-index: 20; background: rgba(251, 251, 252, 0.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
 .topbar-in { display: flex; align-items: center; gap: 14px; height: 58px; }
-.brand { font-weight: 850; font-size: 17px; letter-spacing: -0.03em; }
+.brand { font-weight: 850; font-size: 17px; letter-spacing: -0.03em; white-space: nowrap; flex-shrink: 0; }
 .brand b { color: var(--accent); }
-.tag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--sub); border: 1px solid var(--line2); border-radius: 5px; padding: 2px 6px; }
-.nav { display: flex; gap: 2px; }
-.nav a { font-size: 14px; font-weight: 600; color: var(--sub); padding: 7px 11px; border-radius: 8px; }
+.tag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--sub); border: 1px solid var(--line2); border-radius: 5px; padding: 2px 6px; white-space: nowrap; flex-shrink: 0; }
+.nav { display: flex; gap: 2px; min-width: 0; }
+/* white-space: nowrap이 핵심이다 — 한글은 글자 사이마다 줄바꿈이 허용돼(UAX #14), flex 자식의
+   기본 min-width(=min-content)가 글자 하나 폭까지 줄어든다. 좁은 화면에서 flex가 메뉴를 쥐어짜면
+   "개/인/화/홈"처럼 한 글자씩 세로로 쌓이는 원인이 이것이다 — 이 줄이 없으면 네 번째 미디어 쿼리도
+   낱말을 지키지 못한다. */
+.nav a { font-size: 14px; font-weight: 600; color: var(--sub); padding: 7px 11px; border-radius: 8px; white-space: nowrap; flex: 0 0 auto; }
 .nav a:hover { color: var(--ink); background: #f2f4f8; }
 .nav a.on { color: var(--accent-ink); background: var(--accent-soft); }
 
+/* 좁은 화면(모바일이 숏폼의 주 사용 환경) — 로고·배지와 메뉴가 서로를 밀어내지 않게 메뉴를
+   자기 줄로 내리고, 그 줄 안에서는 가로 스크롤로 전체 항목을 유지한다(잘림·줄바꿈 대신). */
+@media (max-width: 680px) {
+  .topbar-in { flex-wrap: wrap; height: auto; padding: 10px 0; row-gap: 8px; }
+  .nav { order: 3; flex: 1 0 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .nav a { padding: 7px 9px; }
+}
+
 /* 목 데이터 표시 — 값이 진짜인지 화면이 스스로 밝힌다 */
-.mock { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--warn); border: 1px solid #ead3ae; background: #fcf6eb; border-radius: 6px; padding: 3px 8px; }
+/* white-space: nowrap — "실데이터"·"MOCK 데이터"도 한글이라 같은 이유로 좁은 화면에서
+   "실/데/이/터"처럼 한 글자씩 쌓였다(위 .nav a 주석 참고). */
+.mock { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--warn); border: 1px solid #ead3ae; background: #fcf6eb; border-radius: 6px; padding: 3px 8px; white-space: nowrap; flex-shrink: 0; }
 .mock::before { content: "▲"; font-size: 9px; }
 .mock.off { color: var(--ok); border-color: #bfe3d2; background: #f0faf5; }
 .mock.off::before { content: "●"; }

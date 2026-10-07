@@ -19,8 +19,8 @@ export default async function ShortsPage() {
       <div className="head">
         <h1>숏폼</h1>
         <p>
-          세로로 스와이프해 다음 영상으로 넘어간다. 변환이 끝난(<span className="mono">READY</span>) 영상만
-          보이고, 영상 아래 연결 상품을 누르면 상품 상세로 간다.
+          위아래로 넘겨 보세요. 준비가 끝난(<span className="mono">READY</span>) 영상만 보여드려요. 영상
+          아래 상품을 누르면 상품 상세 페이지로 이동해요.
         </p>
       </div>
 
