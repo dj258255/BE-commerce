@@ -130,6 +130,23 @@ table.t td.num, table.t th.num { text-align: right; }
 .exp .foot a { font-weight: 650; color: var(--accent-ink); }
 .exp .foot span { font-size: 12.5px; color: var(--sub); }
 
+/* ---------- 버튼 ---------- */
+.btn { font-weight: 700; font-size: 13.5px; border: 1px solid var(--line2); background: #fff; color: var(--ink); border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+.btn:hover { background: #f2f4f8; }
+
+/* ---------- 숏폼 피드(R26) ---------- */
+.shorts-scroller { height: 72vh; max-height: 760px; overflow-y: auto; scroll-snap-type: y mandatory; border: 1px solid var(--line); border-radius: var(--radius); background: #0b0c10; }
+.shorts-card { height: 100%; min-height: 100%; scroll-snap-align: start; scroll-snap-stop: always; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 20px; box-sizing: border-box; }
+.shorts-frame { position: relative; width: min(100%, 300px); aspect-ratio: 9 / 16; border-radius: var(--radius); display: flex; flex-direction: column; justify-content: space-between; padding: 14px; color: #fff; box-shadow: var(--shadow); }
+.shorts-frame-state { font-weight: 800; font-size: 15px; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); }
+.shorts-frame-meta { font-size: 11px; opacity: 0.85; margin-top: 4px; }
+.shorts-frame-preload { position: absolute; top: 10px; right: 10px; font-size: 10px; background: rgba(0, 0, 0, 0.35); padding: 2px 7px; border-radius: 999px; }
+.shorts-products { width: min(100%, 300px); display: flex; flex-direction: column; gap: 6px; }
+.shorts-product { display: flex; align-items: center; justify-content: space-between; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13px; }
+.shorts-product:hover { border-color: var(--accent); }
+.shorts-loadmore { text-align: center; padding: 14px 0; font-size: 11px; }
+.shorts-empty { padding: 48px 0; text-align: center; color: var(--sub); border: 1px dashed var(--line2); border-radius: var(--radius); }
+
 /* ---------- 실패·빈 상태 ---------- */
 .fail { background: var(--panel); border: 1px solid #eac1c1; border-radius: var(--radius); padding: 18px; }
 .fail code { font-family: var(--mono); font-size: 12.5px; color: var(--bad); }

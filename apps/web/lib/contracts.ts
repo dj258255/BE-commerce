@@ -64,6 +64,24 @@ export type Homepage = {
   stats?: AssemblyStats;
 };
 
+/* ---------- 숏폼 피드(R26) ---------- */
+
+/** 숏폼 영상에 연결된 상품 요약(R25) — 피드 항목 아래에 보여 준다. */
+export type ShortsFeedProduct = { productId: number; name: string; price: number };
+
+/** 피드 항목 — READY인 영상만. 재생 URL은 아직 없다(변환 워커가 다음 단계). */
+export type ShortsFeedItem = {
+  id: number;
+  durationSeconds: number;
+  width: number;
+  height: number;
+  createdAt: string;
+  products: ShortsFeedProduct[];
+};
+
+/** 커서 기반 한 쪽 — `nextCursor`가 null이면 마지막 쪽이다. */
+export type ShortsFeedPage = { items: ShortsFeedItem[]; nextCursor: number | null; hasNext: boolean };
+
 export type ExperimentStatus = 'idea' | 'todo' | 'running' | 'done';
 
 export type ExperimentSummary = {
