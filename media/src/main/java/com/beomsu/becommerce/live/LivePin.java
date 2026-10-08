@@ -52,6 +52,17 @@ public class LivePin {
     @Column(nullable = false)
     private long seq;
 
+    /**
+     * 고정(드롭)마다 고유한 판매 단위(R12, ADR-085) — {@code pin()}을 부를 때만 올라간다.
+     * {@code changePrice()}는 같은 드롭의 연장이라 올리지 않는다 — 올리면 가격만 바꿔도
+     * {@code LiveOrderGate}의 Redis 선점 카운트가 리셋돼 한정 수량보다 더 팔릴 수 있다.
+     * {@code seq}(모든 이벤트에 단조 증가, R9 동기화용)와는 다른 축이다. 같은 방송에서
+     * 완판된 상품을 다시 고정하거나 다른 상품으로 바꿔 고정해도, generation이 바뀌므로 Redis
+     * 키가 새로 갈라져 이전 고정분의 선점이 새 고정의 남은 수량에 섞이지 않는다.
+     */
+    @Column(nullable = false)
+    private long generation;
+
     /** 가장 최근 이벤트(고정·해제·가격 변경)가 커밋된 서버 시각. 아직 아무 일도 없었으면 null. */
     private Instant effectiveAt;
 
@@ -80,6 +91,7 @@ public class LivePin {
         this.price = price;
         this.limitedQuantity = limitedQuantity;
         this.seq++;
+        this.generation++;   // 새 드롭 — Redis 선점 키가 이전 고정분과 갈라진다(R12, ADR-085)
         this.effectiveAt = now;
         this.updatedAt = now;
         return LivePinEventType.PINNED;

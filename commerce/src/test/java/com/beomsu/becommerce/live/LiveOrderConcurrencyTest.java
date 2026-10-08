@@ -64,9 +64,40 @@ class LiveOrderConcurrencyTest {
     }
 
     private void pin(long broadcastId, long productId, long price, int limit) {
-        LivePin pin = LivePin.forBroadcast(broadcastId, Instant.now());
+        LivePin pin = pinRepository.findByBroadcastId(broadcastId)
+                .orElseGet(() -> LivePin.forBroadcast(broadcastId, Instant.now()));
         pin.pin(productId, price, limit, Instant.now());
         pinRepository.save(pin);
+    }
+
+    private int confirmedOrders(long broadcastId, long productId, long firstUserId, int threads) throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch ready = new CountDownLatch(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        AtomicInteger confirmed = new AtomicInteger();
+        List<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            long userId = firstUserId + i;
+            String idemKey = "idem-repin-" + firstUserId + "-" + i;
+            futures.add(pool.submit(() -> {
+                ready.countDown();
+                start.await();
+                try {
+                    liveOrderService.order(userId, broadcastId, productId, idemKey);
+                    confirmed.incrementAndGet();
+                } catch (LiveOrderException ignored) {
+                    // 매진 거절 — 이 테스트는 확정 건수만 본다
+                }
+                return null;
+            }));
+        }
+        ready.await();
+        start.countDown();
+        for (Future<?> f : futures) {
+            f.get(30, TimeUnit.SECONDS);
+        }
+        pool.shutdown();
+        return confirmed.get();
     }
 
     @Test
@@ -134,5 +165,28 @@ class LiveOrderConcurrencyTest {
         Integer orderCount = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM orders WHERE user_id = ?", Integer.class, userId);
         assertThat(orderCount).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("R12(재고정 결함 재현·수정 확인): 한정 수량을 완판시킨 뒤 같은 방송·같은 상품을 "
+            + "새 한정 수량으로 다시 고정하면, 새 드롭은 이전 드롭의 선점에 영향받지 않고 "
+            + "새 한도만큼 다시 확정된다(세대 분리, ADR-085)")
+    void rePinningStartsFreshLimitUnaffectedByPreviousDrop() throws Exception {
+        long broadcastId = 3_234_000L + (System.nanoTime() % 1000);
+        long productId = product(10_000);
+        int firstLimit = 5;
+        int secondLimit = 8;
+
+        pin(broadcastId, productId, 9_900L, firstLimit);
+        int firstConfirmed = confirmedOrders(broadcastId, productId, 8_000_000L, firstLimit * 3);
+        assertThat(firstConfirmed).isEqualTo(firstLimit);   // 1번째 드롭 완판
+
+        // 재고정 — 수정 전이라면 Redis 키가 broadcastId로만 갈려 있어 이전 완판분이 그대로 남는다.
+        pin(broadcastId, productId, 7_900L, secondLimit);
+        int secondConfirmed = confirmedOrders(broadcastId, productId, 8_500_000L, secondLimit * 3);
+
+        assertThat(secondConfirmed)
+                .as("재고정 결함이 고쳐졌다면 새 드롭은 이전 완판과 무관하게 새 한도(%d)만큼 확정돼야 한다", secondLimit)
+                .isEqualTo(secondLimit);
     }
 }

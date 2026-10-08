@@ -74,10 +74,16 @@ public class LiveOrderGate {
                 .register(meterRegistry);
     }
 
-    /** 선점을 시도한다. 성공하면 {@code true}(= commerce 주문 생성으로 진행), 실패면 {@code false}
-     * (= 결제 호출 없이 즉시 거절, R15 방향). */
-    public boolean tryReserve(long broadcastId, int limit, String idempotencyKey) {
-        Long result = redis.execute(RESERVE, List.of(holdsKey(broadcastId)),
+    /**
+     * 선점을 시도한다. 성공하면 {@code true}(= commerce 주문 생성으로 진행), 실패면 {@code false}
+     * (= 결제 호출 없이 즉시 거절, R15 방향).
+     *
+     * @param generation 지금 고정(드롭)의 세대(R12, ADR-085) — {@code LivePin.generation}.
+     *                   같은 방송이라도 세대가 다르면 Redis 키가 갈라져, 이전 드롭에서 쌓인
+     *                   선점이 새 드롭의 남은 수량을 갉아먹지 않는다
+     */
+    public boolean tryReserve(long broadcastId, long generation, int limit, String idempotencyKey) {
+        Long result = redis.execute(RESERVE, List.of(holdsKey(broadcastId, generation)),
                 idempotencyKey, String.valueOf(clock.millis()), String.valueOf(ttl.toMillis()),
                 String.valueOf(limit));
         boolean granted = result != null && result == 1L;
@@ -88,11 +94,11 @@ public class LiveOrderGate {
     }
 
     /** 확정(commerce 주문 생성) 실패 시 선점을 즉시 돌려준다 — 같은 멱등 키 재시도가 다시 선점할 수 있게. */
-    public void release(long broadcastId, String idempotencyKey) {
-        redis.opsForZSet().remove(holdsKey(broadcastId), idempotencyKey);
+    public void release(long broadcastId, long generation, String idempotencyKey) {
+        redis.opsForZSet().remove(holdsKey(broadcastId, generation), idempotencyKey);
     }
 
-    private static String holdsKey(long broadcastId) {
-        return "live:pin:" + broadcastId + ":holds";
+    private static String holdsKey(long broadcastId, long generation) {
+        return "live:pin:" + broadcastId + ":" + generation + ":holds";
     }
 }

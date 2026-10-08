@@ -20,8 +20,9 @@ import static org.mockito.Mockito.when;
 /**
  * R10·R11·R12: {@link LiveOrderService}(지금 고정 상태로 가능 여부·가격 판정, Redis 한정 수량
  * 게이트, commerce 주문 생성 위임)를 실제 DB·Redis 없이 결정적으로 검증한다. 실제 동시성(R12.1,
- * 확정 합계 = N)은 {@code commerce}의 {@code LiveOrderConcurrencyTest}(Testcontainers MySQL·Redis)가
- * 확인한다 — 이 테스트는 호출 순서·분기 로직만 본다.
+ * 확정 합계 = N)·재고정 세대 분리(R12)는 {@code commerce}의 {@code LiveOrderConcurrencyTest}
+ * (Testcontainers, 로컬·CI)와 {@code LiveOrderConcurrencySandboxTest}(이 샌드박스의 실 MySQL·
+ * Redis)가 확인한다 — 이 테스트는 호출 순서·분기 로직만 본다.
  */
 class LiveOrderServiceTest {
 
@@ -30,6 +31,7 @@ class LiveOrderServiceTest {
     private static final long USER_ID = 1L;
     private static final long PRODUCT_ID = 100L;
     private static final String IDEM_KEY = "idem-1";
+    private static final long GENERATION_1 = 1L;   // pin()을 한 번만 불렀을 때의 세대
 
     private LivePinRepository pinRepository;
     private OrderPlacement orderPlacement;
@@ -51,17 +53,19 @@ class LiveOrderServiceTest {
     }
 
     @Test
-    @DisplayName("R10.1: 클라이언트는 가격을 보내지 않는다 — 서버는 지금 고정된 특가(9,900원)로만 commerce에 주문을 요청한다")
+    @DisplayName("R10.1·R11.1: 클라이언트는 가격을 보내지 않는다 — 서버는 지금 고정된 특가(9,900원)로 "
+            + "장바구니 없이 주문 1건을 만들고, 결제 화면이 쓸 orderNo·totalAmount·expiresAt을 그대로 돌려준다")
     void usesServerPinnedPriceNotClientValue() {
         when(pinRepository.findByBroadcastId(BROADCAST_ID)).thenReturn(Optional.of(pinned(PRODUCT_ID, 9_900L, 50)));
-        when(gate.tryReserve(BROADCAST_ID, 50, IDEM_KEY)).thenReturn(true);
+        when(gate.tryReserve(BROADCAST_ID, GENERATION_1, 50, IDEM_KEY)).thenReturn(true);
         OrderPlacement.PlacedOrder placed = new OrderPlacement.PlacedOrder("ORD-1", 9_900L, T0.plusSeconds(1800));
         when(orderPlacement.place(USER_ID, PRODUCT_ID, 9_900L, IDEM_KEY)).thenReturn(placed);
 
         OrderPlacement.PlacedOrder result = service.order(USER_ID, BROADCAST_ID, PRODUCT_ID, IDEM_KEY);
 
-        assertThat(result.orderNo()).isEqualTo("ORD-1");
+        assertThat(result.orderNo()).isEqualTo("ORD-1");           // 장바구니 없이 주문 1건 — 결제로 이어질 id
         assertThat(result.totalAmount()).isEqualTo(9_900L);
+        assertThat(result.expiresAt()).isEqualTo(T0.plusSeconds(1800));
         verify(orderPlacement).place(USER_ID, PRODUCT_ID, 9_900L, IDEM_KEY); // 9,900원 그대로 — 클라이언트 값이 끼어들 자리가 없다
     }
 
@@ -73,7 +77,7 @@ class LiveOrderServiceTest {
         assertThatThrownBy(() -> service.order(USER_ID, BROADCAST_ID, PRODUCT_ID, IDEM_KEY))
                 .isInstanceOf(LiveOrderException.class)
                 .hasFieldOrPropertyWithValue("code", "NOTHING_PINNED");
-        verify(gate, never()).tryReserve(anyLong(), anyInt(), anyString());
+        verify(gate, never()).tryReserve(anyLong(), anyLong(), anyInt(), anyString());
         verify(orderPlacement, never()).place(anyLong(), anyLong(), anyLong(), anyString());
     }
 
@@ -92,7 +96,7 @@ class LiveOrderServiceTest {
     @DisplayName("R12·R15: Redis 선점(TTL) 실패(매진)면 commerce 주문 생성을 호출하지 않고 즉시 거절한다")
     void gateRejectionSkipsOrderPlacementEntirely() {
         when(pinRepository.findByBroadcastId(BROADCAST_ID)).thenReturn(Optional.of(pinned(PRODUCT_ID, 9_900L, 50)));
-        when(gate.tryReserve(BROADCAST_ID, 50, IDEM_KEY)).thenReturn(false);
+        when(gate.tryReserve(BROADCAST_ID, GENERATION_1, 50, IDEM_KEY)).thenReturn(false);
 
         assertThatThrownBy(() -> service.order(USER_ID, BROADCAST_ID, PRODUCT_ID, IDEM_KEY))
                 .isInstanceOf(LiveOrderException.class)
@@ -104,12 +108,31 @@ class LiveOrderServiceTest {
     @DisplayName("R12: Redis는 선점했는데 commerce 주문 생성이 실패하면 선점을 즉시 돌려준다(슬롯 낭비 방지)")
     void releasesHoldWhenOrderPlacementFails() {
         when(pinRepository.findByBroadcastId(BROADCAST_ID)).thenReturn(Optional.of(pinned(PRODUCT_ID, 9_900L, 50)));
-        when(gate.tryReserve(BROADCAST_ID, 50, IDEM_KEY)).thenReturn(true);
+        when(gate.tryReserve(BROADCAST_ID, GENERATION_1, 50, IDEM_KEY)).thenReturn(true);
         when(orderPlacement.place(USER_ID, PRODUCT_ID, 9_900L, IDEM_KEY))
                 .thenThrow(new RuntimeException("PRODUCT_NOT_FOUND"));
 
         assertThatThrownBy(() -> service.order(USER_ID, BROADCAST_ID, PRODUCT_ID, IDEM_KEY))
                 .isInstanceOf(RuntimeException.class);
-        verify(gate).release(BROADCAST_ID, IDEM_KEY);
+        verify(gate).release(BROADCAST_ID, GENERATION_1, IDEM_KEY);
+    }
+
+    @Test
+    @DisplayName("R12(재고정 결함 수정): 같은 방송에서 완판 후 다시 고정하면(세대가 올라가면) "
+            + "게이트는 새 세대 번호로 호출된다 — 이전 드롭의 선점과 Redis 키가 섞이지 않는다")
+    void rePinningBumpsGenerationPassedToGate() {
+        LivePin pin = LivePin.forBroadcast(BROADCAST_ID, T0);
+        pin.pin(PRODUCT_ID, 9_900L, 50, T0);     // 1번째 드롭(완판됐다고 가정) — generation=1
+        pin.unpin(T0);
+        pin.pin(PRODUCT_ID, 7_900L, 30, T0);     // 같은 상품을 다시 고정(2번째 드롭) — generation=2
+        when(pinRepository.findByBroadcastId(BROADCAST_ID)).thenReturn(Optional.of(pin));
+        when(gate.tryReserve(BROADCAST_ID, 2L, 30, IDEM_KEY)).thenReturn(true);
+        when(orderPlacement.place(USER_ID, PRODUCT_ID, 7_900L, IDEM_KEY))
+                .thenReturn(new OrderPlacement.PlacedOrder("ORD-2", 7_900L, T0.plusSeconds(1800)));
+
+        service.order(USER_ID, BROADCAST_ID, PRODUCT_ID, IDEM_KEY);
+
+        verify(gate).tryReserve(BROADCAST_ID, 2L, 30, IDEM_KEY);   // 세대 1이 아니라 2로 호출됐다
+        verify(gate, never()).tryReserve(BROADCAST_ID, 1L, 30, IDEM_KEY);
     }
 }
