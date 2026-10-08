@@ -11,6 +11,9 @@ public interface LiveBroadcastRepository extends JpaRepository<LiveBroadcast, Lo
     /** MediaMTX 훅(R2·R3)이 스트림 키로 방송을 찾는다. */
     Optional<LiveBroadcast> findByStreamKey(String streamKey);
 
+    /** {@code MediaMtxPathPoller}(R3)가 매 주기 "지금 LIVE인 방송"과 MediaMTX의 ready 집합을 맞대 본다. */
+    List<LiveBroadcast> findByStatus(LiveBroadcastStatus status);
+
     /**
      * 재접속 유예가 끝났을 수 있는 후보(R3) — LIVE이고 끊긴 적 있는 방송만. 실제로 유예를
      * 넘겼는지(now - disconnectedAt > grace)는 후보를 좁히는 수준으로만 여기서 거르고

@@ -212,8 +212,11 @@ else
 fi
 READY_PER_MEDIAMTX="$(mediamtx_path_ready "$STREAM_KEY")"
 log "진단: MediaMTX 자신이 보는 이 경로의 ready 상태 = $READY_PER_MEDIAMTX \
-(commerce 상태=$STATUS_AFTER_PUBLISH) — true인데 commerce가 LIVE가 아니면 훅 전달(셸·curl)이 \
-의심된다(ADR-082 '셸·curl이 없을 때의 대안' 참고). unknown이면 api: yes 설정이 아직 반영 안 됐을 수 있다."
+(commerce 상태=$STATUS_AFTER_PUBLISH) — 공식 이미지에 셸이 없어 명령 훅은 못 쓰므로(ADR-082), \
+LIVE 전환은 commerce의 MediaMtxPathPoller(app.live.mediamtx-poller.enabled)가 이 Control API를 \
+폴링해서 한다. true인데 commerce가 LIVE가 아니면 그 폴러가 꺼져 있거나(app.live.mediamtx-poller.enabled) \
+api-base-url(app.live.mediamtx.api-base-url)이 틀렸다는 뜻이다. 'path not found'/unknown이면 \
+mediamtx.yml의 paths 선언이 없거나 api: yes가 아직 반영 안 됐을 수 있다(컨테이너 재시작 필요)."
 
 echo
 log "=== 참고: MediaMTX HLS 재생목록(m3u8)을 받을 수 있는가(R6 지연 측정은 범위 밖) ==="

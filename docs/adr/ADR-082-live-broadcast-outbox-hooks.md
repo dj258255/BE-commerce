@@ -234,3 +234,100 @@ compose의 `environment`에서 덮어쓴다.
 버그 1 수정을 반영한 뒤, 위 "구분하는 방법"으로 실제로 셸이 문제인지 먼저 확인하고
 나서 C를 구현하는 게 순서다(확인 안 된 가정으로 새 스케줄러를 먼저 만들면, 그게 맞는지도
 또 MediaMTX 재시작 없이는 못 재는 같은 문제에 걸린다).
+
+## 2026-10-08 추가 2: 셸 없음 확정, Control API 폴링(C) 구현 + 세 번째 버그
+
+사용자가 mediamtx를 재시작해 버그 1 수정을 반영하고 `docker exec mediamtx sh`로 직접 확인해
+줬다: `exec: "sh": executable file not found in $PATH`. **공식 이미지에 셸이 없다 —
+확정이다.** `runOnReady`/`runOnNotReady`는 처음부터 이 이미지에서 될 수 없는 방법이었다.
+위 비교표의 **C(Control API 폴링)를 채택**해 구현했다.
+
+### 세 번째 버그(구현 중 발견): 훅을 pathDefaults로만 옮기면서 `paths:` 선언이 사라졌다
+
+버그 1을 고칠 때 경로별(`"~^live/.+$"`) 블록을 pathDefaults로 완전히 대체했는데, 재시작해
+보니 MediaMTX 로그에 `[RTMP] [conn ...] closed: path 'live/...' is not configured`가
+찍혔다(인증을 묻기도 전에 거절) — "이 경로 패턴을 받는다"는 선언(`paths:`)과 "그 경로의
+기본 동작"(`pathDefaults:`)은 **별개**였다. 훅이 사라졌어도(더는 명령 훅을 안 쓰므로)
+경로 패턴 선언 자체는 그대로 필요하다. 지금은 빈 블록으로 되살렸다:
+
+```yaml
+paths:
+  "~^live/.+$": {}
+```
+
+`pathDefaults`는 전부 지웠다(훅이 없으니 거기 적을 것도 없다 — "쓰지 않게 된 명령 훅
+설정은 지운다"는 지시대로).
+
+### 구현: `MediaMtxPathPoller` — 기존 도메인 로직은 그대로, 전달 방식만 바뀜
+
+- **`MediaMtxPathsSource`**(인터페이스) / **`RestClientMediaMtxPathsSource`**(구현,
+  `GET /v3/paths/list`를 `RestClient`로 읽는다, `CdcHealthMonitor`와 같은 타임아웃 관례) —
+  지금 ready(퍼블리셔가 붙어 흐르는 중)인 `live/*` 스트림 키 집합만 돌려준다. 테스트는 이
+  인터페이스의 가짜로 바꿔 실제 HTTP 없이 돈다(`ShortsRankingSignals`와 같은 패턴).
+- **`MediaMtxPathPoller`**(`@Scheduled`, `app.live.mediamtx-poller.enabled` 게이트 —
+  `LiveBroadcastGraceScheduler`와 같은 관례) — 매 주기 ready 집합과 `repository.
+  findByStatus(LIVE)`를 맞대 보고 **기존** `LiveBroadcastService#handlePublish`/
+  `#handleUnpublish`를 그대로 부른다. 바뀐 건 "누가 거는가"뿐이고, `LiveBroadcast`의 상태
+  전이·재접속 유예 스캐너는 전혀 안 바뀌었다.
+- **끊김은 처음 알아챈 순간에만 알린다** — `disconnectedAt`이 이미 있는 LIVE 방송은 다시
+  `handleUnpublish`를 안 부른다. 이유: `recordDisconnect`는 호출될 때마다 그 시각을
+  "지금"으로 덮어쓴다(재접속 감지를 위해 의도된 동작) — 그런데 폴러가 "여전히 안 ready"를
+  매 주기 반복해서 `handleUnpublish`를 계속 부르면, `disconnectedAt`이 매번 갱신돼
+  **재접속 유예가 영원히 끝나지 않는다.** 폴링이라는 전달 방식 자체가 만드는 함정이라
+  폴러 쪽에서 막았다(단위 테스트 `doesNotRefreshDisconnectTimeEveryPoll`).
+- 인증(R2)은 안 바뀌었다 — `authHTTPAddress`는 MediaMTX 자신이 만드는 네이티브 HTTP
+  호출이라 셸이 필요 없다. 보안 경계는 여전히 거기 있다.
+
+### 폴링 주기와 지연 (정직하게)
+
+`app.live.mediamtx-poller.interval-ms` 기본값은 **2000ms**다. 근거:
+
+- MediaMTX Control API 호출은 로컬 네트워크의 작은 JSON 조회 하나뿐이라 비용이 작다 —
+  `grace-scheduler`(재접속 유예 만료만 보는, 덜 급한 점검)의 기본 5000ms보다는 짧게 잡았다.
+  이게 지금 **유일한** LIVE/끊김 감지 경로가 됐으니 더 빠듬직해야 한다고 판단했다(가정,
+  실측 전).
+- **이 지연이 늘어나는 곳**: ①송출 시작부터 commerce가 `LIVE`로 아는 시점까지, ②송출이
+  끊긴 시점부터 commerce가 `disconnectedAt`을 기록(재접속 유예 시작)하는 시점까지 — 각각
+  최대 폴링 주기만큼(평균 그 절반) 늦어진다. ③ENDED 전이는 영향 없다(끊김 기록 자체가
+  늦어지는 만큼만 전체가 밀리고, 유예 만료 판정은 여전히 `grace-scheduler`가 한다).
+- **R6(송출~시청 지연 5초 이하)에는 영향이 없다** — 그건 MediaMTX가 RTMP를 받아 HLS로
+  내보내는 미디어 경로 자체의 지연이고, 이 폴링은 그 경로를 건드리지 않는다(commerce의
+  `LIVE` 상태 갱신이 늦어질 뿐, 시청자의 영상·오디오 수신은 그대로 MediaMTX가 즉시
+  처리한다). 다만 "방송이 LIVE임을 알고 채팅·주문을 열어주는" 것 같은 **상태 의존
+  기능**(다음 단계)은 이 지연만큼 늦게 열린다 — 그런 기능이 생기면 이 숫자를 다시 본다.
+- **아직 실측하지 않았다** — 2000ms는 "grace-scheduler보다 짧게"라는 상식적 판단이고,
+  Control API 호출 자체가 실제로 몇 ms 걸리는지, 그 비용이 폴링 주기를 더 줄여도 되는지는
+  측정하지 않았다. 다시 볼 조건에 남긴다.
+
+### 다시 볼 조건(추가)
+
+- **폴링 비용이 측정되면** — Control API 호출 시간·CPU를 재서 주기를 더 줄이거나(지연
+  개선) 늘릴지(비용 절감) 결정한다.
+- **상태 의존 기능(채팅 입장 허용, 고정 상품 주문 등)이 생기면** — 이 폴링 지연이 그
+  기능들의 지연 예산에 들어간다는 것을 그 기능의 설계에서 명시한다.
+- **MediaMTX가 셸 있는 이미지로 바뀌면**(공식 이미지가 바뀌거나 커스텀 이미지로 전환하면)
+  — 그때는 push(훅)로 되돌릴 수 있는지 다시 본다. 지금은 이 폴링이 유일한 경로다.
+
+### 이번 세션에서 아직 재검증 못 함 — 또 컨테이너 재시작이 필요하다
+
+위 세 번째 버그(`paths:` 선언 누락)를 고친 뒤 `tools/verify-live-broadcast.sh`를 다시
+돌렸지만, mediamtx 컨테이너는 **사용자가 버그 1만 고친 상태로 재시작해 둔 그대로**였다 —
+이번 수정(세 번째 버그 고침 + pathDefaults 제거)은 아직 반영 전이다. 실제로 MediaMTX
+Control API가 `{"status":"error","error":"path not found"}`를 돌려줘(예상한 그대로)
+RTMP 송출이 인증 이전에 거절됨을 재확인했다:
+
+```
+PASS=4 FAIL=1 UNKNOWN=4
+사전 점검(commerce 직접 호출 200/401): 통과
+R3.1(올바른 키 → LIVE): 실패(15초 타임아웃)
+진단(MediaMTX 자신의 ready 상태): unknown(응답: {"status":"error","error":"path not found"})
+R2.1·R3.2·R3.3·R2.2: UNKNOWN(배관이 증명 안 돼 판정 보류)
+```
+
+`restart_service`로 mediamtx를 재시작하는 기능은(사용자 말대로) 아직 이 세션에 들어오지
+않았다 — 시도해 확인했다(`restart_service(service="mediamtx")` → 입력 검증에서 바로
+거절, 허용값은 `commerce`·`web`·`consumer-app`뿐). **사람이 다시
+`docker compose -f compose.b-studio.yaml restart mediamtx`를 해 줘야** 이번 수정
+(파일 전체를 다시 썼다 — `paths:` 복원·`pathDefaults` 제거)이 반영된다. 반영되면
+`MediaMtxPathPoller`(커머스 쪽, `app.live.mediamtx-poller.enabled=true`로 이미 떠 있다)가
+다음 폴링 주기(기본 2초) 안에 그 상태를 읽어 R3.1부터 다시 통과할 것으로 예상한다.
