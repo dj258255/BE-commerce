@@ -5,7 +5,7 @@ package com.beomsu.becommerce.live;
  *
  * <p>RTMP 송출 주소는 {@code rtmp://<host>/live/{streamKey}} 형태를 쓴다 — MediaMTX 설정
  * ({@code mediamtx.yml}의 경로 패턴 {@code ~^live/.+$})과 여기 {@link #PREFIX}가 반드시
- * 같이 바뀌어야 한다. MediaMTX의 HTTP 인증 훅·{@code runOnPublish}/{@code runOnUnpublish}
+ * 같이 바뀌어야 한다. MediaMTX의 HTTP 인증 훅·{@code runOnReady}/{@code runOnNotReady}
  * 훅이 돌려주는 {@code path}(또는 {@code $MTX_PATH})가 "live/스트림키" 꼴로 온다.
  */
 final class LiveStreamPaths {

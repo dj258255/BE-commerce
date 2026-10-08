@@ -47,14 +47,21 @@ public class LiveMediaHooksController {
         return allowed ? ResponseEntity.ok().build() : ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 
-    /** MediaMTX {@code runOnPublish}(R3) — 송출이 실제로 시작됐을 때. */
+    /**
+     * MediaMTX {@code runOnReady}(R3) — 경로가 "준비됨"(퍼블리셔가 붙어 스트림이 흐르기
+     * 시작함)으로 바뀌었을 때, 즉 송출이 실제로 시작됐을 때. (옛 이름 {@code runOnPublish}는
+     * MediaMTX에 없는 훅이다 — mediamtx.yml 상단 주석 참고.)
+     */
     @PostMapping("/publish")
     public ResponseEntity<Void> publish(@RequestParam String path) {
         liveBroadcastService.handlePublish(path);
         return ResponseEntity.ok().build();
     }
 
-    /** MediaMTX {@code runOnUnpublish}(R3) — 송출이 끊겼을 때(재접속 유예 시작, 아직 종료 아님). */
+    /**
+     * MediaMTX {@code runOnNotReady}(R3) — 경로가 "준비 안 됨"으로 바뀌었을 때, 즉 송출이
+     * 끊겼을 때(재접속 유예 시작, 아직 종료 아님).
+     */
     @PostMapping("/unpublish")
     public ResponseEntity<Void> unpublish(@RequestParam String path) {
         liveBroadcastService.handleUnpublish(path);
