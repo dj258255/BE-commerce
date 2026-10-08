@@ -331,3 +331,38 @@ R2.1·R3.2·R3.3·R2.2: UNKNOWN(배관이 증명 안 돼 판정 보류)
 (파일 전체를 다시 썼다 — `paths:` 복원·`pathDefaults` 제거)이 반영된다. 반영되면
 `MediaMtxPathPoller`(커머스 쪽, `app.live.mediamtx-poller.enabled=true`로 이미 떠 있다)가
 다음 폴링 주기(기본 2초) 안에 그 상태를 읽어 R3.1부터 다시 통과할 것으로 예상한다.
+
+## 2026-10-08 추가 3: 새 샌드박스에서 끝까지 통과 — R1~R3 실 송출 경로 확정
+
+새 샌드박스에서 mediamtx가 최신 설정(Control API 폴링용 `api: yes`, `paths:
+"~^live/.+$": {}` 복원)으로 떴고, 이번에는 `service_logs`/`restart_service`로 mediamtx
+자체도 다룰 수 있었다. `tools/verify-live-broadcast.sh`를 돌려 두 가지를 더 고쳤다(둘 다
+**스크립트의 판정 로그 자체의 버그**였다 — MediaMTX·commerce 쪽 코드는 이미 맞았다):
+
+1. **HLS 302를 못 따라갔다** — MediaMTX HLS 서버는 첫 요청에 `302` + `Set-Cookie:
+   cookieCheck=1`로 응답하고(LL-HLS 세션 확립용 쿠키 체크), 그다음에 실제 재생목록을
+   준다. 스크립트가 `-L` 없이 curl을 불러 302 자체를 "실패"로 오판했다 — `-L` 추가로
+   고쳤다.
+2. **R2.1이 "틀린 키" 대신 "원래 방송"의 상태를 봤다** — R3.1을 먼저 보도록 순서를 바꾼
+   뒤에도, 거절 판정 자체는 여전히 원래 방송(`$BROADCAST_ID`, 이미 R3.1에서 LIVE)의 상태를
+   봤다. 틀린 키용 ffmpeg는 **별도의 새 RTMP 연결**이라 원래 방송과 무관하고, 그 상태는
+   틀린 키가 거절됐는지와 아무 상관이 없다 — 그런데도 "LIVE"로 보여 가짜로 FAIL이 났다.
+   판정을 "MediaMTX 자신이 그 틀린 키의 경로를 ready로 보는가"(Control API,
+   `mediamtx_path_ready`)로 바꿔 고쳤다.
+
+고친 뒤 **같은 스크립트를 세 번 연달아 돌려 매번 `PASS=10 FAIL=0 UNKNOWN=0`**을 확인했다.
+mediamtx·commerce 로그로 교차 확인한 근거(요지, 실제 타임스탬프):
+
+```
+08:04:46 [RTMP] conn ... opened                                      ← 올바른 키 송출 시작
+08:04:48 [path live/01M4D8...] stream is available and online         ← R3.1: MediaMTX가 받음
+08:04:52 [RTMP] conn ... failed to authenticate: server replied 401   ← R2.1: 틀린 키 즉시 거절(MediaMTX 로그)
+08:04:52 commerce: 라이브 송출 인증 거절: 키 불일치 key=not-the-real-key-...  (commerce 로그, 같은 사건)
+...
+08:05:27 commerce: 라이브 방송 재접속 유예 만료로 종료 id=1             ← R3.3: live.ended 발행 경로
+08:05:28 commerce: 라이브 송출 인증 거절: 상태 불일치 key=... status=ENDED ← R2.2
+```
+
+R1.1·R2.1·R3.1·HLS 수신·R3.2·R3.3·R2.2 전부 **실제 ffmpeg→RTMP→MediaMTX→(Control API
+폴링)→commerce** 경로로 확인됐다. 이 ADR의 "다시 볼 조건" 중 "MediaMTX를 샌드박스에
+띄우지 못했다면"은 더 이상 유효하지 않다 — 떴고, 끝까지 돈다.

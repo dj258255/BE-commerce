@@ -223,7 +223,8 @@ log "=== 참고: MediaMTX HLS 재생목록(m3u8)을 받을 수 있는가(R6 지�
 if [ "$STATUS_AFTER_PUBLISH" = "LIVE" ]; then
   sleep 3  # 세그먼트가 몇 개 쌓일 시간을 준다
   HLS_URL="http://${MEDIAMTX_HOST}:${MEDIAMTX_HLS_PORT}/live/${STREAM_KEY}/index.m3u8"
-  HLS_CODE="$(curl -s -o "$WORKDIR/hls.m3u8" -w '%{http_code}' -m 5 "$HLS_URL")"
+  # MediaMTX HLS는 첫 요청에 302(쿠키 체크, LL-HLS 세션 확립용)로 응답한다 — -L로 따라간다.
+  HLS_CODE="$(curl -s -L -o "$WORKDIR/hls.m3u8" -w '%{http_code}' -m 5 "$HLS_URL")"
   if [ "$HLS_CODE" = "200" ] && grep -q '#EXTM3U' "$WORKDIR/hls.m3u8"; then
     ok "HLS 재생목록 수신: $HLS_URL (#EXTM3U 확인)"
   else
@@ -237,13 +238,17 @@ echo
 log "=== R2.1: 틀린 스트림 키로 송출하면 거절되는가 ==="
 WRONG_KEY="not-the-real-key-$(date +%s)"
 try_publish_once "$WRONG_KEY" "$WORKDIR/wrong-key.log" >/dev/null
-STATUS_AFTER_WRONG_KEY="$(json_string "$(get_broadcast "$BROADCAST_ID")" status)"
+# 판정은 "원래 방송의 상태"가 아니라 "틀린 키 자신의 경로가 ready가 됐는가"로 한다 — 원래
+# 방송(id=$BROADCAST_ID)은 R3.1에서 이미 LIVE라 그 상태만 보면 틀린 키 때문인지 구분이 안 된다
+# (처음 버전의 실수 — 틀린 키 전용 ffmpeg가 원래 스트림과 무관하게 떠 있는 동안에도 원래
+# 방송은 계속 LIVE이므로, 그 상태를 보는 건 틀린 키 거절과 아무 상관이 없었다).
+WRONG_KEY_READY="$(mediamtx_path_ready "$WRONG_KEY")"
 WRONG_KEY_NOT_LIVE=false
-[ "$STATUS_AFTER_WRONG_KEY" = "SCHEDULED" ] && WRONG_KEY_NOT_LIVE=true
+[ "$WRONG_KEY_READY" != "true" ] && WRONG_KEY_NOT_LIVE=true
 if [ "$PIPELINE_PROVEN" = true ] && [ "$WRONG_KEY_NOT_LIVE" = true ]; then
-  ok "R2.1: 올바른 키는 LIVE가 됐는데(R3.1) 틀린 키는 거절됨 — 배관이 살아있는 상태에서의 진짜 거절"
+  ok "R2.1: 올바른 키는 LIVE가 됐는데(R3.1) 틀린 키는 거절됨(MediaMTX 자신도 그 경로를 ready로 보지 않음: $WRONG_KEY_READY) — 배관이 살아있는 상태에서의 진짜 거절"
 elif [ "$PIPELINE_PROVEN" = true ] && [ "$WRONG_KEY_NOT_LIVE" = false ]; then
-  bad "R2.1: 배관은 살아있는데(R3.1 통과) 틀린 키로도 상태가 바뀜($STATUS_AFTER_WRONG_KEY) — 거절 실패"
+  bad "R2.1: 배관은 살아있는데(R3.1 통과) 틀린 키인데도 MediaMTX가 그 경로를 ready로 봄 — 거절 실패"
 else
   unk "R2.1: 판정 불가 — R3.1(올바른 키)부터 LIVE가 안 돼 배관 자체가 증명되지 않았다. \
 이 상태의 '거절됨'은 키 검사 때문인지 배관 전체가 깨진 것인지 구분할 수 없다(이전 실행에서 \
