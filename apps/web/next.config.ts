@@ -14,6 +14,12 @@ import type { NextConfig } from 'next';
  * 열 수 있어 절대주소로 링크하면 깨진다 — same-origin 상대경로로 링크하고 여기서 프록시해야
  * 어떤 환경에서도 동작한다. `product.html`이 상대경로로 불러오는 `assets/store.css`·`store.js`도
  * 같은 origin에서 풀려 `/assets/*`가 함께 필요하다.
+ *
+ * **숏폼 재생(R26) HLS 재생목록·세그먼트·썸네일**(`GET /api/v1/shorts/{id}/media/**`)도 이
+ * `/api/:path*` 규칙 하나로 같이 풀린다 — 피드가 내려주는 `masterPlaylistUrl`·`thumbnailUrl`이
+ * 전부 `/api/v1/...`로 시작하는 이 사이트 기준 상대 경로라서다. `Range` 요청도 Next.js
+ * rewrite가 원시 HTTP로 재전송하므로 206/`Content-Range`가 그대로 온다. Route Handler로
+ * 다시 구현하지 않은 이유·검증(web 출처 curl)은 ADR-081 "현행화(R26 재생)" 절 참고.
  */
 const SPRING_API = process.env.SPRING_API ?? 'http://localhost:8080';
 
