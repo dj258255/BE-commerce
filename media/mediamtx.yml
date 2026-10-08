@@ -2,30 +2,42 @@
 # 시작·종료 훅)을 다룬다. HLS는 기본 재생목록이 뜨는지만 확인하고(아래 hls 절), 지연 튜닝·
 # LL-HLS·녹화(R4)는 다음 단계에서 연다.
 #
-# 버전 주의: 이 파일은 이 저장소를 만들 때 알던 MediaMTX(구 rtsp-simple-server) 스키마
-# 지식으로 썼다 — docker.io에서 이미지를 받아 안의 기본 설정과 맞대 보며 고치지 못했다
-# (이 샌드박스에서 docker 명령 자체가 실행 정책에 막혀 있다, ADR-082 "다시 볼 조건").
+# 호스트 주소가 환경마다 다른 문제(R1~R3 실 송출 확인에서 찾은 버그): 이 파일 안에서
+# `${LIVE_HOOKS_HOST}` 같은 셸 스타일 치환을 썼었는데, MediaMTX는 설정 파일 안의 `${...}`를
+# 환경 변수로 치환하지 않는다(docker compose도 마운트된 파일의 내용은 건드리지 않는다 — compose
+# 변수 치환은 compose 파일 자신에만 적용된다). 그래서 모든 송출 인증 요청이
+# `parse "http://${LIVE_HOOKS_HOST}:8080/...": invalid character "{" in host name`로 깨졌다
+# (MediaMTX 로그, 사용자가 확인해 알려 줬다 — 이 샌드박스에서는 mediamtx가 studio.yaml 관리
+# 서비스가 아니라 로그를 볼 도구가 없다).
 #
-# 실제로 고친 사례(R1~R3 실 송출 확인): mediamtx 컨테이너가 종료 코드 1로 즉시 꺼졌다. 이
-# 샌드박스에서는 컨테이너 로그를 볼 도구가 없어(mediamtx가 studio.yaml의 관리 서비스가
-# 아니라 service_logs·run_in_service 대상이 아니다) 메시지를 직접 보지 못했지만, runOnPublish·
-# runOnPublishRestart·runOnUnpublish는 애초에 MediaMTX에 없는 훅 이름이다(그 이름은
-# rtsp-simple-server 시절 기억으로 잘못 적은 것) — 실제 훅은 "경로가 준비됨/준비 안 됨"을
-# 기준으로 하는 runOnReady·runOnReadyRestart·runOnNotReady다. 이렇게 고쳤다(아래 paths 참고).
-# 여전히 안 뜨면(다른 "unknown field") 그 메시지로 나머지 키 이름도 고친다.
+# 고친 방법: 호스트가 가장 흔한 경우(이 샌드박스, compose.b-studio.yaml — commerce도 컨테이너라
+# 서비스 이름 "commerce"로 바로 붙는다)를 이 파일의 리터럴 기본값으로 박아 넣는다. 다른
+# 호스트가 필요한 환경(저장소 루트 compose.yaml — commerce가 host에서 bootRun이라
+# host.docker.internal을 써야 한다)은 MediaMTX가 공식으로 지원하는 환경 변수 덮어쓰기
+# (MTX_ 접두 + 파라미터 이름 대문자)를 그 compose 파일의 environment에서 쓴다 — 예:
+#   MTX_AUTHHTTPADDRESS: http://host.docker.internal:8080/api/v1/live/hooks/auth
+#   MTX_PATHDEFAULTS_RUNONREADY: "curl -fsS -X POST http://host.docker.internal:8080/api/v1/live/hooks/publish -d path=$$MTX_PATH"
+#   MTX_PATHDEFAULTS_RUNONNOTREADY: "curl -fsS -X POST http://host.docker.internal:8080/api/v1/live/hooks/unpublish -d path=$$MTX_PATH"
+# ($MTX_PATH는 MediaMTX 자신이 훅 실행 시점에 바꿔 주는 토큰이다 — docker compose가 그 전에
+# 자기 멋대로 치환하지 않게 compose 파일에서는 `$$MTX_PATH`로 달러를 두 번 써서 이스케이프한다.
+# 실제 예시는 저장소 루트 compose.yaml·compose.b-studio.yaml을 본다.)
 #
-# ${LIVE_HOOKS_HOST}: commerce가 떠 있는 호스트 이름 — compose 파일마다 다르다(아래 주석).
-# MediaMTX가 YAML 값에서 환경변수 치환을 지원한다는 전제다(확인하지 못함 — 치환이 안 되면
-# 이 파일을 쓰는 쪽에서 직접 호스트명을 박아 넣어야 한다).
-#   - 저장소 루트 compose.yaml(기본 흐름 — 인프라만 컨테이너, 앱은 host에서 bootRun):
-#       LIVE_HOOKS_HOST=host.docker.internal
-#   - b-studio 샌드박스 compose.b-studio.yaml(commerce도 컨테이너, 서비스 이름 그대로):
-#       LIVE_HOOKS_HOST=commerce
+# runOnReady/runOnNotReady가 실제로 돌려면 이 컨테이너 안에 셸(`/bin/sh`)과 `curl`이 있어야
+# 한다 — 공식 bluenviron/mediamtx 이미지에 둘 다 있는지 사전에 확인하지 못했다(docker 명령이
+# 이 샌드박스 실행 정책에 막혀 있다). 확인 결과와 안 될 때의 대안(Control API 폴링 등)은
+# ADR-082 "runOnReady 실행 가능 여부" 절에 적는다.
 
 # HTTP 기반 인증(R2) — publish(송출) 시도마다 이 주소로 물어본다. 2xx면 허용.
 # commerce가 action이 "publish"가 아니면(시청 등) 무조건 허용한다(R5 전까지, 코드 쪽 주석 참고).
 authMethod: http
-authHTTPAddress: http://${LIVE_HOOKS_HOST}:8080/api/v1/live/hooks/auth
+authHTTPAddress: http://commerce:8080/api/v1/live/hooks/auth
+
+# 제어 API(읽기 전용 진단용) — 경로별 ready·source·reader 상태를 HTTP로 바로 볼 수 있다.
+# runOnReady/runOnNotReady가 실제로 도는지 확인할 때 이 API로 "MediaMTX가 보는 상태"와
+# "commerce가 아는 상태"를 맞대 본다(ADR-082). 셸 실행이 전혀 필요 없는 MediaMTX 자체
+# 기능이라 셸·curl 유무와 무관하게 항상 동작한다.
+api: yes
+apiAddress: :9997
 
 # RTMP 송출만 받는다(R1~R3 범위).
 rtmp: yes
@@ -38,17 +50,20 @@ rtmpAddress: :1935
 hls: yes
 hlsAddress: :8888
 
-paths:
-  # rtmp://<host>/live/{streamKey} 패턴에만 건다 — LiveStreamPaths.PREFIX("live/")와 짝이다.
-  # 선언하지 않은 다른 경로는 MediaMTX 기본 동작(이 패턴에 안 걸리면 거절)을 따른다.
-  "~^live/.+$":
-    # 송출 시작(R3) — MediaMTX에는 runOnPublish라는 훅이 없다(rtsp-simple-server 시절 이름으로
-    # 잘못 적어 뒀던 것 — 실제로 띄워 보니 "unknown field" 에러로 즉시 종료됐다). 경로가
-    # "준비됨"(= 퍼블리셔가 붙어 스트림이 흐르기 시작함)으로 바뀌는 훅은 runOnReady다.
-    # MediaMTX가 치환하는 $MTX_PATH는 "live/스트림키" 그 문자열이다.
-    runOnReady: curl -fsS -X POST http://${LIVE_HOOKS_HOST}:8080/api/v1/live/hooks/publish -d path=$MTX_PATH
-    # 끊기면 재시작하지 않는다 — 재접속 유예(30초)는 commerce 쪽 스케줄러가 판단한다.
-    runOnReadyRestart: no
-    # 송출 종료(R3) — 바로 ENDED가 아니라 "끊긴 시각"만 commerce에 알린다(재접속 유예 시작).
-    # 같은 이유로 runOnUnpublish가 아니라 runOnNotReady다(경로가 "준비 안 됨"으로 바뀔 때).
-    runOnNotReady: curl -fsS -X POST http://${LIVE_HOOKS_HOST}:8080/api/v1/live/hooks/unpublish -d path=$MTX_PATH
+# 훅을 특정 경로 패턴("~^live/.+$")이 아니라 pathDefaults(모든 경로의 기본값)에 건다 — 이유는
+# 둘: (1) 이 MediaMTX 인스턴스는 라이브 방송 전용이라 "live/*" 외의 경로가 실제로 쓰일 일이
+# 없고, (2) 경로 이름이 정규식(`~^...$`)이면 MTX_PATHS_<이름>_... 환경 변수 덮어쓰기에 쓸 수
+# 있는 식별자를 만들 수 없다 — pathDefaults는 평범한 키라 MTX_PATHDEFAULTS_RUNONREADY처럼
+# 바로 덮어쓸 수 있다. 보안은 이 레이어가 아니라 authHTTPAddress(위)가 쥔다 — "live/"로
+# 시작하지 않는 경로는 LiveStreamPaths.keyFrom이 null을 돌려줘 인증 자체가 거절된다.
+pathDefaults:
+  # 송출 시작(R3) — MediaMTX에는 runOnPublish라는 훅이 없다(rtsp-simple-server 시절 이름으로
+  # 잘못 적어 뒀던 것 — 실제로 띄워 보니 "unknown field" 에러로 즉시 종료됐다, 이전 턴에서
+  # 고쳤다). 경로가 "준비됨"(= 퍼블리셔가 붙어 스트림이 흐르기 시작함)으로 바뀌는 훅은
+  # runOnReady다. MediaMTX가 치환하는 $MTX_PATH는 "live/스트림키" 그 문자열이다.
+  runOnReady: curl -fsS -X POST http://commerce:8080/api/v1/live/hooks/publish -d path=$MTX_PATH
+  # 끊기면 재시작하지 않는다 — 재접속 유예(30초)는 commerce 쪽 스케줄러가 판단한다.
+  runOnReadyRestart: no
+  # 송출 종료(R3) — 바로 ENDED가 아니라 "끊긴 시각"만 commerce에 알린다(재접속 유예 시작).
+  # 같은 이유로 runOnUnpublish가 아니라 runOnNotReady다(경로가 "준비 안 됨"으로 바뀔 때).
+  runOnNotReady: curl -fsS -X POST http://commerce:8080/api/v1/live/hooks/unpublish -d path=$MTX_PATH

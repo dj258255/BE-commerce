@@ -60,16 +60,23 @@ services:
       retries: 10
 
   # 라이브 방송(R1·R2·R3) — 공식 이미지. RTMP 송출(1935)만 연다(시청·녹화는 다음 단계).
-  # 설정은 media/mediamtx.yml(저장소에 커밋, 환경변수 ${LIVE_HOOKS_HOST}로 훅 주소의 호스트만
-  # 갈아끼운다). 이 compose의 기본 흐름(인프라만 컨테이너, 앱은 host에서 bootRun)에서는
-  # commerce가 컨테이너 밖(host)에 있으므로 host.docker.internal을 쓴다 — extra_hosts가
-  # 리눅스에서도 그 이름이 풀리게 한다.
+  # 설정은 media/mediamtx.yml(저장소에 커밋, 기본값은 commerce가 컨테이너인 환경을 가정한다).
+  # 이 compose의 기본 흐름(인프라만 컨테이너, 앱은 host에서 bootRun)에서는 commerce가
+  # 컨테이너 밖(host)에 있으므로 host.docker.internal이 필요하다 — MediaMTX가 설정 파일
+  # 안에서 `${...}` 셸 치환을 지원하지 않으므로(R1~R3 실 송출 확인에서 찾은 버그, 상세는
+  # media/mediamtx.yml 상단 주석) 그 파일의 기본값을 덮어쓰는 공식 환경 변수
+  # (MTX_파라미터이름대문자)로 호스트만 바꾼다. $MTX_PATH는 MediaMTX 자신이 훅 실행 시점에
+  # 채우는 토큰이라 docker compose가 미리 건드리지 못하게 `$$`로 이스케이프한다.
   mediamtx:
     image: bluenviron/mediamtx:latest
     ports:
       - "1935:1935"   # RTMP 송출
     environment:
-      LIVE_HOOKS_HOST: host.docker.internal
+      MTX_AUTHHTTPADDRESS: http://host.docker.internal:8080/api/v1/live/hooks/auth
+      MTX_PATHDEFAULTS_RUNONREADY: >-
+        curl -fsS -X POST http://host.docker.internal:8080/api/v1/live/hooks/publish -d path=$$MTX_PATH
+      MTX_PATHDEFAULTS_RUNONNOTREADY: >-
+        curl -fsS -X POST http://host.docker.internal:8080/api/v1/live/hooks/unpublish -d path=$$MTX_PATH
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

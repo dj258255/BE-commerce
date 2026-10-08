@@ -141,3 +141,96 @@ POST /api/v1/live/hooks/auth {"path":"live/01M4D0...(ENDED)","action":"publish"}
   들일 근거는 없다 — 숏폼과 같은 판단이다.
 - **MediaMTX를 샌드박스에 띄우지 못했다면**(아래 "인프라" 절 참고) → 실제 운영/로컬 환경에서
   재확인하고, 안 되면 그 원인(네트워크 egress 등)을 여기 추가한다.
+
+## 2026-10-08 추가: 실제 송출 확인에서 찾은 설정 버그 두 개 (`tools/verify-live-broadcast.sh`)
+
+다음 세션에서 샌드박스에 MediaMTX가 실제로 떴다. `tools/verify-live-broadcast.sh`(실제
+ffmpeg → RTMP → MediaMTX)로 돌려 보니 R3.1·R3.2·R3.3이 전부 실패했다(PASS=3 FAIL=3) —
+사용자가 MediaMTX 컨테이너 로그를 대신 확인해 원인을 짚어 줬다(이 샌드박스는 비관리
+서비스의 로그를 볼 도구가 없다).
+
+### 버그 1(확인됨, 고침): `${LIVE_HOOKS_HOST}`는 MediaMTX가 치환하지 않는다
+
+로그: `failed to authenticate: HTTP request failed: parse "http://${LIVE_HOOKS_HOST}:8080/...": invalid character "{" in host name`.
+
+`${...}` 셸 스타일 치환은 **docker compose가 compose 파일 자신의 내용에만** 적용하고,
+MediaMTX가 **마운트된 설정 파일의 내용**을 읽을 때는 적용되지 않는다(MediaMTX 자신도 그런
+치환을 지원하지 않는다) — 이 둘을 섞어 쓴 것이 원래의 실수였다. 그래서 `authHTTPAddress`
+값이 문자 그대로 `${LIVE_HOOKS_HOST}`를 담은 채 MediaMTX에 들어가 모든 인증 요청이
+파싱 단계에서 깨졌다. **R2.1("통과")은 그래서 가짜였다** — 틀린 키라서 거절된 게 아니라
+인증 자체가 전부 깨져서 거절(또는 무응답)된 것이었다. 검증 스크립트가 "LIVE로 안 바뀜"만
+보고 "거절 사유"는 안 봤기 때문에 이 가짜 통과를 못 잡았다(아래 "스크립트 수정"에서 고친다).
+
+**고친 방법**: 호스트가 환경마다 다른 값은 MediaMTX가 **공식으로 지원하는** 환경 변수
+덮어쓰기(`MTX_` 접두 + 파라미터 이름 대문자)로 옮긴다 — 설정 파일 자신은 가장 흔한
+환경(이 샌드박스, `commerce`)의 리터럴 값을 기본값으로 담고, 다른 호스트가 필요한 환경은
+compose의 `environment`에서 덮어쓴다.
+
+- `media/mediamtx.yml`: `authHTTPAddress`·`pathDefaults.runOnReady`·
+  `pathDefaults.runOnNotReady`를 `commerce`로 리터럴 고정(이 샌드박스의 기본 흐름).
+- 경로별(`"~^live/.+$"`) 훅 설정을 **`pathDefaults`로 옮겼다** — 정규식 경로 이름은
+  `MTX_PATHS_<이름>_...` 형태의 유효한 환경 변수 식별자를 만들 수 없어서다(`~`·`^`·`.`·
+  `+`·`$`·`/` 전부 식별자에 못 쓴다). `pathDefaults`는 평범한 키라 `MTX_PATHDEFAULTS_
+  RUNONREADY`로 바로 덮어쓸 수 있다. 이 MediaMTX 인스턴스는 라이브 방송 전용이라 "모든
+  경로에 같은 훅"으로 바꿔도 범위가 넓어지는 문제가 없다 — 보안은 여전히
+  `authHTTPAddress`(경로가 `live/`로 시작하지 않으면 `LiveStreamPaths.keyFrom`이 null →
+  인증 거절)가 쥔다.
+- `compose.yaml`(저장소 루트, `host.docker.internal`이 필요한 환경)은 `MTX_AUTHHTTPADDRESS`·
+  `MTX_PATHDEFAULTS_RUNONREADY`·`MTX_PATHDEFAULTS_RUNONNOTREADY`로 덮어쓴다. `$MTX_PATH`는
+  MediaMTX 자신이 훅 실행 시점에 채우는 토큰이라, docker compose가 먼저 치환해 버리지
+  않도록 compose 파일에서는 `$$MTX_PATH`로 이스케이프했다(이것도 처음엔 놓치기 쉬운
+  지점이라 여기 적어 둔다 — `$VAR`·`${VAR}` 둘 다 compose가 자기 환경으로 먼저 치환을
+  시도하기 때문에, 그걸 피하려면 `$$`가 필요하다).
+- `compose.b-studio.yaml`: 기본값이 이미 `commerce`라 환경 변수 덮어쓰기가 필요 없어졌다 —
+  기존 `LIVE_HOOKS_HOST` 변수는 지웠다(더는 아무도 안 읽는다).
+
+**이 수정이 샌드박스에 아직 적용되지 않았다**: MediaMTX는 설정을 시작 시점에만 읽는다(핫
+리로드가 안 된다 — 파일을 고친 뒤 `/v3/paths/list`용 포트 9997이 여전히 안 열려 있는
+것으로 확인했다, 아래 "버그 2" 참고). 컨테이너를 재시작해야 반영되는데, 이 샌드박스에서는
+`restart_service(commerce)`가 `commerce` 하나만 재기동하고 `mediamtx`에는 아무 영향이
+없다는 것을 이번에도 다시 확인했다(수정 전후 두 번 다 테스트, 결과 동일). **사람이
+`docker compose -f compose.b-studio.yaml restart mediamtx`(또는 재생성)를 해 줘야 이
+수정이 실제로 적용된다** — 그 뒤 `tools/verify-live-broadcast.sh`를 다시 돌리면 된다.
+
+### 버그 2(의심, 미확정): 공식 이미지에 셸·`curl`이 없을 수 있다
+
+`runOnReady`/`runOnNotReady`는 MediaMTX가 **셸로 명령 문자열을 실행**해야 동작한다
+(`curl ...`이라는 문자열 자체는 MediaMTX가 직접 HTTP 호출을 만드는 게 아니라 `/bin/sh -c`로
+넘기는 것으로 알려져 있다). 공식 `bluenviron/mediamtx` 이미지가 최소 구성(scratch류)이면
+`/bin/sh`·`curl`이 아예 없어서 훅이 "실행 시도 자체가 실패"할 수 있다. 이 샌드박스는
+`docker exec`가 실행 정책에 막혀 이미지 내부를 직접 들여다볼 수 없어 **아직 확인하지
+못했다** — 버그 1을 고치고 컨테이너를 재시작한 뒤에도 R3.1이 여전히 실패하면, 이게 원인일
+가능성이 크다.
+
+**구분하는 방법(셸 자체의 로그 없이도 가능)**: `api: yes`/`apiAddress: :9997`을 이번에
+새로 켰다(위 mediamtx.yml) — 이건 MediaMTX 자신의 HTTP 서버 기능이라 셸이 전혀 필요 없다.
+재시작 후:
+1. 올바른 키로 ffmpeg 송출을 시작한다.
+2. `curl http://mediamtx:9997/v3/paths/list`로 MediaMTX **자신이 보는 상태**를 본다 — 그
+   경로가 `"ready": true`로 나오면 RTMP 수신 자체는 정상이다.
+3. 그런데도 commerce의 방송 상태가 `LIVE`로 안 바뀌면 — **훅 전달(셸·curl)이 깨진 것으로
+   확정**할 수 있다(2가 성공했는데 3이 실패하면, 중간에서 훅 실행만 빠진 것이다).
+
+### 셸·curl이 없을 때의 대안 비교
+
+| 대안 | 셸·curl 필요 | 장점 | 단점 |
+|---|---|---|---|
+| **A. 지금 방식 유지**(공식 이미지 + 설정만 고침) | 필요 | 변경 없음, 가장 단순 | 셸·curl이 없으면 전혀 안 됨 |
+| **B. 커스텀 이미지**(mediamtx 바이너리 위에 셸·curl이 있는 베이스로 다시 빌드) | 불필요(자체 제공) | 훅 방식·코드 전부 유지 | "공식 이미지" 전제가 깨짐, 이미지 빌드·보안 패치를 직접 떠안음 |
+| **C. commerce가 Control API(`/v3/paths/list`)를 폴링** | 불필요 | 셸 의존 완전 제거, 이미 켜 둔 API만 쓴다 | 폴링 주기만큼 상태 반영이 늦다(R6 지연 예산에 얹힘), 새 스케줄러 필요 |
+| **D. `authHTTPAddress`(네이티브 HTTP, 셸 불필요)의 publish 액션 자체를 "시작" 신호로 겸용** | 불필요 | 시작 신호는 거의 즉시(폴링 지연 없음) | 종료(연결 끊김) 신호는 못 준다 — 끊김 감지는 C가 필요해 단독으로는 못 쓴다 |
+
+**결정(조건부)**: B는 "공식 이미지" 전제를 버리는 비용이 A·C보다 크고, D는 종료 신호가
+없어 혼자 못 쓴다. **셸·curl이 없는 것으로 확인되면 C(Control API 폴링)를 채택한다** —
+필요하면 D(시작 신호만 선반영)를 C와 함께 보강해 LIVE 전이 지연을 줄인다. 폴링 설계
+스케치: `LiveBroadcastGraceScheduler`와 같은 `@ConditionalOnProperty` 게이트를 쓰는 새
+스케줄러가 `GET /v3/paths/list`의 `ready` 집합과 DB의 `LIVE` 방송 목록을 맞대 보고,
+차이가 생긴 쪽만 **기존** `LiveBroadcastService#handlePublish`/`#handleUnpublish`를
+그대로 부른다 — 바뀌는 건 "누가 훅을 거는가"(MediaMTX push → commerce pull)뿐이고 도메인
+로직(`LiveBroadcast` 상태 전이, 재접속 유예 스캐너)은 전혀 안 바뀐다.
+
+**아직 구현하지 않은 이유**: 버그 1만 고친 상태로는 R3.1이 여전히 실패하는 게 "버그 1이
+안 적용돼서"인지 "버그 2(셸 없음)까지 겹쳐서"인지 구분이 안 된다 — 컨테이너를 재시작해
+버그 1 수정을 반영한 뒤, 위 "구분하는 방법"으로 실제로 셸이 문제인지 먼저 확인하고
+나서 C를 구현하는 게 순서다(확인 안 된 가정으로 새 스케줄러를 먼저 만들면, 그게 맞는지도
+또 MediaMTX 재시작 없이는 못 재는 같은 문제에 걸린다).
