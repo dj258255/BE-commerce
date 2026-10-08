@@ -818,6 +818,12 @@ app:
       # 흐름을 가정한다 — b-studio 샌드박스처럼 commerce도 컨테이너면 compose가
       # APP_LIVE_MEDIAMTX_API_BASE_URL로 서비스 이름을 덮어쓴다(compose.b-studio.yaml 참고).
       api-base-url: ${APP_LIVE_MEDIAMTX_API_BASE_URL:http://localhost:9997}
+      # 시청 화면(R9)이 hls.js로 바로 트는 재생목록 주소의 호스트 부분 — 브라우저가 열 수
+      # 있어야 하므로 commerce가 아니라 브라우저 기준으로 맞춘다. 기본값은 "MediaMTX가
+      # host에 포트를 published한" 로컬 bootRun 흐름을 가정한다. b-studio 샌드박스는
+      # MediaMTX가 studio.yaml 관리 서비스가 아니라 브라우저가 열 수 있는 주소가 없다 —
+      # 그 환경에서는 이 URL로 실제 재생이 안 된다(정직하게 한계로 남긴다, ADR-084).
+      hls-base-url: ${APP_LIVE_MEDIAMTX_HLS_BASE_URL:http://localhost:8888}
     mediamtx-poller:
       # MediaMTX 명령 훅(runOnReady/runOnNotReady)은 공식 이미지에 셸이 없어 실행될 수
       # 없다(ADR-082, 실제 확인). 그래서 송출 시작·끊김을 이 폴러가 Control API를 당겨 읽어

@@ -126,6 +126,11 @@ public class SecurityConfig {
                         // 비로그인으로 열어야 한다(더 구체적인 이 규칙이 아래 넓은
                         // /api/v1/live/** 규칙보다 먼저 와야 먼저 매칭된다).
                         .requestMatchers("/api/v1/live/hooks/**").permitAll()
+                        // 고정 상품 카드 시청(R8·R9)도 비로그인 허용(R5와 같은 원칙) — WebSocket
+                        // 핸드셰이크(GET)와 재생 정보 조회만 공개한다. 고정·해제·가격 변경(쓰기)은
+                        // 아래 넓은 규칙대로 여전히 판매자만 — 이 둘은 쓰기 경로가 아니다.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/live/broadcasts/*/pins/ws").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/live/broadcasts/*/playback").permitAll()
                         // 방송 생성·조회(R1)는 판매자만. 소유권은 LiveBroadcastService가
                         // sellerId(principal)로 검증한다 — 남의 방송 키를 못 보게.
                         .requestMatchers("/api/v1/live/**").hasRole("SELLER")

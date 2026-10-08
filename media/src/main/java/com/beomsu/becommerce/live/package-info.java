@@ -22,8 +22,17 @@
  * {@link com.beomsu.becommerce.live.LiveBroadcastGraceScheduler}가 주기적으로 스캔해
  * 넘긴 방송을 끝맺는다 — {@code app.live.grace-scheduler.enabled=true}에서만 켜진다(worker·
  * local 프로파일, R23 변환 리스너와 같은 게이트 방식).
+ *
+ * <p>방송 중 상품 고정(R8)은 방송당 한 행({@link com.beomsu.becommerce.live.LivePin})으로
+ * "동시에 고정된 상품은 항상 1개"를 강제한다. 고정·해제·가격 변경마다
+ * {@link com.beomsu.becommerce.live.LivePinBroadcaster}(WebSocket, R9)로 서버 시각
+ * {@code effectiveAt}과 단조 증가 {@code seq}를 실어 시청자에게 보낸다 — 근거는 ADR-084.
+ * 상품 이름·실존 확인은 {@link com.beomsu.becommerce.live.ProductLookup}(media가 정의한
+ * 포트, shorts의 같은 이름 포트와 같은 이유로 live가 따로 둔다)으로만 하고, 구현은 commerce
+ * 쪽({@code LiveProductLookupAdapter}, order의 {@code ProductCatalogFacts}를 감싼다)에
+ * 있다 — 그래서 {@code order}가 allowedDependencies에 추가됐다(shorts와 같은 이유).
  */
 @org.springframework.modulith.ApplicationModule(
-        allowedDependencies = { "shared" }
+        allowedDependencies = { "shared", "order" }
 )
 package com.beomsu.becommerce.live;

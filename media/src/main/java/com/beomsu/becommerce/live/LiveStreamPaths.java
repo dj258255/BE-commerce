@@ -7,10 +7,13 @@ package com.beomsu.becommerce.live;
  * ({@code mediamtx.yml}의 경로 패턴 {@code ~^live/.+$})과 여기 {@link #PREFIX}가 반드시
  * 같이 바뀌어야 한다. MediaMTX의 HTTP 인증 훅·{@code runOnReady}/{@code runOnNotReady}
  * 훅이 돌려주는 {@code path}(또는 {@code $MTX_PATH})가 "live/스트림키" 꼴로 온다.
+ *
+ * <p>{@link #PREFIX}는 public이다 — {@code live.web.LivePlaybackController}(R9, 공개
+ * 재생 URL 조립)가 다른 패키지에서도 같은 접두사를 쓴다.
  */
-final class LiveStreamPaths {
+public final class LiveStreamPaths {
 
-    static final String PREFIX = "live/";
+    public static final String PREFIX = "live/";
 
     private LiveStreamPaths() {
     }

@@ -43,6 +43,9 @@ dependencies {
     // 보안 설정(SecurityFilterChain) 자체는 commerce가 앱 전체에 한 번만 구성한다.
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+    // 고정 이벤트를 시청자에게 보내는 WebSocket(R9) — LivePinWebSocketHandler·
+    // LivePinWebSocketConfig.
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
     // package-info.java의 @ApplicationModule 애너테이션 — 모듈 경계 검증은 commerce 쪽
     // ModularityTests가 (이 프로젝트의 클래스가 올라간) 합쳐진 classpath를 스캔해서 한다.
     implementation 'org.springframework.modulith:spring-modulith-starter-core'
