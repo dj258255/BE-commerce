@@ -199,6 +199,40 @@ content-length: 11
 그대로 중계한다. 코드 변경은 없었다(이미 맞는 규칙이 있었다) — 변경은 이 ADR 절과
 `tools/seed-shorts-dev.sh` 재실행(데이터 복구)뿐이다.
 
+## 현행화 (R26 재생 — DB/파일 어긋남을 "알려진 한계"로 남기지 않고 고쳤다)
+
+바로 위 절은 파일이 사라진 것을 **수동 재시드**로 복구하고, 재발 방지는 "다시 볼 조건"의
+나중 과제로 미뤄 뒀다. 그런데 b-studio의 검증 게이트가 매 실행마다 `commerce`를 재시작하므로
+**이 "알려진 한계"가 매번 그대로 재현돼 게이트를 막았다** — `GET /api/v1/shorts/{id}/
+media/thumb.jpg`가 404(web 출처, 브라우저와 같은 경로로 재현됨). "다음에 고치자"로 남겨 둘
+여유가 없는 문제였다.
+
+**원인 재확인**: `compose.b-studio.yaml`의 commerce 서비스는 `.:/workspace`(저장소
+바인드 마운트)와 몇 개의 named volume(`commerce-gradle-home` 등)만 선언돼 있었다 — 숏폼
+저장소 base-dir(`${java.io.tmpdir}/becommerce-shorts` = 컨테이너의 `/tmp` 아래)는 **어디에도
+선언되지 않은 컨테이너 자체 쓰기 레이어**였다. b-studio가 코드 변경을 반영하려고 commerce
+컨테이너를 재생성하면 이 레이어가 통째로 새로 시작한다. 반면 MySQL은 이번 실행에서 같이
+재생성되지 않아 `short_videos` 행(`READY`)이 그대로 남았다 — **DB와 파일의 생명주기가
+컨테이너 단위로 갈려 있었다.**
+
+**고친 것**: `commerce-shorts-storage`라는 이름의 named volume을 추가하고
+`APP_SHORTS_STORAGE_BASE_DIR=/shorts-storage`로 그 볼륨을 `app.shorts.storage.base-dir`에
+연결했다(`LocalFileShortsStorage`·`ShortsMediaService`·`FfmpegTranscodeRunner`가 전부 같은
+프로퍼티를 본다, R23 3단계의 "둘이 서로를 몰라도 되게" 설계 그대로 — base-dir 하나만
+바꾸면 셋 다 같이 옮겨간다). named volume은 `commerce-gradle-home`처럼 컨테이너가 재생성돼도
+그대로 남는다. 재시작 전/후로 직접 재현해 확인했다 — 재시작 **후**에도 같은 id의
+`master.m3u8`·`thumb.jpg`가 web 출처에서 200이었다.
+
+이전 실행에서 쌓인(파일이 없어진 채 `READY`로만 남아 있던) `short_videos` 행은 고아 데이터라
+지웠다(DB 직접 정리 — `mysql` 클라이언트가 샌드박스 실행 정책에 막혀 있어 JDBC로 임시
+프로그램을 짜 지웠다, 흔적은 남기지 않았다) — 운영 코드 변경이 아니라 이번 수정을 검증하려고
+샌드박스 데이터를 정리한 것이다. 이후 `tools/seed-shorts-dev.sh`로 새로 시드했다.
+
+**이제 "다시 볼 조건"의 해당 항목(아래)은 해소됐다** — 다만 이 named volume은
+`compose.b-studio.yaml`(b-studio 전용 개발 compose)에만 있다. 저장소 루트의 `compose.yaml`
+(일반 로컬/CI용)은 손대지 않았다 — 거기서도 같은 문제가 재현되면 같은 패턴(named volume +
+`APP_SHORTS_STORAGE_BASE_DIR`)을 넣는다.
+
 ## 다시 볼 조건
 
 - **변환 대기열이 API 프로세스의 CPU를 실제로 갉아먹기 시작하면**(같은 jar라 격리가
@@ -218,9 +252,9 @@ content-length: 11
   `masterPlaylistUrl`·`thumbnailUrl`을 Spring 경로 대신 CDN 오리진 주소(또는 presigned GET)로
   바꾸면 된다. `ShortsFeedItemView`가 그 URL을 만드는 자리를 이미 `ShortsMediaUrls` 하나로
   모아 뒤서, 교체 지점이 한 곳이다.
-- **DB(`short_videos`)는 `READY`인데 로컬 파일은 사라진 상태(컨테이너 재시작으로 `/tmp`가
-  비워짐)가 반복돼 데모·개발에서 불편해지면** → 로컬 저장소 base-dir를 컨테이너 재시작에도
-  남는 볼륨으로 옮기거나(`compose.b-studio.yaml`에 바인드 마운트 추가), 또는 기동 시 파일이
-  없는 `READY` 행을 감지해 경고 로그를 남기는 점검을 추가한다. 지금은 `tools/seed-shorts-dev.sh`를
-  다시 돌려 수동으로 복구한다 — 오브젝트 스토리지로 바뀌면(바로 위 항목) 이 문제 자체가
-  없어진다(그 스토리지는 컨테이너 생명주기와 독립이다).
+- ~~**DB(`short_videos`)는 `READY`인데 로컬 파일은 사라진 상태가 반복돼 불편해지면 →
+  영속 볼륨으로 옮긴다.**~~ **(→ 해소됨, 위 "현행화" 절)** `commerce-shorts-storage` named
+  volume(`compose.b-studio.yaml`)으로 옮겨 b-studio 샌드박스에서는 더 반복되지 않는다. 다른
+  compose(저장소 루트 `compose.yaml` 등)에서 같은 증상이 보이면 같은 패턴을 넣는다 — 오브젝트
+  스토리지로 바뀌면(바로 위 항목) 이 문제 자체가 구조적으로 없어진다(그 스토리지는 컨테이너
+  생명주기와 아예 독립이다).
