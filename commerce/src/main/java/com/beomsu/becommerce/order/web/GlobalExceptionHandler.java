@@ -43,13 +43,13 @@ public class GlobalExceptionHandler {
     private HttpStatus statusOf(String code) {
         return switch (code) {
             case "AMOUNT_MISMATCH", "ORDER_FORBIDDEN", "MAKER_CHECKER_VIOLATION",
-                 "SUBSCRIPTION_FORBIDDEN", "SHORT_VIDEO_FORBIDDEN"
+                 "SUBSCRIPTION_FORBIDDEN", "SHORT_VIDEO_FORBIDDEN", "LIVE_BROADCAST_FORBIDDEN"
                     -> HttpStatus.FORBIDDEN;                                                 // 403
             case "ORDER_NOT_FOUND", "PAYMENT_NOT_FOUND", "PRODUCT_NOT_FOUND",
                  "FORCE_CANCEL_NOT_FOUND", "FRAUD_REVIEW_NOT_FOUND",
                  "SETTLEMENT_NOT_FOUND", "SUBSCRIPTION_NOT_FOUND",
                  "MEMBER_NOT_FOUND", "DISPUTE_NOT_FOUND", "REVIEW_NOT_FOUND",
-                 "SHORT_VIDEO_NOT_FOUND" -> HttpStatus.NOT_FOUND;             // 404
+                 "SHORT_VIDEO_NOT_FOUND", "LIVE_BROADCAST_NOT_FOUND" -> HttpStatus.NOT_FOUND; // 404
             case "ORDER_ALREADY_PAID", "PAYMENT_RESULT_PENDING",
                  "INVALID_STATE_TRANSITION", "CANCEL_AMOUNT_EXCEEDED", "OUT_OF_STOCK",
                  "INVALID_FRAUD_REVIEW_STATE", "SUBSCRIPTION_NOT_ACTIVE",

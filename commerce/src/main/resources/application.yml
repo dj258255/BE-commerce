@@ -801,6 +801,18 @@ app:
         # 종료하고 FAILED로 남긴다(무한정 매달리는 ffmpeg 하나가 재시도 전체를 막지 않게).
         timeout-seconds: ${APP_SHORTS_FFMPEG_TIMEOUT_SECONDS:120}
 
+  # 라이브 방송(R1·R2·R3) — MediaMTX HTTP 훅이 부르는 commerce 쪽 설정.
+  live:
+    # 명세 3.1: "송출이 30초 안에 다시 붙으면 같은 방송으로 이어야 한다." 이 값은 환경별로
+    # 바꿀 이유가 적어(요구사항 숫자 그 자체) 다른 숫자 설정과 달리 환경변수 오버라이드를
+    # 열어 두되 운영에서 바꿀 일은 거의 없을 것으로 본다.
+    reconnect-grace-seconds: ${APP_LIVE_RECONNECT_GRACE_SECONDS:30}
+    grace-scheduler:
+      # 재접속 유예 만료를 스캔해 ENDED로 끝맺는 스케줄러 — 기본 off(API 배포에는 없어야
+      # 한다). worker·local 프로파일에서 켠다(R23 변환 리스너와 같은 게이트 방식).
+      enabled: ${APP_LIVE_GRACE_SCHEDULER_ENABLED:false}
+      interval-ms: ${APP_LIVE_GRACE_SCHEDULER_INTERVAL_MS:5000}
+
 # 웹훅 서명 검증(HMAC-SHA256) 시크릿. 아래는 로컬 개발 전용 기본값(16바이트 이상)이고, 운영은
 # 반드시 env/시크릿 매니저로 오버라이드한다. 미설정/약한 키면 기동을 실패시킨다(WebhookSignatureVerifier fail-fast).
 payment:
@@ -1019,6 +1031,9 @@ app:
   shorts:
     transcode:
       enabled: true
+  live:
+    grace-scheduler:
+      enabled: true
 
 ---
 # local 프로파일: 로컬 개발 전용(SPRING_PROFILES_ACTIVE=local) — 변환 리스너를 바로 켠다.
@@ -1036,4 +1051,7 @@ spring:
 app:
   shorts:
     transcode:
+      enabled: true
+  live:
+    grace-scheduler:
       enabled: true

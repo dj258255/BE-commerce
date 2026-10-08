@@ -59,6 +59,22 @@ services:
       timeout: 5s
       retries: 10
 
+  # 라이브 방송(R1·R2·R3) — 공식 이미지. RTMP 송출(1935)만 연다(시청·녹화는 다음 단계).
+  # 설정은 media/mediamtx.yml(저장소에 커밋, 환경변수 ${LIVE_HOOKS_HOST}로 훅 주소의 호스트만
+  # 갈아끼운다). 이 compose의 기본 흐름(인프라만 컨테이너, 앱은 host에서 bootRun)에서는
+  # commerce가 컨테이너 밖(host)에 있으므로 host.docker.internal을 쓴다 — extra_hosts가
+  # 리눅스에서도 그 이름이 풀리게 한다.
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    ports:
+      - "1935:1935"   # RTMP 송출
+    environment:
+      LIVE_HOOKS_HOST: host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./media/mediamtx.yml:/mediamtx.yml:ro
+
   # CDC — mysql binlog를 읽어 Kafka로 흘린다. cdc 프로필로만 기동한다(기본 up에는 포함되지 않음).
   #   docker compose --profile cdc up -d debezium
   debezium:

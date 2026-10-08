@@ -50,6 +50,10 @@ import java.util.Map;
  *       {@code GET /api/v1/shorts/feed}(R26, READY 피드)와
  *       {@code GET /api/v1/shorts/{id}/media/**}(R26, HLS 재생·썸네일)만 예외로 개방한다 —
  *       비로그인 시청 허용.</li>
+ *   <li>{@code /api/v1/live/**} → ROLE_SELLER(R1). 방송 생성·조회는 판매자만. 단
+ *       {@code /api/v1/live/hooks/**}(R2·R3, MediaMTX HTTP 인증·송출 시작·종료 훅)는
+ *       예외로 개방한다 — 스트림 키 자체가 자격증명이고, 로그인한 사용자가 아니라 MediaMTX가
+ *       부른다.</li>
  * </ul>
  *
  * <p>인증은 <b>JWT Bearer(OAuth2 Resource Server, Nimbus HS256 대칭키)</b>로 한다. 무상태 HTTP
@@ -114,6 +118,13 @@ public class SecurityConfig {
                         // 숏폼 업로드(R21)는 판매자만. 소유권(sellerId) 검증은 principal에서 얻은
                         // userId로 ShortsService가 한다 — 남의 영상 id로 조회·완료 처리 못 하게.
                         .requestMatchers("/api/v1/shorts/**").hasRole("SELLER")
+                        // 라이브 방송(R1·R2·R3): MediaMTX 훅은 스트림 키 자체가 자격증명이라
+                        // 비로그인으로 열어야 한다(더 구체적인 이 규칙이 아래 넓은
+                        // /api/v1/live/** 규칙보다 먼저 와야 먼저 매칭된다).
+                        .requestMatchers("/api/v1/live/hooks/**").permitAll()
+                        // 방송 생성·조회(R1)는 판매자만. 소유권은 LiveBroadcastService가
+                        // sellerId(principal)로 검증한다 — 남의 방송 키를 못 보게.
+                        .requestMatchers("/api/v1/live/**").hasRole("SELLER")
                         // health/info와 Prometheus 스크레이프 엔드포인트는 개방한다. prometheus는
                         // 메트릭 수집기가 Bearer 없이 주기 GET 해야 하므로 인증을 걸면 스크레이프가 401로
                         // 막힌다. 운영에선 management.server.port를 내부망 전용으로 분리해 스크레이프하는
