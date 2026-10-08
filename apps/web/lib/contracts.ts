@@ -85,8 +85,11 @@ export type ShortsFeedItem = {
   products: ShortsFeedProduct[];
 };
 
-/** 커서 기반 한 쪽 — `nextCursor`가 null이면 마지막 쪽이다. */
-export type ShortsFeedPage = { items: ShortsFeedItem[]; nextCursor: number | null; hasNext: boolean };
+/**
+ * 커서 기반 한 쪽 — `nextCursor`가 null이면 마지막 쪽이다. `fallback`(R29)이 true면 개인화
+ * 점수 계산이 실패·지연돼 `items`가 최신순 READY 순서 그대로라는 뜻이다(조회 자체는 항상 성공).
+ */
+export type ShortsFeedPage = { items: ShortsFeedItem[]; nextCursor: number | null; hasNext: boolean; fallback: boolean };
 
 export type ExperimentStatus = 'idea' | 'todo' | 'running' | 'done';
 

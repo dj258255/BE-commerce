@@ -66,4 +66,15 @@ public class ShortsException extends DomainException {
         return new ShortsException("TOO_MANY_LINKED_PRODUCTS",
                 "영상 하나에 연결할 수 있는 상품은 %d개까지입니다: 영상 %s".formatted(max, shortVideoId));
     }
+
+    /** R27: 시청 신호 기록인데 로그인도 안 했고 익명 식별자도 안 보냄 — 둘 중 하나는 있어야 기록할 수 있다. */
+    public static ShortsException viewerIdentityRequired() {
+        return new ShortsException("VIEWER_IDENTITY_REQUIRED",
+                "비로그인 요청은 익명 식별자(anonymousId)가 있어야 시청 신호를 기록할 수 있습니다");
+    }
+
+    /** R27: 시청 신호 값이 유효하지 않음(음수 시청 시간 등). */
+    public static ShortsException invalidViewSignal(String message) {
+        return new ShortsException("INVALID_VIEW_SIGNAL", message);
+    }
 }

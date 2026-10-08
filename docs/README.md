@@ -151,6 +151,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-080](adr/ADR-080-media-gradle-submodule.md) | `media/`를 별도 Gradle 하위 프로젝트로 떼면서 포트/어댑터로 commerce↔media 순환을 막는다 |
 | [ADR-081](adr/ADR-081-shorts-transcode-outbox-worker-profile.md) | 숏폼 변환 파이프라인은 MinIO·Kafka·별도 워커 대신 로컬 저장소·Outbox·같은 jar worker 프로파일로 시작한다 |
 | [ADR-082](adr/ADR-082-live-broadcast-outbox-hooks.md) | 라이브 방송 1단계는 MediaMTX HTTP 인증 훅은 그대로 쓰고 시작·종료 훅 전달만 Kafka 대신 Outbox로 받는다 |
+| [ADR-083](adr/ADR-083-shorts-signal-path.md) | 숏폼 시청 신호는 media 자신의 표에 남긴다 — 커머스의 개인화 Kafka/CDC 경로를 재사용하지 않는다 |
 
 ## 보조 문서
 

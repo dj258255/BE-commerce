@@ -28,17 +28,25 @@ public class ShortsFeedService {
 
     private final ShortVideoRepository repository;
     private final ProductLookup productLookup;
+    private final ShortsFeedRanker ranker;
 
-    public ShortsFeedService(ShortVideoRepository repository, ProductLookup productLookup) {
+    public ShortsFeedService(ShortVideoRepository repository, ProductLookup productLookup,
+            ShortsFeedRanker ranker) {
         this.repository = repository;
         this.productLookup = productLookup;
+        this.ranker = ranker;
     }
 
     /**
      * 피드 한 쪽. {@code cursor}가 null이면 첫 쪽(가장 최신부터), 아니면 그 id보다 작은 것부터.
      * {@code size}가 null이거나 범위 밖이면 {@link #DEFAULT_PAGE_SIZE}로 보정한다.
+     *
+     * <p>이 쪽 안에서만(최대 {@code pageSize+1}개) R28 개인화 점수로 재정렬한다(R29 폴백 포함) —
+     * {@code nextCursor}는 재정렬 전의 id 내림차순 기준으로 계산하므로 페이지네이션 자체는
+     * 영향받지 않는다. {@code viewer}가 null(비로그인·익명 식별자 없음)이면 완료율·최신성만으로
+     * 점수가 매겨진다(상품 선호 일치는 0).
      */
-    public ShortsFeedPageView feed(Long cursor, Integer size) {
+    public ShortsFeedPageView feed(Long cursor, Integer size, ViewerIdentity viewer) {
         int pageSize = clampSize(size);
         Pageable pageSizePlusOne = PageRequest.of(0, pageSize + 1);
         List<ShortVideo> fetched = cursor == null
@@ -46,18 +54,19 @@ public class ShortsFeedService {
                 : repository.findByStatusAndIdLessThanOrderByIdDesc(ShortVideoStatus.READY, cursor, pageSizePlusOne);
 
         ShortsFeedPage.Result page = ShortsFeedPage.assemble(fetched, pageSize);
+        ShortsFeedRanker.Result ranked = ranker.rank(page.items(), viewer);
 
         Map<Long, ProductLookup.Product> cardsById = new HashMap<>();
-        List<Long> allLinkedIds = page.items().stream().flatMap(v -> v.getLinkedProductIds().stream()).toList();
+        List<Long> allLinkedIds = ranked.items().stream().flatMap(v -> v.getLinkedProductIds().stream()).toList();
         for (ProductLookup.Product card : productLookup.findAll(allLinkedIds)) {
             cardsById.put(card.productId(), card);
         }
 
-        List<ShortsFeedItemView> items = page.items().stream()
+        List<ShortsFeedItemView> items = ranked.items().stream()
                 .map(v -> ShortsFeedItemView.from(v, v.getLinkedProductIds().stream()
                         .map(cardsById::get).filter(Objects::nonNull).toList()))
                 .toList();
-        return new ShortsFeedPageView(items, page.nextCursor(), page.hasNext());
+        return new ShortsFeedPageView(items, page.nextCursor(), page.hasNext(), ranked.fallback());
     }
 
     private static int clampSize(Integer size) {

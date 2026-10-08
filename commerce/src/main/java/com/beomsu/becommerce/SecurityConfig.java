@@ -115,6 +115,10 @@ public class SecurityConfig {
                         // 공개 수준이다(R26 비로그인 시청) — ShortsMediaController, 개발용
                         // 로컬 저장소 전제(운영은 CDN/오브젝트 스토리지가 대신한다, ADR-081).
                         .requestMatchers(HttpMethod.GET, "/api/v1/shorts/*/media/**").permitAll()
+                        // 숏폼 시청 신호 기록(R27)도 비로그인 시청 허용과 같은 수준이다 — 익명
+                        // 식별자로 기록하므로 로그인을 요구하지 않는다(ShortsFeedController가
+                        // JWT가 있으면 그 userId를, 없으면 본문의 anonymousId를 쓴다).
+                        .requestMatchers(HttpMethod.POST, "/api/v1/shorts/*/signals").permitAll()
                         // 숏폼 업로드(R21)는 판매자만. 소유권(sellerId) 검증은 principal에서 얻은
                         // userId로 ShortsService가 한다 — 남의 영상 id로 조회·완료 처리 못 하게.
                         .requestMatchers("/api/v1/shorts/**").hasRole("SELLER")

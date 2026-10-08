@@ -13,9 +13,46 @@ import {
   shouldPrefetchNext,
   type FeedLoadState,
 } from '@/lib/shortsFeed';
+import {
+  finalizeViewSession,
+  getOrCreateAnonymousId,
+  onProductTagTap,
+  onTimeUpdate as applyTimeUpdate,
+  shortsSignalPath,
+  startViewSession,
+  type ViewSession,
+} from '@/lib/shortsSignals';
 import { won } from '@/lib/ui';
 
 const PAGE_SIZE = 10;
+
+/**
+ * 비로그인 시청자의 익명 식별자(R27) — 모듈 스코프 캐시라 카드마다 새로 만들지 않는다. 서버
+ * 렌더(브라우저 밖)에서는 `window`가 없어 null — 그 요청에서는 보내지 않는다(다음 클라이언트
+ * 호출에서 만들어진다).
+ */
+let cachedAnonymousId: string | null = null;
+function getAnonymousId(): string | null {
+  if (typeof window === 'undefined') return null;
+  if (!cachedAnonymousId) {
+    cachedAnonymousId = getOrCreateAnonymousId(window.localStorage, () => crypto.randomUUID());
+  }
+  return cachedAnonymousId;
+}
+
+/** 시청 신호를 보낸다(R27) — 페이지 이탈 중에도 끊기지 않도록 가능하면 sendBeacon을 쓴다. */
+function sendViewSignal(videoId: number, session: ViewSession) {
+  const payload = finalizeViewSession(session, Date.now(), getAnonymousId());
+  const url = shortsSignalPath(videoId);
+  const body = JSON.stringify(payload);
+  if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+    navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+    return;
+  }
+  fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(
+    () => {},
+  );
+}
 
 /**
  * 브라우저에서 부르는 "더 불러오기" — 상대경로라 `next.config.ts`의 `/api/:path*` rewrite가
@@ -25,6 +62,9 @@ async function fetchFeedPage(params: { cursor?: number; size?: number }): Promis
   const qs = new URLSearchParams();
   if (params.cursor != null) qs.set('cursor', String(params.cursor));
   if (params.size != null) qs.set('size', String(params.size));
+  // R28 상품 선호 일치는 시청자별로 계산된다 — 익명이어도 같은 식별자를 실어야 "선호"가 쌓인다.
+  const anonymousId = getAnonymousId();
+  if (anonymousId) qs.set('anonymousId', anonymousId);
   const url = `${SHORTS_FEED_PATH}${qs.toString() ? `?${qs}` : ''}`;
   try {
     const res = await fetch(url, { cache: 'no-store' });
@@ -147,6 +187,36 @@ function ShortsFeedCard({
   preloaded: boolean;
   registerRef: (el: HTMLElement | null) => void;
 }) {
+  // 시청 신호(R27) 누적 상태 — 화면에 보이는 동안 쌓이고, 비활성화되는 순간(스와이프·이탈)에
+  // 한 번 전송된다. ref라 재전송 없이(렌더와 무관하게) 계속 갱신할 수 있다.
+  const sessionRef = useRef<ViewSession | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+    sessionRef.current = startViewSession(item.id, Date.now());
+    return () => {
+      if (sessionRef.current) {
+        sendViewSignal(item.id, sessionRef.current);
+        sessionRef.current = null;
+      }
+    };
+  }, [active, item.id]);
+
+  const handleTimeUpdate = useCallback(
+    (currentTimeSeconds: number) => {
+      if (sessionRef.current) {
+        sessionRef.current = applyTimeUpdate(sessionRef.current, currentTimeSeconds, item.durationSeconds);
+      }
+    },
+    [item.durationSeconds],
+  );
+
+  const handleProductTap = useCallback(() => {
+    if (sessionRef.current) {
+      sessionRef.current = onProductTagTap(sessionRef.current);
+    }
+  }, []);
+
   return (
     <section className="shorts-card" ref={registerRef} data-index={index} data-active={active} data-preload={preloaded}>
       <div className="shorts-frame">
@@ -155,6 +225,7 @@ function ShortsFeedCard({
           poster={item.thumbnailUrl}
           active={active}
           preloaded={preloaded}
+          onTimeUpdate={handleTimeUpdate}
         />
         <div className="shorts-frame-meta mono">
           {item.durationSeconds}s · {item.width}×{item.height}
@@ -163,7 +234,12 @@ function ShortsFeedCard({
       {item.products.length > 0 ? (
         <div className="shorts-products">
           {item.products.map((p) => (
-            <a key={p.productId} className="shorts-product" href={`/product.html?id=${p.productId}`}>
+            <a
+              key={p.productId}
+              className="shorts-product"
+              href={`/product.html?id=${p.productId}`}
+              onClick={handleProductTap}
+            >
               <span>{p.name}</span>
               <span className="mono">{won(p.price)}</span>
             </a>
@@ -188,11 +264,13 @@ function ShortsVideoPlayer({
   poster,
   active,
   preloaded,
+  onTimeUpdate,
 }: {
   src: string;
   poster: string;
   active: boolean;
   preloaded: boolean;
+  onTimeUpdate: (currentTimeSeconds: number) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -244,6 +322,7 @@ function ShortsVideoPlayer({
       playsInline
       loop
       preload={preloaded ? 'auto' : 'none'}
+      onTimeUpdate={(e) => onTimeUpdate(e.currentTarget.currentTime)}
     />
   );
 }

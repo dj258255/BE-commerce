@@ -38,6 +38,11 @@ dependencyManagement {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    // ShortsFeedController가 @AuthenticationPrincipal Jwt로 "로그인이면 principal, 아니면
+    // 익명"을 가린다(R27) — commerce가 이미 쓰는 것과 같은 Resource Server 타입만 필요하고,
+    // 보안 설정(SecurityFilterChain) 자체는 commerce가 앱 전체에 한 번만 구성한다.
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     // package-info.java의 @ApplicationModule 애너테이션 — 모듈 경계 검증은 commerce 쪽
     // ModularityTests가 (이 프로젝트의 클래스가 올라간) 합쳐진 classpath를 스캔해서 한다.
     implementation 'org.springframework.modulith:spring-modulith-starter-core'

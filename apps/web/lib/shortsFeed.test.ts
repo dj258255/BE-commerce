@@ -23,8 +23,8 @@ function item(id: number): ShortsFeedItem {
   };
 }
 
-function page(items: ShortsFeedItem[], nextCursor: number | null, hasNext: boolean): ShortsFeedPage {
-  return { items, nextCursor, hasNext };
+function page(items: ShortsFeedItem[], nextCursor: number | null, hasNext: boolean, fallback = false): ShortsFeedPage {
+  return { items, nextCursor, hasNext, fallback };
 }
 
 describe('R26.1: 첫 화면 — READY 영상이 보이고 다음 1~2개가 미리 불러와진다', () => {
