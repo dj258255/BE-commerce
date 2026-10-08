@@ -61,7 +61,7 @@ class MediaMtxPathPollerTest {
     }
 
     @Test
-    @DisplayName("R3: ready로 보고된 키의 SCHEDULED 방송은 LIVE로 바뀐다(handlePublish 호출)")
+    @DisplayName("R3.1: ready로 보고된 키의 SCHEDULED 방송은 LIVE로 바뀐다(폴러가 handlePublish를 부른다)")
     void publishesReadyPathsToScheduledBroadcast() {
         LiveBroadcastRepository repository = mock(LiveBroadcastRepository.class);
         LiveBroadcast broadcast = scheduled(1L, "KEY1");
@@ -112,7 +112,7 @@ class MediaMtxPathPollerTest {
     }
 
     @Test
-    @DisplayName("R3: LIVE이고 여전히 ready면 끊김 처리를 하지 않는다")
+    @DisplayName("R3.2: 끊긴 적 없이 계속 ready로 보이는 LIVE 방송은 끊김 처리가 되지 않고 LIVE로 유지된다")
     void doesNotDisconnectStillReadyBroadcast() {
         LiveBroadcastRepository repository = mock(LiveBroadcastRepository.class);
         LiveBroadcast broadcast = live(1L, "KEY1");

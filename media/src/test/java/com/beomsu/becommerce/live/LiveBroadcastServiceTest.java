@@ -74,7 +74,7 @@ class LiveBroadcastServiceTest {
     }
 
     @Test
-    @DisplayName("R1 경계: 방송주 본인이 아니면 조회가 거절된다(403, 키가 응답에 없다)")
+    @DisplayName("R1.2: 판매자 A의 방송을 판매자 B가 조회하면 403이고 스트림 키는 응답에 없다")
     void getByNonOwnerIsForbidden() {
         LiveBroadcast broadcast = scheduledWithId(5L, 1L, "KEY1");
         when(repository.findById(5L)).thenReturn(Optional.of(broadcast));
@@ -98,15 +98,17 @@ class LiveBroadcastServiceTest {
     }
 
     @Test
-    @DisplayName("R2 경계: 스트림 키가 다르면(존재하지 않음) 송출 인증이 거절된다")
-    void authenticatePublishRejectsUnknownKey() {
-        when(repository.findByStreamKey("WRONG")).thenReturn(Optional.empty());
+    @DisplayName("R2.1: 방송 B1의 키와 다른 키(key-zzz)로 송출 인증을 요청하면 거절되고 B1 상태는 SCHEDULED로 유지된다")
+    void authenticatePublishRejectsMismatchedKeyAndLeavesBroadcastUnaffected() {
+        LiveBroadcast b1 = LiveBroadcast.schedule(1L, "key-b1", "방송 제목", T0);
+        when(repository.findByStreamKey("key-zzz")).thenReturn(Optional.empty());
 
-        assertThat(service.authenticatePublish("live/WRONG")).isFalse();
+        assertThat(service.authenticatePublish("live/key-zzz")).isFalse();
+        assertThat(b1.getStatus()).isEqualTo(LiveBroadcastStatus.SCHEDULED); // key-zzz 요청은 B1을 건드리지 않았다
     }
 
     @Test
-    @DisplayName("R2 경계: 방송이 ENDED면 키가 맞아도 송출 인증이 거절된다")
+    @DisplayName("R2.2: 방송이 ENDED면 키가 맞아도 송출 인증이 거절된다")
     void authenticatePublishRejectsEndedBroadcast() {
         LiveBroadcast ended = LiveBroadcast.schedule(1L, "KEY1", "방송 제목", T0);
         ended.startOrResumePublish(T0.plusSeconds(1));
@@ -124,7 +126,7 @@ class LiveBroadcastServiceTest {
     }
 
     @Test
-    @DisplayName("R3: 처음 송출이 시작되면 LIVE로 바뀌고 live.started가 정확히 한 번 발행된다")
+    @DisplayName("R3.1: 올바른 스트림 키로 송출이 시작되면 LIVE로 바뀌고 live.started 이벤트가 1건 발행된다")
     void handlePublishFirstTimeEmitsLiveStarted() {
         LiveBroadcast broadcast = scheduledWithId(7L, 1L, "KEY1");
         when(repository.findByStreamKey("KEY1")).thenReturn(Optional.of(broadcast));
@@ -136,18 +138,20 @@ class LiveBroadcastServiceTest {
     }
 
     @Test
-    @DisplayName("R3: 유예 안에 재접속하면 live.started가 다시 발행되지 않는다")
+    @DisplayName("R3.2: 끊긴 뒤 20초 뒤(유예 30초 안) 같은 키로 다시 붙으면 같은 방송 id가 유지되고 "
+            + "상태는 LIVE이며 live.ended는 발행되지 않는다")
     void handlePublishReconnectWithinGraceDoesNotReEmit() {
         LiveBroadcast broadcast = scheduledWithId(7L, 1L, "KEY1");
         when(repository.findByStreamKey("KEY1")).thenReturn(Optional.of(broadcast));
         service.handlePublish("live/KEY1"); // 최초 시작
         service.handleUnpublish("live/KEY1"); // 끊김
 
-        clock.set(T0.plusSeconds(10));
+        clock.set(T0.plusSeconds(20));
         service.handlePublish("live/KEY1"); // 유예(30초) 안 재접속
 
         verify(eventPublisher, never()).publishEvent(any(LiveEndedEvent.class));
         verify(eventPublisher).publishEvent(any(LiveStartedEvent.class)); // 최초 1회뿐
+        assertThat(broadcast.getId()).isEqualTo(7L); // 같은 방송 id가 유지된다
         assertThat(broadcast.getStatus()).isEqualTo(LiveBroadcastStatus.LIVE);
         assertThat(broadcast.getDisconnectedAt()).isNull();
     }
@@ -168,7 +172,8 @@ class LiveBroadcastServiceTest {
     }
 
     @Test
-    @DisplayName("R3 경계: 재접속 유예(30초)를 넘긴 방송만 ENDED로 끝맺고 live.ended를 발행한다")
+    @DisplayName("R3.3: 끊긴 뒤 31초(유예 30초 초과)가 지나면 ENDED로 바뀌고 live.ended 이벤트가 1건 발행된다 "
+            + "— 아직 유예 안인 다른 방송은 영향받지 않는다")
     void endExpiredGraceBroadcastsEndsOnlyExpiredOnes() {
         LiveBroadcast expired = scheduledWithId(10L, 1L, "KEY-EXPIRED");
         expired.startOrResumePublish(T0);

@@ -54,7 +54,7 @@ class LiveBroadcastTest {
     }
 
     @Test
-    @DisplayName("R3: 처음 송출이 시작되면 LIVE로 바뀌고 startedAt이 찍히며 true(새 이벤트 신호)를 돌려준다")
+    @DisplayName("R3.1: 처음 송출이 시작되면 LIVE로 바뀌고 startedAt이 찍히며 true(새 이벤트 신호)를 돌려준다")
     void firstPublishTransitionsToLiveAndSignalsNewEvent() {
         LiveBroadcast b = scheduled();
         Instant startedAt = T0.plusSeconds(5);
@@ -67,7 +67,7 @@ class LiveBroadcastTest {
     }
 
     @Test
-    @DisplayName("R3: 이미 LIVE인 상태에서 재접속하면(유예 안) 상태는 그대로이고 false(새 이벤트 없음)를 돌려준다")
+    @DisplayName("R3.2: 이미 LIVE인 상태에서 끊긴 뒤 유예 안에 재접속하면 상태는 LIVE 그대로이고 false(새 이벤트 없음)를 돌려준다")
     void reconnectWhileLiveDoesNotSignalNewEvent() {
         LiveBroadcast b = scheduled();
         b.startOrResumePublish(T0.plusSeconds(1));
@@ -130,7 +130,7 @@ class LiveBroadcastTest {
     }
 
     @Test
-    @DisplayName("R3: 유예를 넘겨 종료하면 ENDED·endedAt이 찍히고 disconnectedAt은 지워진다")
+    @DisplayName("R3.3: 유예(30초)를 넘겨 종료하면 ENDED·endedAt이 찍히고 disconnectedAt은 지워진다")
     void endFromGraceTimeoutSetsEndedAtAndClearsDisconnectedAt() {
         LiveBroadcast b = scheduled();
         b.startOrResumePublish(T0.plusSeconds(1));

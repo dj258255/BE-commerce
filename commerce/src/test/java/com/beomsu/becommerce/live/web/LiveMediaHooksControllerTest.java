@@ -62,7 +62,7 @@ class LiveMediaHooksControllerTest {
     }
 
     @Test
-    @DisplayName("R2 경계: 인증 훅은 스트림 키가 틀리면(송출 action) 401로 거절한다")
+    @DisplayName("R2.1: 인증 훅은 스트림 키가 틀리면(송출 action) 비2xx(401)로 거절한다")
     void authRejectsWhenPublishKeyInvalid() throws Exception {
         when(liveBroadcastService.authenticatePublish("live/WRONG")).thenReturn(false);
 

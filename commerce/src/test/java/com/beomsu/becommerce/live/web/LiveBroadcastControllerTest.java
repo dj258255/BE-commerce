@@ -99,7 +99,7 @@ class LiveBroadcastControllerTest {
     }
 
     @Test
-    @DisplayName("R1 경계: 다른 판매자의 방송을 조회하면 403이고 스트림 키가 응답에 없다")
+    @DisplayName("R1.2: 다른 판매자(판매자 A)의 방송을 조회하면 403이고 스트림 키가 응답에 없다")
     void getOthersBroadcastIsForbiddenWithoutLeakingKey() throws Exception {
         when(liveBroadcastService.get(eq(9L), eq(5L))).thenThrow(LiveBroadcastException.forbidden(5L));
 
