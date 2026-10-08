@@ -131,6 +131,11 @@ public class SecurityConfig {
                         // 아래 넓은 규칙대로 여전히 판매자만 — 이 둘은 쓰기 경로가 아니다.
                         .requestMatchers(HttpMethod.GET, "/api/v1/live/broadcasts/*/pins/ws").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/live/broadcasts/*/playback").permitAll()
+                        // 고정 상품 카드 "바로 주문"(R10·R11·R12)은 시청자(구매자) 몫이라
+                        // ROLE_USER다 — 더 구체적인 이 규칙이 아래 넓은(판매자 전용)
+                        // /api/v1/live/** 규칙보다 먼저 와야 먼저 매칭된다. 비로그인 호출은
+                        // 401로 거절된다(R5.2).
+                        .requestMatchers(HttpMethod.POST, "/api/v1/live/broadcasts/*/orders").hasRole("USER")
                         // 방송 생성·조회(R1)는 판매자만. 소유권은 LiveBroadcastService가
                         // sellerId(principal)로 검증한다 — 남의 방송 키를 못 보게.
                         .requestMatchers("/api/v1/live/**").hasRole("SELLER")

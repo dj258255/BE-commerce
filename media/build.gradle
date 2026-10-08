@@ -46,6 +46,14 @@ dependencies {
     // 고정 이벤트를 시청자에게 보내는 WebSocket(R9) — LivePinWebSocketHandler·
     // LivePinWebSocketConfig.
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    // 방송 특가 한정 수량의 Redis 선점(TTL) 게이트(R12, LiveOrderGate) — commerce의 재고
+    // Redis(StringRedisTemplate)와 같은 커넥션 풀·설정을 쓴다(spring.data.redis.*는 앱 전체에
+    // 한 번만 구성된다). 이 모듈은 재고·결제 로직을 두지 않는다(R32) — 이건 그와 별개인
+    // "방송-상품" 프로모션 한도 카운터일 뿐이다.
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    // LiveOrderGate 의 거절 카운터(Micrometer) — commerce 의 actuator starter 가 레지스트리
+    // 빈을 제공하므로(앱 전체에 한 번만), 여기서는 API만 필요하다.
+    implementation 'io.micrometer:micrometer-core'
     // package-info.java의 @ApplicationModule 애너테이션 — 모듈 경계 검증은 commerce 쪽
     // ModularityTests가 (이 프로젝트의 클래스가 올라간) 합쳐진 classpath를 스캔해서 한다.
     implementation 'org.springframework.modulith:spring-modulith-starter-core'
