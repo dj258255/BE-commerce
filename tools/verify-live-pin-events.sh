@@ -4,6 +4,10 @@
 # tools/verify-live-broadcast.sh처럼 실제 ffmpeg로 MediaMTX에 RTMP 송출을 하는 상태에서,
 # 판매자 API로 고정·가격 변경·해제를 호출하고 그 이벤트가 실제 WebSocket으로 나가는지 본다.
 #
+# 보안 수정(ADR-084): RTMP 송출은 이제 "경로=방송 공개 id" + "비밀=쿼리(?pass=)"로 나뉜다.
+# 이 스크립트가 WS로 쓰는 /pins/ws 경로도 원래부터 방송 id 기반이라 바뀐 게 없다 — 바뀐 건
+# ffmpeg가 송출에 쓰는 RTMP URL과 HLS 확인 URL뿐이다(둘 다 아래에서 BROADCAST_ID를 쓴다).
+#
 # 확인 범위:
 #   - R8.1: 방송에 상품을 고정하면(특가·한정 수량) WebSocket으로 PINNED 이벤트가 나간다
 #   - R9.1: 그 이벤트에 effectiveAt(서버 시각)과 단조 증가 seq가 담긴다
@@ -112,14 +116,15 @@ login() {
   echo "$token"
 }
 
+# 경로는 방송 공개 id, 비밀(스트림 키)은 쿼리(?pass=)로 따로 보낸다(보안 수정, ADR-084).
 start_publish() {
-  local key="$1" logfile="$2"
+  local broadcast_id="$1" secret="$2" logfile="$3"
   ffmpeg -hide_banner -loglevel warning -re \
     -f lavfi -i "testsrc2=size=640x360:rate=25" \
     -f lavfi -i "anullsrc=r=44100:cl=stereo" \
     -c:v libx264 -preset veryfast -tune zerolatency -b:v 800k -g 50 \
     -c:a aac -ar 44100 -b:a 128k \
-    -f flv "rtmp://${MEDIAMTX_HOST}:${MEDIAMTX_RTMP_PORT}/live/${key}" \
+    -f flv "rtmp://${MEDIAMTX_HOST}:${MEDIAMTX_RTMP_PORT}/live/${broadcast_id}?pass=${secret}" \
     >"$logfile" 2>&1 &
   echo $!
 }
@@ -146,7 +151,7 @@ STREAM_KEY="$(json_string "$CREATE_RESPONSE" streamKey)"
 [ -n "$BROADCAST_ID" ] && [ -n "$STREAM_KEY" ] || die "방송 생성 실패: $CREATE_RESPONSE"
 ok "방송 생성 id=$BROADCAST_ID"
 
-RUNNING_FFMPEG_PID="$(start_publish "$STREAM_KEY" "$WORKDIR/publish.log")"
+RUNNING_FFMPEG_PID="$(start_publish "$BROADCAST_ID" "$STREAM_KEY" "$WORKDIR/publish.log")"
 STATUS="$(wait_for_status "$BROADCAST_ID" LIVE 15)"
 if [ "$STATUS" = "LIVE" ]; then
   ok "실제 RTMP 송출로 LIVE 전이 확인(R3.1 재확인)"
@@ -157,7 +162,8 @@ fi
 echo
 log "=== 참고: HLS 재생목록에 #EXT-X-PROGRAM-DATE-TIME이 실제로 찍히는가(ADR-084 근거) ==="
 sleep 5 # 첫 세그먼트가 쌓일 시간(키프레임 간격 2초 — start_publish의 -g 50 @25fps)을 넉넉히 준다
-MASTER_URL="http://${MEDIAMTX_HOST}:${MEDIAMTX_HLS_PORT}/live/${STREAM_KEY}/index.m3u8"
+# 시청(HLS) 경로는 방송 공개 id뿐이다 — 비밀이 전혀 없다(보안 수정, ADR-084).
+MASTER_URL="http://${MEDIAMTX_HOST}:${MEDIAMTX_HLS_PORT}/live/${BROADCAST_ID}/index.m3u8"
 curl -s -L -o "$WORKDIR/master.m3u8" -m 5 "$MASTER_URL"
 # index.m3u8는 멀티베리언트(마스터) 재생목록이다 — 화질별 실제 미디어(렌디션) 재생목록을
 # 가리킬 뿐이고, #EXT-X-PROGRAM-DATE-TIME은 그 렌디션 재생목록 쪽에만 찍힌다(처음 시도에서
@@ -166,7 +172,7 @@ VIDEO_RENDITION="$(grep -oE 'video[0-9]*_stream\.m3u8\?session=[^"[:space:]]*' "
 if [ -z "$VIDEO_RENDITION" ]; then
   bad "마스터 재생목록에서 비디오 렌디션 경로를 못 찾음(응답: $WORKDIR/master.m3u8)"
 else
-  curl -s -L -o "$WORKDIR/rendition.m3u8" -m 5 "http://${MEDIAMTX_HOST}:${MEDIAMTX_HLS_PORT}/live/${STREAM_KEY}/${VIDEO_RENDITION}"
+  curl -s -L -o "$WORKDIR/rendition.m3u8" -m 5 "http://${MEDIAMTX_HOST}:${MEDIAMTX_HLS_PORT}/live/${BROADCAST_ID}/${VIDEO_RENDITION}"
   if grep -q '#EXT-X-PROGRAM-DATE-TIME' "$WORKDIR/rendition.m3u8" 2>/dev/null; then
     ok "렌디션 재생목록에 #EXT-X-PROGRAM-DATE-TIME 있음 — $(grep -m1 '#EXT-X-PROGRAM-DATE-TIME' "$WORKDIR/rendition.m3u8")"
   else

@@ -25,6 +25,11 @@ import static org.mockito.Mockito.when;
  * 유예 만료 처리를 실제 MediaMTX·30초 대기 없이 결정적으로 검증한다({@link MutableClock}
  * 주입).
  *
+ * <p><b>보안 수정(ADR-084)</b>: MediaMTX 경로는 더 이상 스트림 키가 아니라 방송 공개 id다
+ * ({@code "live/{id}"}) — 그래서 훅 조회는 {@code findByStreamKey}가 아니라
+ * {@code findById}로 바뀌었고, {@link LiveBroadcastService#authenticatePublish}는 비밀을
+ * 경로가 아니라 두 번째 인자로 따로 받는다.
+ *
  * <p>{@link LiveBroadcast}는 저장 전(id 미발급) 애그리거트도 만들 수 있어, 이벤트와 id를
  * 비교하는 테스트는 {@link ReflectionTestUtils}로 id를 심어 "이미 저장된 것처럼"
  * 만든다({@code ShortsFeedPageTest}와 같은 방식) — 실제 JPA IDENTITY 저장이 하는 일을
@@ -89,65 +94,80 @@ class LiveBroadcastServiceTest {
     }
 
     @Test
-    @DisplayName("R2: 스트림 키가 맞고 SCHEDULED면 송출 인증이 통과한다")
-    void authenticatePublishAllowsMatchingKeyWhenScheduled() {
-        when(repository.findByStreamKey("KEY1"))
-                .thenReturn(Optional.of(LiveBroadcast.schedule(1L, "KEY1", "방송 제목", T0)));
+    @DisplayName("R2: 경로의 방송 id와 비밀(스트림 키)이 맞고 SCHEDULED면 송출 인증이 통과한다")
+    void authenticatePublishAllowsMatchingSecretWhenScheduled() {
+        when(repository.findById(5L)).thenReturn(Optional.of(scheduledWithId(5L, 1L, "KEY1")));
 
-        assertThat(service.authenticatePublish("live/KEY1")).isTrue();
+        assertThat(service.authenticatePublish("live/5", "KEY1")).isTrue();
     }
 
     @Test
-    @DisplayName("R2.1: 방송 B1의 키와 다른 키(key-zzz)로 송출 인증을 요청하면 거절되고 B1 상태는 SCHEDULED로 유지된다")
-    void authenticatePublishRejectsMismatchedKeyAndLeavesBroadcastUnaffected() {
-        LiveBroadcast b1 = LiveBroadcast.schedule(1L, "key-b1", "방송 제목", T0);
-        when(repository.findByStreamKey("key-zzz")).thenReturn(Optional.empty());
+    @DisplayName("R2.1: 방송 B1(id=5, 키 key-b1)의 경로로 송출하면서 다른 비밀(key-zzz)을 보내면 거절되고 "
+            + "B1 상태는 SCHEDULED로 유지된다")
+    void authenticatePublishRejectsMismatchedSecretAndLeavesBroadcastUnaffected() {
+        LiveBroadcast b1 = scheduledWithId(5L, 1L, "key-b1");
+        when(repository.findById(5L)).thenReturn(Optional.of(b1));
 
-        assertThat(service.authenticatePublish("live/key-zzz")).isFalse();
-        assertThat(b1.getStatus()).isEqualTo(LiveBroadcastStatus.SCHEDULED); // key-zzz 요청은 B1을 건드리지 않았다
+        assertThat(service.authenticatePublish("live/5", "key-zzz")).isFalse();
+        assertThat(b1.getStatus()).isEqualTo(LiveBroadcastStatus.SCHEDULED); // 거절은 상태를 바꾸지 않는다
     }
 
     @Test
-    @DisplayName("R2.2: 방송이 ENDED면 키가 맞아도 송출 인증이 거절된다")
+    @DisplayName("R2.1 경계: 시청 경로(방송 id)만 알고 비밀을 아예 안 보내면(쿼리 없음) 송출이 거절된다 "
+            + "— 시청 URL을 아는 것만으로는 송출할 수 없어야 한다")
+    void authenticatePublishRejectsMissingSecret() {
+        when(repository.findById(5L)).thenReturn(Optional.of(scheduledWithId(5L, 1L, "key-b1")));
+
+        assertThat(service.authenticatePublish("live/5", null)).isFalse();
+    }
+
+    @Test
+    @DisplayName("R2.2: 방송이 ENDED면 비밀이 맞아도 송출 인증이 거절된다")
     void authenticatePublishRejectsEndedBroadcast() {
-        LiveBroadcast ended = LiveBroadcast.schedule(1L, "KEY1", "방송 제목", T0);
+        LiveBroadcast ended = scheduledWithId(5L, 1L, "KEY1");
         ended.startOrResumePublish(T0.plusSeconds(1));
         ended.recordDisconnect(T0.plusSeconds(2));
         ended.endFromGraceTimeout(T0.plusSeconds(100));
-        when(repository.findByStreamKey("KEY1")).thenReturn(Optional.of(ended));
+        when(repository.findById(5L)).thenReturn(Optional.of(ended));
 
-        assertThat(service.authenticatePublish("live/KEY1")).isFalse();
+        assertThat(service.authenticatePublish("live/5", "KEY1")).isFalse();
     }
 
     @Test
     @DisplayName("R2 경계: live/ 접두사가 없는 경로는 이 체계가 아니므로 거절된다")
     void authenticatePublishRejectsPathWithoutPrefix() {
-        assertThat(service.authenticatePublish("other/KEY1")).isFalse();
+        assertThat(service.authenticatePublish("other/5", "KEY1")).isFalse();
     }
 
     @Test
-    @DisplayName("R3.1: 올바른 스트림 키로 송출이 시작되면 LIVE로 바뀌고 live.started 이벤트가 1건 발행된다")
+    @DisplayName("R2 경계: 경로에 방송 id가 아닌 값(숫자가 아님)이 오면 거절된다 — 옛 경로(스트림 키 그대로)로 오는 요청도 여기 걸린다")
+    void authenticatePublishRejectsNonNumericPath() {
+        assertThat(service.authenticatePublish("live/not-a-number", "KEY1")).isFalse();
+    }
+
+    @Test
+    @DisplayName("R3.1: 올바른 경로(방송 id)로 송출이 시작되면 LIVE로 바뀌고 live.started 이벤트가 1건 발행된다")
     void handlePublishFirstTimeEmitsLiveStarted() {
         LiveBroadcast broadcast = scheduledWithId(7L, 1L, "KEY1");
-        when(repository.findByStreamKey("KEY1")).thenReturn(Optional.of(broadcast));
+        when(repository.findById(7L)).thenReturn(Optional.of(broadcast));
 
-        service.handlePublish("live/KEY1");
+        service.handlePublish("live/7");
 
         assertThat(broadcast.getStatus()).isEqualTo(LiveBroadcastStatus.LIVE);
         verify(eventPublisher).publishEvent(new LiveStartedEvent(7L, T0));
     }
 
     @Test
-    @DisplayName("R3.2: 끊긴 뒤 20초 뒤(유예 30초 안) 같은 키로 다시 붙으면 같은 방송 id가 유지되고 "
+    @DisplayName("R3.2: 끊긴 뒤 20초 뒤(유예 30초 안) 같은 경로로 다시 붙으면 같은 방송 id가 유지되고 "
             + "상태는 LIVE이며 live.ended는 발행되지 않는다")
     void handlePublishReconnectWithinGraceDoesNotReEmit() {
         LiveBroadcast broadcast = scheduledWithId(7L, 1L, "KEY1");
-        when(repository.findByStreamKey("KEY1")).thenReturn(Optional.of(broadcast));
-        service.handlePublish("live/KEY1"); // 최초 시작
-        service.handleUnpublish("live/KEY1"); // 끊김
+        when(repository.findById(7L)).thenReturn(Optional.of(broadcast));
+        service.handlePublish("live/7"); // 최초 시작
+        service.handleUnpublish("live/7"); // 끊김
 
         clock.set(T0.plusSeconds(20));
-        service.handlePublish("live/KEY1"); // 유예(30초) 안 재접속
+        service.handlePublish("live/7"); // 유예(30초) 안 재접속
 
         verify(eventPublisher, never()).publishEvent(any(LiveEndedEvent.class));
         verify(eventPublisher).publishEvent(any(LiveStartedEvent.class)); // 최초 1회뿐
@@ -160,11 +180,11 @@ class LiveBroadcastServiceTest {
     @DisplayName("R3: 끊김 훅은 상태를 LIVE로 유지한 채 끊긴 시각만 남긴다")
     void handleUnpublishKeepsLiveAndRecordsDisconnectTime() {
         LiveBroadcast broadcast = scheduledWithId(7L, 1L, "KEY1");
-        when(repository.findByStreamKey("KEY1")).thenReturn(Optional.of(broadcast));
-        service.handlePublish("live/KEY1");
+        when(repository.findById(7L)).thenReturn(Optional.of(broadcast));
+        service.handlePublish("live/7");
 
         clock.set(T0.plusSeconds(5));
-        service.handleUnpublish("live/KEY1");
+        service.handleUnpublish("live/7");
 
         assertThat(broadcast.getStatus()).isEqualTo(LiveBroadcastStatus.LIVE);
         assertThat(broadcast.getDisconnectedAt()).isEqualTo(T0.plusSeconds(5));

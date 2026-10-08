@@ -21,8 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
  * 비밀 헤더를 추가해야 한다 — ADR-082 "다시 볼 조건".
  *
  * <p>세 엔드포인트 다 MediaMTX가 "경로(path)"로 부르는 값을 받는다 — RTMP 송출 주소
- * {@code rtmp://<host>/live/{streamKey}}의 {@code live/{streamKey}} 그 문자열이다
- * ({@code LiveStreamPaths}).
+ * {@code rtmp://<host>/live/{broadcastId}}의 {@code live/{broadcastId}} 그 문자열이다
+ * ({@code LiveStreamPaths}). <b>보안 수정(ADR-084)</b>: 경로에는 더 이상 스트림 키가 없다 —
+ * 공개 id라 시청 화면에 노출돼도 안전하다. 실제 자격증명(스트림 키)은 {@code /auth}만
+ * 따로 받는다({@code ?pass=} 쿼리 → {@code password} 필드).
  */
 @RestController
 @RequestMapping("/api/v1/live/hooks")
@@ -37,14 +39,43 @@ public class LiveMediaHooksController {
     /**
      * MediaMTX {@code authHTTPAddress}(R2) — 2xx면 허용, 그 외는 거절. {@code action}이
      * {@code "publish"}가 아니면(시청 등) 무조건 허용한다 — 시청 인가(R5)는 다음 단계다.
+     *
+     * <p>비밀은 {@code password} 필드로 온다(RTMP {@code ?pass=} 쿼리). 일부 설정에서는
+     * MediaMTX가 그 필드를 안 채우고 원문 {@code query} 문자열에만 실을 수 있어, 비어 있으면
+     * 거기서 직접 {@code pass=}를 뽑는다(방어적 — 실제 동작은 샌드박스 실 송출로 확인했다,
+     * ADR-084).
      */
     @PostMapping("/auth")
     public ResponseEntity<Void> auth(@RequestBody MediaMtxAuthRequest request) {
         if (!"publish".equals(request.action())) {
             return ResponseEntity.ok().build();
         }
-        boolean allowed = liveBroadcastService.authenticatePublish(request.path());
+        boolean allowed = liveBroadcastService.authenticatePublish(request.path(), resolveSecret(request));
         return allowed ? ResponseEntity.ok().build() : ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+    private static String resolveSecret(MediaMtxAuthRequest request) {
+        if (request.password() != null && !request.password().isBlank()) {
+            return request.password();
+        }
+        return queryParam(request.query(), "pass");
+    }
+
+    /** {@code key=value&key2=value2} 꼴의 원문 쿼리 문자열에서 하나만 뽑는다(의존 없이, 최소한만). */
+    private static String queryParam(String rawQuery, String key) {
+        if (rawQuery == null || rawQuery.isBlank()) {
+            return null;
+        }
+        for (String pair : rawQuery.split("&")) {
+            int eq = pair.indexOf('=');
+            if (eq < 0) {
+                continue;
+            }
+            if (pair.substring(0, eq).equals(key)) {
+                return pair.substring(eq + 1);
+            }
+        }
+        return null;
     }
 
     /**

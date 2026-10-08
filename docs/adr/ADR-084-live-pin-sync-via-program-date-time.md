@@ -90,14 +90,69 @@ API 호출이다 — 외부 프로세스(MediaMTX)의 상태를 밖에서 당겨
 - 수량 선점·주문 확정(R10~R15)은 이번 범위가 아니다 — `remainingQuantity`는 지금 판매자가
   건 한정 수량 그대로다(아직 아무것도 빼지 않는다).
 
-## 대가·다시 볼 조건 (정직하게)
+## 2026-10-09 추가: 시청 경로의 스트림 키 노출을 고쳤다(보안 수정)
 
-1. **시청 페이지의 `hlsUrl`에 스트림 키 원문이 그대로 들어간다**(`LivePlaybackController`).
-   MediaMTX가 송출 경로와 재생 경로를 구분하지 않는 지금 구성의 한계다 — 원래 스트림 키는
-   "다른 판매자에게도 안 보여야 하는" 송출 자격증명(R1.2)인데, 시청 페이지가 그걸 그대로
-   담아 비로그인 포함 모든 시청자에게 노출한다. 운영 전환 전에 재생 전용 토큰(또는 MediaMTX
-   앞단 리버스 프록시의 별도 서명 URL)으로 바꿔야 한다 — 지금은 범위 밖(R5·R6 시청 인프라
-   본 작업에서 다룬다)이라 이 ADR에 한계로만 남긴다.
+위 "대가" 1번(시청 페이지 `hlsUrl`에 스트림 키 원문)을 실제로 고쳤다 — R1.2가 다른 판매자에게
+막는 것과 같은 위험(그 키를 아는 아무나 방송에 대신 송출)이 "시청자 전체"로 열려 있던 것을
+방치할 수 없었다.
+
+### 결정 3 — 경로는 방송 공개 id, 비밀은 RTMP 쿼리로 분리한다
+
+MediaMTX 경로를 `live/{streamKey}`에서 **`live/{broadcastId}`**로 바꿨다 — 숫자 id는 그
+자체로 아무 권한도 없어 시청 화면에 노출돼도 안전하다. 송출 자격증명(스트림 키)은 경로가
+아니라 RTMP URL의 **쿼리 문자열**로 따로 보낸다:
+
+```
+송출:  rtmp://<host>:1935/live/{broadcastId}?pass={streamKey}
+시청:  http://<host>:8888/live/{broadcastId}/index.m3u8   (비밀 없음)
+```
+
+**MediaMTX가 공식으로 지원하는 방식인가**: 그렇다 — `authHTTPAddress`가 호출하는 HTTP 인증
+훅의 요청 바디에는 처음부터 `ip`·`user`·`password`·`path`·`protocol`·`id`·`action`·
+`query` 필드가 있다(`MediaMtxAuthRequest`의 예전 주석이 이미 이 필드들을 적어 뒀었다 —
+`password`·`query`가 바로 "경로 아닌 다른 통로로 온 비밀"을 받는 자리다). RTMP URL에
+`?pass=...`를 붙이면 MediaMTX가 그 값을 연결 시점에 받아 인증 훅 호출 때 `password`
+필드(또는 설정에 따라 원문 `query`에만)로 실어 보낸다 — `LiveMediaHooksController.auth`가
+`password`가 비어 있으면 `query`에서 직접 `pass=`를 뽑는 방어적 fallback을 둬서, 어느
+쪽으로 오든 받는다. **실제로 어느 쪽으로 오는지는 `tools/verify-live-broadcast.sh`로 실
+RTMP 송출을 거쳐 확인했다**(요약 참고) — 추측이 아니라 실측이다.
+
+### 버린 대안
+
+| 대안 | 왜 버렸나 |
+|---|---|
+| **별도 "재생 전용 토큰"을 발급해 HLS 경로에만 넣고, RTMP 경로는 스트림 키 유지** | 토큰 발급·만료·회전 관리가 새로 필요하다 — 결국 "읽기 전용 식별자를 하나 더 만드는" 일인데, 방송 **id 자체**가 이미 그 역할(아무 권한 없는 공개 식별자)을 할 수 있어 더 간단하다 |
+| **MediaMTX 앞에 리버스 프록시를 둬서 재생 요청 URL을 재작성** | 새 인프라 컴포넌트가 하나 늘어난다 — 이 단계 범위를 넘는다(ADR-081·082의 "최소로 시작" 원칙과 충돌) |
+| **경로는 그대로 두고 시청 페이지만 키를 가리기(마스킹)** | 눈속임일 뿐이다 — 네트워크 탭·HLS 요청을 보면 그대로 드러난다. 실제 권한 분리가 아니라 UI만 숨기는 것 |
+
+### 바뀐 것(코드)
+
+- `LiveStreamPaths.broadcastIdFrom(path)`(기존 `keyFrom`)이 이제 **숫자 id**를 돌려준다.
+  `pathFor(id)`가 그 반대(id → 경로 문자열)를 만든다.
+- `LiveBroadcastService#authenticatePublish(path, providedSecret)` — 비밀을 두 번째
+  인자로 **따로** 받는다. 비교는 `MessageDigest.isEqual`(상수 시간 비교, 타이밍 사이드채널
+  완화)로 하고, 거절 로그에는 **방송 id만** 남긴다(스트림 키는 로그에도 안 남는다 — 일부만
+  보여줄 필요조차 없게 아예 안 보여준다).
+- `handlePublish`/`handleUnpublish`(훅)·`MediaMtxPathPoller`(폴링) 전부 조회를
+  `findByStreamKey` → `findById`로 바꿨다 — 이 훅들은 **인증을 이미 통과한 뒤**에만 오므로
+  비밀이 더 필요 없다.
+- `LivePlaybackController`의 `hlsUrl`이 `broadcast.getId()`로 조립된다(예전엔
+  `getStreamKey()`).
+- `MediaMtxAuthRequest`에 `password`·`query` 필드를 추가했다(그 전엔 안 쓰고 선언도 안 함).
+
+### 다시 볼 조건(추가)
+
+- **비밀 비교가 상수 시간이어도, HTTP 요청 자체의 응답 시간차(DB 조회 여부 등)로 "이 id에
+  방송이 있는가"가 새는 것까지는 안 막았다** — 지금은 방송 id가 순차 발급(IDENTITY)이라
+  추측이 어렵지 않다는 점도 있어, 우선순위가 낮다고 보고 남겨 둔다.
+- **쿼리 문자열의 비밀이 RTMP 연결 로그(MediaMTX 자신의 액세스 로그 등)에 남을 수 있다** —
+  이번 수정은 "commerce 쪽 로그·API 응답·시청 화면"에서의 노출만 막았다. MediaMTX 자체
+  로그 레벨·보존 정책은 이번 범위 밖이다.
+
+## 대가·다시 볼 조건 (정직하게, 기존)
+
+1. ~~시청 페이지의 `hlsUrl`에 스트림 키 원문이 그대로 들어간다~~ → **고쳤다**(위
+   "2026-10-09 추가" 절 참고).
 2. **b-studio 샌드박스에서는 브라우저가 MediaMTX에 직접 닿을 수 없다** — MediaMTX는
    studio.yaml 관리 서비스가 아니라 브라우저가 열 수 있는 미리보기 주소가 없다(포트도 샌드박스
    컴포즈에 publish돼 있지 않다). 그래서 `/live/{id}` 화면은 이 샌드박스에서 **실제 영상

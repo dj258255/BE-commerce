@@ -35,24 +35,24 @@ class RestClientMediaMtxPathsSource implements MediaMtxPathsSource {
     }
 
     @Override
-    public Set<String> readyStreamKeys() {
+    public Set<Long> readyBroadcastIds() {
         String body = restClient.get().uri("/v3/paths/list").retrieve().body(String.class);
-        Set<String> keys = new HashSet<>();
+        Set<Long> ids = new HashSet<>();
         try {
             JsonNode root = json.readTree(body == null ? "{}" : body);
             for (JsonNode item : root.path("items")) {
                 if (!item.path("ready").asBoolean(false)) {
                     continue;
                 }
-                String key = LiveStreamPaths.keyFrom(item.path("name").asText(""));
-                if (key != null) {
-                    keys.add(key);
+                Long id = LiveStreamPaths.broadcastIdFrom(item.path("name").asText(""));
+                if (id != null) {
+                    ids.add(id);
                 }
             }
         } catch (Exception e) {
             throw new IllegalStateException("MediaMTX Control API 응답을 읽을 수 없습니다: " + body, e);
         }
-        return keys;
+        return ids;
     }
 
     private static SimpleClientHttpRequestFactory timeouts() {

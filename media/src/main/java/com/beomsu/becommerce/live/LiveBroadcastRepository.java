@@ -4,12 +4,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 public interface LiveBroadcastRepository extends JpaRepository<LiveBroadcast, Long> {
-
-    /** MediaMTX 훅(R2·R3)이 스트림 키로 방송을 찾는다. */
-    Optional<LiveBroadcast> findByStreamKey(String streamKey);
 
     /** {@code MediaMtxPathPoller}(R3)가 매 주기 "지금 LIVE인 방송"과 MediaMTX의 ready 집합을 맞대 본다. */
     List<LiveBroadcast> findByStatus(LiveBroadcastStatus status);

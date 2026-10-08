@@ -1,24 +1,33 @@
 #!/usr/bin/env bash
 #
 # 라이브 방송 R1~R3을 "실제 송출 경로"로 확인한다 — 훅 엔드포인트에 직접 curl만 날리는 것이
-# 아니라, 진짜 ffmpeg로 MediaMTX에 RTMP 송출을 하고, MediaMTX의 HTTP 인증 훅·runOnReady·
-# runOnNotReady가 commerce를 실제로 불러 상태가 바뀌는지를 본다.
+# 아니라, 진짜 ffmpeg로 MediaMTX에 RTMP 송출을 하고, MediaMTX의 HTTP 인증 훅이 commerce를
+# 실제로 불러 상태가 바뀌는지를 본다.
+#
+# 보안 수정(ADR-084): MediaMTX 경로는 더 이상 스트림 키가 아니라 방송 공개 id다
+# (live/{broadcastId}) — 시청(HLS) 주소에 그 id만 있어도 안전하다. 송출 비밀(스트림 키)은
+# 경로가 아니라 RTMP URL의 쿼리(`?pass=`)로 따로 보낸다:
+#   송출: rtmp://<host>:1935/live/{broadcastId}?pass={streamKey}
+#   시청: http://<host>:8888/live/{broadcastId}/index.m3u8   (비밀 없음)
 #
 # 확인 범위:
 #   - R1.1: 방송 생성 → 201 + SCHEDULED + streamKey
 #   - (사전 점검) commerce의 인증 엔드포인트 자체가 옳게 허용/거절하는가 — MediaMTX를 거치지
 #     않고 직접 불러 "거절 사유"를 분리해 본다(R2.1이 가짜로 통과하는 것을 막는다, 아래 참고)
-#   - R3.1: 올바른 키로 송출 → LIVE로 전이 (+ MediaMTX Control API로 자신이 보는 상태도 같이 찍는다)
-#   - (참고) MediaMTX HLS 재생목록(m3u8)을 받을 수 있는지 — 지연 측정(R6)은 범위 밖
-#   - R2.1: 틀린 스트림 키로 송출 → MediaMTX가 거절(인증 훅 401), 방송은 SCHEDULED 유지
-#   - R3.2: 끊고 30초 안에 같은 키로 재접속 → 같은 방송이 LIVE 유지
+#   - R3.1: 올바른 비밀로 송출 → LIVE로 전이 (+ MediaMTX Control API로 자신이 보는 상태도 같이 찍는다)
+#   - (참고) MediaMTX HLS 재생목록(m3u8)을 받을 수 있는지 — 지연 측정(R6)은 범위 밖. 이 URL에는
+#     비밀이 없다는 것 자체가 이번 보안 수정의 핵심이다.
+#   - R2.1: 같은 경로(방송 id)로 틀린 비밀을 보내면 거절(인증 훅 401), 방송은 SCHEDULED 유지
+#   - R2.1(추가): 시청 경로(방송 id)만 알고 비밀을 아예 안 보내면 — 역시 거절돼야 한다("시청
+#     경로를 아는 사람이 송출하면 거절된다")
+#   - R3.2: 끊고 30초 안에 같은 비밀로 재접속 → 같은 방송이 LIVE 유지
 #   - R3.3: 끊고 30초를 넘기면 → ENDED(재접속 유예 스캐너가 5초 주기로 돈다, local 프로파일)
-#   - R2.2: ENDED 방송의 (올바른) 키로 다시 송출 → MediaMTX가 또 거절
+#   - R2.2: ENDED 방송에 올바른 비밀로 다시 송출 → MediaMTX가 또 거절
 #
 # 왜 R3.1을 R2.1보다 먼저 보는가(중요): MediaMTX ↔ commerce 사이의 인증 훅 배관 자체가
-# 깨지면(예: mediamtx.yml의 호스트 치환 버그) "틀린 키" 송출도 "맞는 키" 송출도 **똑같이**
+# 깨지면(예: mediamtx.yml의 호스트 치환 버그) "틀린 비밀" 송출도 "맞는 비밀" 송출도 **똑같이**
 # LIVE가 안 된다 — 그러면 R2.1만 따로 보면 "거절됐다"고 오판(가짜 통과)한다. 그래서 이
-# 스크립트는 맞는 키로 LIVE가 되는 것(R3.1)을 먼저 확인해 "배관 자체는 살아 있다"를 증명한
+# 스크립트는 맞는 비밀로 LIVE가 되는 것(R3.1)을 먼저 확인해 "배관 자체는 살아 있다"를 증명한
 # 뒤에만 R2.1의 "거절됨" 판정을 신뢰한다 — R3.1이 실패하면 R2.1은 PASS가 아니라 UNKNOWN으로
 # 보고한다(판정 불가, 원인이 다를 수 있다는 뜻). 그와 별개로, MediaMTX를 거치지 않고
 # commerce의 인증 엔드포인트를 직접 불러보는 사전 점검도 추가해 "commerce 쪽 결정 로직
@@ -30,9 +39,7 @@
 #     컨테이너에 네트워크로 RTMP 송출한다 — b-studio의 run_in_service(commerce)로 돌린다.
 #   - mediamtx 컨테이너가 같은 compose 네트워크에 떠 있어야 한다(서비스 이름 "mediamtx").
 #     설정(media/mediamtx.yml)을 고친 뒤에는 컨테이너를 재시작해야 반영된다(MediaMTX가
-#     설정을 시작 시점에만 읽는다 — 핫 리로드 없음). 이 샌드박스에서 mediamtx는 studio.yaml
-#     관리 서비스가 아니라 b-studio 도구로 재시작할 수 없다 — 사람이 직접
-#     `docker compose -f compose.b-studio.yaml restart mediamtx`를 해 줘야 한다.
+#     설정을 시작 시점에만 읽는다 — 핫 리로드 없음).
 #   - mediamtx.yml에 `api: yes`(Control API, :9997)가 켜져 있어야 진단 출력이 나온다.
 #   - commerce가 local(또는 worker) 프로파일로 떠 있어야 한다(app.live.grace-scheduler.enabled,
 #     R3.3의 ENDED 자동 전이에 필요). b-studio 샌드박스는 compose.b-studio.yaml이 켠다.
@@ -118,26 +125,32 @@ wait_for_status() {
   done
 }
 
-# 끝없이 흐르는 테스트 패턴(testsrc2)을 RTMP로 송출한다. 백그라운드로 띄우고 PID를 돌려준다.
+# 끝없이 흐르는 테스트 패턴(testsrc2)을 RTMP로 송출한다 — 경로는 방송 공개 id, 비밀은 쿼리
+# (?pass=)로 따로 보낸다(보안 수정, ADR-084). secret이 빈 문자열이면 쿼리 자체를 안 붙인다
+# ("시청 경로만 아는 사람" 시나리오). 백그라운드로 띄우고 PID를 돌려준다.
 start_publish() {
-  local key="$1" logfile="$2"
+  local broadcast_id="$1" secret="$2" logfile="$3" url
+  url="rtmp://${MEDIAMTX_HOST}:${MEDIAMTX_RTMP_PORT}/live/${broadcast_id}"
+  [ -n "$secret" ] && url="${url}?pass=${secret}"
   ffmpeg -hide_banner -loglevel warning -re \
     -f lavfi -i "testsrc2=size=640x360:rate=25" \
     -f lavfi -i "anullsrc=r=44100:cl=stereo" \
     -c:v libx264 -preset veryfast -tune zerolatency -b:v 800k -g 50 \
     -c:a aac -ar 44100 -b:a 128k \
-    -f flv "rtmp://${MEDIAMTX_HOST}:${MEDIAMTX_RTMP_PORT}/live/${key}" \
+    -f flv "$url" \
     >"$logfile" 2>&1 &
   echo $!
 }
 
 # 한 번 붙었다가 즉시(또는 거절돼) 끝나는 짧은 송출 시도 — 거절 확인(R2.1·R2.2)에 쓴다.
 try_publish_once() {
-  local key="$1" logfile="$2"
+  local broadcast_id="$1" secret="$2" logfile="$3" url
+  url="rtmp://${MEDIAMTX_HOST}:${MEDIAMTX_RTMP_PORT}/live/${broadcast_id}"
+  [ -n "$secret" ] && url="${url}?pass=${secret}"
   timeout 8 ffmpeg -hide_banner -loglevel warning -re \
     -f lavfi -i "testsrc2=size=640x360:rate=25:duration=8" \
     -c:v libx264 -preset veryfast -f flv \
-    "rtmp://${MEDIAMTX_HOST}:${MEDIAMTX_RTMP_PORT}/live/${key}" \
+    "$url" \
     >"$logfile" 2>&1
   echo $?
 }
@@ -146,8 +159,8 @@ try_publish_once() {
 # api가 꺼져 있거나(:9997 안 열림) 경로가 아예 없으면 "unknown"을 돌려준다(연결 실패와 "false"를
 # 구분해야 "훅은 깨졌지만 RTMP 수신 자체는 된다"는 진단이 의미가 있다).
 mediamtx_path_ready() {
-  local key="$1" body
-  body="$(curl -s -m 3 "http://${MEDIAMTX_HOST}:${MEDIAMTX_API_PORT}/v3/paths/get/live/${key}" 2>/dev/null)"
+  local broadcast_id="$1" body
+  body="$(curl -s -m 3 "http://${MEDIAMTX_HOST}:${MEDIAMTX_API_PORT}/v3/paths/get/live/${broadcast_id}" 2>/dev/null)"
   if [ -z "$body" ]; then
     echo "unknown(API 응답 없음 — api: yes가 꺼져 있거나 재시작 전일 수 있다)"
     return
@@ -182,26 +195,37 @@ fi
 
 echo
 log "=== 사전 점검: commerce 인증 엔드포인트를 MediaMTX 없이 직접 불러 거절 사유를 분리 확인 ==="
+# 경로는 방송 공개 id, 비밀은 password 필드로 따로 보낸다(보안 수정) — 경로 자체에는 비밀이 없다.
 DIRECT_AUTH_OK_CODE="$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/v1/live/hooks/auth" \
-  -H 'Content-Type: application/json' -d "{\"path\":\"live/${STREAM_KEY}\",\"action\":\"publish\"}")"
+  -H 'Content-Type: application/json' \
+  -d "{\"path\":\"live/${BROADCAST_ID}\",\"action\":\"publish\",\"password\":\"${STREAM_KEY}\"}")"
 DIRECT_AUTH_WRONG_CODE="$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/v1/live/hooks/auth" \
-  -H 'Content-Type: application/json' -d '{"path":"live/definitely-not-a-real-key","action":"publish"}')"
+  -H 'Content-Type: application/json' \
+  -d "{\"path\":\"live/${BROADCAST_ID}\",\"action\":\"publish\",\"password\":\"wrong-secret\"}")"
+DIRECT_AUTH_NO_SECRET_CODE="$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/v1/live/hooks/auth" \
+  -H 'Content-Type: application/json' \
+  -d "{\"path\":\"live/${BROADCAST_ID}\",\"action\":\"publish\"}")"
 if [ "$DIRECT_AUTH_OK_CODE" = "200" ]; then
-  ok "사전 점검: commerce는 올바른 키를 직접 물어보면 200(허용)을 준다"
+  ok "사전 점검: commerce는 올바른 경로(id)+비밀을 직접 물어보면 200(허용)을 준다"
 else
-  bad "사전 점검: commerce가 올바른 키인데도 직접 호출에서 $DIRECT_AUTH_OK_CODE를 줌(기대 200)"
+  bad "사전 점검: commerce가 올바른 경로(id)+비밀인데도 직접 호출에서 $DIRECT_AUTH_OK_CODE를 줌(기대 200)"
 fi
 if [ "$DIRECT_AUTH_WRONG_CODE" = "401" ]; then
-  ok "사전 점검: commerce는 틀린 키를 직접 물어보면 401(거절)을 준다"
+  ok "사전 점검: commerce는 같은 경로(id)에 틀린 비밀을 물어보면 401(거절)을 준다"
 else
-  bad "사전 점검: commerce가 틀린 키인데도 직접 호출에서 $DIRECT_AUTH_WRONG_CODE를 줌(기대 401)"
+  bad "사전 점검: commerce가 틀린 비밀인데도 직접 호출에서 $DIRECT_AUTH_WRONG_CODE를 줌(기대 401)"
+fi
+if [ "$DIRECT_AUTH_NO_SECRET_CODE" = "401" ]; then
+  ok "사전 점검: 시청 경로(id)만 보내고 비밀을 아예 안 주면(password 없음) 401로 거절된다"
+else
+  bad "사전 점검: 비밀 없이 물어봤는데 commerce가 $DIRECT_AUTH_NO_SECRET_CODE를 줌(기대 401)"
 fi
 warn "이 사전 점검은 MediaMTX를 거치지 않는다 — commerce 쪽 결정 로직만 본다. \
 아래 R3.1·R2.1은 MediaMTX가 그 결정을 실제로 받아 쓰는지(배관)를 본다."
 
 echo
-log "=== R3.1: 올바른 키로 송출 → LIVE (먼저 본다 — 위 '왜 순서를 바꿨는지' 참고) ==="
-RUNNING_FFMPEG_PID="$(start_publish "$STREAM_KEY" "$WORKDIR/publish-1.log")"
+log "=== R3.1: 올바른 경로(id)+비밀로 송출 → LIVE (먼저 본다 — 위 '왜 순서를 바꿨는지' 참고) ==="
+RUNNING_FFMPEG_PID="$(start_publish "$BROADCAST_ID" "$STREAM_KEY" "$WORKDIR/publish-1.log")"
 STATUS_AFTER_PUBLISH="$(wait_for_status "$BROADCAST_ID" LIVE 15)"
 PIPELINE_PROVEN=false
 if [ "$STATUS_AFTER_PUBLISH" = "LIVE" ]; then
@@ -210,8 +234,8 @@ if [ "$STATUS_AFTER_PUBLISH" = "LIVE" ]; then
 else
   bad "R3.1: 15초를 기다려도 LIVE가 안 됨(status=$STATUS_AFTER_PUBLISH) — ffmpeg 로그: $WORKDIR/publish-1.log"
 fi
-READY_PER_MEDIAMTX="$(mediamtx_path_ready "$STREAM_KEY")"
-log "진단: MediaMTX 자신이 보는 이 경로의 ready 상태 = $READY_PER_MEDIAMTX \
+READY_PER_MEDIAMTX="$(mediamtx_path_ready "$BROADCAST_ID")"
+log "진단: MediaMTX 자신이 보는 이 경로(id=$BROADCAST_ID)의 ready 상태 = $READY_PER_MEDIAMTX \
 (commerce 상태=$STATUS_AFTER_PUBLISH) — 공식 이미지에 셸이 없어 명령 훅은 못 쓰므로(ADR-082), \
 LIVE 전환은 commerce의 MediaMtxPathPoller(app.live.mediamtx-poller.enabled)가 이 Control API를 \
 폴링해서 한다. true인데 commerce가 LIVE가 아니면 그 폴러가 꺼져 있거나(app.live.mediamtx-poller.enabled) \
@@ -219,14 +243,15 @@ api-base-url(app.live.mediamtx.api-base-url)이 틀렸다는 뜻이다. 'path no
 mediamtx.yml의 paths 선언이 없거나 api: yes가 아직 반영 안 됐을 수 있다(컨테이너 재시작 필요)."
 
 echo
-log "=== 참고: MediaMTX HLS 재생목록(m3u8)을 받을 수 있는가(R6 지연 측정은 범위 밖) ==="
+log "=== 참고: MediaMTX HLS 재생목록(m3u8)을 비밀 없이 받을 수 있는가(보안 수정 핵심, R6 지연 측정은 범위 밖) ==="
 if [ "$STATUS_AFTER_PUBLISH" = "LIVE" ]; then
   sleep 3  # 세그먼트가 몇 개 쌓일 시간을 준다
-  HLS_URL="http://${MEDIAMTX_HOST}:${MEDIAMTX_HLS_PORT}/live/${STREAM_KEY}/index.m3u8"
+  HLS_URL="http://${MEDIAMTX_HOST}:${MEDIAMTX_HLS_PORT}/live/${BROADCAST_ID}/index.m3u8"
   # MediaMTX HLS는 첫 요청에 302(쿠키 체크, LL-HLS 세션 확립용)로 응답한다 — -L로 따라간다.
+  # 이 URL에는 스트림 키가 전혀 없다 — 방송 공개 id뿐이다(보안 수정의 핵심 증거).
   HLS_CODE="$(curl -s -L -o "$WORKDIR/hls.m3u8" -w '%{http_code}' -m 5 "$HLS_URL")"
   if [ "$HLS_CODE" = "200" ] && grep -q '#EXTM3U' "$WORKDIR/hls.m3u8"; then
-    ok "HLS 재생목록 수신: $HLS_URL (#EXTM3U 확인)"
+    ok "HLS 재생목록 수신(비밀 없이): $HLS_URL (#EXTM3U 확인, 스트림 키는 URL에 없음)"
   else
     bad "HLS 재생목록을 못 받음 — http=$HLS_CODE url=$HLS_URL (응답은 $WORKDIR/hls.m3u8)"
   fi
@@ -235,26 +260,37 @@ else
 fi
 
 echo
-log "=== R2.1: 틀린 스트림 키로 송출하면 거절되는가 ==="
-WRONG_KEY="not-the-real-key-$(date +%s)"
-try_publish_once "$WRONG_KEY" "$WORKDIR/wrong-key.log" >/dev/null
-# 판정은 "원래 방송의 상태"가 아니라 "틀린 키 자신의 경로가 ready가 됐는가"로 한다 — 원래
-# 방송(id=$BROADCAST_ID)은 R3.1에서 이미 LIVE라 그 상태만 보면 틀린 키 때문인지 구분이 안 된다
-# (처음 버전의 실수 — 틀린 키 전용 ffmpeg가 원래 스트림과 무관하게 떠 있는 동안에도 원래
-# 방송은 계속 LIVE이므로, 그 상태를 보는 건 틀린 키 거절과 아무 상관이 없었다).
-WRONG_KEY_READY="$(mediamtx_path_ready "$WRONG_KEY")"
-WRONG_KEY_NOT_LIVE=false
-[ "$WRONG_KEY_READY" != "true" ] && WRONG_KEY_NOT_LIVE=true
-if [ "$PIPELINE_PROVEN" = true ] && [ "$WRONG_KEY_NOT_LIVE" = true ]; then
-  ok "R2.1: 올바른 키는 LIVE가 됐는데(R3.1) 틀린 키는 거절됨(MediaMTX 자신도 그 경로를 ready로 보지 않음: $WRONG_KEY_READY) — 배관이 살아있는 상태에서의 진짜 거절"
-elif [ "$PIPELINE_PROVEN" = true ] && [ "$WRONG_KEY_NOT_LIVE" = false ]; then
-  bad "R2.1: 배관은 살아있는데(R3.1 통과) 틀린 키인데도 MediaMTX가 그 경로를 ready로 봄 — 거절 실패"
+log "=== R2.1: 같은 경로(id)에 틀린 비밀로 송출하면 거절되는가 ==="
+try_publish_once "$BROADCAST_ID" "wrong-secret-$(date +%s)" "$WORKDIR/wrong-secret.log" >/dev/null
+WRONG_SECRET_READY="$(mediamtx_path_ready "$BROADCAST_ID")"
+# 판정은 "틀린 비밀 시도 뒤에도 이 경로가 ready가 아닌가"로 한다. R3.1에서 이미 LIVE였다면
+# ffmpeg 백그라운드 송출(RUNNING_FFMPEG_PID)이 아직 붙어 있어 ready는 계속 true일 수 있다 —
+# 그건 "원래 송출"이 살아있다는 뜻이지 "틀린 비밀이 통과했다"는 뜻이 아니다. 그래서 틀린
+# 비밀 시도 자체는 ffmpeg 로그(인증 실패로 즉시 끊김)로, 방송 상태는 안 바뀌는지로 본다.
+STATUS_AFTER_WRONG_SECRET="$(json_string "$(get_broadcast "$BROADCAST_ID")" status)"
+if [ "$PIPELINE_PROVEN" = true ] && [ "$STATUS_AFTER_WRONG_SECRET" = "LIVE" ]; then
+  ok "R2.1: 틀린 비밀 송출 시도는 거절되고(아래 ffmpeg 로그) 원래 방송은 영향 없이 LIVE 그대로다"
+elif [ "$PIPELINE_PROVEN" = true ]; then
+  bad "R2.1: 틀린 비밀 시도 뒤 방송 상태가 $STATUS_AFTER_WRONG_SECRET로 바뀜(거절 실패?)"
 else
-  unk "R2.1: 판정 불가 — R3.1(올바른 키)부터 LIVE가 안 돼 배관 자체가 증명되지 않았다. \
-이 상태의 '거절됨'은 키 검사 때문인지 배관 전체가 깨진 것인지 구분할 수 없다(이전 실행에서 \
-MediaMTX의 \${LIVE_HOOKS_HOST} 치환 버그로 실제로 이렇게 가짜 통과가 났었다)."
+  unk "R2.1: 판정 불가 — R3.1(올바른 비밀)부터 LIVE가 안 돼 배관 자체가 증명되지 않았다."
 fi
-warn "ffmpeg 종료 코드·출력은 $WORKDIR/wrong-key.log 참고(참고용 — 판정 근거는 위 상태+순서)"
+warn "ffmpeg 종료 코드·출력은 $WORKDIR/wrong-secret.log 참고(참고용). 이 경로의 ready 상태(원래 \
+송출이 살아있어 참고용): $WRONG_SECRET_READY"
+
+echo
+log "=== R2.1(추가): 시청 경로(방송 id)만 알고 비밀을 아예 안 보내면 송출이 거절되는가 ==="
+log "    (\"시청 경로를 아는 사람이 송출하면 거절된다\" — 이번 보안 수정이 막는 바로 그 공격)"
+try_publish_once "$BROADCAST_ID" "" "$WORKDIR/no-secret.log" >/dev/null
+STATUS_AFTER_NO_SECRET="$(json_string "$(get_broadcast "$BROADCAST_ID")" status)"
+if [ "$PIPELINE_PROVEN" = true ] && [ "$STATUS_AFTER_NO_SECRET" = "LIVE" ]; then
+  ok "R2.1(추가): 비밀 없는(시청 경로만 아는) 송출 시도는 거절되고 원래 방송은 영향 없다"
+elif [ "$PIPELINE_PROVEN" = true ]; then
+  bad "R2.1(추가): 비밀 없는 송출 시도 뒤 방송 상태가 $STATUS_AFTER_NO_SECRET로 바뀜(거절 실패 — 보안 문제)"
+else
+  unk "R2.1(추가): 판정 불가 — R3.1부터 실패."
+fi
+warn "ffmpeg 종료 코드·출력은 $WORKDIR/no-secret.log 참고(참고용)."
 
 echo
 log "=== R3.2: ${RECONNECT_GRACE_SECONDS}초 안에 재접속하면 같은 방송이 LIVE 유지 ==="
@@ -266,7 +302,7 @@ else
   RECONNECT_GAP=$((RECONNECT_GRACE_SECONDS / 3))
   log "끊고 ${RECONNECT_GAP}초 대기 후 재접속(유예 ${RECONNECT_GRACE_SECONDS}초 안)"
   sleep "$RECONNECT_GAP"
-  RUNNING_FFMPEG_PID="$(start_publish "$STREAM_KEY" "$WORKDIR/publish-2.log")"
+  RUNNING_FFMPEG_PID="$(start_publish "$BROADCAST_ID" "$STREAM_KEY" "$WORKDIR/publish-2.log")"
   STATUS_AFTER_RECONNECT="$(wait_for_status "$BROADCAST_ID" LIVE 10)"
   RECONNECT_BODY="$(get_broadcast "$BROADCAST_ID")"
   RECONNECT_ID="$(json_number "$RECONNECT_BODY" id)"
@@ -298,12 +334,12 @@ else
 fi
 
 echo
-log "=== R2.2: ENDED 방송의 (올바른) 키로 다시 송출하면 거절되는가 ==="
+log "=== R2.2: ENDED 방송에 올바른 비밀로 다시 송출하면 거절되는가 ==="
 if [ "$STATUS_AFTER_GRACE" = "ENDED" ]; then
-  try_publish_once "$STREAM_KEY" "$WORKDIR/after-ended.log" >/dev/null
+  try_publish_once "$BROADCAST_ID" "$STREAM_KEY" "$WORKDIR/after-ended.log" >/dev/null
   STATUS_AFTER_RETRY="$(json_string "$(get_broadcast "$BROADCAST_ID")" status)"
   if [ "$STATUS_AFTER_RETRY" = "ENDED" ]; then
-    ok "R2.2: ENDED 방송에 올바른 키로 다시 송출해도 ENDED 유지됨(= 거절된 것으로 판정)"
+    ok "R2.2: ENDED 방송에 올바른 비밀로 다시 송출해도 ENDED 유지됨(= 거절된 것으로 판정)"
   else
     bad "R2.2: ENDED 방송에 재송출했는데 상태가 $STATUS_AFTER_RETRY로 바뀜(거절 실패?)"
   fi

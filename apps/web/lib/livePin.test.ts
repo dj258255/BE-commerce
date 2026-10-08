@@ -24,7 +24,7 @@ function pinnedEvent(seq: number, effectiveAtIso: string, overrides: Partial<Liv
 }
 
 describe('R9.1: 재생 시점이 effectiveAt에 도달한 뒤에만 카드가 바뀐다', () => {
-  it('가격 변경 이벤트(seq=7, effectiveAt=T)를 받아도 재생 시점이 T 전이면 카드는 그대로다', () => {
+  it('R9.1: 가격 변경 이벤트(seq=7, effectiveAt=T)를 받아도 재생 시점이 T 전이면 카드는 그대로다', () => {
     const event = pinnedEvent(7, '2026-01-01T00:00:10.000Z', { type: 'PRICE_CHANGED', price: 7_900 });
     let state = receiveLivePinEvent(INITIAL_LIVE_PIN_SYNC_STATE, event);
 
@@ -34,7 +34,7 @@ describe('R9.1: 재생 시점이 effectiveAt에 도달한 뒤에만 카드가 �
     expect(state.pending).not.toBeNull();
   });
 
-  it('재생 시점이 effectiveAt(T)에 도달한 뒤에는 7,900원으로 바뀐다', () => {
+  it('R9.1: 재생 시점이 effectiveAt(T)에 도달한 뒤에는 7,900원으로 바뀐다', () => {
     const event = pinnedEvent(7, '2026-01-01T00:00:10.000Z', { type: 'PRICE_CHANGED', price: 7_900 });
     let state = receiveLivePinEvent(INITIAL_LIVE_PIN_SYNC_STATE, event);
 
@@ -52,7 +52,7 @@ describe('R9.1: 재생 시점이 effectiveAt에 도달한 뒤에만 카드가 �
 });
 
 describe('R9.2: 재연결하면 받는 현재 스냅샷은(이미 지난 effectiveAt) 받는 즉시 적용된다', () => {
-  it('상품 P1·7,900원·남은 수량 23 스냅샷(seq=9)을 받으면 다음 tick에서 바로 카드에 반영된다', () => {
+  it('R9.2: 상품 P1·7,900원·남은 수량 23 스냅샷(seq=9)을 받으면 다음 tick에서 바로 카드에 반영된다', () => {
     const snapshot = pinnedEvent(9, '2025-12-31T23:59:00.000Z', {
       productName: 'P1',
       price: 7_900,
@@ -68,7 +68,7 @@ describe('R9.2: 재연결하면 받는 현재 스냅샷은(이미 지난 effecti
 });
 
 describe('R9.3: seq가 거꾸로 온 이벤트는 무시한다', () => {
-  it('seq=7까지 처리한 상태에서 seq=5 이벤트가 늦게 도착하면 무시되고 카드가 바뀌지 않는다', () => {
+  it('R9.3: seq=7까지 처리한 상태에서 seq=5 이벤트가 늦게 도착하면 무시되고 카드가 바뀌지 않는다', () => {
     const already = pinnedEvent(7, '2026-01-01T00:00:10.000Z', { price: 9_900 });
     let state = receiveLivePinEvent(INITIAL_LIVE_PIN_SYNC_STATE, already);
     state = tickLivePinSync(state, Date.parse('2026-01-01T00:00:10.000Z')); // seq=7 적용 완료
@@ -82,7 +82,7 @@ describe('R9.3: seq가 거꾸로 온 이벤트는 무시한다', () => {
     expect(afterTick.lastAppliedSeq).toBe(7);
   });
 
-  it('isStaleEvent: seq가 이미 적용한 값과 같아도(중복 재전달) 오래된 것으로 본다', () => {
+  it('R9.3: isStaleEvent — seq가 이미 적용한 값과 같아도(중복 재전달) 오래된 것으로 본다', () => {
     const event = pinnedEvent(7, '2026-01-01T00:00:10.000Z');
     expect(isStaleEvent(7, event)).toBe(true);
     expect(isStaleEvent(6, event)).toBe(false);

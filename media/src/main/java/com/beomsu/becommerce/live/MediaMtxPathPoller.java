@@ -48,9 +48,9 @@ class MediaMtxPathPoller {
 
     @Scheduled(fixedDelayString = "${app.live.mediamtx-poller.interval-ms:2000}")
     void poll() {
-        Set<String> readyKeys;
+        Set<Long> readyIds;
         try {
-            readyKeys = pathsSource.readyStreamKeys();
+            readyIds = pathsSource.readyBroadcastIds();
         } catch (Exception e) {
             log.warn("MediaMTX Control API 폴링 실패 — 이번 주기는 상태 변화를 못 본다", e);
             return;
@@ -58,13 +58,13 @@ class MediaMtxPathPoller {
 
         List<LiveBroadcast> liveBroadcasts = repository.findByStatus(LiveBroadcastStatus.LIVE);
         for (LiveBroadcast broadcast : liveBroadcasts) {
-            boolean stillReady = readyKeys.contains(broadcast.getStreamKey());
+            boolean stillReady = readyIds.contains(broadcast.getId());
             if (!stillReady && broadcast.getDisconnectedAt() == null) {
-                liveBroadcastService.handleUnpublish(LiveStreamPaths.PREFIX + broadcast.getStreamKey());
+                liveBroadcastService.handleUnpublish(LiveStreamPaths.pathFor(broadcast.getId()));
             }
         }
-        for (String key : readyKeys) {
-            liveBroadcastService.handlePublish(LiveStreamPaths.PREFIX + key);
+        for (Long id : readyIds) {
+            liveBroadcastService.handlePublish(LiveStreamPaths.pathFor(id));
         }
     }
 }

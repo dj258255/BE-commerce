@@ -26,6 +26,20 @@
 #    MediaMTX가 인증을 묻기도 전에 `path 'live/...' is not configured`로 거절했다 — 경로
 #    패턴 자체는 pathDefaults와 별개로 **여전히 필요**하다(경로를 받아들일지 여부). 지금은
 #    훅이 없으니 빈 블록으로 되살렸다.)
+#
+# 3) 보안 수정(ADR-084) — 경로가 `live/{streamKey}`이던 시절에는 그 경로가 RTMP 송출
+#    주소이자 HLS 시청 주소이기도 해서, 시청 화면(비로그인 포함 누구나 보는 페이지)에
+#    스트림 키 원문이 그대로 노출됐다 — 그 키를 본 사람이라면 누구나 그 방송에 대신 송출할
+#    수 있었다(R1.2가 다른 판매자에게 막으려는 바로 그 위험이 시청자 전체로 열린 셈).
+#    지금은 경로가 `live/{broadcastId}`(공개 id, 노출돼도 안전)이고, 송출 비밀(스트림 키)은
+#    RTMP URL의 `?pass=` 쿼리로 따로 보낸다 — MediaMTX가 그 값을 HTTP 인증 훅의 `password`
+#    필드로 옮겨 싣는다(공식 지원 — authHTTPAddress 요청 바디에 `user`·`password`·`query`
+#    필드가 원래부터 있다). `LiveBroadcastService#authenticatePublish`가 그 비밀을 방송의
+#    실제 스트림 키와 맞댄다. 아래 `paths:`의 경로 패턴은 그대로 쓴다 — 숫자 id도
+#    `~^live/.+$`에 맞는다.
+
+# 송출 URL 예시(보안 수정 반영): rtmp://<host>:1935/live/{broadcastId}?pass={streamKey}
+# 시청(HLS) URL은 비밀 없이: http://<host>:8888/live/{broadcastId}/index.m3u8
 
 # HTTP 기반 인증(R2) — publish(송출) 시도마다 이 주소로 물어본다. 2xx면 허용. 이건 MediaMTX가
 # 직접 만드는 HTTP 호출이라 셸이 필요 없다(훅과 다르다) — 그대로 쓴다.
@@ -51,8 +65,9 @@ hls: yes
 hlsAddress: :8888
 
 paths:
-  # rtmp://<host>/live/{streamKey} 패턴을 받아들인다는 선언만 한다(LiveStreamPaths.PREFIX
-  # "live/"와 짝) — 훅은 없다(위 "2) 명령 훅 실행 불가" 이후로는 commerce가 Control API를
-  # 폴링해서 안다). 이 블록이 없으면 MediaMTX가 인증을 묻기도 전에 "경로가 설정되지 않음"으로
-  # 거절한다 — 비어 있어도 반드시 있어야 하는 선언이다.
+  # rtmp://<host>/live/{broadcastId} 패턴을 받아들인다는 선언만 한다(LiveStreamPaths.PREFIX
+  # "live/"와 짝, 보안 수정 이후로는 뒤가 스트림 키가 아니라 숫자 id다) — 훅은 없다(위
+  # "2) 명령 훅 실행 불가" 이후로는 commerce가 Control API를 폴링해서 안다). 이 블록이
+  # 없으면 MediaMTX가 인증을 묻기도 전에 "경로가 설정되지 않음"으로 거절한다 — 비어 있어도
+  # 반드시 있어야 하는 선언이다.
   "~^live/.+$": {}

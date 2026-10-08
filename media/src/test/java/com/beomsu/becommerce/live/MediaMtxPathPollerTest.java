@@ -27,6 +27,10 @@ import static org.mockito.Mockito.when;
  * 올바른 시점에만 부르는지 검증한다 — 공식 MediaMTX 이미지에 셸이 없어 명령 훅
  * (runOnReady/runOnNotReady)을 쓸 수 없다는 것을 확인하고 push에서 poll로 바꾼 자리다
  * (ADR-082). {@link MediaMtxPathsSource}를 가짜로 바꿔 실제 HTTP 호출·MediaMTX 없이 돈다.
+ *
+ * <p><b>보안 수정(ADR-084)</b>: 경로는 더 이상 스트림 키가 아니라 방송 공개 id다 — 그래서
+ * {@link MediaMtxPathsSource}도 {@code Set<Long>}(id 집합)을 돌려주고, 조회는
+ * {@code findById}로 한다.
  */
 class MediaMtxPathPollerTest {
 
@@ -61,14 +65,14 @@ class MediaMtxPathPollerTest {
     }
 
     @Test
-    @DisplayName("R3.1: ready로 보고된 키의 SCHEDULED 방송은 LIVE로 바뀐다(폴러가 handlePublish를 부른다)")
+    @DisplayName("R3.1: ready로 보고된 id의 SCHEDULED 방송은 LIVE로 바뀐다(폴러가 handlePublish를 부른다)")
     void publishesReadyPathsToScheduledBroadcast() {
         LiveBroadcastRepository repository = mock(LiveBroadcastRepository.class);
         LiveBroadcast broadcast = scheduled(1L, "KEY1");
-        when(repository.findByStreamKey("KEY1")).thenReturn(Optional.of(broadcast));
+        when(repository.findById(1L)).thenReturn(Optional.of(broadcast));
         when(repository.findByStatus(LiveBroadcastStatus.LIVE)).thenReturn(List.of());
         LiveBroadcastService service = realService(repository);
-        MediaMtxPathsSource source = () -> Set.of("KEY1");
+        MediaMtxPathsSource source = () -> Set.of(1L);
         MediaMtxPathPoller poller = new MediaMtxPathPoller(service, repository, source);
 
         poller.poll();
@@ -81,7 +85,7 @@ class MediaMtxPathPollerTest {
     void recordsDisconnectWhenLiveBroadcastDropsOutOfReadySet() {
         LiveBroadcastRepository repository = mock(LiveBroadcastRepository.class);
         LiveBroadcast broadcast = live(1L, "KEY1");
-        when(repository.findByStreamKey("KEY1")).thenReturn(Optional.of(broadcast));
+        when(repository.findById(1L)).thenReturn(Optional.of(broadcast));
         when(repository.findByStatus(LiveBroadcastStatus.LIVE)).thenReturn(List.of(broadcast));
         LiveBroadcastService service = realService(repository);
         MediaMtxPathsSource source = Set::of; // 이제 ready가 아니다(빈 집합)
@@ -116,10 +120,10 @@ class MediaMtxPathPollerTest {
     void doesNotDisconnectStillReadyBroadcast() {
         LiveBroadcastRepository repository = mock(LiveBroadcastRepository.class);
         LiveBroadcast broadcast = live(1L, "KEY1");
-        when(repository.findByStreamKey("KEY1")).thenReturn(Optional.of(broadcast));
+        when(repository.findById(1L)).thenReturn(Optional.of(broadcast));
         when(repository.findByStatus(LiveBroadcastStatus.LIVE)).thenReturn(List.of(broadcast));
         LiveBroadcastService service = realService(repository);
-        MediaMtxPathsSource source = () -> Set.of("KEY1");
+        MediaMtxPathsSource source = () -> Set.of(1L);
         MediaMtxPathPoller poller = new MediaMtxPathPoller(service, repository, source);
 
         poller.poll();

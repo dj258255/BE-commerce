@@ -15,9 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
  * 이 경로만 permitAll). {@code LiveBroadcastController}(판매자 전용, 스트림 키 포함)와
  * 분리해 둔 이유도 같다 — "이 엔드포인트만 공개"라는 사실을 코드로 드러낸다.
  *
- * <p><b>정직하게 남기는 한계</b>: {@code hlsUrl}은 스트림 키 원문을 포함한다(MediaMTX가 송출
- * 경로와 재생 경로를 구분하지 않는 지금 구성의 한계 — ADR-084 "다시 볼 조건"). 운영 전환
- * 전에 재생 전용 토큰으로 바꿔야 한다.
+ * <p><b>보안 수정(ADR-084)</b>: {@code hlsUrl}은 방송 공개 id만 담는다 — 예전에는 스트림 키
+ * 원문이 그대로 들어가 있었다(송출 경로와 재생 경로가 같았던 시절의 구성 — 시청자 누구나
+ * 그 키로 대신 송출할 수 있는 위험이 있었다, R1.2가 막으려는 바로 그 위험). 지금은 MediaMTX
+ * 경로 자체가 {@code live/{broadcastId}}라 안전하게 공개할 수 있다 — 송출 인증은
+ * {@code LiveMediaHooksController}가 별도 비밀로만 받는다.
  */
 @RestController
 @RequestMapping("/api/v1/live/broadcasts")
@@ -37,7 +39,7 @@ public class LivePlaybackController {
         var broadcast = broadcastRepository.findById(id)
                 .orElseThrow(() -> LiveBroadcastException.notFound(id));
         String hlsUrl = broadcast.getStatus() == LiveBroadcastStatus.LIVE
-                ? hlsBaseUrl + "/" + LiveStreamPaths.PREFIX + broadcast.getStreamKey() + "/index.m3u8"
+                ? hlsBaseUrl + "/" + LiveStreamPaths.pathFor(broadcast.getId()) + "/index.m3u8"
                 : null;
         return new LivePlaybackView(broadcast.getId(), broadcast.getStatus(), hlsUrl);
     }
