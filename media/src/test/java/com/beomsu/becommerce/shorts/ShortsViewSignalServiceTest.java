@@ -32,7 +32,7 @@ class ShortsViewSignalServiceTest {
     }
 
     @Test
-    @DisplayName("R27: 로그인 시청자의 신호는 userId·영상 id·서버 수신 시각과 함께 저장된다")
+    @DisplayName("R27.2: 끝까지 보고 한 번 더 반복 재생하면 완료 여부 true와 다시 보기 1회가 기록된다")
     void recordsSignalForLoggedInUser() {
         service.record(42L, ViewerIdentity.ofUser(7L), 15, true, 1, false, true);
 
@@ -51,7 +51,8 @@ class ShortsViewSignalServiceTest {
     }
 
     @Test
-    @DisplayName("R27: 비로그인 시청자는 익명 식별자로 저장되고 userId는 비어 있다")
+    @DisplayName("R27.1: 2초만 보고 넘기면 건너뛰기 true, 시청 시간 2초, 완료 여부 false로 기록되고 "
+            + "익명 시청자는 userId 없이 익명 식별자로 저장된다")
     void recordsSignalForAnonymousViewer() {
         service.record(42L, ViewerIdentity.ofAnonymous("anon-abc"), 2, false, 0, true, false);
 

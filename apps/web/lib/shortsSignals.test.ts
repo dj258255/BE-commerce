@@ -27,7 +27,7 @@ describe('R27: 시청 신호 — 영상마다 시청시간·완료·다시보기
     expect(payload.replayCount).toBe(0); // 처음 완료는 replay가 아니다
   });
 
-  it('완료 이후 같은 영상이 또 끝까지 돌면 replayCount가 올라간다', () => {
+  it('R27.2: 끝까지 보고 한 번 더 반복 재생하면 완료 여부 true와 다시 보기 1회가 기록된다', () => {
     let session = startViewSession(1, 0);
     session = onTimeUpdate(session, 19.6, 20);
     session = onTimeUpdate(session, 0.2, 20); // 1차 완료
@@ -40,11 +40,12 @@ describe('R27: 시청 신호 — 영상마다 시청시간·완료·다시보기
     expect(payload.replayCount).toBe(1);
   });
 
-  it('완료하지 못한 채 3초 미만만 보고 넘어가면 건너뛰기로 본다', () => {
+  it('R27.1: 2초만 보고 넘기면 건너뛰기 true, 시청 시간 2초, 완료 여부 false로 기록된다', () => {
     const session = startViewSession(1, 0);
     const payload = finalizeViewSession(session, 2_000, null);
 
     expect(payload.skippedWithin3s).toBe(true);
+    expect(payload.watchSeconds).toBe(2);
     expect(payload.completed).toBe(false);
   });
 
@@ -65,7 +66,7 @@ describe('R27: 시청 신호 — 영상마다 시청시간·완료·다시보기
     expect(payload.skippedWithin3s).toBe(false);
   });
 
-  it('시청 동안 상품 태그를 누르면 productTagTapped가 담긴다', () => {
+  it('R25.1: 상품 태그를 누르면 상품 태그 누름 이벤트가 기록된다(상세 화면 이동은 브라우저로 확인)', () => {
     let session = startViewSession(1, 0);
     session = onProductTagTap(session);
     const payload = finalizeViewSession(session, 5_000, null);

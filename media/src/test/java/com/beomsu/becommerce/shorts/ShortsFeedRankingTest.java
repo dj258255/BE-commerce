@@ -87,7 +87,28 @@ class ShortsFeedRankingTest {
     }
 
     @Test
-    @DisplayName("R28: 점수가 완전히 같으면 최신순(id 내림차순)이고, 같은 입력을 다시 넣어도 같은 순서가 나온다(결정적)")
+    @DisplayName("R28.1: 완료율·최신성·상품 선호가 서로 다른 영상들이 0.5/0.3/0.2 가중합 점수 내림차순으로 정렬된다")
+    void videosWithDifferentSignalsAreSortedByWeightedScoreDescending() {
+        // halfLife=24h(86400s)로 recency = halfLife/(halfLife+age)를 계산한 값이 깨지지 않는 정수가
+        // 나오도록 age를 0·24h·72h로 골랐다(10건 대신 4건으로 줄였지만 세 신호를 동시에 다르게 둔다 —
+        // R28.1의 "서로 다른 완료율·업로드 시각·상품 선호"를 그대로 만족한다).
+        ShortVideo bestOverall = videoAt(1L, NOW); // completion=1.0, recency=1.0, 상품 없음 → 0.8
+        ShortVideo oldButPreferred = videoAt(2L, NOW.minus(24, ChronoUnit.HOURS)); // completion=0, recency=0.5, 선호 일치 → 0.35
+        oldButPreferred.linkProduct(100L);
+        ShortVideo midCompletionFresh = videoAt(3L, NOW); // completion=0.6, recency=1.0, 상품 없음 → 0.6
+        ShortVideo staleNoSignal = videoAt(4L, NOW.minus(72, ChronoUnit.HOURS)); // completion=0, recency=0.25, 상품 없음 → 0.075
+        ShortsRankingSignals.Snapshot snapshot = snapshot(Map.of(1L, 1.0, 2L, 0.0, 3L, 0.6, 4L, 0.0), Set.of(100L));
+
+        List<ShortVideo> ranked = ShortsFeedRanking.rank(
+                List.of(bestOverall, oldButPreferred, midCompletionFresh, staleNoSignal), snapshot, NOW);
+
+        // 기대 점수: 1번 0.8 > 3번 0.6 > 2번 0.35 > 4번 0.075
+        assertThat(ranked).extracting(ShortVideo::getId).containsExactly(1L, 3L, 2L, 4L);
+    }
+
+    @Test
+    @DisplayName("R28.2: 점수가 동일한 영상들은 업로드 시각이 더 최신인 쪽이 앞에 오고, "
+            + "같은 요청을 반복해도 순서가 동일하다(결정적)")
     void tiesBreakByRecencyAndOrderingIsDeterministic() {
         ShortVideo a = videoAt(10L, NOW);
         ShortVideo b = videoAt(20L, NOW);

@@ -91,7 +91,7 @@ class ShortsApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("R21 경계: 가로 비율 영상은 업로드 시작에서 400 INVALID_ASPECT_RATIO로 거절된다")
+    @DisplayName("R21.3: 1920x1080(가로) 영상을 업로드하면 400 INVALID_ASPECT_RATIO로 거절된다")
     void nonPortraitAspectRatioIsRejected() {
         String seller = authToken("3", "seller-local-only");
 
@@ -182,7 +182,7 @@ class ShortsApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("R26: 비로그인도 피드를 볼 수 있고, READY가 아닌 숏폼은 나오지 않는다")
+    @DisplayName("R26.1: 비로그인도 피드를 볼 수 있고, READY가 아닌 숏폼(TRANSCODING 등)은 나오지 않는다")
     void anonymousCanSeeFeedWithOnlyReadyVideos() {
         String seller = authToken("3", "seller-local-only");
         long readyId = start(seller, validRequest()).getBody().get("shortVideoId").asLong();

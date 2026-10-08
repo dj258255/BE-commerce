@@ -35,7 +35,8 @@ class FfmpegTranscodeRunnerTest {
     }
 
     @Test
-    @DisplayName("R23: 5초 세로 합성 영상을 변환하면 READY에 필요한 산출물(세 렌디션·마스터·썸네일)이 전부 생긴다")
+    @DisplayName("R23.1: 변환이 완료되면 세 렌디션·마스터 플레이리스트·썸네일이 저장소에 생성된다"
+            + "(60초 상한과 같은 세로 비율, 시간만 5초로 단축)")
     void transcodesSyntheticVideoIntoCompleteOutput() throws IOException, InterruptedException {
         createSyntheticVideo(baseDir.resolve(OBJECT_KEY));
         FfmpegTranscodeRunner runner = new FfmpegTranscodeRunner(baseDir.toString(), "ffmpeg", "superfast", 60);

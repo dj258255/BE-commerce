@@ -26,7 +26,7 @@ class ShortVideoTest {
     }
 
     @Test
-    @DisplayName("R22: 허용된 전이 — UPLOADING→UPLOADED→PROBING→TRANSCODING→READY")
+    @DisplayName("R22.1: 업로드가 끝난 영상을 정상 처리하면 UPLOADED→PROBING→TRANSCODING→READY로 전이된다")
     void happyPathReachesReady() {
         ShortVideo v = video();
 
@@ -97,7 +97,7 @@ class ShortVideoTest {
     }
 
     @Test
-    @DisplayName("R22 경계: 실패가 3회(maxRetries)에 도달하면 QUARANTINED로 격리되고 더는 재시도할 수 없다")
+    @DisplayName("R22.2: 변환이 계속 실패하면 재시도는 3회에서 멈추고 QUARANTINED로 격리되며 FAILED와 이유가 저장된다")
     void thirdFailureQuarantines() {
         ShortVideo v = video();
         v.markUploaded();
@@ -154,7 +154,7 @@ class ShortVideoTest {
             "shorts/1/master.m3u8", "shorts/1/thumb.jpg");
 
     @Test
-    @DisplayName("R23: TRANSCODING에서 완전한 산출물로 completeTranscoding을 호출하면 READY로 전이하고 경로를 기록한다")
+    @DisplayName("R23.1: 변환이 완료되면 세 렌디션·마스터 플레이리스트·썸네일 경로가 모두 기록되고 READY로 전이한다")
     void completeTranscodingWithFullOutputReachesReady() {
         ShortVideo v = video();
         v.markUploaded();
@@ -188,5 +188,24 @@ class ShortVideoTest {
         assertThat(v.getFailureReason()).contains("썸네일");
         assertThat(v.getRetryCount()).isEqualTo(1);
         assertThat(v.getThumbnailPath()).isNull();
+    }
+
+    @Test
+    @DisplayName("R23.2: 480x854 렌디션 생성이 실패하면(경로 없음) READY가 되지 않고 FAILED와 이유가 기록된다")
+    void completeTranscodingWithMissing480pRenditionFailsInstead() {
+        ShortVideo v = video();
+        v.markUploaded();
+        v.startProbing();
+        v.startTranscoding();
+        TranscodeOutput missing480p = new TranscodeOutput(
+                "shorts/1/1080/master.m3u8", "shorts/1/720/master.m3u8", null,
+                "shorts/1/master.m3u8", "shorts/1/thumb.jpg");
+
+        v.completeTranscoding(missing480p);
+
+        assertThat(v.getStatus()).isEqualTo(ShortVideoStatus.FAILED);
+        assertThat(v.getFailureReason()).contains("480p");
+        assertThat(v.getRetryCount()).isEqualTo(1);
+        assertThat(v.getRendition480pPath()).isNull();
     }
 }

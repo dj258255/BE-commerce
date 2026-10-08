@@ -48,8 +48,8 @@ class ShortsFeedRankerTest {
     }
 
     @Test
-    @DisplayName("R29: 신호 계산이 예외를 던지면 200에 해당하는 결과를 그대로 돌려주되 "
-            + "fallback=true이고 최신순(id 내림차순) 원래 순서를 유지한다")
+    @DisplayName("R29.1: 개인화 신호 저장소가 중단되면(예외) 200에 해당하는 결과를 그대로 돌려주되 "
+            + "fallback=true이고 업로드 최신순(id 내림차순) 원래 순서를 유지한다")
     void fallsBackWhenSignalsFail() {
         ShortsRankingSignals failing = (ids, viewer) -> {
             throw new RuntimeException("신호 저장소 장애");
@@ -64,7 +64,8 @@ class ShortsFeedRankerTest {
     }
 
     @Test
-    @DisplayName("R29: 신호 계산이 제한 시간을 넘기면 결과를 기다리지 않고 fallback=true로 최신순을 돌려준다")
+    @DisplayName("R29.1: 개인화 신호 저장소가 응답하지 않으면(제한 시간 초과) 기다리지 않고 "
+            + "fallback=true로 최신순 READY 목록을 200으로 돌려준다")
     void fallsBackWhenSignalsExceedTimeout() {
         ShortsRankingSignals slow = (ids, viewer) -> {
             try {

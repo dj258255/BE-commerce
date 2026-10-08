@@ -72,7 +72,7 @@ class UploadMetaTest {
     }
 
     @Test
-    @DisplayName("R21: 가로(16:9) 비율은 거절된다")
+    @DisplayName("R21.3: 1920x1080(가로) 영상을 업로드하면 9:16 비율 위반 사유와 함께 거절된다")
     void landscapeAspectRatioIsRejected() {
         assertThatThrownBy(() -> new UploadMeta(10, 1_000L, 1920, 1080, "video/mp4"))
                 .isInstanceOf(ShortsException.class)

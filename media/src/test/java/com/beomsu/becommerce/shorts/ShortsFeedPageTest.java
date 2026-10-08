@@ -49,7 +49,7 @@ class ShortsFeedPageTest {
     }
 
     @Test
-    @DisplayName("R26: 빈 피드 — 입력이 없으면 항목 없음, 다음 쪽 없음")
+    @DisplayName("R26.3: READY 영상이 0건이면 항목 없음, 다음 쪽 없음(빈 상태)")
     void emptyFeedHasNoItemsAndNoNextPage() {
         ShortsFeedPage.Result result = ShortsFeedPage.assemble(List.of(), 10);
 
@@ -59,7 +59,7 @@ class ShortsFeedPageTest {
     }
 
     @Test
-    @DisplayName("R26: READY가 아닌 숏폼(TRANSCODING·FAILED·UPLOADED)은 피드에서 제외된다")
+    @DisplayName("R26.1: READY가 아닌 숏폼(TRANSCODING·FAILED·UPLOADED)은 피드에서 제외되고 READY만 노출된다")
     void nonReadyVideosAreExcluded() {
         List<ShortVideo> fetched = List.of(
                 ready(5),

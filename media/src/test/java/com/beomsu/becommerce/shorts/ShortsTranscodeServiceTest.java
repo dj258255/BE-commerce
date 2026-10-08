@@ -52,7 +52,7 @@ class ShortsTranscodeServiceTest {
     }
 
     @Test
-    @DisplayName("R23: 가짜 실행기가 항상 성공하면 claim→probe→claim→transcode→기록 순서로 한 번씩 불려 READY로 끝난다")
+    @DisplayName("R22.1: 가짜 실행기가 항상 성공하면 claim→probe→claim→transcode→기록 순서로 한 번씩 불려 READY로 끝난다")
     void happyPathCallsEachStepExactlyOnce() {
         FakeTranscodeRunner runner = new FakeTranscodeRunner();
         when(transitions.claimForProbing(SHORT_VIDEO_ID)).thenReturn(true);
@@ -69,7 +69,7 @@ class ShortsTranscodeServiceTest {
     }
 
     @Test
-    @DisplayName("R23 경계: probe가 매번 실패하면 3회 재시도(claim→probe) 후 QUARANTINED에서 멈춘다")
+    @DisplayName("R22.2: probe가 매번 실패하면(변환이 계속 실패) 3회 재시도(claim→probe) 후 QUARANTINED에서 멈춘다")
     void persistentProbeFailureRetriesThreeTimesThenStops() {
         FakeTranscodeRunner runner = new FakeTranscodeRunner();
         runner.scriptProbe(OBJECT_KEY, TranscodeRunner.ProbeResult.fail("코덱을 인식할 수 없음"));
