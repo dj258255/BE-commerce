@@ -18,6 +18,7 @@ import {
   INITIAL_LIVE_ORDER_STATE,
   type LiveOrderState,
 } from '@/lib/liveOrder';
+import { loginFailureMessage, validateLoginForm } from '@/lib/liveLogin';
 import { won } from '@/lib/ui';
 
 /** 브라우저 세션 동안만 토큰을 들고 있는다 — 탭을 닫으면 사라진다(R5와 같은 수준, 비밀 저장소가 아니다). */
@@ -31,7 +32,7 @@ async function readJsonSafely(res: Response): Promise<Record<string, unknown> | 
   }
 }
 
-type PlaybackInfo = { id: number; status: 'SCHEDULED' | 'LIVE' | 'ENDED'; hlsUrl: string | null };
+type PlaybackInfo = { id: number; status: 'SCHEDULED' | 'LIVE' | 'ENDED'; hlsUrl: string | null; title?: string };
 
 type PlaybackState =
   | { status: 'loading' }
@@ -72,6 +73,11 @@ export function LiveViewer({ broadcastId }: { broadcastId: number }) {
 
   const handleLogin = useCallback(async (e: FormEvent) => {
     e.preventDefault();
+    const validationError = validateLoginForm(loginForm);
+    if (validationError) {
+      setLoginError(validationError);
+      return;
+    }
     setLoginBusy(true);
     setLoginError(null);
     try {
@@ -82,7 +88,7 @@ export function LiveViewer({ broadcastId }: { broadcastId: number }) {
       });
       const body = await readJsonSafely(res);
       if (!res.ok) {
-        setLoginError(`로그인 실패(HTTP ${res.status})`);
+        setLoginError(loginFailureMessage(res.status));
         return;
       }
       const newToken = body?.token as string | undefined;
@@ -248,19 +254,21 @@ export function LiveViewer({ broadcastId }: { broadcastId: number }) {
   }
 
   return (
-    <div>
-      <div className="shorts-frame" style={{ position: 'relative' }}>
+    <div className="live-page">
+      {/* 어떤 방송을 보고 있는지 알 수 있게 제목을 보여준다. */}
+      <h1 className="live-title">{playback.data.title || `방송 #${playback.data.id}`}</h1>
+      <div className="live-frame">
         {playback.data.hlsUrl ? (
           <video
             ref={videoRef}
-            className="shorts-video"
+            className="live-video"
             muted
             playsInline
             controls
             onTimeUpdate={handleTimeUpdate}
           />
         ) : (
-          <div className="shorts-empty">
+          <div className="live-empty">
             {playback.data.status === 'ENDED' ? '방송이 끝났습니다.' : '방송 준비 중입니다.'}
           </div>
         )}
@@ -278,7 +286,7 @@ export function LiveViewer({ broadcastId }: { broadcastId: number }) {
 
       {/* R5: 시청 자체는 비로그인도 되지만 주문은 로그인이 필요하다 — 안내를 항상 보여준다. */}
       {!token ? (
-        <form onSubmit={handleLogin} className="notice" style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <form onSubmit={handleLogin} className="notice" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <span className="muted" style={{ fontSize: 12.5 }}>주문하려면 로그인하세요</span>
           <input
             value={loginForm.username}
@@ -327,7 +335,7 @@ function LiveOrderPanel({
   const orderButtonEnabled = canPlaceOrder(card, state);
 
   return (
-    <div className="notice" style={{ marginTop: 10 }}>
+    <div className="notice">
       {state.phase === 'readyToPay' ? (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span>주문이 생성됐습니다(주문번호 {state.orderNo}, {won(state.totalAmount)})</span>

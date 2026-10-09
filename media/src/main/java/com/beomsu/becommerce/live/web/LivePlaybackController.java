@@ -41,6 +41,6 @@ public class LivePlaybackController {
         String hlsUrl = broadcast.getStatus() == LiveBroadcastStatus.LIVE
                 ? hlsBaseUrl + "/" + LiveStreamPaths.pathFor(broadcast.getId()) + "/index.m3u8"
                 : null;
-        return new LivePlaybackView(broadcast.getId(), broadcast.getStatus(), hlsUrl);
+        return new LivePlaybackView(broadcast.getId(), broadcast.getStatus(), hlsUrl, broadcast.getTitle());
     }
 }

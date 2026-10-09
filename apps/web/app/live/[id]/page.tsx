@@ -15,9 +15,5 @@ export default async function LivePage({ params }: { params: Promise<{ id: strin
     return <div className="shorts-empty">올바르지 않은 방송입니다.</div>;
   }
 
-  return (
-    <div className="shorts-scroller">
-      <LiveViewer broadcastId={broadcastId} />
-    </div>
-  );
+  return <LiveViewer broadcastId={broadcastId} />;
 }
