@@ -55,6 +55,35 @@ describe('R11.2: 결제 승인 실패(400)는 실패 사유와 함께 재시도 
   });
 });
 
+describe('R11.2: 결제 실패 뒤 재시도가 성공하면 paid로 바뀐다', () => {
+  it('실패(400) 다음 같은 orderNo로 재시도(200)하면 paid가 된다', () => {
+    const failed = applyPaymentResult('ORD-1', 9900, { status: 400, body: { message: '카드 한도 초과' } });
+    expect(failed).toEqual({ phase: 'paymentFailed', orderNo: 'ORD-1', totalAmount: 9900, reason: '카드 한도 초과' });
+    // 재시도 버튼은 실패 상태의 같은 orderNo·totalAmount로 confirmPayment를 다시 부른다(LiveViewer.tsx).
+    const retried = applyPaymentResult(
+      (failed as { orderNo: string }).orderNo,
+      (failed as { totalAmount: number }).totalAmount,
+      { status: 200, body: {} },
+    );
+    expect(retried).toEqual({ phase: 'paid', orderNo: 'ORD-1' });
+  });
+
+  it('재시도도 실패하면 새 사유로 다시 paymentFailed가 되어 또 재시도할 수 있다', () => {
+    const failed = applyPaymentResult('ORD-1', 9900, { status: 400, body: { message: '카드 한도 초과' } });
+    const retriedFailed = applyPaymentResult(
+      (failed as { orderNo: string }).orderNo,
+      (failed as { totalAmount: number }).totalAmount,
+      { status: 500, body: null },
+    );
+    expect(retriedFailed).toEqual({
+      phase: 'paymentFailed',
+      orderNo: 'ORD-1',
+      totalAmount: 9900,
+      reason: '결제 승인에 실패했습니다(HTTP 500)',
+    });
+  });
+});
+
 describe('R13: 결제 결과 UNKNOWN(202)은 확정도 실패도 아닌 대기 상태로 유지된다', () => {
   it('pending으로 바뀌고(실패로 단정하지 않는다) orderNo·totalAmount를 유지한다', () => {
     const state = applyPaymentResult('ORD-1', 9900, { status: 202, body: {} });
