@@ -311,7 +311,13 @@ export function LiveViewer({ broadcastId }: { broadcastId: number }) {
       ) : null}
 
       {pinState.card ? (
-        <LiveOrderPanel card={pinState.card} state={orderState} onPlaceOrder={placeOrder} onConfirmPayment={confirmPayment} />
+        <LiveOrderPanel
+          card={pinState.card}
+          state={orderState}
+          token={token}
+          onPlaceOrder={placeOrder}
+          onConfirmPayment={confirmPayment}
+        />
       ) : null}
     </div>
   );
@@ -324,11 +330,13 @@ export function LiveViewer({ broadcastId }: { broadcastId: number }) {
 function LiveOrderPanel({
   card,
   state,
+  token,
   onPlaceOrder,
   onConfirmPayment,
 }: {
   card: PinCard;
   state: LiveOrderState;
+  token: string | null;
   onPlaceOrder: (card: PinCard) => void;
   onConfirmPayment: (orderNo: string, totalAmount: number) => void;
 }) {
@@ -355,9 +363,11 @@ function LiveOrderPanel({
         </div>
       ) : (
         <>
-          {state.phase === 'unauthenticated' ? (
+          {/* 버튼을 눌러 보기 전에도 바로 곁에서 로그인이 필요함을 알린다 — 위쪽 로그인 줄과
+              떨어져 있던 탓에 누르기 전까지 모르는 문제(진행 중 지시)를 고친다. */}
+          {!token ? (
             <div className="notice warn" style={{ marginBottom: 8, border: 0, padding: 0, background: 'transparent' }}>
-              로그인이 필요합니다.
+              로그인해야 주문할 수 있습니다.
             </div>
           ) : null}
           {/* R11.2: 결제 실패 사유 + 재시도. 주문은 이미 생성돼 있으므로 같은 orderNo로 다시 승인만 시도한다. */}
