@@ -8,17 +8,22 @@ import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
  * 확정은 정확히 LIMIT건만 되고 나머지(VUS-LIMIT건)는 결제를 거치지 않고(R12.2) 빠르게
  * 거절되는지(거절 응답 p95 200ms 미만)를 실제 서버에 대고 확인한다.
  *
- * 샌드박스에는 k6가 없어 이 스크립트는 호스트에서 돌린다. 실행 순서(자세한 내용은
- * docs/performance/live-order-r15.md):
+ * 샌드박스에는 k6가 없다. 이 스크립트는 호스트에서 전달 포트로 직접 돌리지 않는다 —
+ * 그러면 host↔샌드박스 통로(colima의 ssh 포트 전달)가 끊길 수 있다(도커 소켓·전달
+ * 포트·공유 폴더 마운트가 한꺼번에 끊긴다). 대신 grafana/k6 컨테이너를 commerce와 같은
+ * compose 네트워크에 붙여 서비스 이름(http://commerce:8080)으로 돌린다. 실행 순서(자세한
+ * 내용·이유는 docs/performance/live-order-r15.md):
  *   1) ./tools/prepare-live-order-broadcast.sh 로 방송을 만들고 상품을 LIMIT개로 고정
  *      → 표준출력의 BROADCAST_ID 값을 받는다.
  *   2) ./tools/prepare-live-order-viewers.sh 로 시청자 VUS명의 토큰을 TOKENS_FILE(기본
  *      /tmp, 저장소 밖)에 미리 저장한다(계정 가입은 IP 제한 때문에 느려서 — 측정 구간에
  *      섞이지 않게 미리 끝낸다).
- *   3) k6 run -e BASE_URL=http://<host>:8080 -e BROADCAST_ID=<1에서 받은 값> \
+ *   3) docker run --rm --network <commerce가 붙은 compose 네트워크> \
+ *        -v "$(pwd)/k6:/scripts:ro" -v /tmp:/tmp:ro \
+ *        -e BASE_URL=http://commerce:8080 -e BROADCAST_ID=<1에서 받은 값> \
  *        -e PRODUCT_ID=1 -e LIMIT=50 -e VUS=1000 \
  *        -e TOKENS_FILE=/tmp/live-order-viewers-tokens.json \
- *        k6/live-order-flash-sale.js
+ *        grafana/k6 run /scripts/live-order-flash-sale.js
  */
 const BASE = __ENV.BASE_URL || 'http://localhost:8080';
 const BROADCAST_ID = __ENV.BROADCAST_ID;
@@ -92,7 +97,11 @@ export default function () {
       walletAmount: 0,
       installmentMonths: 0,
     }), {
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        'Idempotency-Key': uuidv4(),
+      },
       tags: { name: 'live-order-payment' },
     });
     paymentCalls.add(1);
