@@ -1,7 +1,7 @@
 'use client';
 
 import Hls from 'hls.js';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   estimatePlaybackWallClockMs,
   INITIAL_LIVE_PIN_SYNC_STATE,
@@ -9,8 +9,27 @@ import {
   tickLivePinSync,
   type LivePinEvent,
   type LivePinSyncState,
+  type PinCard,
 } from '@/lib/livePin';
+import {
+  applyOrderResult,
+  applyPaymentResult,
+  canPlaceOrder,
+  INITIAL_LIVE_ORDER_STATE,
+  type LiveOrderState,
+} from '@/lib/liveOrder';
 import { won } from '@/lib/ui';
+
+/** 브라우저 세션 동안만 토큰을 들고 있는다 — 탭을 닫으면 사라진다(R5와 같은 수준, 비밀 저장소가 아니다). */
+const AUTH_TOKEN_STORAGE_KEY = 'live-auth-token';
+
+async function readJsonSafely(res: Response): Promise<Record<string, unknown> | null> {
+  try {
+    return (await res.json()) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
 
 type PlaybackInfo = { id: number; status: 'SCHEDULED' | 'LIVE' | 'ENDED'; hlsUrl: string | null };
 
@@ -35,6 +54,99 @@ export function LiveViewer({ broadcastId }: { broadcastId: number }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const currentFragment = useRef<{ programDateTimeMs: number; startSeconds: number } | null>(null);
+
+  // 로그인(R5) — 주문·결제에만 필요하다. 시청 자체는 토큰이 없어도 위의 재생·WebSocket이 그대로 된다.
+  const [token, setToken] = useState<string | null>(null);
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  // 고정 상품 카드 "바로 주문"(R11) 진행 상태.
+  const [orderState, setOrderState] = useState<LiveOrderState>(INITIAL_LIVE_ORDER_STATE);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+    if (saved) setToken(saved);
+  }, []);
+
+  const handleLogin = useCallback(async (e: FormEvent) => {
+    e.preventDefault();
+    setLoginBusy(true);
+    setLoginError(null);
+    try {
+      const res = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(loginForm),
+      });
+      const body = await readJsonSafely(res);
+      if (!res.ok) {
+        setLoginError(`로그인 실패(HTTP ${res.status})`);
+        return;
+      }
+      const newToken = body?.token as string | undefined;
+      if (!newToken) {
+        setLoginError('로그인 응답에 토큰이 없습니다.');
+        return;
+      }
+      setToken(newToken);
+      window.sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, newToken);
+    } catch (e) {
+      setLoginError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoginBusy(false);
+    }
+  }, [loginForm]);
+
+  // R11.1: 고정 상품 카드의 "바로 주문" — 장바구니를 거치지 않고 기존 주문 API를 바로 부른다.
+  // 가격·수량은 요청에 싣지 않는다(R10) — 서버가 지금 고정 상태로 판정한다.
+  const placeOrder = useCallback(async (card: PinCard) => {
+    setOrderState({ phase: 'placing' });
+    try {
+      const res = await fetch(`/api/v1/live/broadcasts/${broadcastId}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': crypto.randomUUID(),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ productId: card.productId }),
+      });
+      const body = await readJsonSafely(res);
+      setOrderState(applyOrderResult({ status: res.status, body }));
+    } catch (e) {
+      setOrderState({ phase: 'rejected', reason: e instanceof Error ? e.message : String(e) });
+    }
+  }, [broadcastId, token]);
+
+  // R11.1·R11.2: 기존 결제 승인 API로 이어간다(장바구니 없이, 주문 생성에서 받은 금액 그대로).
+  // 결제 실패(400 등) 뒤 재시도도 이 함수를 다시 부른다 — 새 Idempotency-Key로 새 승인 시도가 된다.
+  const confirmPayment = useCallback(async (orderNo: string, totalAmount: number) => {
+    setOrderState({ phase: 'confirming', orderNo, totalAmount });
+    try {
+      const res = await fetch('/api/v1/payments/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': crypto.randomUUID(),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          paymentKey: `live-${orderNo}-${crypto.randomUUID()}`,
+          orderNo,
+          amount: totalAmount,
+          pointAmount: 0,
+          walletAmount: 0,
+          installmentMonths: 0,
+        }),
+      });
+      const body = await readJsonSafely(res);
+      setOrderState(applyPaymentResult(orderNo, totalAmount, { status: res.status, body }));
+    } catch (e) {
+      setOrderState({ phase: 'paymentFailed', orderNo, totalAmount, reason: e instanceof Error ? e.message : String(e) });
+    }
+  }, [token]);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +183,19 @@ export function LiveViewer({ broadcastId }: { broadcastId: number }) {
     };
     return () => ws.close();
   }, [broadcastId]);
+
+  // R8·R9.2: 영상이 아직 재생되지 않아도(SCHEDULED 방송, 버퍼링, 자동재생 차단 등) 고정 카드는
+  // 바로 보여야 한다(R8 인수 조건 — "표시된다"가 영상 재생에 달려 있지 않다). 실제 프래그먼트
+  // 재생 시점(FRAG_CHANGED)이 아직 없을 때만 실 서버 시각으로 대신 틱한다 — 재생이 시작되면
+  // handleTimeUpdate의 프레임 기반 추정이 넘겨받는다(currentFragment가 채워지는 즉시 이 틱은
+  // 아무것도 하지 않게 된다, R9.1).
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (currentFragment.current != null) return;
+      setPinState((prev) => tickLivePinSync(prev, Date.now()));
+    }, 500);
+    return () => window.clearInterval(interval);
+  }, []);
 
   // hls.js 연결 — 재생 URL이 준비되면 붙인다(R26 ShortsVideoPlayer와 같은 네이티브/hls.js 분기).
   useEffect(() => {
@@ -123,31 +248,134 @@ export function LiveViewer({ broadcastId }: { broadcastId: number }) {
   }
 
   return (
-    <div className="shorts-frame" style={{ position: 'relative' }}>
-      {playback.data.hlsUrl ? (
-        <video
-          ref={videoRef}
-          className="shorts-video"
-          muted
-          playsInline
-          controls
-          onTimeUpdate={handleTimeUpdate}
-        />
-      ) : (
-        <div className="shorts-empty">
-          {playback.data.status === 'ENDED' ? '방송이 끝났습니다.' : '방송 준비 중입니다.'}
-        </div>
-      )}
-      {pinState.card ? (
-        <div className="shorts-product" style={{ position: 'absolute', bottom: 16, left: 16, right: 16 }}>
-          <span>{pinState.card.productName}</span>
-          <span className="mono">
-            {won(pinState.card.price)} ·{' '}
-            {/* R14: 매진은 재생 시점을 기다리지 않고 즉시 이 표시로 바뀐다(QUANTITY_CHANGED, lib/livePin.ts) */}
-            {pinState.card.remainingQuantity > 0 ? `남은 수량 ${pinState.card.remainingQuantity}` : '매진'}
-          </span>
-        </div>
+    <div>
+      <div className="shorts-frame" style={{ position: 'relative' }}>
+        {playback.data.hlsUrl ? (
+          <video
+            ref={videoRef}
+            className="shorts-video"
+            muted
+            playsInline
+            controls
+            onTimeUpdate={handleTimeUpdate}
+          />
+        ) : (
+          <div className="shorts-empty">
+            {playback.data.status === 'ENDED' ? '방송이 끝났습니다.' : '방송 준비 중입니다.'}
+          </div>
+        )}
+        {pinState.card ? (
+          <div className="shorts-product" style={{ position: 'absolute', bottom: 16, left: 16, right: 16 }}>
+            <span>{pinState.card.productName}</span>
+            <span className="mono">
+              {won(pinState.card.price)} ·{' '}
+              {/* R14: 매진은 재생 시점을 기다리지 않고 즉시 이 표시로 바뀐다(QUANTITY_CHANGED, lib/livePin.ts) */}
+              {pinState.card.remainingQuantity > 0 ? `남은 수량 ${pinState.card.remainingQuantity}` : '매진'}
+            </span>
+          </div>
+        ) : null}
+      </div>
+
+      {/* R5: 시청 자체는 비로그인도 되지만 주문은 로그인이 필요하다 — 안내를 항상 보여준다. */}
+      {!token ? (
+        <form onSubmit={handleLogin} className="notice" style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="muted" style={{ fontSize: 12.5 }}>주문하려면 로그인하세요</span>
+          <input
+            value={loginForm.username}
+            onChange={(e) => setLoginForm((f) => ({ ...f, username: e.target.value }))}
+            placeholder="아이디"
+            className="mono"
+            style={{ width: 90, padding: '5px 8px', border: '1px solid var(--line2)', borderRadius: 7 }}
+          />
+          <input
+            value={loginForm.password}
+            onChange={(e) => setLoginForm((f) => ({ ...f, password: e.target.value }))}
+            placeholder="비밀번호"
+            type="password"
+            className="mono"
+            style={{ width: 120, padding: '5px 8px', border: '1px solid var(--line2)', borderRadius: 7 }}
+          />
+          <button type="submit" className="btn" disabled={loginBusy}>
+            {loginBusy ? '로그인 중…' : '로그인'}
+          </button>
+          {loginError ? <span style={{ color: 'var(--bad)', fontSize: 12.5 }}>{loginError}</span> : null}
+        </form>
       ) : null}
+
+      {pinState.card ? (
+        <LiveOrderPanel card={pinState.card} state={orderState} onPlaceOrder={placeOrder} onConfirmPayment={confirmPayment} />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * 고정 상품 카드의 주문·결제 진행 영역(R11) — 단계별로 다른 조작을 보여준다: 바로 주문 →
+ * (생성되면) 결제하기 → 완료/실패(R11.2 실패 사유+재시도)/거절(R10.2·R14.2)/로그인 필요(R5.2).
+ */
+function LiveOrderPanel({
+  card,
+  state,
+  onPlaceOrder,
+  onConfirmPayment,
+}: {
+  card: PinCard;
+  state: LiveOrderState;
+  onPlaceOrder: (card: PinCard) => void;
+  onConfirmPayment: (orderNo: string, totalAmount: number) => void;
+}) {
+  const orderButtonEnabled = canPlaceOrder(card, state);
+
+  return (
+    <div className="notice" style={{ marginTop: 10 }}>
+      {state.phase === 'readyToPay' ? (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span>주문이 생성됐습니다(주문번호 {state.orderNo}, {won(state.totalAmount)})</span>
+          <button type="button" className="btn" onClick={() => onConfirmPayment(state.orderNo, state.totalAmount)}>
+            결제하기
+          </button>
+        </div>
+      ) : state.phase === 'confirming' ? (
+        <span className="muted">결제 승인 중…</span>
+      ) : state.phase === 'pending' ? (
+        <span className="muted">
+          결제 결과를 아직 확인하지 못했습니다(UNKNOWN) — 복구 처리가 끝나면 자동으로 확정됩니다.
+        </span>
+      ) : state.phase === 'paid' ? (
+        <div className="notice ok" style={{ border: 0, padding: 0, background: 'transparent' }}>
+          결제가 완료됐습니다(주문번호 {state.orderNo}).
+        </div>
+      ) : (
+        <>
+          {state.phase === 'unauthenticated' ? (
+            <div className="notice warn" style={{ marginBottom: 8, border: 0, padding: 0, background: 'transparent' }}>
+              로그인이 필요합니다.
+            </div>
+          ) : null}
+          {/* R11.2: 결제 실패 사유 + 재시도. 주문은 이미 생성돼 있으므로 같은 orderNo로 다시 승인만 시도한다. */}
+          {state.phase === 'paymentFailed' ? (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+              <span style={{ color: 'var(--bad)' }}>결제에 실패했습니다: {state.reason}</span>
+              <button type="button" className="btn" onClick={() => onConfirmPayment(state.orderNo, state.totalAmount)}>
+                재시도
+              </button>
+            </div>
+          ) : null}
+          {state.phase === 'rejected' ? (
+            <div style={{ color: 'var(--bad)', marginBottom: 8 }}>{state.reason}</div>
+          ) : null}
+          <button
+            type="button"
+            className="btn"
+            disabled={!orderButtonEnabled}
+            onClick={() => onPlaceOrder(card)}
+          >
+            {/* R14.1: 매진이거나 고정이 풀리면(카드 자체가 없어 이 컴포넌트가 안 보이거나
+                remainingQuantity가 0이면) 비활성화된다 — canPlaceOrder가 그 둘을 함께 본다. */}
+            {state.phase === 'placing' ? '주문 생성 중…' : card.remainingQuantity > 0 ? '바로 주문' : '매진'}
+          </button>
+        </>
+      )}
     </div>
   );
 }

@@ -17,7 +17,8 @@ k6 `setup()` 안에서 직접 계정 1,000개를 가입·로그인하면 가입 
    (상품 고정은 LIVE 방송에서만 되므로 잠깐 실 RTMP 송출을 붙였다가 고정 후 바로 끈다 —
    주문 생성은 고정 상태만 보고 판정하므로 이후 방송이 계속 LIVE일 필요는 없다, ADR-085).
 2. `tools/prepare-live-order-viewers.sh` — 시청자 계정 N명을 가입·로그인해 토큰을 JSON
-   파일로 저장해 둔다.
+   파일로 저장해 둔다(기본 `/tmp` — 로그인 토큰 1,000명분을 담은 민감한 산출물이라
+   저장소 안에는 남기지 않는다).
 3. `k6/live-order-flash-sale.js` — 위 둘이 미리 끝나 있는 상태에서, 저장된 토큰으로 **오직
    동시 주문 1,000건**만 쏜다. 계정 준비 지연이 전혀 섞이지 않는다.
 
@@ -31,8 +32,9 @@ BASE_URL=http://<host>:8080 LIMIT=50 ./tools/prepare-live-order-broadcast.sh
 # 출력 마지막 줄: BROADCAST_ID=<숫자>
 
 # 2) 시청자 1,000명 계정·토큰 준비(가입 IP 제한 때문에 약 5분 걸린다)
+#    토큰 파일은 기본 /tmp에 쓴다(저장소 밖 — 로그인 토큰이라 커밋하지 않는다)
 BASE_URL=http://<host>:8080 VIEWER_COUNT=1000 \
-  OUT_FILE=docs/performance/live-order-viewers-tokens.json \
+  OUT_FILE=/tmp/live-order-viewers-tokens.json \
   ./tools/prepare-live-order-viewers.sh
 
 # 3) k6로 1,000명 동시 주문(이 구간만 측정에 들어간다)
@@ -42,7 +44,7 @@ k6 run \
   -e PRODUCT_ID=1 \
   -e LIMIT=50 \
   -e VUS=1000 \
-  -e TOKENS_FILE=docs/performance/live-order-viewers-tokens.json \
+  -e TOKENS_FILE=/tmp/live-order-viewers-tokens.json \
   k6/live-order-flash-sale.js
 ```
 
@@ -63,8 +65,8 @@ thresholds 중 하나라도 어긋나면 k6가 비정상 종료 코드로 끝난
 k6가 없어 1,000명 규모의 본 측정은 못 돌렸지만, **준비 스크립트 둘은 작은 규모로 실제로
 돌려 동작을 확인했다**:
 
-- `tools/prepare-live-order-viewers.sh` (`VIEWER_COUNT=6`) → 계정 6개 가입·로그인 성공,
-  토큰 6개가 JSON 배열로 파일에 저장됨.
+- `tools/prepare-live-order-viewers.sh` (`VIEWER_COUNT=6`, `OUT_FILE=/tmp/...`) → 계정 6개
+  가입·로그인 성공, 토큰 6개가 JSON 배열로 저장소 밖 파일에 저장됨.
 - `tools/prepare-live-order-broadcast.sh` (`LIMIT=5`) → 방송 생성 → 실 ffmpeg RTMP 송출로
   LIVE 전이 → 상품을 한정 5개·₩9,900로 고정(`PINNED` 응답 확인) → `BROADCAST_ID` 출력.
 
