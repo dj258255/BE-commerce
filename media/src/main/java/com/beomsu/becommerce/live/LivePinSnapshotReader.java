@@ -21,16 +21,18 @@ class LivePinSnapshotReader {
 
     private final LivePinRepository repository;
     private final ProductLookup productLookup;
+    private final LiveOrderGate gate;
     private final Clock clock;
 
     @Autowired
-    LivePinSnapshotReader(LivePinRepository repository, ProductLookup productLookup) {
-        this(repository, productLookup, Clock.systemUTC());
+    LivePinSnapshotReader(LivePinRepository repository, ProductLookup productLookup, LiveOrderGate gate) {
+        this(repository, productLookup, gate, Clock.systemUTC());
     }
 
-    LivePinSnapshotReader(LivePinRepository repository, ProductLookup productLookup, Clock clock) {
+    LivePinSnapshotReader(LivePinRepository repository, ProductLookup productLookup, LiveOrderGate gate, Clock clock) {
         this.repository = repository;
         this.productLookup = productLookup;
+        this.gate = gate;
         this.clock = clock;
     }
 
@@ -47,7 +49,10 @@ class LivePinSnapshotReader {
             return LivePinEventView.unpinned(broadcastId, seq, effectiveAt);
         }
         LivePin pin = maybePin.get();
-        return LivePinEventView.pinned(broadcastId, pin, resolveProductName(pin.getProductId()));
+        // 재연결 스냅샷(R9.2)도 실제 남은 수량을 보여줘야 한다(R13·R14) — 중간에 몇 개 팔렸어도
+        // 한도 그대로가 아니라 지금 Redis 게이트가 쥔 값을 쓴다.
+        int remaining = Math.max(0, pin.getLimitedQuantity() - gate.currentCount(broadcastId, pin.getGeneration()));
+        return LivePinEventView.pinned(broadcastId, pin, resolveProductName(pin.getProductId()), remaining);
     }
 
     String resolveProductName(long productId) {

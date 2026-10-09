@@ -142,7 +142,9 @@ export function LiveViewer({ broadcastId }: { broadcastId: number }) {
         <div className="shorts-product" style={{ position: 'absolute', bottom: 16, left: 16, right: 16 }}>
           <span>{pinState.card.productName}</span>
           <span className="mono">
-            {won(pinState.card.price)} · 남은 수량 {pinState.card.remainingQuantity}
+            {won(pinState.card.price)} ·{' '}
+            {/* R14: 매진은 재생 시점을 기다리지 않고 즉시 이 표시로 바뀐다(QUANTITY_CHANGED, lib/livePin.ts) */}
+            {pinState.card.remainingQuantity > 0 ? `남은 수량 ${pinState.card.remainingQuantity}` : '매진'}
           </span>
         </div>
       ) : null}

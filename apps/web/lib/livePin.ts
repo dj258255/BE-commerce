@@ -13,7 +13,7 @@
  *    별도 분기 없이 즉시 적용된다.
  */
 
-export type LivePinEventType = 'PINNED' | 'UNPINNED' | 'PRICE_CHANGED';
+export type LivePinEventType = 'PINNED' | 'UNPINNED' | 'PRICE_CHANGED' | 'QUANTITY_CHANGED';
 
 /** 서버 `LivePinEventView`와 같은 모양. */
 export type LivePinEvent = {
@@ -65,10 +65,36 @@ export function isStaleEvent(lastAppliedSeq: number, event: LivePinEvent): boole
 }
 
 /**
- * WebSocket 메시지 수신 — seq 게이트만 본다(R9.3). 통과하면 "대기 중"으로 교체한다(아직 처리
- *못 한 더 오래된 대기 이벤트가 있어도, 더 최신 seq가 왔다는 것 자체가 그 이벤트를 대신한다).
+ * 한정 수량 갱신·매진(R13·R14)을 지금 카드에 겹쳐 쓴다 — 상품 이름·가격은 이 이벤트에
+ * 없으므로(서버가 매 주문마다 다시 안 보낸다) 건드리지 않고 `remainingQuantity`만 바꾼다.
+ * 아직 카드가 없거나 다른 상품이면(스냅샷이 아직 안 왔거나 재고정 경합) 손대지 않는다 —
+ * 다음 PINNED/스냅샷이 정리한다.
+ */
+function applyQuantityChanged(card: PinCard | null, event: LivePinEvent): PinCard | null {
+  if (card == null || event.productId == null || card.productId !== event.productId) return card;
+  return { ...card, remainingQuantity: event.remainingQuantity ?? card.remainingQuantity };
+}
+
+/**
+ * WebSocket 메시지 수신.
+ *
+ * <p><b>R14: QUANTITY_CHANGED(매진 포함)는 seq 게이트·시간 게이트 둘 다 거치지 않고 즉시
+ * 적용한다.</b> "가능 여부"는 안전 문제라 R9가 보호하는 "영상과 가격 표시가 안 맞아 보임"
+ * 문제보다 우선한다 — 매진인데 1초 넘게 주문 가능한 것처럼 보이면 환불·CS 비용이 생긴다
+ * (ADR-085 R13·R14 절). 같은 드롭 안에서 여러 번 오는 QUANTITY_CHANGED는 서버가 같은
+ * seq(그 드롭이 고정된 시점의 seq)를 그대로 재사용하므로, PINNED/PRICE_CHANGED용 단조 증가
+ * seq 검사({@link isStaleEvent})를 그대로 적용하면 두 번째 이후 갱신이 전부 "이미 처리한
+ * seq"로 걸러져 버린다 — 그래서 이 타입만 그 검사를 건너뛴다. WebSocket은 같은 연결 안에서
+ * 순서를 보장하므로(TCP) 전송 순서 자체는 보통 맞고, 아주 드물게 재연결 경합으로 순서가
+ * 흐트러져도 다음 QUANTITY_CHANGED나 재연결 스냅샷이 곧바로 고친다(다시 볼 조건으로 남긴다).
+ *
+ * <p>그 외(PINNED·UNPINNED·PRICE_CHANGED)는 그대로 seq 게이트만 보고(R9.3) "대기 중"으로
+ * 교체한다 — 실제 적용은 {@link tickLivePinSync}가 effectiveAt 도달을 본 뒤에 한다(R9.1).
  */
 export function receiveLivePinEvent(state: LivePinSyncState, event: LivePinEvent): LivePinSyncState {
+  if (event.type === 'QUANTITY_CHANGED') {
+    return { ...state, card: applyQuantityChanged(state.card, event) };
+  }
   if (isStaleEvent(state.lastAppliedSeq, event)) {
     return state; // R9.3: 역행 이벤트는 카드 표시를 바꾸지 않는다
   }

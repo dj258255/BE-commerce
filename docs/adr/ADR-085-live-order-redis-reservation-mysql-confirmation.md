@@ -2,7 +2,7 @@
 
 - 상태: **채택**
 - 날짜: 2026-10-09
-- 관련: R10·R11·R12(R13·R14·R15는 다음 단계), R32,
+- 관련: R10~R14(R15는 다음 단계), R32,
   [42-라이브커머스-숏폼-명세.md](../42-라이브커머스-숏폼-명세.md) §5,
   [ADR-003](ADR-003-stock-deduction-timing.md)(재고 차감 시점),
   [ADR-004](ADR-004-stock-deduction-locking.md)(재고 차감 락),
@@ -44,23 +44,25 @@ ADR-003·ADR-004가 이미 **카탈로그 재고**(`stock` 테이블, 상품당 
 
 ## 결정 2 — Redis 선점은 Lua 스크립트 ZSET, 멤버 키 = 멱등 키, 실패 시 fail-closed
 
+> **이 코드는 처음 쓴 모습(R12만 있던 때)이 아니라 R13·R14까지 반영한 지금의 최종 모습이다.**
+> 처음엔 score가 지나면 이 스크립트가 스스로 `ZREMRANGEBYSCORE`로 치웠고, `ZADD` 뒤에
+> `PEXPIRE`로 키 자체에도 TTL을 걸었다. 둘 다 R13 작업 중에 없앴다 — 아래 "결정 7"과
+> "어긋남 1"에 그 경위와 실제로 걸렸던 사고(PAID 홀드가 키 TTL로 함께 지워짐)를 적었다.
+
 ```lua
--- KEYS[1] = live:pin:{broadcastId}:holds
+-- KEYS[1] = live:pin:{broadcastId}:{generation}:holds
 -- ARGV = [member(=멱등 키), now_ms, ttl_ms, limit]
 local member = ARGV[1]
 local now = tonumber(ARGV[2])
 local expireAt = now + tonumber(ARGV[3])
 if redis.call('ZSCORE', KEYS[1], member) then           -- 같은 멱등 키 재시도
-  redis.call('ZADD', KEYS[1], expireAt, member)          -- TTL만 늘리고 성공
-  redis.call('PEXPIRE', KEYS[1], ARGV[3])
+  redis.call('ZADD', KEYS[1], expireAt, member)          -- TTL(= "만료 평가 후보가 되는 시각")만 늘리고 성공
   return 1
 end
-redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now)     -- 지난 만료는 걷어낸다(수동적 반환)
 if redis.call('ZCARD', KEYS[1]) >= tonumber(ARGV[4]) then
   return 0                                               -- 매진
 end
 redis.call('ZADD', KEYS[1], expireAt, member)
-redis.call('PEXPIRE', KEYS[1], ARGV[3])
 return 1
 ```
 
@@ -69,15 +71,13 @@ return 1
 뒤에 오는 commerce의 멱등 처리(결정 4)와 **같은 키로 독립적으로** 멱등을 보장한다 — 한쪽이
 없어도 다른 쪽이 중복 생성을 막는 이중 안전장치다.
 
-**score = 만료 시각(epoch ms), 매 호출마다 `ZREMRANGEBYSCORE`로 지난 만료를 걷어내는 이유**:
-이게 "미결제 선점 수량 반환"(R13)의 **수동적** 형태다 — 능동적 해제 로직이 없어도, TTL이 지난
-홀드는 다음 호출이 왔을 때 자동으로 비워진다. R13이 올 때는 결제 완료·취소 시 **즉시** 비우는
-능동적 해제만 더하면 된다(이 ZSET 구조 자체를 바꿀 필요가 없다) — "이번 설계가 R13을 막지
-않는다"는 요구를 이 lazy-cleanup 구조로 만족한다.
+**score의 의미(R13 이후)**: "삭제 시각"이 아니라 **"만료 평가 후보가 되는 시각"**이다 —
+이 스크립트는 더 이상 스스로 치우지 않는다. 지금 몇 명이 선점 중인지(`ZCARD`)는 실제로
+반환되기 전까지 그대로 유지된다(과소판매 방향의 안전장치, fail-closed와 같은 정신). 지난
+score를 실제로 평가해 반환하거나 영구화하는 일은 `LiveOrderHoldReconciler`(결정 7)만 한다.
 
 **TTL 기본값 5분**: 명세의 가정("수량 선점 TTL 기본값은 5분이며 결제 UNKNOWN은 예외로
-유지된다")과 맞춘다 — R13이 올 때 그 "5분 뒤 반환" 규칙을 그대로 이 TTL에 대응시킬 수 있게
-지금부터 같은 수치를 쓴다. `app.live.order.hold-ttl`로 바꿀 수 있다.
+유지된다")과 맞춘다. `app.live.order.hold-ttl`로 바꿀 수 있다.
 
 **Redis 장애 시 fail-closed — `RedisVelocityCounter`(commerce, fail-open)와 의도적으로
 반대다**:
@@ -214,6 +214,117 @@ Redis N 한도와 무관하게 실제 재고가 먼저 동나는 경우), `Idemp
 | `LivePin.id`(JPA 행 식별자)로 범위를 잡는다 | 행이 방송당 하나뿐이라(재사용, `uk_live_pins_broadcast`) `id`는 방송 생애 동안 절대 안 바뀐다 — 재고정을 구분 못 하는 건 `broadcastId` 단독과 같다 |
 | `effectiveAt`(타임스탬프)으로 범위를 잡는다 | 같은 밀리초에 두 이벤트가 겹칠 수 있고(저장 정밀도·동시 호출), 사람이 읽기도 `generation`(정수 세대)보다 어렵다. 단조 증가 정수 카운터가 더 단순하고 안전하다 |
 
+## 2026-10-09(계속) — R13(미결제 반환·UNKNOWN 유지)·R14(매진 즉시 전환) 구현
+
+### 결정 7 — R13: 폴링 기반 조정자(`LiveOrderHoldReconciler`)가 결제 상태를 읽어 셋으로 가른다
+
+`LiveOrderGate`의 ZSET score를 "삭제 시각"이 아니라 **"만료 평가 후보가 되는 시각"**으로
+의미를 바꿨다 — 예전(R12 단계)에는 score가 지나면 `tryReserve`가 스스로 `ZREMRANGEBYSCORE`로
+치웠다. 그랬다면 결제 결과가 UNKNOWN인 홀드도 TTL이 지나는 순간 조건 없이 사라져 R13.2
+("UNKNOWN인 동안은 유지")를 어긴다. 그래서 자동 삭제를 없애고, 대신 `LiveOrderHoldReconciler`
+(media, `@Scheduled`로 주기 실행되는 `LiveOrderHoldRecoveryScheduler`가 호출)가 TTL이 지난
+후보마다 commerce에 결제 결과를 물어(`OrderPaymentStatus` 포트, R10~R12의 `ProductLookup`·
+`OrderPlacement`와 같은 split-package 패턴 — 구현은 `LiveOrderPaymentStatusAdapter`가
+commerce의 `OrderPaymentStatusFacts`를 감싼다) 셋으로 가른다:
+
+- **PAID** → `confirmPermanently`(score를 먼 미래로 — 다시는 평가 후보가 되지 않는다)
+- **IN_PROGRESS**(주문 상태 `PAYMENT_IN_PROGRESS`, 기존 체크아웃 사가가 쓰는 "결과 모름"
+  표현 그대로, ADR-007) → 그대로 둔다(R13.2)
+- **OTHER**(미결제·실패·취소·만료·기록 없음) → 즉시 반환한다(R13.1), 남은 수량 갱신을 방송한다
+
+**결제 복구 자체는 중복 구현하지 않는다(R32)** — `PaymentRecoveryService`가 PG 조회로
+UNKNOWN을 확정하면 주문 상태가 바뀌고, 다음 주기(기본 5초, `app.live.order.hold-recovery
+.interval-ms`)에 이 조정자가 그 바뀐 상태를 다시 읽어 PAID/OTHER로 처리한다 — **이벤트
+구독이 아니라 폴링**으로 엮었다. TTL이 기본 5분인데 폴링 주기가 5초라 지연은 무시할
+수준이고, 새 이벤트 타입을 추가해 결제 모듈에 결합을 만들지 않는 쪽을 택했다.
+
+스케줄러는 `app.live.order.hold-recovery.enabled=true`일 때만 켜진다(`local`·`worker`
+프로파일 기본 on, API 배포는 기본 off — `LiveBroadcastGraceScheduler`와 같은 게이트 관례).
+
+### 어긋남 1(실제로 재현·수정함) — **Redis 키 자체에 건 TTL이 영구화된(PAID) 홀드까지 지웠다**
+
+R12 단계의 Lua 스크립트는 멤버를 더할 때마다 `PEXPIRE KEYS[1] ttlMs`로 **키 전체**에도
+TTL을 걸었다(그때는 "아무도 안 쓰면 치워진다"는 안전장치였다 — 활발히 팔리는 동안은 호출마다
+갱신돼 문제가 없었다). R13에서 PAID 홀드를 "영구화"하려면 그 멤버가 **영원히** ZCARD에
+남아야 하는데, 키 자체가 `ttlMs`(기본 5분) 동안 새 호출이 없으면 **Redis가 키를 통째로
+지워버린다** — PAID로 영구화한 멤버까지 함께 사라진다. 즉 판매가 잠시 멈추면 이미 결제까지
+끝난 주문의 선점 기록이 사라지고, 남은 수량이 원래 한도로 되돌아가 보인다(과소판매가 아니라
+**집계 유실**).
+
+**이 ADR이 요구한 대로 재현 테스트를 먼저 만들었다가 실제로 걸렸다** —
+`LiveOrderHoldReconciliationSandboxTest`를 `app.live.order.hold-ttl=300ms`로 짧게 돌리자
+PAID·UNKNOWN 테스트가 전부 `currentCount=0`(키가 사라짐)으로 실패했다. **수정**: Lua
+스크립트에서 `PEXPIRE` 호출을 전부 없앴다 — 키에는 더 이상 TTL을 걸지 않는다. 멤버 수는
+`limit`로 저절로 상한이 걸리므로(게이트 로직 자체가 그 이상을 못 넣게 막는다) 키가 무한정
+자라는 문제는 없다 — "안 쓰면 치운다"는 안전장치가 필요했던 이유(무한정 자라는 것 방지)는
+이제 다른 방식(한도 상한)으로 이미 충족돼 있었다.
+
+| 대안 | 왜 버렸나 |
+|---|---|
+| 키 TTL을 유지하되 훨씬 길게(예: 24시간) 잡는다 | "길게"가 얼마나 길어야 안전한지 보장이 없다 — 방송이 하루 넘게 쉬다 재개되면 똑같이 터진다. 근본 원인(PAID도 지워짐)을 안 고친다 |
+| PAID로 영구화할 때마다 키 TTL을 PERSIST(TTL 해제)로 되돌린다 | 매번 추가 Redis 호출이 생기고, 그 호출 자체가 실패하면 또 같은 문제로 돌아간다 — TTL을 안 거는 쪽이 애초에 더 단순하고 실패 지점이 하나 적다 |
+
+### 어긋남 2 — commerce 주문은 성공했는데 그 뒤 `recordOrder`(선점-주문 연결 기록)가 실패하면
+
+`LiveOrderService.order`가 `orderPlacement.place(...)`(commerce 호출)와
+`gate.recordOrder(...)`(그 홀드가 어느 주문인지 Redis에 적어 두기)를 **같은 try 블록**에
+두고 실패하면 둘 다 release하던 첫 구현은 위험했다 — `place`가 **성공**한 뒤
+`recordOrder`만 실패하면(그 사이 Redis가 한 번 끊기는 경우 등) catch가 **이미 만들어진
+주문의 선점까지 release**해 버린다. 그러면 Redis는 자리가 비었다고 보고 다른 요청에게
+그 슬롯을 다시 내주는데, MySQL에는 **진짜 주문이 이미 있다** — 한도 N을 넘기는 결과로
+이어진다(정확히 "Redis는 선점했는데 MySQL 확정이 어긋난다"의 반대 방향 사례: 이번엔 MySQL이
+먼저 확정됐는데 Redis 쪽 부기가 어긋난다).
+
+**처리**: `orderPlacement.place(...)` 호출만 release 대상 try 블록에 남기고,
+`recordOrder`·방송은 **별도의 try 블록**으로 분리했다 — 실패해도 release하지 않고 로그만
+남긴 뒤 **주문 결과는 그대로 고객에게 돌려준다**(주문을 잃지 않는다). 테스트:
+`LiveOrderServiceTest.doesNotReleaseWhenRecordOrderFailsAfterOrderSucceeds`.
+
+**남는 위험(다시 볼 조건)**: `recordOrder`가 실패한 그 홀드는 `orderNoOf`가 `null`을
+돌려주므로, 나중에 TTL이 지나면 조정자가 "기록 없음"을 `OTHER`로 취급해 **반환**해 버린다
+— 그 사이 고객이 결제를 끝내도(진짜 PAID 주문인데) 슬롯은 이미 다른 사람에게 넘어갈 수
+있다. 발생 확률은 매우 낮다(`tryReserve`가 막 성공한 바로 다음 호출인 `recordOrder`가
+**그것만** 실패하려면 아주 좁은 시간창에 Redis가 끊겨야 한다)고 보고, 이번엔 안전장치를
+더 쌓지 않았다 — 고치려면 "멱등 키로 commerce의 주문 생성 기록을 다시 조회"하는 보조
+경로가 필요한데, 그건 새 조회 포트를 또 하나 만드는 일이라 비용 대비 효과가 낮다고 판단했다.
+
+### 결정 8 — R14: `QUANTITY_CHANGED`는 R9의 `effectiveAt`·`seq` 게이트를 **둘 다** 건너뛴다
+
+`LiveOrderService.order`가 주문을 확정할 때마다(그리고 조정자가 반환할 때마다) 지금
+`gate.currentCount`로 남은 수량을 다시 구해 `QUANTITY_CHANGED` 이벤트를 **즉시** 방송한다
+(`LivePinEventType.QUANTITY_CHANGED`, PINNED·PRICE_CHANGED와 별도 타입). R9는 가격·고정
+변경을 "영상 재생 시점(`effectiveAt`)에 도달한 뒤에만" 보여주지만, R14는 "1초 안에"를
+요구한다 — 매진인데도 주문 가능한 것처럼 몇 초 더 보이면 결제 실패·CS 비용이 생긴다.
+**가능 여부(안전 문제)가 가격 표시 정합성(영상과 안 맞아 보이는 문제)보다 우선한다**고 보고,
+클라이언트(`apps/web/lib/livePin.ts`)가 이 타입만 `pending`에 쌓지 않고 **받는 즉시**
+카드에 병합한다(`applyQuantityChanged`, 상품 이름·가격은 건드리지 않고
+`remainingQuantity`만 바꾼다 — 이 이벤트엔 그 필드들이 없다).
+
+**실제로 걸린 문제와 수정(클라이언트)**: 서버는 `QUANTITY_CHANGED`에 `pin.getSeq()`를
+그대로 싣는다(가격 변경처럼 "드롭이 바뀌는" 이벤트가 아니라서 seq를 올리지 않는다) — 즉
+같은 드롭 안의 **모든** 수량 갱신(주문 10건이면 10개 메시지)이 **같은 seq 값**을 공유한다.
+R9.3의 "seq가 이미 적용한 값보다 작거나 같으면 무시"를 이 타입에도 그대로 적용하면, 첫
+번째 수량 갱신을 적용한 순간 `lastAppliedSeq`가 그 값으로 고정되고 **이후의 모든 수량
+갱신(매진 포함)이 전부 "이미 처리한 seq"로 걸러져 버린다** — 화면이 첫 주문 이후로 다시는
+안 바뀐다. 그래서 `receiveLivePinEvent`가 `QUANTITY_CHANGED`에는 **seq 검사를 하지
+않는다** — WebSocket은 같은 연결에서 순서를 보장하므로(TCP) 전송 순서 자체는 보통 맞고,
+재연결 경합으로 아주 드물게 흐트러져도 다음 수량 갱신이나 재연결 스냅샷이 곧바로 고친다
+(다시 볼 조건으로 남긴다 — 완벽한 순서 보장보다 "항상 최신으로 수렴"을 택했다).
+
+**재연결 스냅샷(R9.2)·가격 변경(R9.1)도 실제 남은 수량을 실어야 한다**: `LivePinSnapshotReader
+.snapshot()`과 `LivePinService.changePrice()`가 예전에는 `pin.getLimitedQuantity()`(원래
+한도)를 그대로 `remainingQuantity`로 실었다 — 판매 중간에 재연결하거나 가격만 바꾸면
+이미 몇 개 팔렸어도 "남은 수량"이 한도 그대로 보이는 버그였다(R13·R14를 더하면서 드러났다).
+`LiveOrderGate`를 두 컴포넌트에 주입해 `pin.getLimitedQuantity() - gate.currentCount(...)`로
+다시 구하게 고쳤다(`LivePinEventView.pinned`/`priceChanged`가 이제 `remainingQuantity`를
+인자로 받는다 — 엔티티에서 바로 안 뽑는다).
+
+| 대안(R14 전달 방식) | 왜 버렸나 |
+|---|---|
+| 별도 `SOLD_OUT` 타입을 새로 만든다 | `remainingQuantity=0`이 이미 그 뜻이다(R13.1의 "수량 갱신"과 R14.1의 "매진"은 같은 신호의 두 표현) — 타입을 늘리면 클라이언트가 두 갈래를 다 처리해야 한다 |
+| 매진만 effectiveAt 게이트를 타게 하고 일반 수량 갱신은 즉시(또는 반대) | 일관성이 깨진다 — "몇 개 남았는지"와 "매진인지"는 같은 필드(remainingQuantity)의 두 값일 뿐이라 전달 규칙이 갈릴 이유가 없다 |
+| QUANTITY_CHANGED도 자신만의 새 단조 증가 seq(별도 Redis 카운터)를 둔다 | 멤버(=주문) 수만큼 Redis round-trip이 하나 더 늘고, 클라이언트는 "두 개의 독립된 seq 계보"를 들고 다녀야 한다 — "이 타입은 seq 검사를 안 한다"가 더 단순하고, WebSocket의 전송 순서 보장으로 실질적 위험이 낮다 |
+
 ## R13·R14·R15을 막지 않는다는 근거
 
 - **R13(미결제 반환, 기본 5분)**: 이 TTL 구조가 이미 "수동적" 반환이다 — 능동적 반환(결제
@@ -253,15 +364,19 @@ Redis N 한도와 무관하게 실제 재고가 먼저 동나는 경우), `Idemp
 
 ## 검증
 
-- 단위(media, `LiveOrderServiceTest`, 5건 전부 통과): R10.1(서버 가격 사용)·R10.2(고정
-  불일치/해제 시 409, 주문·게이트 미호출)·R12/R15(게이트 거절 시 commerce 미호출)·
-  R12(확정 실패 시 release).
+- 단위(media, `LiveOrderServiceTest`, 11건 전부 통과): R10.1·R11.1(서버 가격 사용, 장바구니
+  없이 1건)·R10.2(고정 불일치/해제 시 409)·R12/R15(게이트 거절 시 commerce 미호출)·
+  R12(확정 실패 시 release · 재고정 세대 분리 · recordOrder만 실패해도 release하지 않음)·
+  R13.1·R14.1(주문 성공 시 남은 수량 방송)·R14.1(매진 방송)·R14.2(매진 중 주문 거절).
+- 단위(media, `LiveOrderHoldReconcilerTest`, 4건 전부 통과, `MutableClock`으로 "5분 지남"을
+  결정적으로 재현): R13.1(미결제 반환+방송)·R13.2(UNKNOWN 유지)·PAID 영구화·아직 안
+  지난 홀드는 평가 자체를 안 함.
 - 실 동시성 — **두 클래스가 같은 시나리오를 서로 다른 인프라로 확인한다**(둘 다 유지):
   - `LiveOrderConcurrencyTest`(`@Tag("integration")`, Testcontainers MySQL+Redis) — 로컬·
     Docker 있는 CI용. 이 b-studio 샌드박스에는 Docker가 없어(`integrationTest`가 "Could not
     find a valid Docker environment"로 실패 — 이 저장소의 기존 Testcontainers 기반 테스트
     전부에 해당하는 샌드박스 제약이지 이 변경의 결함이 아니다) 여기서는 실행할 수 없다.
-  - **`LiveOrderConcurrencySandboxTest`(새로 추가, 2026-10-09)** — Testcontainers 없이 이
+  - **`LiveOrderConcurrencySandboxTest`(2026-10-08 추가)** — Testcontainers 없이 이
     샌드박스에 이미 떠 있는 실 mysql·redis 애드온에 평범한 `@SpringBootTest`로 붙는다
     (`SPRING_DATASOURCE_URL=jdbc:mysql://mysql:...` 등 앱 자신이 쓰는 환경변수를 그대로
     물려받는다). `@EnabledIfEnvironmentVariable`로 그 환경변수가 없는 로컬·CI에서는 자동으로
@@ -269,6 +384,15 @@ Redis N 한도와 무관하게 실제 재고가 먼저 동나는 경우), `Idemp
     수정 확인) — R12의 핵심 보장(확정 합계 ≤ N)을 이 저장소가 처음으로 게이트에서 직접
     확인하게 됐다. 테스트 데이터(상품·방송·주문·멱등키·Redis 키)는 `@AfterEach`에서 전부
     지운다.
+  - **`LiveOrderHoldReconciliationSandboxTest`(2026-10-09 추가, 같은 방식, `app.live.order
+    .hold-ttl=300ms`로 오버라이드해 5분을 실제로 안 기다린다)** — 기본 `test` 게이트에서
+    실행·통과(4건): R13.1(미결제 반환)·R13.2(UNKNOWN 유지)·PAID 영구화(두 번 평가해도
+    유지)·R14.1(마지막 1개 확정 시 매진 방송). **바로 이 테스트가 "키 TTL이 PAID 홀드까지
+    지운다" 결함을 실제로 드러냈다**(결정 7 "어긋남 1"). `LivePinBroadcaster`는 `@MockBean`
+    대신 이 테스트 안에서 `LiveOrderService`·`LiveOrderHoldReconciler`를 직접 생성해(다른
+    의존은 실 스프링 빈 그대로) 가짜로 바꿨다 — 그 인터페이스를 `@MockBean`으로 바꾸면
+    `LivePinWebSocketConfig`가 콘크리트 타입(`LivePinWebSocketHandler`)으로 의존하는 빈이
+    통째로 사라져 컨텍스트가 안 뜬다(실제로 걸렸다).
 - **실 경로(`tools/run-live-order-stock.sh`, 2026-10-08·09 두 차례 실행)**: 이 스크립트는
   k6가 있으면 k6를, 없으면(이 샌드박스) curl 백그라운드 프로세스로 동등한 동시 요청을 만든다.
   - 2026-10-08(최초, 재고정 수정 전 틀): R12.1 방송 생성 → 실 RTMP 송출로 LIVE 전이 → 상품
@@ -292,6 +416,22 @@ Redis N 한도와 무관하게 실제 재고가 먼저 동나는 경우), `Idemp
 - 수량 1 고정은 "한 사용자가 여러 번(다른 멱등 키로) 주문해 N개 중 여러 개를 가져가는 것"까지
   막지는 않는다 — "사용자당 한정"이 필요해지면 ZSET 멤버를 멱등 키 대신 `userId`로 바꾸는
   별도 규칙을 더해야 한다(이번 범위 밖, R12는 "총량 N"만 요구한다).
-- R14(매진 전체 전환)는 위에서 설계만 제시했고 이번 턴에 구현하지 않았다 — 다음 단계.
 - ~~같은 방송을 다시 고정(재고정)하면 Redis 홀드 키가 겹친다~~ → **고쳤다**(위 "2026-10-09
   수정" 절 참고, `LivePin.generation`으로 Redis 키를 분리).
+- ~~R14(매진 전체 전환)는 설계만 제시했고 구현하지 않았다~~ → **구현했다**(위 "2026-10-09(계속)"
+  절, 결정 8).
+- **`recordOrder` 실패 창**(결정 7 "어긋남 2"): 주문 생성 직후 그 홀드를 주문번호와 엮는
+  단계만 따로 실패하면, 나중에 조정자가 "기록 없음"으로 보고 반환해 버릴 수 있다 — 발생
+  확률은 낮다고 보고 이번엔 보강하지 않았다.
+- **`QUANTITY_CHANGED`는 seq 역행 검사를 하지 않는다**(결정 8): WebSocket 전송 순서(TCP)에
+  기대는 설계라, 재연결 경합 등으로 아주 드물게 오래된 수량 값이 잠깐 보일 수 있다 — 다음
+  갱신이나 재연결 스냅샷이 곧 고친다.
+- **R13 반환·확정은 폴링(기본 5초)이다** — 이벤트 구독이 아니다. 결제 확정 직후 "즉시"
+  영구화되지는 않고 다음 폴링까지 최대 5초 걸릴 수 있다(TTL 5분 대비 무시할 수준이라고
+  보고 그대로 뒀다). 더 빠른 반영이 필요해지면 `PaymentRecoveredEvent` 같은 기존 결제
+  이벤트를 구독하는 쪽으로 바꿀 수 있다(지금은 R32를 지키려 새 구독을 늘리지 않았다).
+- **방송 전체 "매진" 배너·버튼 비활성화 UI는 이번에 안 만들었다** — `apps/web/components
+  /LiveViewer.tsx`의 고정 카드가 "매진" 문구로 바뀌는 것까지만 했다. R11의 "바로 주문" 버튼
+  자체도 아직 화면에 없다(백엔드 엔드포인트만 있다) — 그래서 "주문 버튼 비활성화"는 이번
+  범위에서 확인할 대상이 없었다. 버튼 UI는 R11 프런트엔드 작업(이번 요청 범위 밖)과 함께
+  마무리해야 한다.

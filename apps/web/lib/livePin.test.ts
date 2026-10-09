@@ -89,6 +89,84 @@ describe('R9.3: seq가 거꾸로 온 이벤트는 무시한다', () => {
   });
 });
 
+describe('R13.1·R14.1: QUANTITY_CHANGED(한정 수량 갱신·매진)는 즉시 적용된다', () => {
+  it('R13.1: 남은 수량 갱신은 재생 시점(effectiveAt)을 기다리지 않고 받는 즉시 카드에 반영된다', () => {
+    const pinnedState = tickLivePinSync(
+      receiveLivePinEvent(INITIAL_LIVE_PIN_SYNC_STATE, pinnedEvent(1, '2025-12-31T23:59:00.000Z')),
+      Date.parse('2026-01-01T00:00:00.000Z'),
+    );
+    expect(pinnedState.card?.remainingQuantity).toBe(50);
+
+    // effectiveAt이 미래라도(아직 영상이 거기 도달 못 해도) 즉시 바뀌어야 한다.
+    const quantityEvent = pinnedEvent(1, '2099-01-01T00:00:00.000Z', {
+      type: 'QUANTITY_CHANGED',
+      productName: null,
+      price: null,
+      remainingQuantity: 49,
+    });
+    const next = receiveLivePinEvent(pinnedState, quantityEvent);
+
+    expect(next.card?.remainingQuantity).toBe(49); // tick 없이도 바로 반영
+    expect(next.card?.productName).toBe('P1');     // 상품 이름·가격은 그대로 유지(이벤트에 없음)
+    expect(next.card?.price).toBe(9_900);
+  });
+
+  it('R14.1: 같은 드롭 안의 여러 QUANTITY_CHANGED가 같은 seq를 써도(서버 재사용) 전부 적용된다 '
+      + '— seq 역행 검사(R9.3)는 이 타입에 적용하지 않는다', () => {
+    let state = tickLivePinSync(
+      receiveLivePinEvent(INITIAL_LIVE_PIN_SYNC_STATE, pinnedEvent(1, '2025-12-31T23:59:00.000Z')),
+      Date.parse('2026-01-01T00:00:00.000Z'),
+    );
+    expect(state.lastAppliedSeq).toBe(1);
+
+    for (const remaining of [49, 48, 1, 0]) {
+      state = receiveLivePinEvent(
+        state,
+        pinnedEvent(1, '2099-01-01T00:00:00.000Z', {
+          type: 'QUANTITY_CHANGED',
+          productName: null,
+          price: null,
+          remainingQuantity: remaining,
+        }),
+      );
+    }
+
+    expect(state.card?.remainingQuantity).toBe(0); // 매진까지 전부 반영됐다 — 중간에 하나도 안 걸러짐
+    expect(state.lastAppliedSeq).toBe(1); // PINNED/PRICE_CHANGED 계열의 seq 계보는 그대로다
+  });
+
+  it('R14.1: 매진(남은 수량 0)이면 카드가 "매진" 상태를 표현한다(remainingQuantity===0)', () => {
+    const state = receiveLivePinEvent(
+      tickLivePinSync(
+        receiveLivePinEvent(INITIAL_LIVE_PIN_SYNC_STATE, pinnedEvent(1, '2025-12-31T23:59:00.000Z')),
+        Date.parse('2026-01-01T00:00:00.000Z'),
+      ),
+      pinnedEvent(1, '2099-01-01T00:00:00.000Z', {
+        type: 'QUANTITY_CHANGED',
+        productName: null,
+        price: null,
+        remainingQuantity: 0,
+      }),
+    );
+
+    expect(state.card?.remainingQuantity).toBe(0);
+  });
+
+  it('아직 카드가 없을 때(스냅샷 전) QUANTITY_CHANGED가 오면 아무것도 만들지 않는다 — 다음 스냅샷을 기다린다', () => {
+    const state = receiveLivePinEvent(
+      INITIAL_LIVE_PIN_SYNC_STATE,
+      pinnedEvent(1, '2026-01-01T00:00:00.000Z', {
+        type: 'QUANTITY_CHANGED',
+        productName: null,
+        price: null,
+        remainingQuantity: 10,
+      }),
+    );
+
+    expect(state.card).toBeNull();
+  });
+});
+
 describe('estimatePlaybackWallClockMs: HLS PROGRAM-DATE-TIME 기반 재생 시점 추정(ADR-084)', () => {
   it('프래그먼트 시작 시각에 (지금 재생 위치 - 프래그먼트 시작 위치)를 더한다', () => {
     const fragmentProgramDateTimeMs = Date.parse('2026-01-01T00:00:00.000Z');

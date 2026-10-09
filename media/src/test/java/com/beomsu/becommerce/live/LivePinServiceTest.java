@@ -35,6 +35,7 @@ class LivePinServiceTest {
     private LiveBroadcastRepository broadcastRepository;
     private ProductLookup productLookup;
     private LivePinBroadcaster broadcaster;
+    private LiveOrderGate gate;
     private LivePinService service;
 
     @BeforeEach
@@ -43,7 +44,8 @@ class LivePinServiceTest {
         broadcastRepository = mock(LiveBroadcastRepository.class);
         productLookup = mock(ProductLookup.class);
         broadcaster = mock(LivePinBroadcaster.class);
-        service = new LivePinService(pinRepository, broadcastRepository, productLookup, broadcaster,
+        gate = mock(LiveOrderGate.class);   // currentCount 기본값 0 — 남은 수량은 한도 그대로
+        service = new LivePinService(pinRepository, broadcastRepository, productLookup, broadcaster, gate,
                 java.time.Clock.fixed(T0, java.time.ZoneOffset.UTC));
         when(pinRepository.save(org.mockito.ArgumentMatchers.any(LivePin.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));

@@ -27,20 +27,22 @@ public class LivePinService {
     private final LiveBroadcastRepository broadcastRepository;
     private final ProductLookup productLookup;
     private final LivePinBroadcaster broadcaster;
+    private final LiveOrderGate gate;
     private final Clock clock;
 
     @Autowired
     public LivePinService(LivePinRepository pinRepository, LiveBroadcastRepository broadcastRepository,
-            ProductLookup productLookup, LivePinBroadcaster broadcaster) {
-        this(pinRepository, broadcastRepository, productLookup, broadcaster, Clock.systemUTC());
+            ProductLookup productLookup, LivePinBroadcaster broadcaster, LiveOrderGate gate) {
+        this(pinRepository, broadcastRepository, productLookup, broadcaster, gate, Clock.systemUTC());
     }
 
     LivePinService(LivePinRepository pinRepository, LiveBroadcastRepository broadcastRepository,
-            ProductLookup productLookup, LivePinBroadcaster broadcaster, Clock clock) {
+            ProductLookup productLookup, LivePinBroadcaster broadcaster, LiveOrderGate gate, Clock clock) {
         this.pinRepository = pinRepository;
         this.broadcastRepository = broadcastRepository;
         this.productLookup = productLookup;
         this.broadcaster = broadcaster;
+        this.gate = gate;
         this.clock = clock;
     }
 
@@ -58,7 +60,10 @@ public class LivePinService {
         pin.pin(productId, price, limitedQuantity, clock.instant());
         pinRepository.save(pin);
 
-        LivePinEventView event = LivePinEventView.pinned(broadcastId, pin, resolveProductName(productId));
+        // 새 드롭이라 세대가 막 올라갔다(generation++, R12) — 선점 0건이 보장되므로 남은 수량은
+        // 늘 한도 그대로다. 그래도 공식은 하나로 통일해 둔다(priceChanged·snapshot과 같은 계산).
+        int remaining = remainingQuantity(pin);
+        LivePinEventView event = LivePinEventView.pinned(broadcastId, pin, resolveProductName(productId), remaining);
         broadcaster.broadcast(event);
         return event;
     }
@@ -89,9 +94,19 @@ public class LivePinService {
         pin.changePrice(newPrice, clock.instant());
         pinRepository.save(pin);
 
-        LivePinEventView event = LivePinEventView.priceChanged(broadcastId, pin, resolveProductName(pin.getProductId()));
+        // 가격만 바꿔도 지금까지 팔린 수량은 그대로다 — 한도가 아니라 실제 남은 수량을 다시 구해
+        // 싣는다(R13·R14, 안 그러면 판매 중간에 가격을 바꾸는 순간 "남은 수량"이 원래 한도로
+        // 되돌아가 보인다).
+        int remaining = remainingQuantity(pin);
+        LivePinEventView event =
+                LivePinEventView.priceChanged(broadcastId, pin, resolveProductName(pin.getProductId()), remaining);
         broadcaster.broadcast(event);
         return event;
+    }
+
+    /** 한도 − 지금 선점(확정 포함) 수(R13·R14) — {@code LiveOrderGate}가 쥔 실제 상태를 읽는다. */
+    private int remainingQuantity(LivePin pin) {
+        return Math.max(0, pin.getLimitedQuantity() - gate.currentCount(pin.getBroadcastId(), pin.getGeneration()));
     }
 
     private String resolveProductName(long productId) {

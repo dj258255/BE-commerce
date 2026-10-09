@@ -33,7 +33,8 @@ class LivePinSnapshotReaderTest {
         pin.changePrice(7_900L, T0.plusSeconds(2)); // seq=2, 수량은 23 그대로
         when(repository.findByBroadcastId(BROADCAST_ID)).thenReturn(Optional.of(pin));
         when(productLookup.findAll(List.of(1L))).thenReturn(List.of(new ProductLookup.Product(1L, "P1", 9_900L)));
-        LivePinSnapshotReader reader = new LivePinSnapshotReader(repository, productLookup);
+        LiveOrderGate gate = mock(LiveOrderGate.class);   // 선점 0건 — 남은 수량은 한도 그대로(23)
+        LivePinSnapshotReader reader = new LivePinSnapshotReader(repository, productLookup, gate);
 
         LivePinEventView snapshot = reader.snapshot(BROADCAST_ID);
 
@@ -51,7 +52,7 @@ class LivePinSnapshotReaderTest {
         LivePinRepository repository = mock(LivePinRepository.class);
         ProductLookup productLookup = mock(ProductLookup.class);
         when(repository.findByBroadcastId(BROADCAST_ID)).thenReturn(Optional.empty());
-        LivePinSnapshotReader reader = new LivePinSnapshotReader(repository, productLookup,
+        LivePinSnapshotReader reader = new LivePinSnapshotReader(repository, productLookup, mock(LiveOrderGate.class),
                 Clock.fixed(T0, ZoneOffset.UTC));
 
         LivePinEventView snapshot = reader.snapshot(BROADCAST_ID);
@@ -70,7 +71,7 @@ class LivePinSnapshotReaderTest {
         pin.pin(1L, 9_900L, 23, T0.plusSeconds(1)); // seq=1
         pin.unpin(T0.plusSeconds(2)); // seq=2
         when(repository.findByBroadcastId(BROADCAST_ID)).thenReturn(Optional.of(pin));
-        LivePinSnapshotReader reader = new LivePinSnapshotReader(repository, productLookup);
+        LivePinSnapshotReader reader = new LivePinSnapshotReader(repository, productLookup, mock(LiveOrderGate.class));
 
         LivePinEventView snapshot = reader.snapshot(BROADCAST_ID);
 

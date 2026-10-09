@@ -23,17 +23,38 @@ public record LivePinEventView(
         long seq,
         Instant effectiveAt) {
 
-    static LivePinEventView pinned(long broadcastId, LivePin pin, String productName) {
+    /**
+     * @param remainingQuantity 지금 실제로 남은 수량(R13·R14) — {@code pin.getLimitedQuantity()}가
+     *                          아니라 호출자가 {@code LiveOrderGate.currentCount}로 구한
+     *                          "한도 − 지금 선점 수"다. 드롭을 막 걸었을 때(선점 0건)는 둘이
+     *                          같지만, 판매 중간에 가격을 바꾸거나 시청자가 재연결할 때는 달라야
+     *                          한다 — 그렇지 않으면 이미 몇 개 팔린 뒤에도 "남은 수량"이 원래
+     *                          한도 그대로 보인다(버그, ADR-085 R13·R14 절 참고).
+     */
+    static LivePinEventView pinned(long broadcastId, LivePin pin, String productName, int remainingQuantity) {
         return new LivePinEventView(broadcastId, LivePinEventType.PINNED, pin.getProductId(), productName,
-                pin.getPrice(), pin.getLimitedQuantity(), pin.getSeq(), pin.getEffectiveAt());
+                pin.getPrice(), remainingQuantity, pin.getSeq(), pin.getEffectiveAt());
     }
 
     static LivePinEventView unpinned(long broadcastId, long seq, Instant effectiveAt) {
         return new LivePinEventView(broadcastId, LivePinEventType.UNPINNED, null, null, null, null, seq, effectiveAt);
     }
 
-    static LivePinEventView priceChanged(long broadcastId, LivePin pin, String productName) {
+    /** {@code remainingQuantity}의 의미는 {@link #pinned}와 같다 — 가격만 바뀌어도 실제 남은 수량을 다시 구해 싣는다. */
+    static LivePinEventView priceChanged(long broadcastId, LivePin pin, String productName, int remainingQuantity) {
         return new LivePinEventView(broadcastId, LivePinEventType.PRICE_CHANGED, pin.getProductId(), productName,
-                pin.getPrice(), pin.getLimitedQuantity(), pin.getSeq(), pin.getEffectiveAt());
+                pin.getPrice(), remainingQuantity, pin.getSeq(), pin.getEffectiveAt());
+    }
+
+    /**
+     * 한정 수량 선점·반환에 따른 남은 수량 갱신(R13·R14, ADR-085) — 받는 즉시 적용해야 한다
+     * ({@link LivePinEventType#QUANTITY_CHANGED} 참고, effectiveAt 게이트를 타지 않는다).
+     * 상품 이름·가격은 다시 보내지 않는다(PINNED 스냅샷에서 이미 안다 — 매 주문마다 카탈로그
+     * 조회를 반복하지 않으려는 것이다).
+     */
+    static LivePinEventView quantityChanged(long broadcastId, long productId, long seq, int remainingQuantity,
+            Instant now) {
+        return new LivePinEventView(broadcastId, LivePinEventType.QUANTITY_CHANGED, productId, null, null,
+                remainingQuantity, seq, now);
     }
 }
