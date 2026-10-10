@@ -43,6 +43,8 @@ public class CatalogController {
         return Boolean.TRUE.equals(tree) ? catalogQueryService.categoryTree() : catalogQueryService.categories();
     }
 
+    // 응답 시간 요구: 동시 10명에서 모두 200·p95 300ms 이내, 몰리면 BrowseShedFilter가 503으로
+    // 걸러내되 200 응답은 p95 300ms 이내(studio.yaml의 workflow.loadChecks에서 확인)
     @GetMapping("/products")
     public ProductPageView products(
             @RequestParam(required = false) String category,
