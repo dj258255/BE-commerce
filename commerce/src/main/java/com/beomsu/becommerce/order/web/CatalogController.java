@@ -85,6 +85,7 @@ public class CatalogController {
         return catalogQueryService.facets(category, featured, colour, productType, minPrice, maxPrice);
     }
 
+    // 응답 시간 요구: 동시 10명에서 p95 200ms 이내
     @GetMapping("/products/{productId}")
     public ProductDetailView product(@PathVariable long productId) {
         return catalogQueryService.product(productId);
