@@ -57,7 +57,7 @@ class LiveOrderHoldReconciliationTest {
     @BeforeEach
     void wireWithFakeBroadcaster() {
         broadcaster = mock(LivePinBroadcaster.class);
-        liveOrderService = new LiveOrderService(pinRepository, orderPlacement, gate, broadcaster);
+        liveOrderService = new LiveOrderService(pinRepository, orderPlacement, gate, broadcaster, new LivePinCache());
         reconciler = new LiveOrderHoldReconciler(pinRepository, gate, orderPaymentStatus, broadcaster);
     }
 

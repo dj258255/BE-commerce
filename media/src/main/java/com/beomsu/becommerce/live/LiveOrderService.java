@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
+import java.util.Optional;
 
 /**
  * 고정 상품 카드 "바로 주문" 애플리케이션 서비스(R10·R11·R12·R14, ADR-085) — live 모듈의 공개
@@ -37,25 +38,27 @@ public class LiveOrderService {
     private final OrderPlacement orderPlacement;
     private final LiveOrderGate gate;
     private final LivePinBroadcaster broadcaster;
+    private final LivePinCache pinCache;
     private final Clock clock;
 
     @Autowired
     public LiveOrderService(LivePinRepository pinRepository, OrderPlacement orderPlacement, LiveOrderGate gate,
-            LivePinBroadcaster broadcaster) {
-        this(pinRepository, orderPlacement, gate, broadcaster, Clock.systemUTC());
+            LivePinBroadcaster broadcaster, LivePinCache pinCache) {
+        this(pinRepository, orderPlacement, gate, broadcaster, pinCache, Clock.systemUTC());
     }
 
     LiveOrderService(LivePinRepository pinRepository, OrderPlacement orderPlacement, LiveOrderGate gate,
-            LivePinBroadcaster broadcaster, Clock clock) {
+            LivePinBroadcaster broadcaster, LivePinCache pinCache, Clock clock) {
         this.pinRepository = pinRepository;
         this.orderPlacement = orderPlacement;
         this.gate = gate;
         this.broadcaster = broadcaster;
+        this.pinCache = pinCache;
         this.clock = clock;
     }
 
     public OrderPlacement.PlacedOrder order(long userId, long broadcastId, long productId, String idempotencyKey) {
-        LivePin pin = pinRepository.findByBroadcastId(broadcastId)
+        LivePin pin = currentPin(broadcastId)
                 .filter(LivePin::isPinned)
                 .filter(p -> p.getProductId() == productId)
                 .orElseThrow(() -> LiveOrderException.pinMismatch(broadcastId, productId));
@@ -87,6 +90,22 @@ public class LiveOrderService {
                     placed.orderNo(), broadcastId, idempotencyKey, e);
         }
         return placed;
+    }
+
+    /**
+     * 지금 고정 상태를 읽는다(R15) — {@link LivePinCache}를 먼저 보고, 캐시가 비어 있을 때만
+     * (이 인스턴스가 막 뜬 직후, 또는 이 방송을 아직 한 번도 못 본 경우) DB로 폴백해 캐시를
+     * 채운다. 거절(매진) 경로도 이 조회를 거치므로, 캐시가 맞으면 거절 경로가 DB 커넥션을
+     * 전혀 쥐지 않는다.
+     */
+    private Optional<LivePin> currentPin(long broadcastId) {
+        Optional<LivePin> cached = pinCache.get(broadcastId);
+        if (cached.isPresent()) {
+            return cached;
+        }
+        Optional<LivePin> fromDb = pinRepository.findByBroadcastId(broadcastId);
+        fromDb.ifPresent(pinCache::put);
+        return fromDb;
     }
 
     /** R13.1·R14.1: 지금 남은 수량을 즉시 방송한다. 0이면 매진 — 운영 로그에도 남긴다(R14.2·R31.1). */

@@ -49,7 +49,7 @@ class LiveOrderServiceTest {
         orderPlacement = mock(OrderPlacement.class);
         gate = mock(LiveOrderGate.class);
         broadcaster = mock(LivePinBroadcaster.class);
-        service = new LiveOrderService(pinRepository, orderPlacement, gate, broadcaster,
+        service = new LiveOrderService(pinRepository, orderPlacement, gate, broadcaster, new LivePinCache(),
                 java.time.Clock.fixed(T0, java.time.ZoneOffset.UTC));
     }
 

@@ -28,21 +28,24 @@ public class LivePinService {
     private final ProductLookup productLookup;
     private final LivePinBroadcaster broadcaster;
     private final LiveOrderGate gate;
+    private final LivePinCache pinCache;
     private final Clock clock;
 
     @Autowired
     public LivePinService(LivePinRepository pinRepository, LiveBroadcastRepository broadcastRepository,
-            ProductLookup productLookup, LivePinBroadcaster broadcaster, LiveOrderGate gate) {
-        this(pinRepository, broadcastRepository, productLookup, broadcaster, gate, Clock.systemUTC());
+            ProductLookup productLookup, LivePinBroadcaster broadcaster, LiveOrderGate gate, LivePinCache pinCache) {
+        this(pinRepository, broadcastRepository, productLookup, broadcaster, gate, pinCache, Clock.systemUTC());
     }
 
     LivePinService(LivePinRepository pinRepository, LiveBroadcastRepository broadcastRepository,
-            ProductLookup productLookup, LivePinBroadcaster broadcaster, LiveOrderGate gate, Clock clock) {
+            ProductLookup productLookup, LivePinBroadcaster broadcaster, LiveOrderGate gate, LivePinCache pinCache,
+            Clock clock) {
         this.pinRepository = pinRepository;
         this.broadcastRepository = broadcastRepository;
         this.productLookup = productLookup;
         this.broadcaster = broadcaster;
         this.gate = gate;
+        this.pinCache = pinCache;
         this.clock = clock;
     }
 
@@ -59,6 +62,7 @@ public class LivePinService {
                 .orElseGet(() -> LivePin.forBroadcast(broadcastId, clock.instant()));
         pin.pin(productId, price, limitedQuantity, clock.instant());
         pinRepository.save(pin);
+        pinCache.put(pin);   // R15: LiveOrderService가 DB 대신 보는 캐시도 바로 맞춘다
 
         // 새 드롭이라 세대가 막 올라갔다(generation++, R12) — 선점 0건이 보장되므로 남은 수량은
         // 늘 한도 그대로다. 그래도 공식은 하나로 통일해 둔다(priceChanged·snapshot과 같은 계산).
@@ -77,6 +81,7 @@ public class LivePinService {
         boolean changed = pin.unpin(clock.instant());
         if (changed) {
             pinRepository.save(pin);
+            pinCache.put(pin);   // R15: 해제도 즉시 캐시에 반영 — 거절 경로가 낡은 고정을 보지 않게
             LivePinEventView event = LivePinEventView.unpinned(broadcastId, pin.getSeq(), pin.getEffectiveAt());
             broadcaster.broadcast(event);
             return event;
@@ -93,6 +98,7 @@ public class LivePinService {
 
         pin.changePrice(newPrice, clock.instant());
         pinRepository.save(pin);
+        pinCache.put(pin);   // R15: 가격 변경도 즉시 캐시에 반영
 
         // 가격만 바꿔도 지금까지 팔린 수량은 그대로다 — 한도가 아니라 실제 남은 수량을 다시 구해
         // 싣는다(R13·R14, 안 그러면 판매 중간에 가격을 바꾸는 순간 "남은 수량"이 원래 한도로

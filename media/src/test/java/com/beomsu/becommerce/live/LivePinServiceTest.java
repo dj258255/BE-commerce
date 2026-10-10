@@ -46,7 +46,7 @@ class LivePinServiceTest {
         broadcaster = mock(LivePinBroadcaster.class);
         gate = mock(LiveOrderGate.class);   // currentCount 기본값 0 — 남은 수량은 한도 그대로
         service = new LivePinService(pinRepository, broadcastRepository, productLookup, broadcaster, gate,
-                java.time.Clock.fixed(T0, java.time.ZoneOffset.UTC));
+                new LivePinCache(), java.time.Clock.fixed(T0, java.time.ZoneOffset.UTC));
         when(pinRepository.save(org.mockito.ArgumentMatchers.any(LivePin.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
     }

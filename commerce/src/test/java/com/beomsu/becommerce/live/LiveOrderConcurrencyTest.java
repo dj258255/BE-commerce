@@ -54,6 +54,8 @@ class LiveOrderConcurrencyTest {
     @Autowired
     LiveOrderService liveOrderService;
     @Autowired
+    LivePinCache pinCache;
+    @Autowired
     JdbcTemplate jdbc;
 
     private long product(int stock) {
@@ -68,6 +70,11 @@ class LiveOrderConcurrencyTest {
                 .orElseGet(() -> LivePin.forBroadcast(broadcastId, Instant.now()));
         pin.pin(productId, price, limit, Instant.now());
         pinRepository.save(pin);
+        // R15: 이 테스트는 LivePinService를 거치지 않고 리포지토리를 직접 쓴다 — 운영 코드가
+        // 똑같이 하는 캐시 갱신을 여기서도 해 줘야, 완판 뒤 재고정(세대 증가) 케이스에서
+        // LiveOrderService가 낡은 세대를 계속 보지 않는다(캐시는 이미 그 방송을 봤으므로
+        // DB 폴백이 다시 일어나지 않는다).
+        pinCache.put(pin);
     }
 
     private int confirmedOrders(long broadcastId, long productId, long firstUserId, int threads) throws Exception {

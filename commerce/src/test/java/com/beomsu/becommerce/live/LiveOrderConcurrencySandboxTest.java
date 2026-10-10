@@ -60,6 +60,8 @@ class LiveOrderConcurrencySandboxTest {
     @Autowired
     LiveOrderService liveOrderService;
     @Autowired
+    LivePinCache pinCache;
+    @Autowired
     JdbcTemplate jdbc;
     @Autowired
     StringRedisTemplate redis;
@@ -113,6 +115,9 @@ class LiveOrderConcurrencySandboxTest {
                 .orElseGet(() -> LivePin.forBroadcast(broadcastId, Instant.now()));
         pin.pin(productId, price, limit, Instant.now());
         pinRepository.save(pin);
+        // R15: LivePinService를 거치지 않고 리포지토리를 직접 쓰므로, 운영 코드가 하는 캐시
+        // 갱신도 여기서 해 줘야 재고정(세대 증가) 테스트가 낡은 세대를 보지 않는다.
+        pinCache.put(pin);
     }
 
     /** 스레드 여러 개가 서로 다른 사용자·멱등 키로 동시에 1건씩 주문한다. 확정 건수를 돌려준다. */
