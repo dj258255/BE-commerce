@@ -1,7 +1,20 @@
 import http from 'k6/http';
 import { check } from 'k6';
 import { Counter, Trend } from 'k6/metrics';
-import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
+
+/**
+ * 멱등 키 생성 — jslib.k6.io(https://jslib.k6.io/k6-utils/.../uuidv4)를 쓰지 않는다. 이
+ * 샌드박스의 compose 네트워크는 바깥으로 못 나가 그 원격 import가 그 자리에서 실패한다.
+ * 요청마다 값이 달라야 한다는 요건만 채우면 되므로(암호학적 무작위성은 필요 없다),
+ * Math.random() 기반의 표준 UUIDv4 패턴을 그대로 로컬에 둔다.
+ */
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 /**
  * R15 — 한정 수량 LIMIT개(기본 50) 상품에 VUS명(기본 1,000)이 동시에 1개씩 주문했을 때,
