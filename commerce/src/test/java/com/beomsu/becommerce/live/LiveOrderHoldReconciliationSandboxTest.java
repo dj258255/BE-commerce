@@ -24,7 +24,11 @@ import static org.mockito.Mockito.verify;
  * Docker 없이 이 b-studio 샌드박스의 실 애드온에 평범한 {@code @SpringBootTest}로 붙는다. R13의
  * "5분" TTL을 실제로 기다리지 않도록 {@code app.live.order.hold-ttl}을 짧게 오버라이드한다
  * (클래스 수준 {@code @SpringBootTest(properties=...)}라 다른 샌드박스 테스트와 클래스를
- * 나눴다 — 같은 클래스 안에서는 프로퍼티를 테스트별로 바꿀 수 없다).
+ * 나눴다 — 같은 클래스 안에서는 프로퍼티를 테스트별로 바꿀 수 없다). 실 애플리케이션 컨텍스트가
+ * 뜨는 만큼 {@code LiveOrderHoldRecoveryScheduler}(기본 5초 주기 실 배경 스케줄러)도 같이 떠서,
+ * 이 테스트가 수동으로 부르는 {@code reconciler.reconcileAll()}과 같은 홀드를 먼저 반환해 버리면
+ * {@code released}가 0으로 측정되는 경합이 생길 수 있다 — 그 주기({@code
+ * app.live.order.hold-recovery.interval-ms})도 테스트 수명보다 길게 늘려 끈다.
  *
  * <p>{@code LivePinBroadcaster}는 {@code @MockBean}으로 바꾸지 않는다 — 그 인터페이스를
  * 구현하는 {@code LivePinWebSocketHandler}를 {@code LivePinWebSocketConfig}가 콘크리트
@@ -34,7 +38,10 @@ import static org.mockito.Mockito.verify;
  * public 생성자가 있어 가능하다.
  */
 @EnabledIfEnvironmentVariable(named = "SPRING_DATASOURCE_URL", matches = "jdbc:mysql://mysql:.*")
-@SpringBootTest(properties = "app.live.order.hold-ttl=100ms")
+@SpringBootTest(properties = {
+        "app.live.order.hold-ttl=100ms",
+        "app.live.order.hold-recovery.interval-ms=600000"
+})
 @DisplayName("R13·R14(샌드박스 실 MySQL·Redis): 미결제 반환·UNKNOWN 유지·매진 즉시 방송")
 class LiveOrderHoldReconciliationSandboxTest {
 
