@@ -1,1 +1,8 @@
 rootProject.name = 'be-commerce'
+
+// media(R32, ADR-080) — 저장소 최상위 media/의 Gradle 모듈. commerce와 같은 빌드·같은 jar로
+// 배포한다(별도 서비스로 나누지 않는다). projectDir이 settings.gradle 위치(commerce/) 밖을
+// 가리키는 건 ADR-049가 "공용 자산은 루트에 둔다"고 정한 것과 같은 이유다 — media는 commerce
+// 전용이 아니라 저장소 최상위 영역이다.
+include(':media')
+project(':media').projectDir = file('../media')

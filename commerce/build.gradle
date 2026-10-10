@@ -28,6 +28,11 @@ ext {
 }
 
 dependencies {
+    // --- media(R32, ADR-080) — 숏폼 등 미디어 기능. 같은 jar로 포함하되(별도 서비스로 안 나눈다)
+    // media는 commerce에 의존하지 않는다(ShortsProductLookupAdapter만 commerce 쪽에 physically
+    // 남아 media가 정의한 포트를 구현한다 — 순환을 피하는 방향).
+    implementation project(':media')
+
     // --- Web / Core ---
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -115,6 +120,7 @@ tasks.named('test') {
     useJUnitPlatform {
         excludeTags 'chaos', 'integration', 'eval', 'capture', 'experiment', 'measurement'
     }
+
 
     // ErdDocMatchesSchemaTest는 문서(.md)와 마이그레이션(.sql)을 읽는다. 이 둘을 태스크 입력으로
     // 선언하지 않으면, 문서만 고쳤을 때 Gradle이 up-to-date로 판단해 테스트를 <건너뛴다>.

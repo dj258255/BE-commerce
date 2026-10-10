@@ -35,7 +35,7 @@ class CompositeUserDetailsServiceTest {
     void setUp() {
         memberRepository = mock(MemberRepository.class);
         uds = new SecurityConfig().userDetailsService(
-                "admin", "admin-pw", "user-pw", encoder, memberRepository);
+                "admin", "admin-pw", "user-pw", "seller-pw", encoder, memberRepository);
     }
 
     private static boolean hasRole(UserDetails u, String role) {
@@ -74,6 +74,15 @@ class CompositeUserDetailsServiceTest {
         assertThat(loaded.getUsername()).isEqualTo("1000");
         assertThat(hasRole(loaded, "USER")).isTrue();
         assertThat(encoder.matches("password123", loaded.getPassword())).isTrue();
+    }
+
+    @Test
+    @DisplayName("R21: 인메모리 데모 판매자 \"3\"은 username이 그대로 \"3\"(=sellerId)로 resolve(ROLE_SELLER)")
+    void resolvesInMemoryDemoSeller() {
+        UserDetails seller = uds.loadUserByUsername("3");
+
+        assertThat(seller.getUsername()).isEqualTo("3");
+        assertThat(hasRole(seller, "SELLER")).isTrue();
     }
 
     @Test

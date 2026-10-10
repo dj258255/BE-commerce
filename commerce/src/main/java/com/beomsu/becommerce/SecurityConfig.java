@@ -45,6 +45,15 @@ import java.util.Map;
  *       토스 경로는 서명이 없어 <b>페이로드를 믿지 않고 조회 API로 재검증</b>하는 것이 방어선이다.
  *       위조가 만드는 헛조회는 발신 IP 허용 목록으로 좁힐 수 있다 — 기본 off, 프록시 뒤에서는 앞단이 맡는다)</li>
  *   <li>{@code /actuator} → ADMIN. 단 {@code health/info}와 {@code prometheus}(수집기 스크레이프)는 공개</li>
+ *   <li>{@code /api/v1/shorts/**} → ROLE_SELLER(R21). 숏폼 업로드·조회는 판매자만 하고,
+ *       본인 영상만 보게 sellerId는 principal에서 얻는다(IDOR 방지). 단
+ *       {@code GET /api/v1/shorts/feed}(R26, READY 피드)와
+ *       {@code GET /api/v1/shorts/{id}/media/**}(R26, HLS 재생·썸네일)만 예외로 개방한다 —
+ *       비로그인 시청 허용.</li>
+ *   <li>{@code /api/v1/live/**} → ROLE_SELLER(R1). 방송 생성·조회는 판매자만. 단
+ *       {@code /api/v1/live/hooks/**}(R2·R3, MediaMTX HTTP 인증·송출 시작·종료 훅)는
+ *       예외로 개방한다 — 스트림 키 자체가 자격증명이고, 로그인한 사용자가 아니라 MediaMTX가
+ *       부른다.</li>
  * </ul>
  *
  * <p>인증은 <b>JWT Bearer(OAuth2 Resource Server, Nimbus HS256 대칭키)</b>로 한다. 무상태 HTTP
@@ -99,6 +108,37 @@ public class SecurityConfig {
                         // 선착순 대기열: 로그인 사용자만 줄 서기(멤버=인증 principal userId). 결제 경로와는
                         // 결합하지 않는 독립 프리미티브(입장/상태/이탈)이지만 참가자 식별을 위해 인증은 요구한다.
                         .requestMatchers("/api/v1/queue/**").hasRole("USER")
+                        // 숏폼 피드(R26)는 비로그인 포함 누구나 본다 — 더 구체적인 이 규칙이
+                        // 아래의 넓은 /api/v1/shorts/** 규칙보다 먼저 와야 먼저 매칭된다.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/shorts/feed").permitAll()
+                        // 숏폼 변환 산출물(HLS 재생목록·세그먼트·썸네일) 서빙도 피드와 같은
+                        // 공개 수준이다(R26 비로그인 시청) — ShortsMediaController, 개발용
+                        // 로컬 저장소 전제(운영은 CDN/오브젝트 스토리지가 대신한다, ADR-081).
+                        .requestMatchers(HttpMethod.GET, "/api/v1/shorts/*/media/**").permitAll()
+                        // 숏폼 시청 신호 기록(R27)도 비로그인 시청 허용과 같은 수준이다 — 익명
+                        // 식별자로 기록하므로 로그인을 요구하지 않는다(ShortsFeedController가
+                        // JWT가 있으면 그 userId를, 없으면 본문의 anonymousId를 쓴다).
+                        .requestMatchers(HttpMethod.POST, "/api/v1/shorts/*/signals").permitAll()
+                        // 숏폼 업로드(R21)는 판매자만. 소유권(sellerId) 검증은 principal에서 얻은
+                        // userId로 ShortsService가 한다 — 남의 영상 id로 조회·완료 처리 못 하게.
+                        .requestMatchers("/api/v1/shorts/**").hasRole("SELLER")
+                        // 라이브 방송(R1·R2·R3): MediaMTX 훅은 스트림 키 자체가 자격증명이라
+                        // 비로그인으로 열어야 한다(더 구체적인 이 규칙이 아래 넓은
+                        // /api/v1/live/** 규칙보다 먼저 와야 먼저 매칭된다).
+                        .requestMatchers("/api/v1/live/hooks/**").permitAll()
+                        // 고정 상품 카드 시청(R8·R9)도 비로그인 허용(R5와 같은 원칙) — WebSocket
+                        // 핸드셰이크(GET)와 재생 정보 조회만 공개한다. 고정·해제·가격 변경(쓰기)은
+                        // 아래 넓은 규칙대로 여전히 판매자만 — 이 둘은 쓰기 경로가 아니다.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/live/broadcasts/*/pins/ws").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/live/broadcasts/*/playback").permitAll()
+                        // 고정 상품 카드 "바로 주문"(R10·R11·R12)은 시청자(구매자) 몫이라
+                        // ROLE_USER다 — 더 구체적인 이 규칙이 아래 넓은(판매자 전용)
+                        // /api/v1/live/** 규칙보다 먼저 와야 먼저 매칭된다. 비로그인 호출은
+                        // 401로 거절된다(R5.2).
+                        .requestMatchers(HttpMethod.POST, "/api/v1/live/broadcasts/*/orders").hasRole("USER")
+                        // 방송 생성·조회(R1)는 판매자만. 소유권은 LiveBroadcastService가
+                        // sellerId(principal)로 검증한다 — 남의 방송 키를 못 보게.
+                        .requestMatchers("/api/v1/live/**").hasRole("SELLER")
                         // health/info와 Prometheus 스크레이프 엔드포인트는 개방한다. prometheus는
                         // 메트릭 수집기가 Bearer 없이 주기 GET 해야 하므로 인증을 걸면 스크레이프가 401로
                         // 막힌다. 운영에선 management.server.port를 내부망 전용으로 분리해 스크레이프하는
@@ -144,7 +184,7 @@ public class SecurityConfig {
     }
 
     /**
-     * 복합 UserDetailsService — 로그인 식별자로 (a) 먼저 인메모리 데모 계정(admin/admin2/"1"/"2")을
+     * 복합 UserDetailsService — 로그인 식별자로 (a) 먼저 인메모리 데모 계정(admin/admin2/"1"/"2"/"3")을
      * 찾고, 없으면 (b) MemberRepository로 이메일 회원을 찾는다. 둘 다 없으면 UsernameNotFoundException.
      *
      * <p><b>숫자 userId 계약 보존</b>: DaoAuthenticationProvider는 인증 성공 시 <i>로드된 UserDetails의
@@ -162,6 +202,7 @@ public class SecurityConfig {
             @Value("${app.admin.username:admin}") String adminUsername,
             @Value("${app.admin.password:admin-local-only}") String adminPassword,
             @Value("${app.user.password:user-local-only}") String userPassword,
+            @Value("${app.seller.password:seller-local-only}") String sellerPassword,
             PasswordEncoder encoder,
             MemberRepository memberRepository) {
         UserDetails admin = User.withUsername(adminUsername)
@@ -175,10 +216,15 @@ public class SecurityConfig {
                 .password(encoder.encode(userPassword)).roles("USER").build();
         UserDetails user2 = User.withUsername("2")
                 .password(encoder.encode(userPassword)).roles("USER").build();
-        InMemoryUserDetailsManager inMemory = new InMemoryUserDetailsManager(admin, admin2, user1, user2);
+        // 숏폼 업로드 등 판매자 전용 표면을 위한 데모 계정 — Seller(정산용 엔티티)와는 아직 연결되지
+        // 않는다(ADR 없이 임시 역할 분리). username "3"은 user1/user2 번호 체계를 그대로 잇는다.
+        UserDetails seller1 = User.withUsername("3")
+                .password(encoder.encode(sellerPassword)).roles("SELLER").build();
+        InMemoryUserDetailsManager inMemory =
+                new InMemoryUserDetailsManager(admin, admin2, user1, user2, seller1);
 
         return username -> {
-            // (a) 데모 계정 우선 — admin/admin2/"1"/"2"는 인메모리 그대로 유지(기존 로그인 무중단).
+            // (a) 데모 계정 우선 — admin/admin2/"1"/"2"/"3"은 인메모리 그대로 유지(기존 로그인 무중단).
             try {
                 return inMemory.loadUserByUsername(username);
             } catch (UsernameNotFoundException notDemo) {

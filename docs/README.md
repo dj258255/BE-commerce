@@ -148,6 +148,12 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-066](adr/ADR-066-next-page-follows-purchase-history.md) | 홈 다음 쪽의 GenPage 입력은 추천 행과 같은 이력을 따르고, 구매를 쓸 때는 구매만 넣는다 |
 | [ADR-067](adr/ADR-067-genpage-page-shares-capacity.md) | 홈 다음 쪽의 GenPage 호출도 추천 행과 같은 동시 호출 자리를 쓰고, 자리가 없으면 기다리지 않는다 |
 | [ADR-068](adr/ADR-068-genpage-v2-not-default.md) | 넷플릭스 GenPage 를 옮긴 v2 도 선을 넘지 못해 기본으로 켜지 않는다. 백엔드 경로는 v2 로 다시 쟀다 |
+| [ADR-080](adr/ADR-080-media-gradle-submodule.md) | `media/`를 별도 Gradle 하위 프로젝트로 떼면서 포트/어댑터로 commerce↔media 순환을 막는다 |
+| [ADR-081](adr/ADR-081-shorts-transcode-outbox-worker-profile.md) | 숏폼 변환 파이프라인은 MinIO·Kafka·별도 워커 대신 로컬 저장소·Outbox·같은 jar worker 프로파일로 시작한다 |
+| [ADR-082](adr/ADR-082-live-broadcast-outbox-hooks.md) | 라이브 방송 1단계는 MediaMTX HTTP 인증 훅은 그대로 쓰고 시작·종료 훅 전달만 Kafka 대신 Outbox로 받는다 |
+| [ADR-083](adr/ADR-083-shorts-signal-path.md) | 숏폼 시청 신호는 media 자신의 표에 남긴다 — 커머스의 개인화 Kafka/CDC 경로를 재사용하지 않는다 |
+| [ADR-084](adr/ADR-084-live-pin-sync-via-program-date-time.md) | 고정 상품 카드 동기화는 HLS PROGRAM-DATE-TIME으로, 전달은 Outbox 대신 즉시 WebSocket으로 한다 |
+| [ADR-085](adr/ADR-085-live-order-redis-reservation-mysql-confirmation.md) | 방송 중 "바로 주문"은 Redis 선점(TTL) 게이트로 한정 수량을 지키고, 주문 생성·멱등은 기존 commerce 흐름을 재사용한다. 미결제 반환·UNKNOWN 유지(R13)는 폴링 조정자가, 매진 즉시 전환(R14)은 effectiveAt·seq 게이트를 건너뛰는 별도 이벤트 타입이 맡는다 |
 
 ## 보조 문서
 

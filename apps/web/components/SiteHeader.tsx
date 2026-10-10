@@ -1,11 +1,12 @@
 import { MockBadge } from './ui';
 
-export type NavKey = 'home' | 'personalization' | 'console';
+export type NavKey = 'home' | 'personalization' | 'console' | 'shorts';
 
 const ITEMS: { key: NavKey; href: string; label: string }[] = [
   { key: 'home', href: '/', label: '개요' },
   { key: 'personalization', href: '/personalization', label: '개인화 홈' },
   { key: 'console', href: '/personalization/console', label: '실험 콘솔' },
+  { key: 'shorts', href: '/shorts', label: '숏폼' },
 ];
 
 export function SiteHeader({ active, mock }: { active: NavKey; mock: boolean }) {

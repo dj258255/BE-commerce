@@ -64,6 +64,33 @@ export type Homepage = {
   stats?: AssemblyStats;
 };
 
+/* ---------- 숏폼 피드(R26) ---------- */
+
+/** 숏폼 영상에 연결된 상품 요약(R25) — 피드 항목 아래에 보여 준다. */
+export type ShortsFeedProduct = { productId: number; name: string; price: number };
+
+/**
+ * 피드 항목 — READY인 영상만(변환 완료). `masterPlaylistUrl`·`thumbnailUrl`(R26 재생)은
+ * `GET /api/v1/shorts/{id}/media/**`(공개)로 바로 재생·표시할 수 있는 이 사이트 기준 상대
+ * 경로다 — `next.config.ts`의 `/api/:path*` rewrite가 Spring으로 보낸다.
+ */
+export type ShortsFeedItem = {
+  id: number;
+  durationSeconds: number;
+  width: number;
+  height: number;
+  createdAt: string;
+  masterPlaylistUrl: string;
+  thumbnailUrl: string;
+  products: ShortsFeedProduct[];
+};
+
+/**
+ * 커서 기반 한 쪽 — `nextCursor`가 null이면 마지막 쪽이다. `fallback`(R29)이 true면 개인화
+ * 점수 계산이 실패·지연돼 `items`가 최신순 READY 순서 그대로라는 뜻이다(조회 자체는 항상 성공).
+ */
+export type ShortsFeedPage = { items: ShortsFeedItem[]; nextCursor: number | null; hasNext: boolean; fallback: boolean };
+
 export type ExperimentStatus = 'idea' | 'todo' | 'running' | 'done';
 
 export type ExperimentSummary = {

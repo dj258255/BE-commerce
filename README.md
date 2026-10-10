@@ -43,6 +43,7 @@
 | --- | --- | --- |
 | `commerce/` | 주문·결제·정산 Java 앱 (Gradle 루트) | 이 저장소의 본체. 통째로 떼어낼 수 있게 물리적으로 묶었습니다 |
 | `commerce/consumer-app/` | 결제 DLT 재처리 소비자 (별도 Gradle 빌드) | commerce 의 DLT 를 읽습니다. commerce 를 떼면 같이 갑니다 |
+| `media/` | 라이브 커머스·숏폼 (별도 Gradle 하위 프로젝트) | commerce 와 같은 jar로 배포합니다(별도 서비스 아님). 주문·결제·재고 확정은 두지 않고 commerce의 공개 API만 부릅니다. 의존 방향과 그 이유는 [ADR-080](docs/adr/ADR-080-media-gradle-submodule.md) |
 | `personalization/` | 개인화 파이프라인·실험 문서 | 다른 데이터·다른 언어(Python)·다른 배포 |
 | `apps/web/` | Next.js 프론트 | |
 | `docs/` | 설계·ADR·API·ERD | **양쪽의 기록이 한 곳에** 있습니다. ADR 은 두 영역을 오갑니다 |
