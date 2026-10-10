@@ -55,6 +55,12 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # media(R23)의 FfmpegTranscodeRunnerTest가 실제 ffmpeg 바이너리로 변환을 끝까지 돈다
+      # (PATH에 없으면 조용히 skip된다). ubuntu-latest 러너엔 ffmpeg가 기본 설치돼 있지 않아
+      # 여기서 깔아 둔다 — 이 테스트가 R23의 유일한 실제 변환 검증이라 건너뛰면 안 된다.
+      - name: Install ffmpeg (R23 변환 테스트용)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       # 전체 테스트 = 단위·슬라이스 + Spring Modulith 경계 검증(ModularityTests).
       # Testcontainers/실 DB 없이 결정적으로 도는 스위트라 러너에 Docker가 필요 없다.
       - name: Run tests

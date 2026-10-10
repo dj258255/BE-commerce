@@ -24,11 +24,17 @@ import static org.mockito.Mockito.verify;
  * Docker 없이 이 b-studio 샌드박스의 실 애드온에 평범한 {@code @SpringBootTest}로 붙는다. R13의
  * "5분" TTL을 실제로 기다리지 않도록 {@code app.live.order.hold-ttl}을 짧게 오버라이드한다
  * (클래스 수준 {@code @SpringBootTest(properties=...)}라 다른 샌드박스 테스트와 클래스를
- * 나눴다 — 같은 클래스 안에서는 프로퍼티를 테스트별로 바꿀 수 없다). 실 애플리케이션 컨텍스트가
- * 뜨는 만큼 {@code LiveOrderHoldRecoveryScheduler}(기본 5초 주기 실 배경 스케줄러)도 같이 떠서,
- * 이 테스트가 수동으로 부르는 {@code reconciler.reconcileAll()}과 같은 홀드를 먼저 반환해 버리면
- * {@code released}가 0으로 측정되는 경합이 생길 수 있다 — 그 주기({@code
- * app.live.order.hold-recovery.interval-ms})도 테스트 수명보다 길게 늘려 끈다.
+ * 나눴다 — 같은 클래스 안에서는 프로퍼티를 테스트별로 바꿀 수 없다). {@code
+ * app.live.order.hold-recovery.enabled}는 기본(default) 프로파일에선 꺼져 있지만, 이 b-studio
+ * 샌드박스는 compose.b-studio.yaml이 {@code local} 프로파일을 켜고 그 프로파일은 이 값을
+ * {@code true}로 켠다({@code application.yml} 참고) — 그래서 이 테스트의 실 애플리케이션
+ * 컨텍스트에는 {@code LiveOrderHoldRecoveryScheduler}(실 배경 스케줄러, 컨텍스트 기동 직후
+ * 한 번 즉시 실행)도 같이 뜬다. 컨텍스트 기동 시점과 이 테스트가 홀드를 만드는 시점이 겹치면
+ * 그 배경 스케줄러가 수동 {@code reconciler.reconcileAll()}보다 먼저 같은 홀드를 반환해 버려
+ * {@code released}가 0으로 측정되는 경합이 생긴다 — 주기를 늘리는 것만으론 "컨텍스트 기동 직후
+ * 즉시 1회 실행"이라는 첫 실행까지는 못 막으므로, 이 프로퍼티 자체를 꺼서 그 빈이 테스트
+ * 컨텍스트에 아예 뜨지 않게 한다(이 테스트는 스케줄러 자체가 아니라 reconciler.reconcileAll()을
+ * 직접 불러서 본다).
  *
  * <p>{@code LivePinBroadcaster}는 {@code @MockBean}으로 바꾸지 않는다 — 그 인터페이스를
  * 구현하는 {@code LivePinWebSocketHandler}를 {@code LivePinWebSocketConfig}가 콘크리트
@@ -40,7 +46,7 @@ import static org.mockito.Mockito.verify;
 @EnabledIfEnvironmentVariable(named = "SPRING_DATASOURCE_URL", matches = "jdbc:mysql://mysql:.*")
 @SpringBootTest(properties = {
         "app.live.order.hold-ttl=100ms",
-        "app.live.order.hold-recovery.interval-ms=600000"
+        "app.live.order.hold-recovery.enabled=false"
 })
 @DisplayName("R13·R14(샌드박스 실 MySQL·Redis): 미결제 반환·UNKNOWN 유지·매진 즉시 방송")
 class LiveOrderHoldReconciliationSandboxTest {
@@ -131,7 +137,12 @@ class LiveOrderHoldReconciliationSandboxTest {
         assertThat(gate.currentCount(broadcastId, generation)).isEqualTo(1);
 
         Thread.sleep(1000);   // TTL(100ms)을 넉넉히 넘긴다 — 5분을 실제로 기다리지 않는다
+        long nowMsDbg = System.currentTimeMillis();
+        System.err.println("DEBUG nowMs=" + nowMsDbg + " pinned=" + pinRepository.findByProductIdIsNotNull().size()
+                + " expired=" + gate.expiredHolds(broadcastId, generation, nowMsDbg)
+                + " count=" + gate.currentCount(broadcastId, generation));
         int released = reconciler.reconcileAll();
+        System.err.println("DEBUG released=" + released);
 
         assertThat(released).isGreaterThanOrEqualTo(1);
         assertThat(gate.currentCount(broadcastId, generation)).isZero();   // 남은 수량 복구(3으로)
