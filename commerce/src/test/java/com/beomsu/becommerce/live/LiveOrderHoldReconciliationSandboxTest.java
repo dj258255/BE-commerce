@@ -24,17 +24,28 @@ import static org.mockito.Mockito.verify;
  * Docker 없이 이 b-studio 샌드박스의 실 애드온에 평범한 {@code @SpringBootTest}로 붙는다. R13의
  * "5분" TTL을 실제로 기다리지 않도록 {@code app.live.order.hold-ttl}을 짧게 오버라이드한다
  * (클래스 수준 {@code @SpringBootTest(properties=...)}라 다른 샌드박스 테스트와 클래스를
- * 나눴다 — 같은 클래스 안에서는 프로퍼티를 테스트별로 바꿀 수 없다). {@code
- * app.live.order.hold-recovery.enabled}는 기본(default) 프로파일에선 꺼져 있지만, 이 b-studio
- * 샌드박스는 compose.b-studio.yaml이 {@code local} 프로파일을 켜고 그 프로파일은 이 값을
- * {@code true}로 켠다({@code application.yml} 참고) — 그래서 이 테스트의 실 애플리케이션
- * 컨텍스트에는 {@code LiveOrderHoldRecoveryScheduler}(실 배경 스케줄러, 컨텍스트 기동 직후
- * 한 번 즉시 실행)도 같이 뜬다. 컨텍스트 기동 시점과 이 테스트가 홀드를 만드는 시점이 겹치면
- * 그 배경 스케줄러가 수동 {@code reconciler.reconcileAll()}보다 먼저 같은 홀드를 반환해 버려
- * {@code released}가 0으로 측정되는 경합이 생긴다 — 주기를 늘리는 것만으론 "컨텍스트 기동 직후
- * 즉시 1회 실행"이라는 첫 실행까지는 못 막으므로, 이 프로퍼티 자체를 꺼서 그 빈이 테스트
- * 컨텍스트에 아예 뜨지 않게 한다(이 테스트는 스케줄러 자체가 아니라 reconciler.reconcileAll()을
- * 직접 불러서 본다).
+ * 나눴다 — 같은 클래스 안에서는 프로퍼티를 테스트별로 바꿀 수 없다).
+ *
+ * <p><b>이 테스트 프로세스 밖에, 이미 떠 있는 commerce 서비스와 경합한다.</b> b-studio
+ * 샌드박스는 compose.b-studio.yaml로 commerce를 {@code local} 프로파일로 띄워 두고, 그
+ * 프로파일은 {@code app.live.order.hold-recovery.enabled=true}라 그 서비스 프로세스 안에서
+ * {@code LiveOrderHoldRecoveryScheduler}가 5초마다 진짜로 {@code reconcileAll()}을 돈다.
+ * 이 테스트는 그 서비스와 **같은 MySQL·Redis**({@code SPRING_DATASOURCE_URL=jdbc:mysql://mysql:...})
+ * 에 직접 붙으므로, 이 테스트가 100ms TTL로 만든 선점이 만료된 뒤 이 테스트가 수동으로
+ * {@code reconciler.reconcileAll()}을 부르기 <i>전에</i> 그 서비스의 스케줄러가 먼저 돌면
+ * 서비스 쪽이 이 테스트의 선점을 먼저 반환해 버려 이 테스트의 수동 호출은 0건을 돌려받는다
+ * (released=0, 경험적으로 4회 중 1회꼴 재현됨). 이 테스트 JVM 안의
+ * {@code app.live.order.hold-recovery.enabled}를 꺼도(아래 프로퍼티) 소용없다 — 경합 상대는
+ * 이 테스트 컨텍스트가 아니라 **별도 프로세스로 떠 있는 서비스**이기 때문이다. 그래서 진짜
+ * 고치는 지점은 "같은 Redis를 쓰지 않게" 만드는 것이다 — {@code spring.data.redis.database}를
+ * 서비스가 쓰는 기본값(0, compose.b-studio.yaml이 DATABASE를 안 정해서 기본값)과 다른 번호로
+ * 오버라이드해, {@link LiveOrderGate}의 ZSET 키({@code live:pin:...})가 서비스 쪽 Redis
+ * 논리 DB와 아예 분리된 공간에 쓰이게 한다 — 서비스의 스케줄러는 자기 DB(0)에서 그 키를 보지
+ * 못해 손대지 못한다. MySQL(핀·주문 행)은 여전히 서비스와 같은 테이블을 보지만, 서비스
+ * 스케줄러가 핀을 찾아도 Redis 쪽에 대응하는 홀드가(자기 DB 기준으로) 없으니 할 일이 없다.
+ * {@code app.live.order.hold-recovery.enabled=false}는 이 테스트 자신의 컨텍스트에 중복으로
+ * 뜰 스케줄러 빈을 막는 방어적 설정으로 남겨 둔다(이 테스트는 스케줄러가 아니라
+ * {@code reconciler.reconcileAll()}을 직접 불러서 본다).
  *
  * <p>{@code LivePinBroadcaster}는 {@code @MockBean}으로 바꾸지 않는다 — 그 인터페이스를
  * 구현하는 {@code LivePinWebSocketHandler}를 {@code LivePinWebSocketConfig}가 콘크리트
@@ -46,7 +57,8 @@ import static org.mockito.Mockito.verify;
 @EnabledIfEnvironmentVariable(named = "SPRING_DATASOURCE_URL", matches = "jdbc:mysql://mysql:.*")
 @SpringBootTest(properties = {
         "app.live.order.hold-ttl=100ms",
-        "app.live.order.hold-recovery.enabled=false"
+        "app.live.order.hold-recovery.enabled=false",
+        "spring.data.redis.database=1"
 })
 @DisplayName("R13·R14(샌드박스 실 MySQL·Redis): 미결제 반환·UNKNOWN 유지·매진 즉시 방송")
 class LiveOrderHoldReconciliationSandboxTest {
@@ -137,12 +149,7 @@ class LiveOrderHoldReconciliationSandboxTest {
         assertThat(gate.currentCount(broadcastId, generation)).isEqualTo(1);
 
         Thread.sleep(1000);   // TTL(100ms)을 넉넉히 넘긴다 — 5분을 실제로 기다리지 않는다
-        long nowMsDbg = System.currentTimeMillis();
-        System.err.println("DEBUG nowMs=" + nowMsDbg + " pinned=" + pinRepository.findByProductIdIsNotNull().size()
-                + " expired=" + gate.expiredHolds(broadcastId, generation, nowMsDbg)
-                + " count=" + gate.currentCount(broadcastId, generation));
         int released = reconciler.reconcileAll();
-        System.err.println("DEBUG released=" + released);
 
         assertThat(released).isGreaterThanOrEqualTo(1);
         assertThat(gate.currentCount(broadcastId, generation)).isZero();   // 남은 수량 복구(3으로)

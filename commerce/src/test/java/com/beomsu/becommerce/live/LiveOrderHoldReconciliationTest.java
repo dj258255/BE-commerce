@@ -27,16 +27,10 @@ import static org.mockito.Mockito.verify;
  * {@link LiveOrderHoldReconciliationSandboxTest}와 같은 시나리오를 Docker 기반 인프라로
  * 다시 확인한다(둘 다 유지, {@link LiveOrderConcurrencyTest}·{@code
  * LiveOrderConcurrencySandboxTest}와 같은 관계). Docker가 필요해 기본 {@code test}가 아니라
- * {@code integrationTest}로 뗀다. {@code app.live.order.hold-recovery.enabled}는 기본
- * 프로파일에선 꺼져 있어 보통은 문제가 안 되지만, 혹시 다른 프로파일이 섞여도 이 테스트의
- * 수동 {@code reconcileAll()} 호출과 실 배경 스케줄러가 경합하지 않도록 이 프로퍼티를 명시적으로
- * 꺼서 그 빈 자체가 테스트 컨텍스트에 뜨지 않게 한다.
+ * {@code integrationTest}로 뗀다.
  */
 @Tag("integration")
-@SpringBootTest(properties = {
-        "app.live.order.hold-ttl=100ms",
-        "app.live.order.hold-recovery.enabled=false"
-})
+@SpringBootTest(properties = "app.live.order.hold-ttl=100ms")
 @DisplayName("R13·R14(Testcontainers): 미결제 반환·UNKNOWN 유지·매진 즉시 방송")
 class LiveOrderHoldReconciliationTest {
 
