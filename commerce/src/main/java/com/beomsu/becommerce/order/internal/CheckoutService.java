@@ -87,7 +87,31 @@ public class CheckoutService {
                             product.getPrice(), l.quantity());
                 })
                 .toList();
-        // 재고를 언제 잡을지(#374). 기본(NONE)은 여기서 아무것도 하지 않는다(ADR-003: 승인 뒤 차감).
+        return buildAndSaveOrder(userId, items);
+    }
+
+    /**
+     * 방송 특가 주문(R10·R11, ADR-085) — 가격을 카탈로그가 아니라 호출자(media live 모듈의
+     * {@code LiveOrderPlacementAdapter}, order 쪽은 {@code SpecialPriceOrderPlacement})가
+     * 이미 서버 상태(방송 고정 특가)로 검증한 값을 그대로 쓴다. 대기열 게이트(이벤트 상품
+     * 전용)는 거치지 않는다 — 방송 한정 수량 게이트는 media가 Redis로 별도로 본다(R12,
+     * {@code LiveOrderGate}). 상품 실존은 여기서도 한 번 더 확인한다(카탈로그에서 사라진
+     * 상품으로 주문이 만들어지지 않게, defense in depth).
+     *
+     * <p>수량은 늘 1이다 — 고정 상품 카드 "바로 주문"은 1인 1건 한정 특가로 범위를 좁혔다
+     * (ADR-085). 재고 보호(CHECK/AT_ORDER 전략)는 {@link #buildAndSaveOrder}를 그대로 타므로
+     * 일반 주문과 같은 불변식이 적용된다.
+     */
+    @Transactional
+    public CreateOrderResult createSpecialPriceOrder(long userId, long productId, long unitPrice) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> OrderException.productNotFound(productId));
+        OrderItem item = OrderItem.of(product.getProductId(), product.getName(), unitPrice, 1);
+        return buildAndSaveOrder(userId, List.of(item));
+    }
+
+    /** 재고를 언제 잡을지(#374). 기본(NONE)은 여기서 아무것도 하지 않는다(ADR-003: 승인 뒤 차감). */
+    private CreateOrderResult buildAndSaveOrder(long userId, List<OrderItem> items) {
         List<StockReservationService.Line> stockLines = items.stream()
                 .map(i -> new StockReservationService.Line(i.getProductId(), i.getQuantity()))
                 .toList();

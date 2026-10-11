@@ -1,0 +1,73 @@
+# MediaMTX 설정 — 라이브 방송 1단계(R1·R2·R3). 명세 5절의 출발점(RTMP 송출, HTTP 인증 훅)을
+# 다룬다. HLS는 기본 재생목록이 뜨는지만 확인하고(아래 hls 절), 지연 튜닝·LL-HLS·녹화(R4)는
+# 다음 단계에서 연다.
+#
+# 이 파일의 역사(둘 다 실제 송출로 찾은 버그, 순서대로):
+#
+# 1) 호스트 주소 치환 버그(고침) — `${LIVE_HOOKS_HOST}` 같은 셸 스타일 치환을 썼었는데,
+#    MediaMTX는 설정 파일 안의 `${...}`를 환경 변수로 치환하지 않는다(docker compose도
+#    마운트된 파일의 내용은 건드리지 않는다). 모든 인증 요청이
+#    `parse "http://${LIVE_HOOKS_HOST}:8080/...": invalid character "{" in host name`로
+#    깨졌다. 지금은 가장 흔한 호스트("commerce")를 이 파일의 리터럴 기본값으로 쓰고, 다른
+#    호스트가 필요한 환경은 MediaMTX 공식 환경 변수 덮어쓰기(`MTX_` 접두 + 파라미터 이름
+#    대문자, 예: `MTX_AUTHHTTPADDRESS`)를 그 compose 파일에서 쓴다(저장소 루트 compose.yaml
+#    참고).
+#
+# 2) 명령 훅(runOnReady/runOnNotReady) 실행 불가(발견, 설계 변경) — 공식
+#    `bluenviron/mediamtx` 이미지에는 셸이 없다(`docker exec mediamtx sh` →
+#    "exec: \"sh\": executable file not found in $PATH", 사용자가 직접 확인). runOn* 훅은
+#    MediaMTX가 명령 문자열을 셸로 실행하는 방식이라 **셸이 없으면 절대 실행되지 않는다** —
+#    이 이미지에서는 애초에 될 수 없는 방법이었다. 그래서 송출 시작·종료를 commerce에
+#    "밀어 알리는"(push) 훅을 전부 버리고, commerce가 아래 Control API(`api: yes`)를
+#    주기적으로 "당겨 읽는"(poll) 방식으로 바꿨다 — `MediaMtxPathPoller`(media/live 모듈),
+#    근거와 대안 비교는 ADR-082 "runOnReady 실행 가능 여부" 절.
+#
+#    (부작용 하나 더 찾음: pathDefaults에 훅만 걸고 `paths:`의 "~^live/.+$" 항목을 지웠더니
+#    MediaMTX가 인증을 묻기도 전에 `path 'live/...' is not configured`로 거절했다 — 경로
+#    패턴 자체는 pathDefaults와 별개로 **여전히 필요**하다(경로를 받아들일지 여부). 지금은
+#    훅이 없으니 빈 블록으로 되살렸다.)
+#
+# 3) 보안 수정(ADR-084) — 경로가 `live/{streamKey}`이던 시절에는 그 경로가 RTMP 송출
+#    주소이자 HLS 시청 주소이기도 해서, 시청 화면(비로그인 포함 누구나 보는 페이지)에
+#    스트림 키 원문이 그대로 노출됐다 — 그 키를 본 사람이라면 누구나 그 방송에 대신 송출할
+#    수 있었다(R1.2가 다른 판매자에게 막으려는 바로 그 위험이 시청자 전체로 열린 셈).
+#    지금은 경로가 `live/{broadcastId}`(공개 id, 노출돼도 안전)이고, 송출 비밀(스트림 키)은
+#    RTMP URL의 `?pass=` 쿼리로 따로 보낸다 — MediaMTX가 그 값을 HTTP 인증 훅의 `password`
+#    필드로 옮겨 싣는다(공식 지원 — authHTTPAddress 요청 바디에 `user`·`password`·`query`
+#    필드가 원래부터 있다). `LiveBroadcastService#authenticatePublish`가 그 비밀을 방송의
+#    실제 스트림 키와 맞댄다. 아래 `paths:`의 경로 패턴은 그대로 쓴다 — 숫자 id도
+#    `~^live/.+$`에 맞는다.
+
+# 송출 URL 예시(보안 수정 반영): rtmp://<host>:1935/live/{broadcastId}?pass={streamKey}
+# 시청(HLS) URL은 비밀 없이: http://<host>:8888/live/{broadcastId}/index.m3u8
+
+# HTTP 기반 인증(R2) — publish(송출) 시도마다 이 주소로 물어본다. 2xx면 허용. 이건 MediaMTX가
+# 직접 만드는 HTTP 호출이라 셸이 필요 없다(훅과 다르다) — 그대로 쓴다.
+# commerce가 action이 "publish"가 아니면(시청 등) 무조건 허용한다(R5 전까지, 코드 쪽 주석 참고).
+authMethod: http
+authHTTPAddress: http://commerce:8080/api/v1/live/hooks/auth
+
+# 제어 API — commerce의 MediaMtxPathPoller가 여기로 경로별 ready 상태를 주기적으로 읽는다
+# (R3 상태 전이의 유일한 입력이 됐다, 위 "2) 명령 훅 실행 불가" 참고). 셸이 전혀 필요 없는
+# MediaMTX 자체 기능이라 항상 동작한다.
+api: yes
+apiAddress: :9997
+
+# RTMP 송출만 받는다(R1~R3 범위).
+rtmp: yes
+rtmpAddress: :1935
+
+# HLS는 MediaMTX 기본값이 이미 켜져 있다(hls: yes, hlsAddress: :8888) — 명시적으로 적어
+# 둔다. R1~R3 실 송출 확인 범위에 "HLS 재생목록을 받을 수 있는가"가 포함돼 추가했다. 지연
+# 측정(R6)·LL-HLS 세부 튜닝은 범위 밖이고, read/playback 액션은 위 authHTTPAddress가 이미
+# 무조건 허용한다(R5 로그인 없이 시청 허용은 아직 더 뒤 단계).
+hls: yes
+hlsAddress: :8888
+
+paths:
+  # rtmp://<host>/live/{broadcastId} 패턴을 받아들인다는 선언만 한다(LiveStreamPaths.PREFIX
+  # "live/"와 짝, 보안 수정 이후로는 뒤가 스트림 키가 아니라 숫자 id다) — 훅은 없다(위
+  # "2) 명령 훅 실행 불가" 이후로는 commerce가 Control API를 폴링해서 안다). 이 블록이
+  # 없으면 MediaMTX가 인증을 묻기도 전에 "경로가 설정되지 않음"으로 거절한다 — 비어 있어도
+  # 반드시 있어야 하는 선언이다.
+  "~^live/.+$": {}

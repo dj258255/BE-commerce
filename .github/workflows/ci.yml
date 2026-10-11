@@ -55,6 +55,12 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # media(R23)의 FfmpegTranscodeRunnerTest가 실제 ffmpeg 바이너리로 변환을 끝까지 돈다
+      # (PATH에 없으면 조용히 skip된다). ubuntu-latest 러너엔 ffmpeg가 기본 설치돼 있지 않아
+      # 여기서 깔아 둔다 — 이 테스트가 R23의 유일한 실제 변환 검증이라 건너뛰면 안 된다.
+      - name: Install ffmpeg (R23 변환 테스트용)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       # 전체 테스트 = 단위·슬라이스 + Spring Modulith 경계 검증(ModularityTests).
       # Testcontainers/실 DB 없이 결정적으로 도는 스위트라 러너에 Docker가 필요 없다.
       - name: Run tests
@@ -66,6 +72,12 @@ jobs:
       # 이유와 함께 적는다.
       - name: Check skipped tests (건너뛴 테스트는 통과가 아니다)
         run: python3 tools/check_skipped_tests.py commerce/build/test-results/test ci/allowed-skips.txt
+
+      # media(R32)는 commerce가 포함하는 별도 Gradle 모듈이라 결과가 다른 디렉터리에 남는다
+      # (media/build/test-results/test). "./gradlew -p commerce test"가 같은 호출로 함께
+      # 돌리지만(Gradle이 하위 프로젝트의 동명 태스크를 자동으로 묶는다), 검사는 모듈별로 나뉜다.
+      - name: Check skipped tests (media) (건너뛴 테스트는 통과가 아니다)
+        run: python3 tools/check_skipped_tests.py media/build/test-results/test ci/allowed-skips.txt
 
       # 링크는 디렉터리를 옮기면 조용히 깨진다 — 빌드도 테스트도 안 잡고, 읽는 사람만 404를 만난다.
       # commerce/ 재배치에서 실제로 깊이가 어긋난 링크가 나와 검사로 고정했다.
@@ -84,6 +96,15 @@ jobs:
         with:
           name: test-report
           path: commerce/build/reports/tests/test
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload test report (media)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-media
+          path: media/build/reports/tests/test
           if-no-files-found: ignore
           retention-days: 7
 

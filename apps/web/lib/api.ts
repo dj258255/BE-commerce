@@ -1,5 +1,6 @@
 import { headers } from 'next/headers';
-import type { Category, ExperimentSummary, ExperimentsFile, Homepage } from './contracts';
+import type { Category, ExperimentSummary, ExperimentsFile, Homepage, ShortsFeedPage } from './contracts';
+import { SHORTS_FEED_PATH } from './shortsFeed';
 
 /** 실 API(Spring) 주소. 개발 기본 8080. */
 export const SPRING_API = process.env.SPRING_API ?? 'http://localhost:8080';
@@ -92,6 +93,20 @@ async function getJson<T>(resource: keyof typeof PATHS, suffix = '', inj: Inject
 
 /** 상점 카탈로그 — 실재하는 Spring API. */
 export const getCategories = () => fetchJson<Category[]>(new URL(`${SPRING_API}/api/v1/categories`));
+
+/**
+ * 숏폼 피드(R26) — 로그인 없이 보이는 **실재하는** Spring API라 카탈로그와 같이 스텁을 타지 않는다.
+ * 경로가 `/api/*`라 브라우저에서 상대경로로 불러도 `next.config.ts`의 rewrite가 같은 곳으로 보낸다
+ * — 그래서 클라이언트 쪽 "더 불러오기"는 이 함수 대신 `fetch('/api/v1/shorts/feed?...')`를 상대경로로
+ * 직접 부른다(서버 컴포넌트의 첫 쪽만 이 함수로 SPRING_API를 직접 쓴다). 경로 상수는
+ * `lib/shortsFeed.ts`에 있다(클라이언트 컴포넌트가 이 서버 전용 파일을 끌어오지 않게).
+ */
+export function getShortsFeed(params: { cursor?: number; size?: number } = {}): Promise<Result<ShortsFeedPage>> {
+  const url = new URL(`${SPRING_API}${SHORTS_FEED_PATH}`);
+  if (params.cursor != null) url.searchParams.set('cursor', String(params.cursor));
+  if (params.size != null) url.searchParams.set('size', String(params.size));
+  return fetchJson<ShortsFeedPage>(url);
+}
 
 /**
  * 개인화 홈 — 실 API는 **인증이 필요하다**. 그래서 스텁과 경로가 다르다(토큰을 얻어 실어 보낸다).
