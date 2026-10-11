@@ -59,6 +59,35 @@ services:
       timeout: 5s
       retries: 10
 
+  # 라이브 방송(R1·R2·R3) — 공식 이미지. RTMP 송출(1935)·Control API(9997)를 연다(시청은
+  # HLS:8888, 녹화는 다음 단계). 설정은 media/mediamtx.yml(저장소에 커밋, 기본값은 commerce가
+  # 컨테이너인 환경 — b-studio 샌드박스 — 를 가정한다).
+  #
+  # 이 compose의 기본 흐름(인프라만 컨테이너, 앱은 host에서 bootRun)에서는 commerce가
+  # 컨테이너 밖(host)에 있다. 인증 훅(authHTTPAddress, MediaMTX → commerce, 셸 불필요한
+  # 네이티브 HTTP)만 host.docker.internal로 덮어쓴다 — MediaMTX가 설정 파일 안에서 `${...}`
+  # 셸 치환을 지원하지 않으므로(R1~R3 실 송출 확인에서 찾은 버그 1, media/mediamtx.yml 상단
+  # 주석) 공식 환경 변수(MTX_파라미터이름대문자)로 덮어쓴다.
+  #
+  # 송출 시작·끊김(R3)은 더는 훅이 아니다 — 공식 이미지에 셸이 없어 명령 훅(runOnReady 등)이
+  # 실행될 수 없다는 것을 확인했다(ADR-082 버그 2). 그래서 commerce가 반대 방향으로
+  # MediaMTX의 Control API(9997)를 폴링한다(app.live.mediamtx.api-base-url) — 포트를 host에
+  # 열어 뒀으니 host의 commerce는 기본값(http://localhost:9997)을 그대로 쓰면 된다(덮어쓸
+  # 필요 없음, b-studio 샌드박스처럼 commerce도 컨테이너일 때만 서비스 이름으로 덮어쓴다,
+  # compose.b-studio.yaml 참고).
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    ports:
+      - "1935:1935"   # RTMP 송출
+      - "9997:9997"   # Control API(R3 폴링)
+      - "8888:8888"   # HLS 시청
+    environment:
+      MTX_AUTHHTTPADDRESS: http://host.docker.internal:8080/api/v1/live/hooks/auth
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./media/mediamtx.yml:/mediamtx.yml:ro
+
   # CDC — mysql binlog를 읽어 Kafka로 흘린다. cdc 프로필로만 기동한다(기본 up에는 포함되지 않음).
   #   docker compose --profile cdc up -d debezium
   debezium:

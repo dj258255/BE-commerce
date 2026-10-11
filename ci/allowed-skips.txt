@@ -16,3 +16,14 @@ com.beomsu.becommerce.payment.pg.TossPgLiveContractTest.*
 com.beomsu.becommerce.payment.pg.TossPgLiveLifecycleTest.*
 com.beomsu.becommerce.payment.pg.KakaoPayLiveContractTest.*
 
+# b-studio 샌드박스에 이미 떠 있는 실 MySQL·Redis(SPRING_DATASOURCE_URL=jdbc:mysql://mysql:...)로만
+# 도는 R12·R13·R14 동시성 테스트(@EnabledIfEnvironmentVariable). GitHub Actions에는 그 환경변수가
+# 없어 조건이 거짓이 되어 건너뛴다 — Testcontainers로 바꿔도 이 클래스엔 @Tag("integration")이
+# 없어 integrationTest 태스크(includeTags 'integration')에 아예 포함되지 않는다. 같은 시나리오
+# (확정 합계 ≤ N, 멱등 키 중복 방지, 재고정 세대 분리, TTL 반환·UNKNOWN 유지·매진 즉시 방송)는
+# LiveOrderConcurrencyTest·LiveOrderHoldReconciliationTest(@Tag("integration"), Testcontainers)가
+# "integration test (real DB)" CI 잡에서 실 MySQL로 그대로 검증한다 — 둘은 인프라만 다르고
+# 검증 내용이 같은 의도적 중복이다(클래스 javadoc 참고).
+com.beomsu.becommerce.live.LiveOrderConcurrencySandboxTest.*  # 샌드박스 전용(SPRING_DATASOURCE_URL 필요) — LiveOrderConcurrencyTest가 integration-test 잡에서 같은 시나리오를 돈다
+com.beomsu.becommerce.live.LiveOrderHoldReconciliationSandboxTest.*  # 샌드박스 전용(SPRING_DATASOURCE_URL 필요) — LiveOrderHoldReconciliationTest가 integration-test 잡에서 같은 시나리오를 돈다
+
