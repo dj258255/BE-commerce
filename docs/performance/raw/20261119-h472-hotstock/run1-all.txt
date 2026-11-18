@@ -1,0 +1,48 @@
+=== MySQL 8.4.13 · flush_log_at_trx_commit=1 · 기본 격리 REPEATABLE-READ · 풀 90 ===
+HOTSTOCK-TPS strategy=ROW conc=1 tps=221 tps_min=80 tps_max=253 p50_ms=3.95 p99_ms=17.63 errors=0 extra=-
+HOTSTOCK-TPS strategy=ROW conc=20 tps=292 tps_min=163 tps_max=332 p50_ms=65.53 p99_ms=100.86 errors=0 extra=-
+HOTSTOCK-TPS strategy=ROW conc=64 tps=362 tps_min=344 tps_max=381 p50_ms=171.75 p99_ms=256.07 errors=0 extra=-
+HOTSTOCK-TPS strategy=UNIT_RR conc=1 tps=188 tps_min=156 tps_max=198 p50_ms=5.14 p99_ms=7.46 errors=0 extra=refills=3,empty_but_locked=0,deadlocks=0,lock_wait_timeouts=0
+HOTSTOCK-TPS strategy=UNIT_RR conc=20 tps=1488 tps_min=1476 tps_max=1496 p50_ms=12.39 p99_ms=46.26 errors=0 extra=refills=25,empty_but_locked=0,deadlocks=0,lock_wait_timeouts=0
+HOTSTOCK-TPS strategy=UNIT_RR conc=64 tps=2191 tps_min=2166 tps_max=2219 p50_ms=21.86 p99_ms=211.72 errors=0 extra=refills=37,empty_but_locked=0,deadlocks=0,lock_wait_timeouts=0
+HOTSTOCK-TPS strategy=UNIT_RC conc=1 tps=202 tps_min=191 tps_max=203 p50_ms=4.81 p99_ms=6.76 errors=0 extra=refills=3,empty_but_locked=0,deadlocks=0,lock_wait_timeouts=0
+HOTSTOCK-TPS strategy=UNIT_RC conc=20 tps=1241 tps_min=1211 tps_max=1427 p50_ms=14.75 p99_ms=52.90 errors=0 extra=refills=22,empty_but_locked=0,deadlocks=0,lock_wait_timeouts=0
+HOTSTOCK-TPS strategy=UNIT_RC conc=64 tps=1910 tps_min=1656 tps_max=2142 p50_ms=23.77 p99_ms=223.97 errors=0 extra=refills=32,empty_but_locked=0,deadlocks=0,lock_wait_timeouts=0
+HOTSTOCK-TPS strategy=REDIS conc=1 tps=238 tps_min=226 tps_max=241 p50_ms=4.06 p99_ms=8.82 errors=0 extra=applied_batches=3901
+HOTSTOCK-TPS strategy=REDIS conc=20 tps=1971 tps_min=1536 tps_max=2063 p50_ms=9.54 p99_ms=23.66 errors=0 extra=applied_batches=1604
+HOTSTOCK-TPS strategy=REDIS conc=64 tps=3809 tps_min=3280 tps_max=3868 p50_ms=15.99 p99_ms=36.96 errors=0 extra=applied_batches=971
+HOTSTOCK-TPS strategy=BATCH_W5 conc=1 tps=89 tps_min=84 tps_max=90 p50_ms=11.47 p99_ms=16.11 errors=0 extra=batches=1470,avg_batch=1.0
+HOTSTOCK-TPS strategy=BATCH_W5 conc=20 tps=480 tps_min=471 tps_max=515 p50_ms=40.58 p99_ms=55.91 errors=0 extra=batches=418,avg_batch=20.0
+HOTSTOCK-TPS strategy=BATCH_W5 conc=64 tps=664 tps_min=656 tps_max=673 p50_ms=94.05 p99_ms=120.64 errors=0 extra=batches=177,avg_batch=64.0
+HOTSTOCK-TPS strategy=BATCH_W20 conc=1 tps=30 tps_min=30 tps_max=30 p50_ms=34.31 p99_ms=38.06 errors=0 extra=batches=510,avg_batch=1.0
+HOTSTOCK-TPS strategy=BATCH_W20 conc=20 tps=329 tps_min=309 tps_max=334 p50_ms=61.45 p99_ms=69.03 errors=0 extra=batches=278,avg_batch=20.0
+HOTSTOCK-TPS strategy=BATCH_W20 conc=64 tps=693 tps_min=681 tps_max=694 p50_ms=91.24 p99_ms=118.04 errors=0 extra=batches=185,avg_batch=64.0
+HOTSTOCK-TPS strategy=BATCH_W5_SP conc=1 tps=84 tps_min=82 tps_max=84 p50_ms=12.10 p99_ms=14.21 errors=0 extra=batches=1420,avg_batch=1.0
+HOTSTOCK-TPS strategy=BATCH_W5_SP conc=20 tps=426 tps_min=421 tps_max=429 p50_ms=46.55 p99_ms=54.56 errors=0 extra=batches=364,avg_batch=20.0
+HOTSTOCK-TPS strategy=BATCH_W5_SP conc=64 tps=514 tps_min=511 tps_max=525 p50_ms=121.42 p99_ms=165.84 errors=0 extra=batches=135,avg_batch=64.0
+HOTSTOCK-SELLOUT strategy=ROW sold=200 left=0 oversell=0 extra=-
+HOTSTOCK-SELLOUT strategy=UNIT_RR sold=200 left=0 oversell=0 extra=refills=0,empty_but_locked=0,deadlocks=0,lock_wait_timeouts=0
+HOTSTOCK-SELLOUT strategy=UNIT_RC sold=200 left=0 oversell=0 extra=refills=0,empty_but_locked=4,deadlocks=0,lock_wait_timeouts=0
+HOTSTOCK-SELLOUT strategy=REDIS sold=200 left=0 oversell=0 extra=applied_batches=4
+HOTSTOCK-SELLOUT strategy=BATCH_W5 sold=200 left=0 oversell=0 extra=batches=5,avg_batch=52.8
+HOTSTOCK-SELLOUT strategy=BATCH_W20 sold=200 left=0 oversell=0 extra=batches=5,avg_batch=52.8
+HOTSTOCK-SELLOUT strategy=BATCH_W5_SP sold=200 left=0 oversell=0 extra=batches=5,avg_batch=52.8
+HOTSTOCK-FAIR strategy=ROW sold=200 first_200_bought=146
+HOTSTOCK-FAIR strategy=UNIT_RR sold=200 first_200_bought=200
+HOTSTOCK-FAIR strategy=UNIT_RC sold=200 first_200_bought=200
+HOTSTOCK-FAIR strategy=REDIS sold=200 first_200_bought=200
+HOTSTOCK-FAIR strategy=BATCH_W5 sold=200 first_200_bought=200
+HOTSTOCK-FAIR strategy=BATCH_W20 sold=200 first_200_bought=200
+HOTSTOCK-FAIR strategy=BATCH_W5_SP sold=200 first_200_bought=200
+HOTSTOCK-REDIS-CRASH mode=SIMPLE crash=BEFORE_DB crashed_batch=17 sold=5000 oversell=0 db_stock=17 truth_left=0 db_error=17(차감 손실)
+HOTSTOCK-REDIS-CRASH mode=SIMPLE crash=AFTER_DB crashed_batch=10 sold=5000 oversell=0 db_stock=0 truth_left=0 db_error=0(일치)
+HOTSTOCK-REDIS-CRASH mode=RELIABLE crash=BEFORE_DB crashed_batch=10 sold=5000 oversell=0 db_stock=0 truth_left=0 db_error=0(일치)
+HOTSTOCK-REDIS-CRASH mode=RELIABLE crash=AFTER_DB crashed_batch=8 sold=5000 oversell=0 db_stock=-8 truth_left=0 db_error=-8(중복 차감)
+HOTSTOCK-REDIS-CRASH mode=RELIABLE_IDEMPOTENT crash=BEFORE_DB crashed_batch=10 sold=5000 oversell=0 db_stock=0 truth_left=0 db_error=0(일치)
+HOTSTOCK-REDIS-CRASH mode=RELIABLE_IDEMPOTENT crash=AFTER_DB crashed_batch=24 sold=5000 oversell=0 db_stock=0 truth_left=0 db_error=0(일치)
+HOTSTOCK-REDIS-LOSS recovery=FROM_DB_STOCK pending_at_loss=0 stop_ms=59.1 sold=5000 oversell=0 db_stock=0 truth_left=0
+HOTSTOCK-REDIS-LOSS recovery=FROM_ORDERS pending_at_loss=0 stop_ms=46.2 sold=5000 oversell=0 db_stock=0 truth_left=0
+HOTSTOCK-RECON clean samples=47 mismatch_samples=10 alarms_single=10 alarms_3x=0
+HOTSTOCK-RECON injected detect_single_ms=32 detect_3x_ms=245 alarms_single=49 alarms_3x=2
+HOTSTOCK-POISON strategy=BATCH_W5 requests=6400 poison=64 poison_failed=64 innocent_failed=0 innocent_sold=6336 batches=100 avg_batch=64.0
+HOTSTOCK-POISON strategy=BATCH_W5_SP requests=6400 poison=64 poison_failed=64 innocent_failed=0 innocent_sold=6336 batches=100 avg_batch=64.0

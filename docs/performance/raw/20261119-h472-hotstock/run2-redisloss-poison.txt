@@ -1,0 +1,6 @@
+HOTSTOCK-REDIS-LOSS applier_lag_ms=0 recovery=FROM_DB_STOCK pending_at_loss=20 stop_ms=45.2 sold=5020 oversell=20 db_stock=0 truth_left=0
+HOTSTOCK-REDIS-LOSS applier_lag_ms=0 recovery=FROM_ORDERS pending_at_loss=19 stop_ms=56.2 sold=5000 oversell=0 db_stock=0 truth_left=0
+HOTSTOCK-REDIS-LOSS applier_lag_ms=500 recovery=FROM_DB_STOCK pending_at_loss=958 stop_ms=540.3 sold=5958 oversell=958 db_stock=0 truth_left=0
+HOTSTOCK-REDIS-LOSS applier_lag_ms=500 recovery=FROM_ORDERS pending_at_loss=880 stop_ms=554.9 sold=5000 oversell=0 db_stock=0 truth_left=0
+HOTSTOCK-POISON strategy=BATCH_W5 requests=6400 poison=64 poison_failed=64 innocent_failed=4032 innocent_sold=2304 batches=100 avg_batch=64.0
+HOTSTOCK-POISON strategy=BATCH_W5_SP requests=6400 poison=64 poison_failed=64 innocent_failed=0 innocent_sold=6336 batches=100 avg_batch=64.0
