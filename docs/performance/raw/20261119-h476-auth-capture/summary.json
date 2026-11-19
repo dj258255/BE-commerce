@@ -1,0 +1,83 @@
+{
+ "R1": {
+  "paid_orders": 100,
+  "net_cancel_tasks": 3,
+  "done": 3,
+  "failed": 0,
+  "pending": 0,
+  "pg_cancel_success": 3,
+  "cancel_failed_calls": 0.0,
+  "after_capture": 0,
+  "before_capture": 3,
+  "L_s": {
+   "n": 3,
+   "min": 2.358,
+   "p50": 2.492,
+   "max": 2.622
+  }
+ },
+ "R2": {
+  "paid_orders": 100,
+  "net_cancel_tasks": 1,
+  "done": 0,
+  "failed": 1,
+  "pending": 0,
+  "pg_cancel_success": 0,
+  "cancel_failed_calls": 5.0,
+  "after_capture": 0,
+  "before_capture": 0,
+  "L_s": {
+   "n": 0,
+   "min": null,
+   "p50": null,
+   "max": null
+  },
+  "outage": {
+   "start_ms": 1795050767199,
+   "end_ms": 1795050947199,
+   "tasks_created_rel_start_s": [
+    -3.7
+   ],
+   "predicted_failed": 1,
+   "borderline": 0,
+   "cancel_after_outage_end_s": {
+    "max": null,
+    "min": null
+   },
+   "failed_task_retry_counts": [
+    5
+   ]
+  }
+ },
+ "R3": {
+  "paid_orders": 100,
+  "net_cancel_tasks": 1,
+  "done": 1,
+  "failed": 0,
+  "pending": 0,
+  "pg_cancel_success": 1,
+  "cancel_failed_calls": 7.0,
+  "after_capture": 1,
+  "before_capture": 0,
+  "L_s": {
+   "n": 1,
+   "min": 272.874,
+   "p50": 272.874,
+   "max": 272.874
+  },
+  "outage": {
+   "start_ms": 1795050762311,
+   "end_ms": 1795050942311,
+   "tasks_created_rel_start_s": [
+    -1.3
+   ],
+   "predicted_failed": 1,
+   "borderline": 0,
+   "cancel_after_outage_end_s": {
+    "max": 91.445,
+    "min": 91.445
+   },
+   "failed_task_retry_counts": []
+  }
+ }
+}

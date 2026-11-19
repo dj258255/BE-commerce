@@ -1,0 +1,5 @@
+fake_pg_approve_first_epoch_ms{application="be-commerce"} 1.795050736623E12
+fake_pg_cancel_after_capture_total{application="be-commerce"} 0.0
+fake_pg_cancel_before_capture_total{application="be-commerce"} 3.0
+fake_pg_cancel_fail_first_epoch_ms{application="be-commerce"} 0.0
+fake_pg_cancel_failed_total{application="be-commerce"} 0.0

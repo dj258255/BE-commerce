@@ -29,6 +29,19 @@ public class CompensationExecutor {
     private final MeterRegistry meterRegistry;
 
     /**
+     * 0 보다 크면 망취소를 횟수(5회) 대신 적재 뒤 이 시간(초) 동안 재시도한다(#476, ADR-086). 0 이면 지금 규칙.
+     * 필드 기본값을 둬 단위 테스트가 직접 만든 실행기도 지금 규칙으로 돈다.
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.compensation.retry-window-seconds:0}")
+    private long retryWindowSeconds = 0;
+
+    /** 시간 창 규칙이면 포기 시각, 아니면 null. */
+    private Instant giveUpAt(CompensationTask task) {
+        return retryWindowSeconds > 0 && task.getCreatedAt() != null
+                ? task.getCreatedAt().plusSeconds(retryWindowSeconds) : null;
+    }
+
+    /**
      * 태스크 1건 실행. 이미 PENDING이 아니면(멱등) 아무 것도 하지 않는다.
      *
      * <p>망취소 성공 → DONE(SUCCEEDED). <b>이미 취소된 결제</b>(PAYMENT_ALREADY_SETTLED) → 보상 완료로 DONE.
@@ -104,7 +117,7 @@ public class CompensationExecutor {
 
     /** 재시도 대상 실패를 결과 분류와 함께 기록한다(호출 트랜잭션 안에서 — 태스크는 managed). */
     private void retryable(CompensationTask task, Exception e, CompensationOutcome outcome, String metricTag) {
-        task.recordFailure(e.getMessage(), backoffInstant(task.getRetryCount()), outcome);
+        task.recordFailure(e.getMessage(), backoffInstant(task.getRetryCount()), outcome, giveUpAt(task));
         if (task.isExhausted()) {
             meterRegistry.counter("compensation.exhausted").increment();
         }
@@ -127,7 +140,7 @@ public class CompensationExecutor {
         if (task == null) {
             return;
         }
-        task.recordFailure(error, backoffInstant(task.getRetryCount()));
+        task.recordFailure(error, backoffInstant(task.getRetryCount()), null, giveUpAt(task));
         if (task.isExhausted()) {
             // 자동 처리를 포기함 — 운영이 개입해야 한다. 알림 룰의 소스가 되는 카운터.
             meterRegistry.counter("compensation.exhausted").increment();

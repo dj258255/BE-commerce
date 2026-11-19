@@ -92,4 +92,39 @@ class CompensationTaskTest {
         assertThat(t.getNextAttemptAt()).isBefore(far);
         assertThat(t.getNextAttemptAt()).isBeforeOrEqualTo(Instant.now());
     }
+
+    @Test
+    @DisplayName("시간 창 규칙(#476): 횟수가 maxRetries 를 넘어도 포기 시각 전이면 PENDING")
+    void windowRuleIgnoresCountBeforeGiveUp() {
+        CompensationTask t = task();
+        Instant giveUpAt = Instant.now().plusSeconds(1800);
+        for (int i = 0; i < 20; i++) {
+            t.recordFailure("PG 취소 장애", Instant.now().plusSeconds(60), CompensationOutcome.FAILED_DEFINITE, giveUpAt);
+        }
+        assertThat(t.getRetryCount()).isEqualTo(20);
+        assertThat(t.getStatus()).isEqualTo(CompensationStatus.PENDING);
+        assertThat(t.isExhausted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("시간 창 규칙(#476): 포기 시각이 지나면 한 번의 실패로도 FAILED")
+    void windowRuleFailsAfterGiveUp() {
+        CompensationTask t = task();
+        t.recordFailure("PG 취소 장애", Instant.now().plusSeconds(60), CompensationOutcome.FAILED_DEFINITE,
+                Instant.now().minusSeconds(1));
+        assertThat(t.getRetryCount()).isEqualTo(1);
+        assertThat(t.isExhausted()).isTrue();
+    }
+
+    @Test
+    @DisplayName("시간 창 규칙(#476): 포기 시각이 null 이면 지금 규칙(5회째 FAILED)과 같다")
+    void nullGiveUpKeepsCountRule() {
+        CompensationTask t = task();
+        for (int i = 0; i < 4; i++) {
+            t.recordFailure("실패", Instant.now().plusSeconds(60), null, null);
+        }
+        assertThat(t.isExhausted()).isFalse();
+        t.recordFailure("실패", Instant.now().plusSeconds(60), null, null);
+        assertThat(t.isExhausted()).isTrue();
+    }
 }

@@ -1,0 +1,162 @@
+{
+    "metrics": {
+        "vus": {
+            "value": 1,
+            "min": 0,
+            "max": 16
+        },
+        "http_reqs": {
+            "count": 406,
+            "rate": 6.721914735094391
+        },
+        "http_req_blocked": {
+            "med": 0.005,
+            "max": 1.322,
+            "p(90)": 0.1670000000000003,
+            "p(95)": 0.3077499999999999,
+            "avg": 0.0436280788177341,
+            "min": 0.001
+        },
+        "vus_max": {
+            "value": 40,
+            "min": 40,
+            "max": 40
+        },
+        "data_received": {
+            "count": 166207,
+            "rate": 2751.7962620094418
+        },
+        "iteration_duration": {
+            "med": 68.183083,
+            "max": 5020.240458,
+            "p(90)": 1819.488625,
+            "p(95)": 2276.942416,
+            "avg": 579.0248564518275,
+            "min": 11.901584
+        },
+        "iterations": {
+            "count": 301,
+            "rate": 4.983488510501013
+        },
+        "http_req_connecting": {
+            "avg": 0.02835221674876847,
+            "min": 0,
+            "med": 0,
+            "max": 0.84,
+            "p(90)": 0.05600000000000101,
+            "p(95)": 0.23824999999999993
+        },
+        "http_req_receiving": {
+            "min": 0.019,
+            "med": 0.326,
+            "max": 18.275,
+            "p(90)": 0.7275,
+            "p(95)": 0.9209999999999999,
+            "avg": 0.4879064039408867
+        },
+        "data_sent": {
+            "count": 194598,
+            "rate": 3221.8501566992563
+        },
+        "flash_order_created": {
+            "rate": 2.284788752322724,
+            "count": 138
+        },
+        "checks": {
+            "fails": 0,
+            "passes": 1,
+            "value": 1
+        },
+        "flash_order_sold_out": {
+            "rate": 2.6986997581782894,
+            "count": 163
+        },
+        "http_req_duration": {
+            "p(95)": 1781.4217499999995,
+            "avg": 429.8281699507392,
+            "min": 11.776,
+            "med": 119.95500000000001,
+            "max": 4460.406,
+            "p(90)": 1308.835
+        },
+        "http_req_failed": {
+            "passes": 163,
+            "fails": 243,
+            "value": 0.4014778325123153
+        },
+        "flash_confirm_paid": {
+            "count": 100,
+            "rate": 1.6556440234222636
+        },
+        "flash_confirm_net_cancelled": {
+            "count": 1,
+            "rate": 0.016556440234222636
+        },
+        "http_req_duration{expected_response:true}": {
+            "avg": 696.2086584362144,
+            "min": 22.023,
+            "med": 433.028,
+            "max": 4460.406,
+            "p(90)": 1692.6638,
+            "p(95)": 2131.1074999999996
+        },
+        "http_req_tls_handshaking": {
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0
+        },
+        "flash_confirm_unknown": {
+            "count": 3,
+            "rate": 0.049669320702667906
+        },
+        "http_req_waiting": {
+            "p(90)": 1308.442,
+            "p(95)": 1781.1767499999996,
+            "avg": 429.3067216748765,
+            "min": 11.305,
+            "med": 119.5705,
+            "max": 4459.991
+        },
+        "flash_abandoned": {
+            "rate": 0.5629189679635697,
+            "count": 34
+        },
+        "http_req_sending": {
+            "min": 0.005,
+            "med": 0.0225,
+            "max": 0.471,
+            "p(90)": 0.058,
+            "p(95)": 0.081,
+            "avg": 0.033541871921182256
+        }
+    },
+    "setup_data": {
+        "token": "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJiZS1jb21tZXJjZSIsInN1YiI6IjEiLCJleHAiOjE3OTUwNTI1MzUsImlhdCI6MTc5NTA1MDczNSwianRpIjoiM2Q5MzllMzQtOWY2Ni00ZDcwLWIwMjYtYmM5MGMwZmRlM2QyIiwicm9sZXMiOlsiUk9MRV9VU0VSIl19.njQehNzDpWCbFOp5srTZlpOaDNeLVpdCiCgUDs6PCKg"
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "path": "::setup",
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+                "groups": {},
+                "checks": {
+                        "login 200": {
+                            "name": "login 200",
+                            "path": "::setup::login 200",
+                            "id": "647055af8ffe21e58084ae4b140cdda0",
+                            "passes": 1,
+                            "fails": 0
+                        }
+                    },
+                "name": "setup"
+            }
+        },
+        "checks": {}
+    }
+}

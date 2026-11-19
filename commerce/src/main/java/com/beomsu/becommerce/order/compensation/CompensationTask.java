@@ -154,6 +154,32 @@ public class CompensationTask {
         }
     }
 
+    /**
+     * 시간 창 규칙의 실패 기록(#476). 횟수와 무관하게 {@code giveUpAt} 이 지나야 FAILED 가 된다.
+     * {@code giveUpAt} 이 null 이면 횟수 규칙({@link #recordFailure(String, Instant, CompensationOutcome)})과 같다.
+     *
+     * <p>횟수 규칙은 PG 취소 장애가 재시도 간격의 합(약 40초)보다 길면 자동 처리를 포기한다. 망취소가 매입 마감
+     * 전에 끝나야 고객 돈이 나가지 않으므로, 포기 시점을 횟수가 아니라 시간으로 정한다.
+     */
+    public void recordFailure(String error, Instant nextAttempt, CompensationOutcome outcome, Instant giveUpAt) {
+        if (giveUpAt == null) {
+            recordFailure(error, nextAttempt, outcome);
+            return;
+        }
+        Instant now = Instant.now();
+        this.retryCount++;
+        this.lastError = truncate(error);
+        this.lastOutcome = outcome;
+        this.lastAttemptAt = now;
+        this.updatedAt = now;
+        if (!now.isBefore(giveUpAt)) {
+            this.status = CompensationStatus.FAILED;
+        } else {
+            this.status = CompensationStatus.PENDING;
+            this.nextAttemptAt = nextAttempt;
+        }
+    }
+
     /** 재시도를 소진해 자동 처리를 포기한 상태인지. */
     /**
      * 재시도해도 결과가 같다고 PG가 확정한 실패 — 남은 예산과 무관하게 즉시 FAILED로 닫는다.

@@ -1,0 +1,1 @@
+2회차: 부하 뒤 집계에서 uv 가 pymysql 을 받다 DNS 오류로 실패, 정리 단계가 DB 를 지워 compensation_tasks 를 못 셈. 앱 로그의 FAKE_PG_CANCEL 은 세 앱 모두 0줄(망취소 성공 0). 하네스를 고쳐 원본 표를 먼저 뜨게 함(#476)

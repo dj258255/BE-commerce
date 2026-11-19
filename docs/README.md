@@ -154,6 +154,7 @@ ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구�
 | [ADR-083](adr/ADR-083-shorts-signal-path.md) | 숏폼 시청 신호는 media 자신의 표에 남긴다 — 커머스의 개인화 Kafka/CDC 경로를 재사용하지 않는다 |
 | [ADR-084](adr/ADR-084-live-pin-sync-via-program-date-time.md) | 고정 상품 카드 동기화는 HLS PROGRAM-DATE-TIME으로, 전달은 Outbox 대신 즉시 WebSocket으로 한다 |
 | [ADR-085](adr/ADR-085-live-order-redis-reservation-mysql-confirmation.md) | 방송 중 "바로 주문"은 Redis 선점(TTL) 게이트로 한정 수량을 지키고, 주문 생성·멱등은 기존 commerce 흐름을 재사용한다. 미결제 반환·UNKNOWN 유지(R13)는 폴링 조정자가, 매진 즉시 전환(R14)은 effectiveAt·seq 게이트를 건너뛰는 별도 이벤트 타입이 맡는다 |
+| [ADR-086](adr/ADR-086-net-cancel-retry-window-over-auth-capture-split.md) | 망취소는 자동 매입을 유지한 채 시간 창 동안 재시도할 수 있게 하고(기본 꺼짐), 승인 · 매입 분리는 만들지 않는다 |
 
 ## 보조 문서
 
