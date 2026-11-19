@@ -1,0 +1,1 @@
+strategy=NONE outage_ms=60000 window_s=1800 cutoff_ms=60000 rate=5 duration=60s

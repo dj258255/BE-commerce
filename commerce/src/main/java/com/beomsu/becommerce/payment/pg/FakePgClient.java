@@ -146,6 +146,30 @@ public class FakePgClient implements PgClient {
     private final AtomicLong firstInProgressAt = new AtomicLong();
     private final AtomicLong firstFailAt = new AtomicLong();
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FakePgClient.class);
+
+    /**
+     * 0 보다 크면 첫 취소 호출부터 이 시간(ms) 동안 취소가 연결 실패로 끝난다(#476, PG 취소 API 장애).
+     * 요청 바이트가 나가기 전 실패라 {@code CANCEL_CONNECT_FAILED} 경로를 탄다. PG 측 상태는 바꾸지 않는다.
+     */
+    @Value("${payment.fake-pg.cancel-fail-for-ms:0}")
+    private long cancelFailForMs = 0;
+
+    /**
+     * 0 보다 크면 첫 승인 뒤 이 시간(ms)이 지난 순간을 매입 마감(자정)으로 본다(#476). 마감 전에 승인된 건이
+     * 마감 뒤에 취소되면 매입 취소로 센다. 실 카드는 23:59:59 에 승인이 마감되고 자정부터 전날 승인분을 매입한다.
+     */
+    @Value("${payment.fake-pg.capture-cutoff-after-ms:0}")
+    private long captureCutoffAfterMs = 0;
+
+    private final AtomicLong firstCancelFailAt = new AtomicLong();
+    private final AtomicLong firstApprovedAt = new AtomicLong();
+    /** PG 측 승인 시각(ms). 우리가 타임아웃으로 받았어도 PG 가 승인을 남긴 순간이다. */
+    private final Map<String, Long> approvedAtMs = new ConcurrentHashMap<>();
+    private final AtomicLong cancelFailed = new AtomicLong();
+    private final AtomicLong cancelBeforeCapture = new AtomicLong();
+    private final AtomicLong cancelAfterCapture = new AtomicLong();
+
     /** 조회가 이 가짜 PG 까지 닿은 횟수. 재시도·서킷을 지난 뒤 PG 를 실제로 몇 번 두드렸는지 본다(#330). */
     private final AtomicLong queryCalls = new AtomicLong();
 
@@ -155,6 +179,21 @@ public class FakePgClient implements PgClient {
         FunctionCounter.builder("fake.pg.approve.calls", approveCalls, AtomicLong::get).register(registry);
         Gauge.builder("fake.pg.query.in.progress.first.epoch.ms", firstInProgressAt, AtomicLong::get).register(registry);
         Gauge.builder("fake.pg.query.fail.first.epoch.ms", firstFailAt, AtomicLong::get).register(registry);
+        FunctionCounter.builder("fake.pg.cancel.failed", cancelFailed, AtomicLong::get).register(registry);
+        FunctionCounter.builder("fake.pg.cancel.before.capture", cancelBeforeCapture, AtomicLong::get).register(registry);
+        FunctionCounter.builder("fake.pg.cancel.after.capture", cancelAfterCapture, AtomicLong::get).register(registry);
+        Gauge.builder("fake.pg.cancel.fail.first.epoch.ms", firstCancelFailAt, AtomicLong::get).register(registry);
+        Gauge.builder("fake.pg.approve.first.epoch.ms", firstApprovedAt, AtomicLong::get).register(registry);
+    }
+
+    /** PG 측에 승인을 남긴 시각을 적는다(#476). 매입 마감 판정과 승인 → 취소 시간에 쓴다. */
+    private void markPgApproved(String key) {
+        if (key == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        firstApprovedAt.compareAndSet(0, now);
+        approvedAtMs.putIfAbsent(key, now);
     }
 
     @Value("${payment.fake-pg.approve-latency-ms:0}")
@@ -275,6 +314,7 @@ public class FakePgClient implements PgClient {
             if (timeoutApprovedSeen.add(key)) {
                 // 최초 요청 — PG 측엔 승인을 남기되 우리에겐 타임아웃으로 돌려준다.
                 pgSide.put(key, PgPaymentStatus.APPROVED);
+                markPgApproved(key);
                 return PgApproveResult.timeout("주입: 승인됐지만 응답을 못 받음(timeout-approved-prefix)");
             }
             // 같은 멱등키의 재요청(#395 재전송) — 실 PG라면 최초 처리 결과를 그대로 돌려준다.
@@ -304,6 +344,9 @@ public class FakePgClient implements PgClient {
         }
         // 우리에게 무엇을 돌려주든(성공/타임아웃), PG 측에는 지정된 상태를 남긴다.
         pgSide.put(command.paymentKey(), pgSideStatusOnApprove.get());
+        if (pgSideStatusOnApprove.get() == PgPaymentStatus.APPROVED) {
+            markPgApproved(command.paymentKey());
+        }
 
         PgApproveResult timedOut = sleepForInjectedLatency(latency);
         if (timedOut != null) {
@@ -342,7 +385,27 @@ public class FakePgClient implements PgClient {
 
     @Override
     public PgCancelResult cancel(PgCancelCommand command) {
+        long now = System.currentTimeMillis();
+        if (cancelFailForMs > 0) {
+            long first = firstCancelFailAt.updateAndGet(v -> v == 0 ? now : v);
+            if (now - first < cancelFailForMs) {
+                cancelFailed.incrementAndGet();
+                throw new org.springframework.web.client.ResourceAccessException("주입: PG 취소 장애(cancel-fail-for-ms)",
+                        new java.net.ConnectException("주입: 연결 거부"));
+            }
+        }
         pgSide.put(command.paymentKey(), PgPaymentStatus.CANCELED);
+        Long approvedAt = approvedAtMs.get(command.paymentKey());
+        boolean afterCapture = false;
+        if (captureCutoffAfterMs > 0 && approvedAt != null && firstApprovedAt.get() > 0) {
+            long cutoff = firstApprovedAt.get() + captureCutoffAfterMs;
+            afterCapture = approvedAt < cutoff && now >= cutoff;
+        }
+        (afterCapture ? cancelAfterCapture : cancelBeforeCapture).incrementAndGet();
+        if (captureCutoffAfterMs > 0 || cancelFailForMs > 0) {
+            log.info("FAKE_PG_CANCEL key={} approvedAtMs={} canceledAtMs={} sinceApproveMs={} afterCapture={}",
+                    command.paymentKey(), approvedAt, now, approvedAt == null ? -1 : now - approvedAt, afterCapture);
+        }
         return new PgCancelResult("fake-tx-" + command.idempotencyKey());
     }
 

@@ -9,6 +9,10 @@ package com.beomsu.becommerce.order.compensation;
  * ({@code PaymentRecoveryService})가 PG 조회로 확정한다 — 그 결제는 아직 취소를 판단할 수 없어
  * 이 큐에 넣어도 취소 대상을 확정할 수 없기 때문이다. 즉 "진짜 망취소도 여기 쌓인다"는 과거 설명은
  * 사실이 아니다.
+ *
+ * <p>"매입 전"이라는 전제는 망취소가 자정 전에 끝날 때만 성립한다. 취소 장애가 길면 5회 규칙은 적재 뒤
+ * 약 45초에 포기하고, 운영자가 자정 전에 재무장하지 않으면 매입 취소가 된다. 시간 창 재시도 설정과
+ * 승인 · 매입을 나누지 않은 이유는 docs/adr/ADR-086 에 있다.
  */
 public enum CompensationType {
     /** 이미 낸 승인을 되돌린다 — 외부 PG 호출이라 결과가 불확실해 durable 재시도로 처리한다. */
