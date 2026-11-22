@@ -99,6 +99,39 @@ class CheckoutRecoveryServiceTest {
     }
 
     @Test
+    @DisplayName("PG 결과가 아직 안 나온 건은 해소로 세지 않고 시도 시각을 남겨 뒤로 보낸다")
+    void unresolvedItemIsPushedBackAndNotCounted() {
+        Order pending = stuckOrder(10_000);
+        when(orderRepository.findByStatusAndUpdatedAtBeforeOrderByUpdatedAtAsc(
+                eq(OrderStatus.PAYMENT_IN_PROGRESS), any(Instant.class), any(Pageable.class)))
+                .thenReturn(List.of(pending));
+        when(paymentService.resolveStuckPayment(pending.getOrderNo())).thenReturn(Optional.of(
+                new StuckPaymentInfo(1L, 10_000, new ApprovalOutcome(ApprovalOutcome.Result.TIMEOUT, null, "복구: PG 결과 확정 전"))));
+
+        int recovered = service.recoverStuckCheckouts();
+
+        // settle 은 주문을 결제 중으로 둔다. 시도를 안 남기면 updatedAt 이 그대로라 매 분 같은 앞자리에서 PG 를 다시 묻는다.
+        assertThat(recovered).isZero();
+        verify(checkoutTx).settle(eq(pending.getOrderNo()), eq(1L), eq(Money.krw(10_000)), eq(0L), eq(0L),
+                any(ApprovalOutcome.class));
+        verify(checkoutTx).markRecoveryAttempted(pending.getId());
+    }
+
+    @Test
+    @DisplayName("확정된 건은 시도 시각을 따로 남기지 않는다")
+    void resolvedItemIsNotMarked() {
+        Order order = stuckOrder(10_000);
+        when(orderRepository.findByStatusAndUpdatedAtBeforeOrderByUpdatedAtAsc(
+                eq(OrderStatus.PAYMENT_IN_PROGRESS), any(Instant.class), any(Pageable.class)))
+                .thenReturn(List.of(order));
+        when(paymentService.resolveStuckPayment(order.getOrderNo())).thenReturn(Optional.of(
+                new StuckPaymentInfo(1L, 10_000, new ApprovalOutcome(ApprovalOutcome.Result.FAILED, null, "복구: 승인 미완료"))));
+
+        assertThat(service.recoverStuckCheckouts()).isEqualTo(1);
+        verify(checkoutTx, never()).markRecoveryAttempted(any());
+    }
+
+    @Test
     @DisplayName("기록마저 실패해도 배치는 멈추지 않는다")
     void markingFailureDoesNotStopTheBatch() {
         Order bad = stuckOrder(10_000);
