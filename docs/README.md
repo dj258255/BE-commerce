@@ -78,83 +78,8 @@ BE-commerce는 이커머스 플랫폼이고, 그 코어는 결제의 정합성�
 ADR은 당시의 맥락, 선택, 대안, 대가를 보존합니다. 이후 구현으로 결정이 바뀐 경우 문서 상단에
 개정 또는 대체 상태를 표시합니다.
 
-| ADR | 결정 |
-| --- | --- |
-| [ADR-001](adr/ADR-001-architecture-spring-modulith.md) | Spring Modulith 기반 모듈형 모놀리스 채택 |
-| [ADR-002](adr/ADR-002-outbox-event-publication-registry.md) | Event Publication Registry로 Transactional Outbox 구현 |
-| [ADR-003](adr/ADR-003-stock-deduction-timing.md) | 승인 성공 시점에 재고 차감 |
-| [ADR-004](adr/ADR-004-stock-deduction-locking.md) | 조건부 `UPDATE` 기반 재고 차감 |
-| [ADR-005](adr/ADR-005-event-externalization-kafka.md) | 결제 이벤트를 Kafka로 선택적 외부화 |
-| [ADR-006](adr/ADR-006-envelope-encryption-dek-kek.md) | DEK/KEK 기반 필드 암호화 |
-| [ADR-007](adr/ADR-007-checkout-transaction-boundary.md) | 외부 호출을 분리한 3단계 체크아웃 사가로 개정 |
-| [ADR-008](adr/ADR-008-recon-mismatch-analysis-assistant.md) | 대사 사유 기록 제안; 분석 방식은 ADR-012가 대체 |
-| [ADR-009](adr/ADR-009-password-hashing-and-migration-path.md) | Argon2id와 로그인 시 점진 이관 |
-| [ADR-010](adr/ADR-010-what-not-to-build.md) | 구현 범위를 결정하는 기준 |
-| [ADR-011](adr/ADR-011-order-timeline-assembly.md) | 주문 전 과정 타임라인 조립 |
-| [ADR-012](adr/ADR-012-rule-based-cause-classifier.md) | 규칙 기반 대사 원인 후보와 사람 확정 |
-| [ADR-013](adr/ADR-013-cancellation-as-separate-recon-row.md) | 취소를 대사에 별도 행으로 기록 |
-| [ADR-014](adr/ADR-014-cs-draft-port-and-number-guard.md) | 상담 초안 포트와 숫자 출처 가드 |
-| [ADR-015](adr/ADR-015-subscription-billing-anchor.md) | 앵커 기준 다음 청구일 계산 |
-| [ADR-016](adr/ADR-016-money-with-currency.md) | 통화를 포함한 금액 값 타입 |
-| [ADR-017](adr/ADR-017-aggregate-boundaries.md) | 주문·상품·재고 애그리거트 분리 |
-| [ADR-018](adr/ADR-018-module-internal-packages.md) | 모듈 공개 API와 내부 패키지 분리 |
-| [ADR-019](adr/ADR-019-pci-scope-by-not-touching-cards.md) | 카드번호를 직접 처리하지 않아 PCI 범위 축소 |
-| [ADR-020](adr/ADR-020-multi-pg-routing-off-by-default.md) | 멀티 PG 라우팅은 계약 전까지 기본 비활성 |
-| [ADR-021](adr/ADR-021-no-aml-screening-by-not-holding-identity.md) | 고객 AML과 판매자 제재 스크리닝의 범위 분리 |
-| [ADR-022](adr/ADR-022-pg-brownout-resource-limits.md) | 느린 PG 앞의 자원 고갈 — 동시 호출 상한 |
-| [ADR-023](adr/ADR-023-settlement-earned-date-vs-swept-date.md) | 정산 집계일과 거래 귀속일 분리 여부 |
-| [ADR-024](adr/ADR-024-settlement-extraction-data-cutover.md) | 정산 분리 시 과거 데이터 이관 |
-| [ADR-025](adr/ADR-025-ledger-balance-read-strategy.md) | 원장 잔액 읽기 전략(SUM 대 스냅샷) |
-| [ADR-026](adr/ADR-026-event-schema-evolution.md) | 이벤트 스키마 진화와 배포 순서 |
-| [ADR-027](adr/ADR-027-settlement-fairness-policy.md) | 정산 판매자 공정성 정책 |
-| [ADR-028](adr/ADR-028-fds-threshold-with-delayed-labels.md) | FDS 임계값과 지연 라벨 |
-| [ADR-029](adr/ADR-029-deployment-unit-vs-service-boundary.md) | 실행 단위만 분리하는 것과 저장소까지 분리하는 것 |
-| [ADR-030](adr/ADR-030-dlt-replay-and-post-recovery-reconciliation.md) | 격리·발견·복구·검증의 분리와 DLT 재처리 |
-| [ADR-031](adr/ADR-031-storefront-catalog-read-api.md) | 쇼핑몰 카탈로그를 읽기 전용으로 연다 |
-| [ADR-032](adr/ADR-032-frontend-nextjs-adoption.md) | 프론트 스택을 Next.js로 전환한다 |
-| [ADR-033](adr/ADR-033-wishlist-server-side.md) | 찜을 서버에 저장하고 로그인을 요구한다 |
-| [ADR-034](adr/ADR-034-personalization-context-deployment-unit.md) | 개인화 온라인 컨텍스트를 같은 배포 단위에 둔다 |
-| [ADR-035](adr/ADR-035-order-tolerant-context-merge.md) | 컨텍스트 병합을 순서에 관대하게 만든다 |
-| [ADR-036](adr/ADR-036-context-window-aggregate.md) | 창 집계를 목록에서 떼어낸다 — 세는 일에는 세는 그릇을 준다 |
-| [ADR-037](adr/ADR-037-overload-admission-policy.md) | 과부하에서 무엇을 포기하는가 — 정책은 지연을 사고, coverage는 모델이 정한다 |
-| [ADR-038](adr/ADR-038-constraint-revalidation-timing.md) | 제약을 언제 다시 확인하는가 — 추천은 stale을 허용하고 구매는 강보장한다 |
-| [ADR-039](adr/ADR-039-constraint-source-real-stock.md) | 제약의 원천을 실제 재고로 잇는다 — 추천이 커머스 재고를 읽는 경계 |
-| [ADR-040](adr/ADR-040-generation-scope-and-budget.md) | 홈 페이지를 어떻게 만드는가 — 생성 범위는 비용을 사고, 품질은 재지 않았다 |
-| [ADR-041](adr/ADR-041-cache-compression-threshold.md) | 캐시 압축은 1KB부터 — 근거는 생겼고 적용할 자리는 아직 없다 |
-| [ADR-042](adr/ADR-042-home-composer-boundary.md) | 홈 컴포저를 별도 경계로 둔다 — 페이지는 추천의 합이 아니다 |
-| [ADR-043](adr/ADR-043-home-impression-log.md) | 홈 노출은 요청당 한 행으로 남긴다 — 관측을 도메인 이벤트에 태우지 않는다 |
-| [ADR-044](adr/ADR-044-no-search-engine-yet.md) | 검색 엔진을 지금 도입하지 않는다 — 패싯 사전 집계를 먼저 한다 |
-| [ADR-045](adr/ADR-045-real-popularity-and-refill.md) | 인기 신호를 실제 통계로 바꾸고, 되채우기를 켠다 — 신호를 바꾸면 화면이 짧아진다 |
-| [ADR-046](adr/ADR-046-synthetic-reviews.md) | 합성 리뷰를 쓰되, 집계하지 않는다 — 읽는 것이지 재는 것이 아니다 |
-| [ADR-047](adr/ADR-047-cdc-for-activity-not-outbox.md) | CDC 는 활동 로그에 쓰고, 아웃박스 릴레이는 그대로 폴링으로 둔다 |
-| [ADR-048](adr/ADR-048-als-model-not-adopted.md) | 학습한 ALS 모델을 넣지 않는다 — 기준선을 못 넘었다 |
-| [ADR-049](adr/ADR-049-repo-layout-by-area.md) | 저장소를 영역으로 나누되, 같이 쓰는 것은 루트에 둔다 |
-| [ADR-050](adr/ADR-050-post-filter-over-constrained-generation.md) | 제약은 생성 뒤에 거른다 — 생성 중 차단은 이득이 안 나왔고 대가는 6배였다 |
-| [ADR-051](adr/ADR-051-search-engine-by-quality.md) | 검색은 앱 안 Lucene 으로 한다 — 품질 축을 재니 MySQL 이 못 따라왔다 |
-| [ADR-052](adr/ADR-052-home-pagination-cursor.md) | 홈 다음 쪽은 커서가 보여 준 것을 들고 다니고, 순서는 요청 시점의 세션이 정한다 |
-| [ADR-053](adr/ADR-053-genpage-mini-not-default.md) | 작은 GenPage 모델을 서빙까지 붙이고, 기본값으로는 켜지 않는다 |
-| [ADR-054](adr/ADR-054-genpage-validation-tuning.md) | GenPage 를 검증 기간으로 다시 튜닝했고, 결론은 그대로다 |
-| [ADR-055](adr/ADR-055-search-filters-in-engine-and-scale-limit.md) | 필터·패싯은 검색 엔진 안에서 건다 — 앱 안 Lucene 의 전환점은 300만 건이다 |
-| [ADR-056](adr/ADR-056-search-index-freshness-by-cdc.md) | 검색 색인은 CDC 로 반영한다 — 엔진은 앱 안 Lucene 을 유지한다 |
-| [ADR-057](adr/ADR-057-recovery-backoff-over-order.md) | 미확정 복구는 확정 못 한 건을 뒤로 민다 — 순서를 바꿔서는 풀리지 않았다 |
-| [ADR-058](adr/ADR-058-shed-browse-before-webhook.md) | 자원이 마르면 조회를 먼저 돌려보낸다 — 웹훅은 PG 상한만으로는 지켜지지 않았다 |
-| [ADR-059](adr/ADR-059-cdc-poll-and-health.md) | CDC 는 poll 100ms 를 유지하고, 떠 있는지와 흐르는지를 따로 감시한다 |
-| [ADR-060](adr/ADR-060-genpage-serves-purchases.md) | GenPage 추천 행은 구매 이력으로 서빙하고, 재구매 우선 혼합을 A/B 후보로 둔다 |
-| [ADR-061](adr/ADR-061-ab-assignment-and-attribution.md) | A/B 배정은 해시로 고정하고, 노출은 홈 기록에 얹고, 귀속은 노출된 상품으로 한정한다 |
-| [ADR-062](adr/ADR-062-search-tie-break-by-id.md) | 검색 동점은 상품 id 로 끊는다 — 기준(0)은 못 넘었지만 흔들림을 99% 줄였다 |
-| [ADR-063](adr/ADR-063-query-rewrite-not-default.md) | 검색어 고치기를 만들었지만 기본으로 켜지 않는다 — 한국어는 부서명 사전으로는 모자랐다 |
-| [ADR-064](adr/ADR-064-engine-tie-break.md) | ES·OpenSearch 도 동점을 상품 id 로 끊는다 — 두 엔진의 차이는 전부 동점 순서였다 |
-| [ADR-065](adr/ADR-065-admission-by-observed-throughput.md) | 과부하 게이트는 관측한 처리량으로 대기를 추정하고, 기본 정책을 ADMISSION 으로 맞춘다 |
-| [ADR-066](adr/ADR-066-next-page-follows-purchase-history.md) | 홈 다음 쪽의 GenPage 입력은 추천 행과 같은 이력을 따르고, 구매를 쓸 때는 구매만 넣는다 |
-| [ADR-067](adr/ADR-067-genpage-page-shares-capacity.md) | 홈 다음 쪽의 GenPage 호출도 추천 행과 같은 동시 호출 자리를 쓰고, 자리가 없으면 기다리지 않는다 |
-| [ADR-068](adr/ADR-068-genpage-v2-not-default.md) | 넷플릭스 GenPage 를 옮긴 v2 도 선을 넘지 못해 기본으로 켜지 않는다. 백엔드 경로는 v2 로 다시 쟀다 |
-| [ADR-080](adr/ADR-080-media-gradle-submodule.md) | `media/`를 별도 Gradle 하위 프로젝트로 떼면서 포트/어댑터로 commerce↔media 순환을 막는다 |
-| [ADR-081](adr/ADR-081-shorts-transcode-outbox-worker-profile.md) | 숏폼 변환 파이프라인은 MinIO·Kafka·별도 워커 대신 로컬 저장소·Outbox·같은 jar worker 프로파일로 시작한다 |
-| [ADR-082](adr/ADR-082-live-broadcast-outbox-hooks.md) | 라이브 방송 1단계는 MediaMTX HTTP 인증 훅은 그대로 쓰고 시작·종료 훅 전달만 Kafka 대신 Outbox로 받는다 |
-| [ADR-083](adr/ADR-083-shorts-signal-path.md) | 숏폼 시청 신호는 media 자신의 표에 남긴다 — 커머스의 개인화 Kafka/CDC 경로를 재사용하지 않는다 |
-| [ADR-084](adr/ADR-084-live-pin-sync-via-program-date-time.md) | 고정 상품 카드 동기화는 HLS PROGRAM-DATE-TIME으로, 전달은 Outbox 대신 즉시 WebSocket으로 한다 |
-| [ADR-085](adr/ADR-085-live-order-redis-reservation-mysql-confirmation.md) | 방송 중 "바로 주문"은 Redis 선점(TTL) 게이트로 한정 수량을 지키고, 주문 생성·멱등은 기존 commerce 흐름을 재사용한다. 미결제 반환·UNKNOWN 유지(R13)는 폴링 조정자가, 매진 즉시 전환(R14)은 effectiveAt·seq 게이트를 건너뛰는 별도 이벤트 타입이 맡는다 |
-| [ADR-086](adr/ADR-086-net-cancel-retry-window-over-auth-capture-split.md) | 망취소는 자동 매입을 유지한 채 시간 창 동안 재시도할 수 있게 하고(기본 꺼짐), 승인 · 매입 분리는 만들지 않는다 |
+결정 86개를 결제와 PG, 재고와 주문, 원장과 정산처럼 영역별로 묶은 색인은 [ADR 색인](adr/README.md)에 있습니다.
+목록은 그 한 곳에서만 관리합니다.
 
 ## 보조 문서
 

@@ -8,6 +8,30 @@
   [ADR-080](ADR-080-media-gradle-submodule.md)(media Gradle 하위 프로젝트),
   [docs/performance/shorts-transcode.md](../performance/shorts-transcode.md)(변환 자체의 소요 시간)
 
+## 요약
+
+**지금 유효한 결정**
+- 저장은 MinIO 없이 `ShortsStorage`/`LocalFileShortsStorage` 로컬 저장소이고 b-studio에서는 `commerce-shorts-storage` named volume과 `APP_SHORTS_STORAGE_BASE_DIR=/shorts-storage`로 base-dir를 영속시킨다 (아래 경과 DB/파일 어긋남을 고친 절).
+- 변환 시작은 Kafka 없이 Outbox(Event Publication Registry)로 전달한다.
+- 변환 리스너는 같은 jar에서 `app.shorts.transcode.enabled` 게이트로 켜고 `worker` 프로파일 배포만 변환을 가져간다.
+- 실행기는 `FfmpegTranscodeRunner`이고 `filtersplit`+`superfast`로 세 화질을 한 번에 뽑는다.
+- 상태 전이마다 짧은 트랜잭션으로 커밋하고 FFmpeg는 트랜잭션 밖에서 돌며 전이는 조건부 UPDATE(`claimTransition`)로 점유한다 (아래 경과 R23 트랜잭션 경계 수정).
+- 재생은 임시로 `ShortsMediaController`/`ShortsMediaService`가 `GET /api/v1/shorts/{id}/media/**`로 서빙하고 웹 출처 전달은 Next.js rewrites를 쓴다 (아래 경과 R26 재생).
+
+**대가**
+- 로컬 파일 구현은 `file://` URL이라 서버를 거치지 않는 직접 업로드와 다중 노드 스토리지를 검증하지 못하고 별도 소비자도 될 수 없다.
+- 변환 전용 리소스 프로파일을 주려면 서비스까지 나눠야 한다.
+
+**다시 볼 조건**
+- 변환 대기열이 API 프로세스의 CPU를 갉아먹으면 worker를 별도 서비스로 떼고 ADR-029 판단을 다시 한다.
+- 변환 워커를 2개 이상으로 늘리면 행 단위 점유 없이는 같은 영상을 두 번 변환한다.
+- 운영에 오브젝트 스토리지가 생기면 `ShortsStorage`를 MinIO 구현으로 바꾸고 `ShortsMediaController`/`ShortsMediaService`를 걷어낸다.
+- 다른 언어나 배포 주기의 전용 변환 서비스가 필요하면 Outbox를 Kafka로 외부화한다.
+
+**기각한 것**
+- Kafka와 별도 FFmpeg 워커 서비스는 서비스 경계를 넘지 않는 경로라 들일 근거가 없어 기각했다.
+- Route Handler 수동 중계(B)는 Range 처리를 놓칠 자리만 늘어 기각했다.
+
 ## 맥락
 
 명세 5절은 숏폼 저장·변환의 출발점을 이렇게 정했다:
@@ -103,7 +127,11 @@ Kafka를 새로 들이면 ADR-002가 이미 경고한 것(검증된 구현이라
   기본 컨텍스트에서도 `FfmpegTranscodeRunner` 빈 하나만 있어 `ShortsApiIntegrationTest`의
   수동 `markReady()` 경로와 충돌하지 않는다 — 리스너만 꺼져 있을 뿐 실행기 빈은 항상 있다).
 
-## 현행화 (R23 트랜잭션 경계 수정)
+## 경과
+
+처음 결정 뒤에 이어진 측정과 바뀐 결정을 적은 순서대로 둔다.
+
+### 현행화 (R23 트랜잭션 경계 수정)
 
 `ShortsTranscodeService.processUploaded`가 `@Transactional` 메서드 하나였던 시절에는
 probe→transcode→기록 전체가 하나의 DB 트랜잭션으로 묶여 FFmpeg가 도는 10초 넘는 동안
@@ -122,7 +150,7 @@ PROBING→TRANSCODING 전이는 조건부 UPDATE(`ShortVideoRepository.claimTran
 [docs/performance/shorts-transcode.md](../performance/shorts-transcode.md)의 "R24: 업로드
 완료 → READY" 절에, 재현 테스트는 `ShortVideoTransitionBoundaryTest`(media)에 있다.
 
-## 현행화 (R26 재생 — 로컬 저장소를 Spring이 직접 서빙한다)
+### 현행화 (R26 재생 — 로컬 저장소를 Spring이 직접 서빙한다)
 
 READY 영상을 실제로 재생하려면 HLS 재생목록·세그먼트·썸네일을 어딘가가 HTTP로 내줘야 한다.
 운영 목표(명세 5절)는 이 역할을 CDN이나 오브젝트 스토리지가 맡는 것이다 — Spring 프로세스가
@@ -141,7 +169,7 @@ READY 영상을 실제로 재생하려면 HLS 재생목록·세그먼트·썸네
 "내 컴퓨터(또는 이 샌드박스)에서는 바로 보고 싶다"는 개발 편의다. 운영 API 배포는 `local`을
 켜지 않으므로 `app.shorts.transcode.enabled` 기본값(false)이 그대로 지켜진다.
 
-## 현행화 (R26 재생 — 브라우저가 웹 출처로 미디어를 받게 한다)
+### 현행화 (R26 재생 — 브라우저가 웹 출처로 미디어를 받게 한다)
 
 `ShortsFeedItemView`가 돌려주는 `masterPlaylistUrl`·`thumbnailUrl`은 `/api/v1/shorts/{id}/
 media/...`처럼 **이 사이트(apps/web) 기준 상대 경로**다 — 브라우저는 이 경로를 `apps/web`의
@@ -199,7 +227,7 @@ content-length: 11
 그대로 중계한다. 코드 변경은 없었다(이미 맞는 규칙이 있었다) — 변경은 이 ADR 절과
 `tools/seed-shorts-dev.sh` 재실행(데이터 복구)뿐이다.
 
-## 현행화 (R26 재생 — DB/파일 어긋남을 "알려진 한계"로 남기지 않고 고쳤다)
+### 현행화 (R26 재생 — DB/파일 어긋남을 "알려진 한계"로 남기지 않고 고쳤다)
 
 바로 위 절은 파일이 사라진 것을 **수동 재시드**로 복구하고, 재발 방지는 "다시 볼 조건"의
 나중 과제로 미뤄 뒀다. 그런데 b-studio의 검증 게이트가 매 실행마다 `commerce`를 재시작하므로
@@ -233,7 +261,7 @@ media/thumb.jpg`가 404(web 출처, 브라우저와 같은 경로로 재현됨).
 (일반 로컬/CI용)은 손대지 않았다 — 거기서도 같은 문제가 재현되면 같은 패턴(named volume +
 `APP_SHORTS_STORAGE_BASE_DIR`)을 넣는다.
 
-## 다시 볼 조건
+### 다시 볼 조건
 
 - **변환 대기열이 API 프로세스의 CPU를 실제로 갉아먹기 시작하면**(같은 jar라 격리가
   배포 단위 수준이지 리소스 수준이 아니다) → worker를 별도 서비스로 떼고, 그때

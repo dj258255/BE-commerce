@@ -9,6 +9,30 @@
   [ADR-081](ADR-081-shorts-transcode-outbox-worker-profile.md)(숏폼의 같은 종류 결정 — 이
   ADR이 그대로 따라간 전례)
 
+## 요약
+
+**지금 유효한 결정**
+- 시작·종료 이벤트는 Kafka 없이 `ApplicationEventPublisher.publishEvent`로 발행해 Outbox(`event_publication`)에 적재하고 구독자는 아직 없다.
+- R2 송출 인증은 MediaMTX `authHTTPAddress`가 부르는 HTTP 훅(`LiveMediaHooksController#auth`)을 명세 그대로 쓴다.
+- 시작과 종료 감지는 `MediaMtxPathPoller`가 `GET /v3/paths/list`를 폴링해 기존 `handlePublish`/`handleUnpublish`를 부르고 끊김은 처음 알아챈 순간에만 알린다 (아래 경과 2026-10-08 추가 2).
+- 폴러는 `app.live.mediamtx-poller.enabled` 게이트를 쓰고 `app.live.mediamtx-poller.interval-ms` 기본값은 2000ms다 (아래 경과 2026-10-08 추가 2).
+- 재접속 유예는 상태를 LIVE로 두고 끊긴 시각만 기록하며 `LiveBroadcastGraceScheduler`가 기본 5초 주기로 스캔해 끝맺는다 (게이트 `app.live.grace-scheduler.enabled`, `worker`·`local` 프로파일).
+- `media/mediamtx.yml`은 `api: yes`와 `paths: "~^live/.+$": {}`를 두고 `pathDefaults` 훅은 두지 않는다 (아래 경과 2026-10-08 추가 2).
+
+**대가**
+- 방송 이벤트를 commerce 밖의 별도 소비자가 받을 수 없다.
+- LIVE 반영과 끊김 기록이 최대 폴링 주기만큼 늦고 2000ms는 실측하지 않았다.
+
+**다시 볼 조건**
+- 훅 엔드포인트가 인터넷에 노출되면 MediaMTX 호스트 제한이나 공유 비밀 헤더를 추가한다.
+- 이벤트 구독자가 생기면 `@ApplicationModuleListener`를 붙이고 완료 처리 누락을 다시 본다.
+- 폴링 비용이 측정되거나 MediaMTX가 셸 있는 이미지로 바뀌면 주기와 push 복귀를 다시 본다.
+
+**기각한 것**
+- Kafka는 훅 받기와 발행 사이에 끼우면 200 응답 뒤 상태가 안 바뀌는 유실 창구가 생겨 기각했다.
+- 건당 지연 타이머는 재시작 때 사라져 기각했다.
+- 커스텀 이미지(B)와 `authHTTPAddress` 겸용(D)은 공식 이미지 전제와 종료 신호 부재로 쓰지 않았다.
+
 ## 맥락
 
 명세 5절은 라이브 방송의 출발점을 이렇게 정했다:
@@ -142,14 +166,18 @@ POST /api/v1/live/hooks/auth {"path":"live/01M4D0...(ENDED)","action":"publish"}
 - **MediaMTX를 샌드박스에 띄우지 못했다면**(아래 "인프라" 절 참고) → 실제 운영/로컬 환경에서
   재확인하고, 안 되면 그 원인(네트워크 egress 등)을 여기 추가한다.
 
-## 2026-10-08 추가: 실제 송출 확인에서 찾은 설정 버그 두 개 (`tools/verify-live-broadcast.sh`)
+## 경과
+
+처음 결정 뒤에 이어진 측정과 바뀐 결정을 적은 순서대로 둔다.
+
+### 2026-10-08 추가: 실제 송출 확인에서 찾은 설정 버그 두 개 (`tools/verify-live-broadcast.sh`)
 
 다음 세션에서 샌드박스에 MediaMTX가 실제로 떴다. `tools/verify-live-broadcast.sh`(실제
 ffmpeg → RTMP → MediaMTX)로 돌려 보니 R3.1·R3.2·R3.3이 전부 실패했다(PASS=3 FAIL=3) —
 사용자가 MediaMTX 컨테이너 로그를 대신 확인해 원인을 짚어 줬다(이 샌드박스는 비관리
 서비스의 로그를 볼 도구가 없다).
 
-### 버그 1(확인됨, 고침): `${LIVE_HOOKS_HOST}`는 MediaMTX가 치환하지 않는다
+#### 버그 1(확인됨, 고침): `${LIVE_HOOKS_HOST}`는 MediaMTX가 치환하지 않는다
 
 로그: `failed to authenticate: HTTP request failed: parse "http://${LIVE_HOOKS_HOST}:8080/...": invalid character "{" in host name`.
 
@@ -192,7 +220,7 @@ compose의 `environment`에서 덮어쓴다.
 `docker compose -f compose.b-studio.yaml restart mediamtx`(또는 재생성)를 해 줘야 이
 수정이 실제로 적용된다** — 그 뒤 `tools/verify-live-broadcast.sh`를 다시 돌리면 된다.
 
-### 버그 2(의심, 미확정): 공식 이미지에 셸·`curl`이 없을 수 있다
+#### 버그 2(의심, 미확정): 공식 이미지에 셸·`curl`이 없을 수 있다
 
 `runOnReady`/`runOnNotReady`는 MediaMTX가 **셸로 명령 문자열을 실행**해야 동작한다
 (`curl ...`이라는 문자열 자체는 MediaMTX가 직접 HTTP 호출을 만드는 게 아니라 `/bin/sh -c`로
@@ -211,7 +239,7 @@ compose의 `environment`에서 덮어쓴다.
 3. 그런데도 commerce의 방송 상태가 `LIVE`로 안 바뀌면 — **훅 전달(셸·curl)이 깨진 것으로
    확정**할 수 있다(2가 성공했는데 3이 실패하면, 중간에서 훅 실행만 빠진 것이다).
 
-### 셸·curl이 없을 때의 대안 비교
+#### 셸·curl이 없을 때의 대안 비교
 
 | 대안 | 셸·curl 필요 | 장점 | 단점 |
 |---|---|---|---|
@@ -235,14 +263,14 @@ compose의 `environment`에서 덮어쓴다.
 나서 C를 구현하는 게 순서다(확인 안 된 가정으로 새 스케줄러를 먼저 만들면, 그게 맞는지도
 또 MediaMTX 재시작 없이는 못 재는 같은 문제에 걸린다).
 
-## 2026-10-08 추가 2: 셸 없음 확정, Control API 폴링(C) 구현 + 세 번째 버그
+### 2026-10-08 추가 2: 셸 없음 확정, Control API 폴링(C) 구현 + 세 번째 버그
 
 사용자가 mediamtx를 재시작해 버그 1 수정을 반영하고 `docker exec mediamtx sh`로 직접 확인해
 줬다: `exec: "sh": executable file not found in $PATH`. **공식 이미지에 셸이 없다 —
 확정이다.** `runOnReady`/`runOnNotReady`는 처음부터 이 이미지에서 될 수 없는 방법이었다.
 위 비교표의 **C(Control API 폴링)를 채택**해 구현했다.
 
-### 세 번째 버그(구현 중 발견): 훅을 pathDefaults로만 옮기면서 `paths:` 선언이 사라졌다
+#### 세 번째 버그(구현 중 발견): 훅을 pathDefaults로만 옮기면서 `paths:` 선언이 사라졌다
 
 버그 1을 고칠 때 경로별(`"~^live/.+$"`) 블록을 pathDefaults로 완전히 대체했는데, 재시작해
 보니 MediaMTX 로그에 `[RTMP] [conn ...] closed: path 'live/...' is not configured`가
@@ -258,7 +286,7 @@ paths:
 `pathDefaults`는 전부 지웠다(훅이 없으니 거기 적을 것도 없다 — "쓰지 않게 된 명령 훅
 설정은 지운다"는 지시대로).
 
-### 구현: `MediaMtxPathPoller` — 기존 도메인 로직은 그대로, 전달 방식만 바뀜
+#### 구현: `MediaMtxPathPoller` — 기존 도메인 로직은 그대로, 전달 방식만 바뀜
 
 - **`MediaMtxPathsSource`**(인터페이스) / **`RestClientMediaMtxPathsSource`**(구현,
   `GET /v3/paths/list`를 `RestClient`로 읽는다, `CdcHealthMonitor`와 같은 타임아웃 관례) —
@@ -278,7 +306,7 @@ paths:
 - 인증(R2)은 안 바뀌었다 — `authHTTPAddress`는 MediaMTX 자신이 만드는 네이티브 HTTP
   호출이라 셸이 필요 없다. 보안 경계는 여전히 거기 있다.
 
-### 폴링 주기와 지연 (정직하게)
+#### 폴링 주기와 지연 (정직하게)
 
 `app.live.mediamtx-poller.interval-ms` 기본값은 **2000ms**다. 근거:
 
@@ -299,7 +327,7 @@ paths:
   Control API 호출 자체가 실제로 몇 ms 걸리는지, 그 비용이 폴링 주기를 더 줄여도 되는지는
   측정하지 않았다. 다시 볼 조건에 남긴다.
 
-### 다시 볼 조건(추가)
+#### 다시 볼 조건(추가)
 
 - **폴링 비용이 측정되면** — Control API 호출 시간·CPU를 재서 주기를 더 줄이거나(지연
   개선) 늘릴지(비용 절감) 결정한다.
@@ -308,7 +336,7 @@ paths:
 - **MediaMTX가 셸 있는 이미지로 바뀌면**(공식 이미지가 바뀌거나 커스텀 이미지로 전환하면)
   — 그때는 push(훅)로 되돌릴 수 있는지 다시 본다. 지금은 이 폴링이 유일한 경로다.
 
-### 이번 세션에서 아직 재검증 못 함 — 또 컨테이너 재시작이 필요하다
+#### 이번 세션에서 아직 재검증 못 함 — 또 컨테이너 재시작이 필요하다
 
 위 세 번째 버그(`paths:` 선언 누락)를 고친 뒤 `tools/verify-live-broadcast.sh`를 다시
 돌렸지만, mediamtx 컨테이너는 **사용자가 버그 1만 고친 상태로 재시작해 둔 그대로**였다 —
@@ -332,7 +360,7 @@ R2.1·R3.2·R3.3·R2.2: UNKNOWN(배관이 증명 안 돼 판정 보류)
 `MediaMtxPathPoller`(커머스 쪽, `app.live.mediamtx-poller.enabled=true`로 이미 떠 있다)가
 다음 폴링 주기(기본 2초) 안에 그 상태를 읽어 R3.1부터 다시 통과할 것으로 예상한다.
 
-## 2026-10-08 추가 3: 새 샌드박스에서 끝까지 통과 — R1~R3 실 송출 경로 확정
+### 2026-10-08 추가 3: 새 샌드박스에서 끝까지 통과 — R1~R3 실 송출 경로 확정
 
 새 샌드박스에서 mediamtx가 최신 설정(Control API 폴링용 `api: yes`, `paths:
 "~^live/.+$": {}` 복원)으로 떴고, 이번에는 `service_logs`/`restart_service`로 mediamtx
