@@ -27,6 +27,11 @@ ext {
     springModulithVersion = '1.3.12'
 }
 
+// GitHub Ubuntu 러너가 Docker Engine 29 로 오르며 API 1.44 미만 클라이언트를 거부한다. Boot 3.4.2 가 관리하는
+// Testcontainers 1.20.4 는 1.32 로 붙어 "client version 1.32 is too old" 로 컨테이너를 하나도 못 띄웠다(11/19 부터).
+// 1.21.4 릴리스 노트: "This release makes version 1.21.x works with recent Docker Engine changes."
+ext['testcontainers.version'] = '1.21.4'
+
 dependencies {
     // --- media(R32, ADR-080) — 숏폼 등 미디어 기능. 같은 jar로 포함하되(별도 서비스로 안 나눈다)
     // media는 commerce에 의존하지 않는다(ShortsProductLookupAdapter만 commerce 쪽에 physically
