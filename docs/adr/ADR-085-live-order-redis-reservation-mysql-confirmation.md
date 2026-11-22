@@ -11,6 +11,37 @@
   [ADR-080](ADR-080-media-gradle-submodule.md)(media Gradle 서브모듈),
   [ADR-084](ADR-084-live-pin-sync-via-program-date-time.md)(R8·R9 고정)
 
+## 요약
+
+**지금 유효한 결정**
+
+- 방송 한정 수량 N은 media의 `LiveOrderGate`가 Redis ZSET으로 지키고 카탈로그 재고는 commerce가 지키며 둘 다 통과해야 주문이 만들어진다.
+- Redis 키는 `live:pin:{broadcastId}:{generation}:holds`이고 `LivePin.generation`은 `pin()`을 부를 때만 올린다(아래 경과 2026-10-09 수정).
+- 멤버 키는 멱등 키이고 Lua 스크립트는 키에 `PEXPIRE`를 걸지 않으며 스스로 치우지도 않는다(아래 경과 결정 7).
+- 선점 TTL 기본값은 5분(`app.live.order.hold-ttl`)이고 Redis 장애 시에는 fail-closed로 거절한다.
+- 주문은 새 테이블 없이 `CheckoutService.createSpecialPriceOrder`로 만들고 멱등은 `SpecialPriceOrderPlacement`로 감싼 `IdempotencyService`를 재사용한다.
+- commerce 확정이 실패하면 슬롯을 즉시 release하고 예외를 그대로 올린다.
+- `recordOrder`만 실패하면 release하지 않고 주문 결과를 돌려준다(아래 경과 어긋남 2).
+- `LiveOrderHoldReconciler`가 기본 5초 폴링(`app.live.order.hold-recovery.interval-ms`)으로 PAID는 영구화하고 IN_PROGRESS는 유지하고 OTHER는 반환한다(아래 경과 결정 7).
+- `QUANTITY_CHANGED`는 R9의 `effectiveAt`과 `seq` 게이트를 둘 다 건너뛰고 즉시 방송한다(아래 경과 결정 8).
+
+**대가**
+
+- Redis가 완전히 죽으면 그 방송의 "바로 주문"이 전부 거절된다.
+- `recordOrder`가 실패한 홀드는 조정자가 기록 없음으로 보고 반환해 슬롯이 다른 사람에게 넘어갈 수 있다.
+
+**다시 볼 조건**
+
+- 사용자당 한정이 필요해지면 ZSET 멤버를 `userId`로 바꾸는 규칙을 더한다.
+- 더 빠른 반영이 필요해지면 폴링 대신 `PaymentRecoveredEvent` 같은 기존 결제 이벤트를 구독한다.
+- Redis 이중화와 Sentinel 구성은 범위 밖으로 남아 있다.
+
+**기각한 것**
+
+- 클라이언트가 수량을 보내게 하는 안은 가중합을 Lua로 다시 짜야 해서 수량 1로 고정했다.
+- 방송 한도를 MySQL `stock_reservations`에 두는 안은 방송 차원이 없어 Redis를 쓴다.
+- media에 자체 멱등 테이블을 만드는 안은 R32가 금지하는 주문 로직 중복이라 쓰지 않는다.
+
 ## 맥락
 
 R10~R12는 고정 상품 카드의 "바로 주문"을 다룬다. 핵심 제약 셋:
@@ -170,7 +201,11 @@ Redis N 한도와 무관하게 실제 재고가 먼저 동나는 경우), `Idemp
 | 실패해도 슬롯을 그대로 둔다(TTL 만료만 기다림) | 상품 삭제·일시 카탈로그 재고 소진처럼 **금방 다시 시도하면 될 수 있는** 실패까지 5분을 묶어 둔다 — N이 작을수록(50개) 이 낭비가 매진 오판을 만든다(실제로는 48개만 나갔는데 게이트는 50 다 찬 것처럼 보임) |
 | Redis 게이트 자체를 2단계(soft-hold → commerce 성공 후 confirm)로 나눠 성공 전까지는 카운트하지 않는다 | 그러면 두 요청이 "아직 soft-hold 상태"인 채로 동시에 commerce를 호출할 수 있어 N을 넘기기 쉬워진다 — **선점 자체가 카운트에 들어가야** R12의 "확정 합계 ≤ N"이 경합 중에도 성립한다(홀드=즉시 카운트, 이게 R12.1의 핵심) |
 
-## 2026-10-09 수정 — 재고정(re-pin) 결함을 고쳤다
+## 경과
+
+처음 결정 뒤에 이어진 측정과 바뀐 결정을 적은 순서대로 둔다.
+
+### 2026-10-09 수정 — 재고정(re-pin) 결함을 고쳤다
 
 위 "다시 볼 조건"에 적었던 결함(같은 방송에서 다시 고정하면 Redis 홀드 키가 이전 고정분과
 섞인다)을 실제로 고쳤다. **재현 테스트를 먼저 쓰고(실패를 확인한 뒤) 고쳤다** —
@@ -179,7 +214,7 @@ Redis N 한도와 무관하게 실제 재고가 먼저 동나는 경우), `Idemp
 확인했고(이전 드롭의 홀드가 남아 새 드롭이 즉시 매진으로 보임), 그 다음 아래 수정을 적용해
 통과시켰다.
 
-### 결정 6 — `LivePin`에 `generation`(세대)을 추가하고 Redis 키를 그걸로도 가른다
+#### 결정 6 — `LivePin`에 `generation`(세대)을 추가하고 Redis 키를 그걸로도 가른다
 
 - `LivePin.generation`(bigint, 기본 0) — **`pin()`을 부를 때만** 올린다. `changePrice()`·
   `unpin()`은 올리지 않는다 — 가격 변경은 같은 드롭의 연장이지 새 드롭이 아니기 때문이다(올리면
@@ -206,7 +241,7 @@ Redis N 한도와 무관하게 실제 재고가 먼저 동나는 경우), `Idemp
 `docs/performance/runs/.../round1-curl-output.txt`·`round2-curl-output.txt`에 원본을
 남긴다).
 
-### 버린 대안(수정 시점에 추가로 검토)
+#### 버린 대안(수정 시점에 추가로 검토)
 
 | 대안 | 왜 버렸나 |
 |---|---|
@@ -214,9 +249,9 @@ Redis N 한도와 무관하게 실제 재고가 먼저 동나는 경우), `Idemp
 | `LivePin.id`(JPA 행 식별자)로 범위를 잡는다 | 행이 방송당 하나뿐이라(재사용, `uk_live_pins_broadcast`) `id`는 방송 생애 동안 절대 안 바뀐다 — 재고정을 구분 못 하는 건 `broadcastId` 단독과 같다 |
 | `effectiveAt`(타임스탬프)으로 범위를 잡는다 | 같은 밀리초에 두 이벤트가 겹칠 수 있고(저장 정밀도·동시 호출), 사람이 읽기도 `generation`(정수 세대)보다 어렵다. 단조 증가 정수 카운터가 더 단순하고 안전하다 |
 
-## 2026-10-09(계속) — R13(미결제 반환·UNKNOWN 유지)·R14(매진 즉시 전환) 구현
+### 2026-10-09(계속) — R13(미결제 반환·UNKNOWN 유지)·R14(매진 즉시 전환) 구현
 
-### 결정 7 — R13: 폴링 기반 조정자(`LiveOrderHoldReconciler`)가 결제 상태를 읽어 셋으로 가른다
+#### 결정 7 — R13: 폴링 기반 조정자(`LiveOrderHoldReconciler`)가 결제 상태를 읽어 셋으로 가른다
 
 `LiveOrderGate`의 ZSET score를 "삭제 시각"이 아니라 **"만료 평가 후보가 되는 시각"**으로
 의미를 바꿨다 — 예전(R12 단계)에는 score가 지나면 `tryReserve`가 스스로 `ZREMRANGEBYSCORE`로
@@ -241,7 +276,7 @@ UNKNOWN을 확정하면 주문 상태가 바뀌고, 다음 주기(기본 5초, `
 스케줄러는 `app.live.order.hold-recovery.enabled=true`일 때만 켜진다(`local`·`worker`
 프로파일 기본 on, API 배포는 기본 off — `LiveBroadcastGraceScheduler`와 같은 게이트 관례).
 
-### 어긋남 1(실제로 재현·수정함) — **Redis 키 자체에 건 TTL이 영구화된(PAID) 홀드까지 지웠다**
+#### 어긋남 1(실제로 재현·수정함) — **Redis 키 자체에 건 TTL이 영구화된(PAID) 홀드까지 지웠다**
 
 R12 단계의 Lua 스크립트는 멤버를 더할 때마다 `PEXPIRE KEYS[1] ttlMs`로 **키 전체**에도
 TTL을 걸었다(그때는 "아무도 안 쓰면 치워진다"는 안전장치였다 — 활발히 팔리는 동안은 호출마다
@@ -264,7 +299,7 @@ PAID·UNKNOWN 테스트가 전부 `currentCount=0`(키가 사라짐)으로 실�
 | 키 TTL을 유지하되 훨씬 길게(예: 24시간) 잡는다 | "길게"가 얼마나 길어야 안전한지 보장이 없다 — 방송이 하루 넘게 쉬다 재개되면 똑같이 터진다. 근본 원인(PAID도 지워짐)을 안 고친다 |
 | PAID로 영구화할 때마다 키 TTL을 PERSIST(TTL 해제)로 되돌린다 | 매번 추가 Redis 호출이 생기고, 그 호출 자체가 실패하면 또 같은 문제로 돌아간다 — TTL을 안 거는 쪽이 애초에 더 단순하고 실패 지점이 하나 적다 |
 
-### 어긋남 2 — commerce 주문은 성공했는데 그 뒤 `recordOrder`(선점-주문 연결 기록)가 실패하면
+#### 어긋남 2 — commerce 주문은 성공했는데 그 뒤 `recordOrder`(선점-주문 연결 기록)가 실패하면
 
 `LiveOrderService.order`가 `orderPlacement.place(...)`(commerce 호출)와
 `gate.recordOrder(...)`(그 홀드가 어느 주문인지 Redis에 적어 두기)를 **같은 try 블록**에
@@ -288,7 +323,7 @@ PAID·UNKNOWN 테스트가 전부 `currentCount=0`(키가 사라짐)으로 실�
 더 쌓지 않았다 — 고치려면 "멱등 키로 commerce의 주문 생성 기록을 다시 조회"하는 보조
 경로가 필요한데, 그건 새 조회 포트를 또 하나 만드는 일이라 비용 대비 효과가 낮다고 판단했다.
 
-### 결정 8 — R14: `QUANTITY_CHANGED`는 R9의 `effectiveAt`·`seq` 게이트를 **둘 다** 건너뛴다
+#### 결정 8 — R14: `QUANTITY_CHANGED`는 R9의 `effectiveAt`·`seq` 게이트를 **둘 다** 건너뛴다
 
 `LiveOrderService.order`가 주문을 확정할 때마다(그리고 조정자가 반환할 때마다) 지금
 `gate.currentCount`로 남은 수량을 다시 구해 `QUANTITY_CHANGED` 이벤트를 **즉시** 방송한다
@@ -325,7 +360,7 @@ R9.3의 "seq가 이미 적용한 값보다 작거나 같으면 무시"를 이 �
 | 매진만 effectiveAt 게이트를 타게 하고 일반 수량 갱신은 즉시(또는 반대) | 일관성이 깨진다 — "몇 개 남았는지"와 "매진인지"는 같은 필드(remainingQuantity)의 두 값일 뿐이라 전달 규칙이 갈릴 이유가 없다 |
 | QUANTITY_CHANGED도 자신만의 새 단조 증가 seq(별도 Redis 카운터)를 둔다 | 멤버(=주문) 수만큼 Redis round-trip이 하나 더 늘고, 클라이언트는 "두 개의 독립된 seq 계보"를 들고 다녀야 한다 — "이 타입은 seq 검사를 안 한다"가 더 단순하고, WebSocket의 전송 순서 보장으로 실질적 위험이 낮다 |
 
-## R13·R14·R15을 막지 않는다는 근거
+### R13·R14·R15을 막지 않는다는 근거
 
 - **R13(미결제 반환, 기본 5분)**: 이 TTL 구조가 이미 "수동적" 반환이다 — 능동적 반환(결제
   완료/취소/만료 이벤트를 구독해 즉시 `gate.release` 호출)만 더하면 된다. ZSET·Lua 스크립트를
@@ -340,7 +375,7 @@ R9.3의 "seq가 이미 적용한 값보다 작거나 같으면 무시"를 이 �
   호출하지 않고**(`LiveOrderGate.tryReserve`가 `false`를 돌려주면 그 자리에서 예외를
   던진다) 끝난다. Redis 왕복 1회가 전부다.
 
-## 버린 대안
+### 버린 대안
 
 | 대안 | 왜 버렸나 |
 |---|---|
@@ -349,7 +384,7 @@ R9.3의 "seq가 이미 적용한 값보다 작거나 같으면 무시"를 이 �
 | media가 `IdempotencyService`와 같은 멱등 기구를 자체 테이블로 새로 만든다 | R32가 금지하는 "주문 로직 중복 구현"과 정신이 같다 — 멱등은 주문 생성의 일부이지 media만의 관심사가 아니다. 기존 primitive를 공개 파사드로 열어 재사용하는 쪽이 전부 한 곳(order 모듈)에 멱등 규칙이 머물게 한다 |
 | commerce가 HTTP로 `/payments`류 엔드포인트를 media에 **노출**(media가 HTTP 호출) | media·commerce는 같은 JVM·같은 jar(ADR-080)다 — 프로세스 내 호출을 굳이 HTTP 왕복으로 바꿀 이유가 없다. 포트/어댑터(결정 4)로 충분하다 |
 
-## 구현 요약
+### 구현 요약
 
 - **media**: `live.OrderPlacement`(포트)·`live.LiveOrderException`·`live.LiveOrderGate`
   (Redis Lua 게이트)·`live.LiveOrderService`(R10 판정 + R12 게이트 + R11 위임)·
@@ -362,7 +397,7 @@ R9.3의 "seq가 이미 적용한 값보다 작거나 같으면 무시"를 이 �
 - 결제는 이 흐름이 돌려준 `orderNo`·`totalAmount`로 화면이 기존
   `POST /api/v1/payments/confirm`을 그대로(변경 없이) 호출한다(R11).
 
-## 검증
+### 검증
 
 - 단위(media, `LiveOrderServiceTest`, 11건 전부 통과): R10.1·R11.1(서버 가격 사용, 장바구니
   없이 1건)·R10.2(고정 불일치/해제 시 409)·R12/R15(게이트 거절 시 commerce 미호출)·
@@ -409,7 +444,7 @@ R9.3의 "seq가 이미 적용한 값보다 작거나 같으면 무시"를 이 �
     `LIMIT=50 LIMIT2=80 VUS=1000 ./tools/run-live-order-stock.sh`로 그대로 재현할 수 있다 —
     이 샌드박스 확인은 같은 메커니즘을 더 작은 배수로 증명했다.
 
-## 다시 볼 조건
+### 다시 볼 조건
 
 - Redis가 완전히 죽으면(fail-closed) 그 방송의 "바로 주문"이 전부 거절된다 — 가용성보다
   정합성을 택한 결과다. Redis 이중화·Sentinel 구성은 이번 범위 밖이다.

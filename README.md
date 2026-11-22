@@ -120,7 +120,7 @@ Gradle wrapper 는 루트에 하나입니다. 프로젝트 루트가 `commerce/`
   통과한 기능만 제한적으로 노출합니다.
 - Prometheus 알림은 작은 표본의 비율 왜곡과 반복 알림을 고려해 최소 표본과 재알림 간격을 둡니다.
 
-상세한 선택과 트레이드오프는 [ADR 목록](docs/README.md#아키텍처-결정-기록)에서 확인할 수 있습니다.
+상세한 선택과 트레이드오프는 [ADR 색인](docs/adr/README.md)에서 확인할 수 있습니다.
 
 ## 데모
 
@@ -241,7 +241,7 @@ docker compose --profile monitoring up -d prometheus grafana
 7. [결제 포트폴리오 초안](docs/30-결제-포트폴리오-초안.md)
 8. [결제 플랫폼 확장 계획](docs/32-결제-플랫폼-확장-계획.md)
 9. [작업 보드](docs/PROJECT-BOARD.md) — 목표·예상 시간·산출물·위험·검증 상태
-10. [ADR](docs/README.md#아키텍처-결정-기록)
+10. [ADR 색인](docs/adr/README.md)
 
 전체 문서는 목적별로 정리한 [문서 안내](docs/README.md)를 참고하세요.
 
@@ -256,7 +256,7 @@ docker compose --profile monitoring up -d prometheus grafana
 | 지금 어디까지 왔는가 | [`personalization/ROADMAP.md`](personalization/ROADMAP.md) · [`docs/ROADMAP-TRADEOFFS.md`](docs/ROADMAP-TRADEOFFS.md) |
 | 무엇을 만들기로 했는가 · 완료 조건 | GitHub Issue (배경 / 할 일 / 검증 / 하지 말 것) |
 | 어느 단위로 나눴는가 | GitHub Milestone (M0~M12) |
-| 무엇을 바꿨는가 · 왜 그렇게 골랐는가 | PR 본문과 [ADR 68편](docs/README.md#아키텍처-결정-기록) |
+| 무엇을 바꿨는가 · 왜 그렇게 골랐는가 | PR 본문과 [ADR 86편](docs/adr/README.md) |
 | 실제로 무엇을 확인했는가 | [`docs/performance/`](docs/performance/README.md) · [`personalization/docs/runs/`](personalization/docs/runs) — 원자료와 재현 명령 |
 | 사용자에게 무엇이 나갔는가 | [`CHANGELOG.md`](CHANGELOG.md) |
 | 무엇을 **안 하기로** 했는가 | ADR 상태가 `기각`·`미결`인 편들, 각 로드맵의 "하지 않은 것" 절 |
