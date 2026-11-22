@@ -63,8 +63,14 @@ public class CheckoutRecoveryService {
         int recovered = 0;
         for (Order order : stuck) {
             try {
-                resolveNow(order);
-                recovered++;
+                if (resolveNow(order)) {
+                    recovered++;
+                } else {
+                    // PG 결과가 아직 안 나와 주문을 결제 중으로 남겼다. settle 이 주문을 안 바꿔 updatedAt 이
+                    // 그대로라, 여기서도 시도를 남기지 않으면 매 회차 같은 앞자리에서 PG 를 다시 묻는다.
+                    // 결제 쪽 확정은 결제 복구 배치(백오프)가 맡고, 확정되면 PaymentRecoveredListener 가 이 주문을 닫는다.
+                    markAttempted(order);
+                }
             } catch (Exception e) {
                 // 한 건 실패가 배치를 멈추지 않게 격리한다. 그리고 <시도했다는 사실을 남긴다>.
                 // 이걸 안 남기면 그 건이 다음 회차에도 같은 앞자리를 잡는다. 상한이 있는 조회라
@@ -100,8 +106,11 @@ public class CheckoutRecoveryService {
      *
      * <p>이 메서드를 안 부르고 재시도를 허용하면, 앞 결제가 실제로 승인돼 있었을 때 <b>이중결제</b>가
      * 된다. 멱등키는 이걸 못 막는다 — 카드를 바꾼 재시도는 다른 요청이라 새 키를 받는다.
+     *
+     * @return 주문을 확정(결제 완료 또는 결제 대기로 되돌림)했으면 true. PG 결과가 아직 안 나와
+     *         주문을 결제 중으로 남겼으면 false
      */
-    public void resolveNow(Order order) {
+    public boolean resolveNow(Order order) {
         // 카드 결제를 PG 조회로 확정(없으면 전액 포인트 → empty).
         Optional<StuckPaymentInfo> info = paymentService.resolveStuckPayment(order.getOrderNo());
         long cardAmount = info.map(StuckPaymentInfo::amount).orElse(0L);
@@ -115,6 +124,7 @@ public class CheckoutRecoveryService {
 
         checkoutTx.settle(order.getOrderNo(), paymentId, Money.krw(cardAmount),
                 pointAmount, walletAmount, outcome);
+        return outcome == null || outcome.result() != ApprovalOutcome.Result.TIMEOUT;
     }
 
     /**
