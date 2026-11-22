@@ -53,10 +53,10 @@ class TossPgLiveContractTest {
     void authenticatesAgainstRealApi() {
         PgQueryResult result = client.query(ABSENT_PAYMENT_KEY);
 
-        // 인증이 실패했다면 여기까지 오지 못하고 401 계열로 끊긴다. NOT_FOUND라는 것은
+        // 인증이 실패했다면 여기까지 오지 못하고 401 계열로 끊긴다. 404(MISSING)라는 것은
         // Basic base64(secretKey + ":") 인증이 통과해 상점 컨텍스트에서 조회까지 갔다는 뜻이다.
         System.out.printf("%n[조회] 없는 결제 키 → %s%n", result.status());
-        assertThat(result.status()).isEqualTo(PgPaymentStatus.NOT_FOUND);
+        assertThat(result.status()).isEqualTo(PgPaymentStatus.MISSING);
     }
 
     @Test

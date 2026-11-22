@@ -373,6 +373,9 @@ app:
     # 곱셈 지터(#399). 0 이면 지금 동작 그대로(결정적). ResilientPgClient 의 조회 재시도(ofExponentialRandomBackoff)와
     # 같은 방식으로 같은 attempts 의 다음 시각을 흩어 같은 초 재시도 충돌을 줄인다.
     backoff-jitter: ${APP_RECOVERY_BACKOFF_JITTER:0}
+    # PG 조회가 결제 기록을 돌려주지 않을 때(404 · 빈 응답) 승인 실패로 닫기 전에 기다리는 시간. 결제 요청 시각부터 잰다.
+    # 토스는 승인 호출 기한을 10분, 결제 유효 시간을 30분으로 적어 긴 쪽을 둔다. 토스가 명시한 실패(ABORTED · EXPIRED)는 바로 닫는다.
+    missing-grace: ${APP_RECOVERY_MISSING_GRACE:30m}
   # 멈춘 체크아웃 사가 복구 스케줄러(ADR-007) → CheckoutRecoveryService.recoverStuckCheckouts().
   # 예약(Phase1) 후 확정(Phase3) 전에 크래시로 PAYMENT_IN_PROGRESS로 멈춘 주문을 PG 조회로 완결/롤백.
   checkout:

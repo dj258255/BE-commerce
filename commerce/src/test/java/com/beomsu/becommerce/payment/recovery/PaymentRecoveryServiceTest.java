@@ -82,6 +82,34 @@ class PaymentRecoveryServiceTest {
     }
 
     @Test
+    @DisplayName("PG 기록 없음(404)은 유예 안이면 닫지 않고 미룬다")
+    void missingWithinGraceIsDeferred() {
+        Payment p = unknownPayment("pk-m1");
+        when(pg.query("pk-m1", "TOSS_PAYMENTS")).thenReturn(new PgQueryResult(PgPaymentStatus.MISSING, null));
+
+        int recovered = service.recoverUnknownPayments();
+
+        assertThat(recovered).isZero();
+        assertThat(p.getStatus()).isEqualTo(PaymentStatus.UNKNOWN);
+        assertThat(p.getRecoveryAttempts()).isEqualTo(1);
+        verify(events, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("PG 기록 없음이 결제 요청 뒤 유예(30분)를 넘기면 ABORTED")
+    void missingAfterGraceIsAborted() {
+        Payment p = unknownPayment("pk-m2");
+        ReflectionTestUtils.setField(p, "requestedAt", Instant.now().minus(java.time.Duration.ofMinutes(31)));
+        when(pg.query("pk-m2", "TOSS_PAYMENTS")).thenReturn(new PgQueryResult(PgPaymentStatus.MISSING, null));
+
+        int recovered = service.recoverUnknownPayments();
+
+        assertThat(recovered).isEqualTo(1);
+        assertThat(p.getStatus()).isEqualTo(PaymentStatus.ABORTED);
+        verify(events).publishEvent(any(com.beomsu.becommerce.payment.PaymentRecoveredEvent.class));
+    }
+
+    @Test
     @DisplayName("PG에서 이미 취소됐으면 CANCELED(망취소 반영)")
     void networkCancelWhenPgCanceled() {
         Payment p = unknownPayment("pk-3");

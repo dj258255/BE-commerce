@@ -54,7 +54,8 @@ class TossPgClientMappingTest {
         // 승인 실패가 확정된 상태만 NOT_FOUND
         assertThat(TossPgClient.mapStatus("ABORTED")).isEqualTo(PgPaymentStatus.NOT_FOUND);
         assertThat(TossPgClient.mapStatus("EXPIRED")).isEqualTo(PgPaymentStatus.NOT_FOUND);
-        assertThat(TossPgClient.mapStatus(null)).isEqualTo(PgPaymentStatus.NOT_FOUND);
+        // 빈 응답은 실패의 증거가 아니다. 복구가 유예 동안 다시 묻는다
+        assertThat(TossPgClient.mapStatus(null)).isEqualTo(PgPaymentStatus.MISSING);
         // 진행 중을 NOT_FOUND로 두면 복구 배치가 살아 있는 결제를 실패로 확정해 버린다
         assertThat(TossPgClient.mapStatus("IN_PROGRESS")).isEqualTo(PgPaymentStatus.IN_PROGRESS);
         assertThat(TossPgClient.mapStatus("READY")).isEqualTo(PgPaymentStatus.IN_PROGRESS);

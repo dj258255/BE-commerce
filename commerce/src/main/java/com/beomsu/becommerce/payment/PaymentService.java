@@ -6,6 +6,7 @@ import com.beomsu.becommerce.payment.internal.PaymentHistoryView;
 import com.beomsu.becommerce.payment.internal.PaymentCancelView;
 import com.beomsu.becommerce.payment.internal.PaymentCancelTx;
 import com.beomsu.becommerce.payment.internal.Payment;
+import java.time.Instant;
 import com.beomsu.becommerce.payment.StuckPaymentInfo;
 import com.beomsu.becommerce.payment.pg.PgApproveCommand;
 import com.beomsu.becommerce.payment.pg.PgApproveResult;
@@ -215,12 +216,46 @@ public class PaymentService {
                     payment.abortByRecovery("복구: PG에서 취소됨(승인 미완료)");
                     paymentRepository.saveAndFlush(payment);
                 }
+                // PG 기록 없음(404 · 빈 응답)은 결제 유효 시간이 지난 뒤에만 실패로 닫는다.
+                // 그 전에는 아래에서 결과 모름으로 돌려준다(PgPaymentStatus.MISSING).
+                case MISSING -> {
+                    if (payment.getRequestedAt() != null
+                            && !Instant.now().isBefore(payment.getRequestedAt().plus(stuckMissingGrace()))) {
+                        payment.abortByRecovery("복구: PG 기록 없음이 유예 뒤에도 계속됨");
+                        paymentRepository.saveAndFlush(payment);
+                    }
+                }
+                // PG가 아직 진행 중이면 아무것도 확정하지 않는다. 아래에서 결과 모름으로 돌려준다.
+                case IN_PROGRESS -> { }
             }
         }
-        ApprovalOutcome outcome = (payment.getStatus() == PaymentStatus.DONE)
-                ? new ApprovalOutcome(ApprovalOutcome.Result.SUCCESS, payment.getMethod(), null)
-                : new ApprovalOutcome(ApprovalOutcome.Result.FAILED, null, "복구: 승인 미완료");
+        ApprovalOutcome outcome = outcomeOf(payment);
         return Optional.of(new StuckPaymentInfo(payment.getId(), payment.getAmount(), outcome));
+    }
+
+    /**
+     * 복구 뒤 결제 상태를 주문 쪽에 넘길 결과로 옮긴다.
+     *
+     * <p><b>확정되지 않은 결제를 FAILED 로 넘기지 않는다.</b> FAILED 를 받은 {@code settle} 은 결제를
+     * ABORTED 로 바꾸고 주문을 결제 대기로 되돌려 다른 수단의 재시도를 연다. PG 가 진행 중이라고 답한
+     * 결제가 그 뒤에 승인되면 이중 결제가 된다. 그래서 IN_PROGRESS · UNKNOWN 은 TIMEOUT 으로 넘겨
+     * 결제는 결과 모름으로, 주문은 결제 중으로 남기고 복구 배치가 PG 조회로 마저 확정하게 한다.
+     */
+    static ApprovalOutcome outcomeOf(Payment payment) {
+        return switch (payment.getStatus()) {
+            case DONE -> new ApprovalOutcome(ApprovalOutcome.Result.SUCCESS, payment.getMethod(), null);
+            case IN_PROGRESS, UNKNOWN -> new ApprovalOutcome(ApprovalOutcome.Result.TIMEOUT, null,
+                    "복구: PG 결과 확정 전");
+            default -> new ApprovalOutcome(ApprovalOutcome.Result.FAILED, null, "복구: 승인 미완료");
+        };
+    }
+
+    /** {@code PaymentRecoveryService} 와 같은 설정을 쓴다(app.recovery.missing-grace). */
+    @org.springframework.beans.factory.annotation.Value("${app.recovery.missing-grace:30m}")
+    private java.time.Duration missingGrace = java.time.Duration.ofMinutes(30);
+
+    private java.time.Duration stuckMissingGrace() {
+        return missingGrace != null && !missingGrace.isNegative() ? missingGrace : java.time.Duration.ofMinutes(30);
     }
 
     /**

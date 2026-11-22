@@ -208,6 +208,17 @@ public class PaymentRecoveryService {
                 paymentRepository.saveAndFlush(payment);
                 events.publishEvent(new PaymentRecoveredEvent(payment.getOrderNo(), payment.getId(), payment.getStatus()));
             }
+            // PG가 기록을 돌려주지 않으면(404 · 빈 응답) 결제 유효 시간이 지날 때까지 다시 묻는다.
+            // 그 전에 ABORTED 로 닫으면 반영이 늦었을 뿐인 승인을 우리만 실패로 기록한다
+            case MISSING -> {
+                if (!missingGraceOver(payment, Instant.now())) {
+                    log.info("복구 보류: PG 기록 없음, 유예 안 orderNo={}", payment.getOrderNo());
+                    return false;
+                }
+                payment.abortByRecovery("복구: PG 기록 없음이 유예(" + missingGrace() + ") 뒤에도 계속됨");
+                paymentRepository.saveAndFlush(payment);
+                events.publishEvent(new PaymentRecoveredEvent(payment.getOrderNo(), payment.getId(), payment.getStatus()));
+            }
             // PG가 아직 진행 중이라고 답하면 확정하지 않는다. 여기서 실패로 단정하면
             // 승인이 곧 끝날 결제를 우리만 실패로 기록하는 사고가 된다 → 다음 주기에 다시 묻는다
             case IN_PROGRESS -> {
@@ -232,6 +243,24 @@ public class PaymentRecoveryService {
      * 읽는 순서(#248). {@code unordered}(정렬 없음) · {@code oldest}(오래된 순 명시) · {@code backoff}(확정 못 한 건은 다음
      * 시도를 미루고, 때가 된 것 중 오래된 순). 필드 기본값을 두는 이유는 {@link #readChunkSize} 와 같다.
      */
+    /**
+     * PG가 결제 기록을 돌려주지 않을 때(PgPaymentStatus.MISSING) 승인 실패로 닫기 전에 기다리는 시간.
+     * 결제 요청 시각부터 잰다. 토스 문서는 승인 호출 기한을 10분, 결제 유효 시간을 30분으로 적어
+     * 두 값이 엇갈리므로 긴 쪽을 기본으로 둔다. 그 뒤에는 PG가 이 결제를 승인으로 바꿀 수 없다.
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.recovery.missing-grace:30m}")
+    private Duration missingGrace = Duration.ofMinutes(30);
+
+    Duration missingGrace() {
+        return missingGrace != null && !missingGrace.isNegative() ? missingGrace : Duration.ofMinutes(30);
+    }
+
+    /** 결제 요청 시각에서 유예가 지났나. 요청 시각이 없으면 지났다고 보지 않는다(닫지 않는 쪽). */
+    boolean missingGraceOver(Payment payment, Instant now) {
+        return payment.getRequestedAt() != null
+                && !now.isBefore(payment.getRequestedAt().plus(missingGrace()));
+    }
+
     @org.springframework.beans.factory.annotation.Value("${app.recovery.policy:backoff}")
     private String policy = "backoff";
 
