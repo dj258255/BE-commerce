@@ -190,7 +190,8 @@ public class TossPgClient implements PgClient {
             return new PgQueryResult(mapStatus(resp == null ? null : resp.status()),
                     resp == null ? null : resp.method());
         } catch (HttpClientErrorException.NotFound e) {
-            return new PgQueryResult(PgPaymentStatus.NOT_FOUND, null);   // PG에 결제 없음
+            // 승인 실패가 확정된 것은 아니다. 복구가 유예 시간 동안 다시 묻는다(PgPaymentStatus.MISSING)
+            return new PgQueryResult(PgPaymentStatus.MISSING, null);
         }
     }
 
@@ -226,7 +227,7 @@ public class TossPgClient implements PgClient {
      */
     static PgPaymentStatus mapStatus(String tossStatus) {
         if (tossStatus == null) {
-            return PgPaymentStatus.NOT_FOUND;
+            return PgPaymentStatus.MISSING;   // 빈 응답은 실패의 증거가 아니다
         }
         return switch (tossStatus) {
             case "DONE" -> PgPaymentStatus.APPROVED;

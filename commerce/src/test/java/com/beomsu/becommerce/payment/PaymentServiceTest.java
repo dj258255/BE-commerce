@@ -272,6 +272,49 @@ class PaymentServiceTest {
     }
 
     @Test
+    @DisplayName("resolveStuckPayment: PG가 진행 중이면 FAILED 대신 TIMEOUT, 결제를 ABORTED로 만들지 않는다")
+    void resolveStuckPaymentPgInProgressStaysUnresolved() {
+        PgClient mockPg = mock(PgClient.class);
+        PaymentService svc = new PaymentService(repository, mockPg, new PaymentCancelTx(repository, events), events, meterRegistry);
+        Payment stuck = inProgress("order-i", "pk-i", 8_000, 7L); // 승인 호출 도중 앱이 죽어 IN_PROGRESS 로 남음
+        when(repository.findFirstByOrderNoOrderByRequestedAtDesc("order-i")).thenReturn(Optional.of(stuck));
+        when(mockPg.query("pk-i", "TOSS_PAYMENTS")).thenReturn(new PgQueryResult(PgPaymentStatus.IN_PROGRESS, null));
+
+        Optional<StuckPaymentInfo> info = svc.resolveStuckPayment("order-i");
+
+        // FAILED 면 settle 이 결제를 ABORTED 로 바꾸고 주문 재시도를 연다. PG 가 뒤에 승인하면 이중 결제
+        assertThat(info).isPresent();
+        assertThat(info.get().outcome().result()).isEqualTo(ApprovalOutcome.Result.TIMEOUT);
+        assertThat(stuck.getStatus()).isEqualTo(PaymentStatus.IN_PROGRESS);
+
+        // settle 이 부르는 applyResult 로 이어 보면 결제는 결과 모름(UNKNOWN)이 되어 복구 배치가 이어받는다
+        when(repository.findById(7L)).thenReturn(Optional.of(stuck));
+        ConfirmResult applied = svc.applyResult(7L, info.get().outcome());
+        assertThat(applied.isUnknown()).isTrue();
+    }
+
+    @Test
+    @DisplayName("resolveStuckPayment: PG 기록 없음(404)은 유예 안이면 TIMEOUT, 유예 뒤면 ABORTED")
+    void resolveStuckPaymentMissingRespectsGrace() {
+        PgClient mockPg = mock(PgClient.class);
+        PaymentService svc = new PaymentService(repository, mockPg, new PaymentCancelTx(repository, events), events, meterRegistry);
+        Payment fresh = inProgress("order-m", "pk-m", 8_000, 8L);
+        fresh.markUnknown("타임아웃");
+        when(repository.findFirstByOrderNoOrderByRequestedAtDesc("order-m")).thenReturn(Optional.of(fresh));
+        when(mockPg.query("pk-m", "TOSS_PAYMENTS")).thenReturn(new PgQueryResult(PgPaymentStatus.MISSING, null));
+
+        assertThat(svc.resolveStuckPayment("order-m").get().outcome().result())
+                .isEqualTo(ApprovalOutcome.Result.TIMEOUT);
+        assertThat(fresh.getStatus()).isEqualTo(PaymentStatus.UNKNOWN);
+
+        org.springframework.test.util.ReflectionTestUtils.setField(fresh, "requestedAt",
+                java.time.Instant.now().minus(java.time.Duration.ofMinutes(31)));
+        assertThat(svc.resolveStuckPayment("order-m").get().outcome().result())
+                .isEqualTo(ApprovalOutcome.Result.FAILED);
+        assertThat(fresh.getStatus()).isEqualTo(PaymentStatus.ABORTED);
+    }
+
+    @Test
     @DisplayName("resolveStuckPayment: 카드 결제 없으면(전액 포인트) empty")
     void resolveStuckPaymentEmptyForFullPoint() {
         when(repository.findFirstByOrderNoOrderByRequestedAtDesc("order-p")).thenReturn(Optional.empty());
