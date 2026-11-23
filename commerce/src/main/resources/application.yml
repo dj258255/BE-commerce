@@ -1024,6 +1024,10 @@ spring:
       on-profile: worker
 
 app:
+  # 정합성 검사(ADR-069). 복구 · 망취소 · 정산 배치가 도는 프로세스에서 같이 돌아야 그 배치가 놓친 건을 센다.
+  # 켜면 1분마다 게이지를 내고 PaymentIntegrityViolation 알림이 본다. API 프로세스(기본 프로파일)는 여전히 꺼 둔다.
+  integrity:
+    enabled: true
   settlement:
     enabled: true
   recovery:
