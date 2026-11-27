@@ -5,7 +5,10 @@ import com.beomsu.becommerce.order.internal.RefundAllocator.RefundAllocation;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Random;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RefundAllocatorTest {
 
@@ -63,5 +66,57 @@ class RefundAllocatorTest {
         assertThat(a.fromWallet()).isEqualTo(6_000);
         assertThat(a.fromCard()).isZero();
         assertThat(a.fromPoint()).isZero();
+    }
+
+    @Test
+    @DisplayName("부분취소를 여러 번 나눠도 수단별 누적 환불이 낸 금액과 같고 카드 취소 호출은 내부 재원을 다 쓴 뒤에만 생긴다 (ADR-087)")
+    void sequentialPartialCancelsReturnEachMethodExactly() {
+        // 10,000 = 포인트 3,000 + 카드 7,000, 취소를 2,000 · 3,000 · 5,000 으로 나눔
+        long point = 3_000, wallet = 0, card = 7_000;
+        long refundedPoint = 0, refundedCard = 0;
+        int cardCancelCalls = 0;
+        for (long cancel : new long[]{2_000, 3_000, 5_000}) {
+            RefundAllocation a = RefundAllocator.allocate(cancel, point - refundedPoint, wallet, card - refundedCard);
+            refundedPoint += a.fromPoint();
+            refundedCard += a.fromCard();
+            if (a.fromCard() > 0) {
+                cardCancelCalls++; // CancelService 는 카드 몫이 0이면 PG 를 부르지 않는다
+            }
+        }
+        assertThat(refundedPoint).isEqualTo(3_000);
+        assertThat(refundedCard).isEqualTo(7_000);
+        assertThat(cardCancelCalls).isEqualTo(2); // 첫 2,000 은 포인트만으로 끝나 PG 호출이 없다
+    }
+
+    @Test
+    @DisplayName("남은 결제분보다 큰 취소는 배분하지 않고 거절한다")
+    void rejectsCancelAboveRemaining() {
+        assertThatThrownBy(() -> RefundAllocator.allocate(10_001, 3_000, 0, 7_000))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("무작위 1만 건: 합계 불변식, 수단별 상한, 카드는 내부 재원을 다 쓴 뒤에만")
+    void randomizedInvariants() {
+        Random random = new Random(87);
+        for (int i = 0; i < 10_000; i++) {
+            long point = random.nextInt(50_000);
+            long wallet = random.nextInt(50_000);
+            long card = random.nextInt(200_000);
+            long cancel = (long) (random.nextDouble() * (point + wallet + card));
+            RefundAllocation a = RefundAllocator.allocate(cancel, point, wallet, card);
+
+            assertThat(a.fromPoint() + a.fromWallet() + a.fromCard()).isEqualTo(cancel);
+            assertThat(a.fromPoint()).isBetween(0L, point);
+            assertThat(a.fromWallet()).isBetween(0L, wallet);
+            assertThat(a.fromCard()).isBetween(0L, card);
+            if (a.fromWallet() > 0) {
+                assertThat(a.fromPoint()).isEqualTo(point);
+            }
+            if (a.fromCard() > 0) {
+                assertThat(a.fromPoint()).isEqualTo(point);
+                assertThat(a.fromWallet()).isEqualTo(wallet);
+            }
+        }
     }
 }
