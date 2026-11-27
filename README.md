@@ -45,6 +45,7 @@
 | `commerce/consumer-app/` | 결제 DLT 재처리 소비자 (별도 Gradle 빌드) | commerce 의 DLT 를 읽습니다. commerce 를 떼면 같이 갑니다 |
 | `media/` | 라이브 커머스·숏폼 (별도 Gradle 하위 프로젝트) | commerce 와 같은 jar로 배포합니다(별도 서비스 아님). 주문·결제·재고 확정은 두지 않고 commerce의 공개 API만 부릅니다. 의존 방향과 그 이유는 [ADR-080](docs/adr/ADR-080-media-gradle-submodule.md) |
 | `personalization/` | 개인화 파이프라인·실험 문서 | 다른 데이터·다른 언어(Python)·다른 배포 |
+| `data/` | 결제 데이터를 분석·정산에 쓸 수 있는 곳까지 옮기는 실험(CDC · Kafka 운영 · 실시간 집계 · 레이크하우스 · 대조, [data/README.md](data/README.md)) | 결제 코어의 스키마 사본을 들고 따로 실행합니다. 사본은 `DataSchemaContractMySqlTest` 가 마이그레이션과 대조합니다 |
 | `apps/web/` | Next.js 프론트 | |
 | `docs/` | 설계·ADR·API·ERD | **양쪽의 기록이 한 곳에** 있습니다. ADR 은 두 영역을 오갑니다 |
 | `k6/` `tools/` `monitoring/` `cdc/` `ci/` `scripts/` | 실험·운영 자산 | 결제와 개인화가 **같이 씁니다**(예: `alert-rules.yml` 에 결제 규칙과 개인화 규칙이 함께 있습니다) |
