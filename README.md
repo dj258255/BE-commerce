@@ -284,6 +284,12 @@ docker compose --profile monitoring up -d prometheus grafana
 
 프로젝트를 만든 배경과 트레이드오프 판단은 [블로그 소개 글](https://dj258255.github.io/IT-Oasis/blog/project/be-commerce/be-commerce-0-overview/)에 더 자세히 적었습니다.
 
+## 결제 데이터를 옮기는 쪽: be-commerce-data
+
+이 저장소가 남긴 결제 데이터를 분석과 정산에 쓸 수 있는 곳까지 옮길 때 생기는 문제(조인 행 증식, 재실행 멱등, CDC, Kafka 운영, 실시간 집계, 레이크하우스, 대조)는
+[be-commerce-data](https://github.com/dj258255/be-commerce-data)에서 재현합니다. 그 저장소는 이 저장소 커밋 `ed3757d`의 마이그레이션에서 표 9개의 스키마를 가져와 고정해 두고,
+이 저장소의 코드는 고치지 않습니다. 원천 스키마를 바꾸지 못하는 데이터 팀의 자리를 그대로 흉내 내려고 저장소를 나눴습니다. 실험은 계획까지 끝났고 결과는 아직 없습니다.
+
 ## 범위와 한계
 
 이 저장소는 단일 가맹점을 가정한 이커머스 플랫폼 데모입니다. 코어는 결제 실패와 정합성 처리이고,
