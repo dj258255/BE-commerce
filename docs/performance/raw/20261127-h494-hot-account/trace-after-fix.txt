@@ -1,0 +1,14 @@
+round=1 COLD      ops=1600 elapsed_ms=1257 tput=1272.9 p50=5 p95=6 p99=11 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+trace pass marked=106 selected=106 oldest_lag_ms=113
+trace pass marked=140 selected=140 oldest_lag_ms=122
+trace pass marked=158 selected=158 oldest_lag_ms=125
+trace pass marked=129 selected=129 oldest_lag_ms=121
+trace pass marked=164 selected=164 oldest_lag_ms=119
+trace pass marked=164 selected=164 oldest_lag_ms=117
+trace pass marked=165 selected=165 oldest_lag_ms=123
+trace pass marked=165 selected=165 oldest_lag_ms=123
+trace pass marked=146 selected=146 oldest_lag_ms=119
+trace pass marked=114 selected=114 oldest_lag_ms=123
+trace pass marked=133 selected=133 oldest_lag_ms=120
+trace pass marked=16 selected=16 oldest_lag_ms=122
+round=1 BUFFER    ops=1600 elapsed_ms=1218 tput=1313.6 p50=5 p95=8 p99=14 lock_waits=0 final_balance=1600 lag_p95_ms=116 lag_max_ms=125
