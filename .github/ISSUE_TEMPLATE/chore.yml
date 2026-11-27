@@ -1,0 +1,40 @@
+name: 정리·구조
+description: 동작은 그대로 두고 구조, 빌드, 의존성, 문서 배치, 라이선스를 고치는 작업
+labels: ["chore"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문제
+      description: 지금 구조의 무엇이 어긋나는가. 위치, 빌드 관계, 라이선스처럼 확인할 수 있는 사실로 적는다.
+      placeholder: 현재는 …라서 …가 어긋난다.
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: 결정과 버린 안
+      description: 어떻게 바꾸는가. 검토하고 버린 안이 있으면 이유와 함께 적는다.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: 확인 방법
+      description: 동작이 그대로인지 무엇으로 확인하는가. 테스트 수, 산출물 이름, 깨진 링크 수처럼 전후를 비교할 수 있게.
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: 남은 위험
+      description: 이 변경으로 달라지는 명령, 경로, 사용법. 없으면 "없다"고 적는다.
+    validations:
+      required: true
+  - type: input
+    id: estimate
+    attributes:
+      label: 예상 완료
+      placeholder: "2026-11-27"
+    validations:
+      required: true
