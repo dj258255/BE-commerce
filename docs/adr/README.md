@@ -25,6 +25,7 @@ PG 장애 격리, 결과 모르는 결제의 확정, 결제 정합성
 | [058](ADR-058-shed-browse-before-webhook.md) | 자원이 마르면 조회를 먼저 돌려보낸다: 웹훅은 PG 상한만으로는 지켜지지 않았다 | 채택 |
 | [069](ADR-069-payment-integrity-invariants.md) | 결제 한 건이 모듈을 건너며 맞는지 불변식으로 센다 | 채택 |
 | [086](ADR-086-net-cancel-retry-window-over-auth-capture-split.md) | 망취소는 자동 매입을 유지한 채 시간 창 동안 재시도할 수 있게 하고, 승인 · 매입 분리는 만들지 않는다 | 채택 |
+| [087](ADR-087-partial-cancel-refund-order-internal-first.md) | 복합결제 부분취소는 포인트 → 월렛 → 카드 순으로 돌려준다 | 채택 |
 | [030](ADR-030-dlt-replay-and-post-recovery-reconciliation.md) | 격리·발견·복구·검증을 따로 만든다 | 채택 |
 | [007](ADR-007-checkout-transaction-boundary.md) | 체크아웃 트랜잭션 경계: 단일 트랜잭션 → 3단계 사가로 이행 | 개정 |
 | [019](ADR-019-pci-scope-by-not-touching-cards.md) | 카드번호를 서버가 만지지 않아 카드 데이터 환경의 범위를 줄인다 | 채택 |
