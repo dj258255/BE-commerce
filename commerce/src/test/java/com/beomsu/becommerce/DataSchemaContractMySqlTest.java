@@ -39,7 +39,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Tag("integration")
 class DataSchemaContractMySqlTest {
 
-    private static final Path COPY = Path.of("..", "data", "compose", "init", "mysql", "01_schema.sql");
+    // 깊이를 박지 않고 저장소 루트를 찾아 올라간다(ADR-049).
+    private static final Path COPY = RepoRoot.resolve("data/compose/init/mysql/01_schema.sql");
 
     /** 원본에는 있지만 데이터 쪽 사본에서 일부러 뺀 열. 이유는 data/docs/source-schema.md "뺀 열". */
     private static final Map<String, Set<String>> OMITTED = Map.of(

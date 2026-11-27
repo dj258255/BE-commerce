@@ -62,3 +62,14 @@ C 의 대가는 루트가 완전히 균일하지 않다는 것이다. 그래서 
   달라진다. 12개 실험 스크립트가 jar 이름을 문자열로 들고 있어 그쪽이 더 비쌌다
 - **경계는 아직 물리적일 뿐이다.** 디렉터리를 나눈 것이 서비스를 나눈 것은 아니다. 분리 조건은
   [ADR-029](ADR-029-deployment-unit-vs-service-boundary.md) 그대로다
+
+## 2026-11-27 Gradle 루트를 저장소 루트로 올린다
+
+**문제.** Gradle 루트가 `commerce/` 안에 있었고 `commerce/settings.gradle` 이 `../media` 를 하위 프로젝트로 끌어왔다.
+`media/` 는 저장소 최상위 영역(ADR-080)인데 빌드에서는 commerce 의 하위였다. 위치와 빌드 관계가 어긋나 "media 가 왜 루트에 있나"를 설명해야 했다.
+
+**결정.** `settings.gradle` · `build.gradle` 을 저장소 루트에 두고 `commerce` 와 `media` 를 형제 하위 프로젝트로 넣는다.
+플러그인 버전은 루트 `build.gradle` 이 `apply false` 로 한 번만 정한다. `commerce/consumer-app` 은 위 결정 그대로 commerce 안에 두고 자기 `settings.gradle` 을 가진 독립 빌드로 남긴다.
+jar 이름이 프로젝트 이름(commerce)을 따라 바뀌지 않게 `bootJar` 의 `archiveBaseName` 을 `be-commerce` 로 고정한다(실험 스크립트 10개가 그 이름을 쓴다).
+
+**대가.** `./gradlew -p commerce test` 는 이제 commerce 만 돈다. 전에는 media 가 commerce 의 하위라 같이 돌았다. CI 는 루트에서 `./gradlew test` 로 둘 다 돌린다.

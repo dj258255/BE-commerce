@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'io.spring.dependency-management' version '1.1.7'
+    id 'io.spring.dependency-management'
 }
 
 // commerce 애플리케이션에 같은 jar로 포함되는 라이브러리 모듈이다(R32, ADR-080) —
