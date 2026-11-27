@@ -1,0 +1,34 @@
+round=1 COLD      ops=1600 elapsed_ms=1074 tput=1489.8 p50=4 p95=6 p99=11 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=1 HOT       ops=1600 elapsed_ms=6813 tput=234.8 p50=31 p95=47 p99=92 lock_waits=1599 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=1 SPLIT-4   ops=1600 elapsed_ms=2108 tput=759.0 p50=8 p95=20 p99=38 lock_waits=1236 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=1 SPLIT-16  ops=1600 elapsed_ms=1448 tput=1105.0 p50=6 p95=12 p99=21 lock_waits=509 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=1 BUFFER    ops=1600 elapsed_ms=1143 tput=1399.8 p50=5 p95=8 p99=10 lock_waits=0 final_balance=1600 lag_p95_ms=115 lag_max_ms=126
+round=2 COLD      ops=1600 elapsed_ms=1023 tput=1564.0 p50=4 p95=6 p99=7 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=2 HOT       ops=1600 elapsed_ms=6765 tput=236.5 p50=33 p95=38 p99=45 lock_waits=1599 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=2 SPLIT-4   ops=1600 elapsed_ms=4094 tput=390.8 p50=14 p95=42 p99=121 lock_waits=1208 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=2 SPLIT-16  ops=1600 elapsed_ms=2693 tput=594.1 p50=11 p95=24 p99=39 lock_waits=494 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=2 BUFFER    ops=1600 elapsed_ms=1582 tput=1011.4 p50=6 p95=14 p99=24 lock_waits=0 final_balance=1600 lag_p95_ms=127 lag_max_ms=163
+round=3 COLD      ops=1600 elapsed_ms=1576 tput=1015.2 p50=6 p95=13 p99=25 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=3 HOT       ops=1600 elapsed_ms=6182 tput=258.8 p50=29 p95=36 p99=50 lock_waits=1599 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=3 SPLIT-4   ops=1600 elapsed_ms=1961 tput=815.9 p50=8 p95=19 p99=24 lock_waits=1221 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=3 SPLIT-16  ops=1600 elapsed_ms=2414 tput=662.8 p50=10 p95=21 p99=30 lock_waits=524 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=3 BUFFER    ops=1600 elapsed_ms=1079 tput=1482.9 p50=5 p95=6 p99=8 lock_waits=0 final_balance=1600 lag_p95_ms=113 lag_max_ms=123
+round=4 COLD      ops=1600 elapsed_ms=1070 tput=1495.3 p50=5 p95=6 p99=8 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=4 HOT       ops=1600 elapsed_ms=8104 tput=197.4 p50=32 p95=68 p99=140 lock_waits=1599 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=4 SPLIT-4   ops=1600 elapsed_ms=1944 tput=823.0 p50=8 p95=18 p99=23 lock_waits=1242 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=4 SPLIT-16  ops=1600 elapsed_ms=1225 tput=1306.1 p50=5 p95=10 p99=15 lock_waits=513 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=4 BUFFER    ops=1600 elapsed_ms=1013 tput=1579.5 p50=4 p95=6 p99=8 lock_waits=0 final_balance=1600 lag_p95_ms=112 lag_max_ms=119
+round=5 COLD      ops=1600 elapsed_ms=981 tput=1631.0 p50=4 p95=5 p99=7 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=5 HOT       ops=1600 elapsed_ms=6174 tput=259.2 p50=29 p95=37 p99=48 lock_waits=1599 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=5 SPLIT-4   ops=1600 elapsed_ms=2164 tput=739.4 p50=8 p95=21 p99=52 lock_waits=1246 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=5 SPLIT-16  ops=1600 elapsed_ms=1299 tput=1231.7 p50=5 p95=10 p99=15 lock_waits=521 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=5 BUFFER    ops=1600 elapsed_ms=1038 tput=1541.4 p50=4 p95=6 p99=9 lock_waits=0 final_balance=1600 lag_p95_ms=113 lag_max_ms=121
+=== hot account mitigations: median of per-round ratios vs COLD (5 rounds) ===
+shape      tput_vs_cold  p95_vs_cold  lock_waits(med)  lag_p95_ms(med)  lag_max_ms(max)  balance_ok
+COLD            100.0%        1.00x                0                0                0  true
+HOT              15.8%        7.40x             1599                0                0  true
+SPLIT-4          50.9%        3.33x             1236                0                0  true
+SPLIT-16         74.2%        2.00x              513                0                0  true
+BUFFER           94.5%        1.20x                0              113              163  true
+15:32  up 16 days,  7:21, 2 users, load averages: 5.44 11.63 11.89
+15:33  up 16 days,  7:22, 2 users, load averages: 10.23 11.72 11.90

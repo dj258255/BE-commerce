@@ -1,0 +1,32 @@
+round=1 COLD      ops=1600 elapsed_ms=1318 tput=1214.0 p50=5 p95=7 p99=17 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=1 HOT       ops=1600 elapsed_ms=6829 tput=234.3 p50=32 p95=43 p99=56 lock_waits=1599 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=1 SPLIT-4   ops=1600 elapsed_ms=2201 tput=726.9 p50=8 p95=23 p99=31 lock_waits=1188 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=1 SPLIT-16  ops=1600 elapsed_ms=1262 tput=1267.8 p50=5 p95=11 p99=16 lock_waits=517 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=1 BUFFER    ops=1600 elapsed_ms=1038 tput=1541.4 p50=4 p95=6 p99=10 lock_waits=1051 final_balance=1600 lag_p95_ms=873 lag_max_ms=924
+round=2 COLD      ops=1600 elapsed_ms=1009 tput=1585.7 p50=4 p95=6 p99=8 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=2 HOT       ops=1600 elapsed_ms=6125 tput=261.2 p50=29 p95=35 p99=42 lock_waits=1599 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=2 SPLIT-4   ops=1600 elapsed_ms=1940 tput=824.7 p50=8 p95=19 p99=23 lock_waits=1220 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=2 SPLIT-16  ops=1600 elapsed_ms=1157 tput=1382.9 p50=4 p95=9 p99=12 lock_waits=535 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=2 BUFFER    ops=1600 elapsed_ms=984 tput=1626.0 p50=4 p95=5 p99=8 lock_waits=1260 final_balance=1600 lag_p95_ms=968 lag_max_ms=1018
+round=3 COLD      ops=1600 elapsed_ms=948 tput=1687.8 p50=4 p95=5 p99=7 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=3 HOT       ops=1600 elapsed_ms=7268 tput=220.1 p50=30 p95=77 p99=118 lock_waits=1599 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=3 SPLIT-4   ops=1600 elapsed_ms=2483 tput=644.4 p50=9 p95=27 p99=47 lock_waits=1216 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=3 SPLIT-16  ops=1600 elapsed_ms=1306 tput=1225.1 p50=5 p95=11 p99=15 lock_waits=511 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=3 BUFFER    ops=1600 elapsed_ms=1069 tput=1496.7 p50=5 p95=7 p99=10 lock_waits=1210 final_balance=1600 lag_p95_ms=1055 lag_max_ms=1090
+round=4 COLD      ops=1600 elapsed_ms=1013 tput=1579.5 p50=4 p95=6 p99=7 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=4 HOT       ops=1600 elapsed_ms=6164 tput=259.6 p50=30 p95=35 p99=42 lock_waits=1599 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=4 SPLIT-4   ops=1600 elapsed_ms=2071 tput=772.6 p50=8 p95=20 p99=27 lock_waits=1199 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=4 SPLIT-16  ops=1600 elapsed_ms=1368 tput=1169.6 p50=5 p95=12 p99=17 lock_waits=529 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=4 BUFFER    ops=1600 elapsed_ms=1157 tput=1382.9 p50=5 p95=7 p99=13 lock_waits=1108 final_balance=1600 lag_p95_ms=1142 lag_max_ms=1178
+round=5 COLD      ops=1600 elapsed_ms=1095 tput=1461.2 p50=5 p95=7 p99=10 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=5 HOT       ops=1600 elapsed_ms=19792 tput=80.8 p50=86 p95=216 p99=346 lock_waits=1599 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=5 SPLIT-4   ops=1600 elapsed_ms=9119 tput=175.5 p50=35 p95=101 p99=158 lock_waits=1236 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=5 SPLIT-16  ops=1600 elapsed_ms=5283 tput=302.9 p50=19 p95=64 p99=92 lock_waits=531 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=5 BUFFER    ops=1600 elapsed_ms=3565 tput=448.8 p50=14 p95=35 p99=50 lock_waits=853 final_balance=1600 lag_p95_ms=3474 lag_max_ms=3569
+=== hot account mitigations: median of per-round ratios vs COLD (5 rounds) ===
+shape      tput_vs_cold  p95_vs_cold  lock_waits(med)  lag_p95_ms(med)  lag_max_ms(max)  balance_ok
+COLD            100.0%        1.00x                0                0                0  true
+HOT              16.4%        6.14x             1599                0                0  true
+SPLIT-4          48.9%        3.33x             1216                0                0  true
+SPLIT-16         74.0%        2.00x              529                0                0  true
+BUFFER           88.7%        1.17x             1108             1055             3569  true

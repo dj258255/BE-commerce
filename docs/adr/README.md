@@ -53,6 +53,7 @@ PG 장애 격리, 결과 모르는 결제의 확정, 결제 정합성
 | [023](ADR-023-settlement-earned-date-vs-swept-date.md) | 정산 집계일과 거래 귀속일을 분리할 것인가 | 채택 |
 | [024](ADR-024-settlement-extraction-data-cutover.md) | 정산 분리에서 과거 데이터를 어떻게 넘길 것인가 | 채택 |
 | [025](ADR-025-ledger-balance-read-strategy.md) | 원장 잔액을 어떻게 읽을 것인가 | 채택 |
+| [088](ADR-088-hot-account-buffered-posting-over-split.md) | 핫 계정이 생기면 잔액 행을 분개마다 갱신하지 않고 한 집계기가 모아 반영한다. 하위 계정 분할은 만들지 않는다 | 채택 |
 | [027](ADR-027-settlement-fairness-policy.md) | 큰 가맹점 하나가 전체를 늦출 때 (정산 공정성 정책) | 채택 안 함 |
 | [029](ADR-029-deployment-unit-vs-service-boundary.md) | 실행 단위만 분리하는 것과 저장소까지 분리하는 것 | 채택 |
 | [073](ADR-073-settlement-batch-partition-strategy.md) | 정산 배치 병렬화 — 나누는 키(모듈러 대 항목 id 범위 대 판매자 크기 묶음) | 비교 실험 |

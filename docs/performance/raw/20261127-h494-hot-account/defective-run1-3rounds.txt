@@ -1,0 +1,22 @@
+round=1 COLD      ops=1600 elapsed_ms=2757 tput=580.3 p50=9 p95=26 p99=132 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=1 HOT       ops=1600 elapsed_ms=8596 tput=186.1 p50=37 p95=56 p99=199 lock_waits=1599 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=1 SPLIT-4   ops=1600 elapsed_ms=2993 tput=534.6 p50=12 p95=31 p99=58 lock_waits=1247 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=1 SPLIT-16  ops=1600 elapsed_ms=2736 tput=584.8 p50=10 p95=28 p99=48 lock_waits=499 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=1 BUFFER    ops=1600 elapsed_ms=4309 tput=371.3 p50=17 p95=44 p99=98 lock_waits=693 final_balance=1600 lag_p95_ms=3392 lag_max_ms=3566
+round=2 COLD      ops=1600 elapsed_ms=3229 tput=495.5 p50=14 p95=27 p99=41 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=2 HOT       ops=1600 elapsed_ms=17365 tput=92.1 p50=74 p95=164 p99=269 lock_waits=1599 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=2 SPLIT-4   ops=1600 elapsed_ms=4627 tput=345.8 p50=18 p95=49 p99=69 lock_waits=1233 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=2 SPLIT-16  ops=1600 elapsed_ms=1559 tput=1026.3 p50=6 p95=14 p99=19 lock_waits=558 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=2 BUFFER    ops=1600 elapsed_ms=1282 tput=1248.0 p50=6 p95=8 p99=15 lock_waits=819 final_balance=1600 lag_p95_ms=1250 lag_max_ms=1286
+round=3 COLD      ops=1600 elapsed_ms=1334 tput=1199.4 p50=5 p95=11 p99=18 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=3 HOT       ops=1600 elapsed_ms=6812 tput=234.9 p50=32 p95=39 p99=51 lock_waits=1599 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=3 SPLIT-4   ops=1600 elapsed_ms=2150 tput=744.2 p50=8 p95=22 p99=29 lock_waits=1218 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=3 SPLIT-16  ops=1600 elapsed_ms=1412 tput=1133.1 p50=5 p95=13 p99=20 lock_waits=528 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+round=3 BUFFER    ops=1600 elapsed_ms=1235 tput=1295.5 p50=5 p95=8 p99=13 lock_waits=1042 final_balance=1600 lag_p95_ms=1212 lag_max_ms=1254
+=== hot account mitigations (median of 3 rounds) ===
+shape      tput/s  vs_cold  p50  p95  p99  vs_cold_p95  lock_waits  lag_p95_ms  lag_max_ms  balance_ok
+COLD        580.3   100.0%    9   26  132       1.00x           0           0           0  true
+HOT         186.1    32.1%   37   56  199       2.15x        1599           0           0  true
+SPLIT-4     534.6    92.1%   12   31   58       1.19x        1247           0           0  true
+SPLIT-16   1026.3   176.8%    6   14   19       0.54x         558           0           0  true
+BUFFER     1248.0   215.1%    6    8   15       0.31x         819        1250        1286  true

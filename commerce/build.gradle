@@ -224,6 +224,8 @@ tasks.register('measurementTest', Test) {
         includeTags 'measurement'
     }
     testLogging { showStandardStreams = true }
+    // 측정 설정(-Dledger.hot.*)을 테스트 JVM 에 넘긴다(#494). Gradle 은 -D 를 넘기지 않는다
+    System.properties.findAll { k, v -> k.toString().startsWith('ledger.hot.') }.each { k, v -> systemProperty k.toString(), v }
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     shouldRunAfter('test')

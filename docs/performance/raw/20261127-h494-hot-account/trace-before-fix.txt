@@ -1,0 +1,4 @@
+round=1 COLD      ops=1600 elapsed_ms=1290 tput=1240.3 p50=6 p95=8 p99=10 lock_waits=0 final_balance=1600 lag_p95_ms=0 lag_max_ms=0
+trace pass marked=88 selected=88 oldest_lag_ms=1231
+trace pass marked=1512 selected=1512 oldest_lag_ms=1255
+round=1 BUFFER    ops=1600 elapsed_ms=1235 tput=1295.5 p50=5 p95=8 p99=11 lock_waits=1115 final_balance=1600 lag_p95_ms=1199 lag_max_ms=1255
