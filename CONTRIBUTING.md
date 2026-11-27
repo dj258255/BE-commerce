@@ -13,6 +13,21 @@
 | PR | 본문에 `Closes #NN`으로 이슈를 닫는다. CI가 초록이어야 머지한다 |
 | 머지 | **머지 커밋**으로 머지한 뒤 **브랜치를 지운다**(원격·로컬) |
 
+**메타는 검사가 지킨다(2026-11-27, #504).** 규칙만 있던 동안 이슈 127개가 마일스톤 없이, 124개가 라벨 없이 쌓였다.
+그래서 빈 이슈를 껐고(템플릿 넷: 기능 · 결함 · 의사결정·실험 · 정리·구조), PR에 마일스톤 · 라벨 · `Closes #번호` 중
+하나라도 없으면 `PR 메타 검사`가 실패한다. `gh issue create`로 만들 때도 `--milestone`과 `--label`을 붙인다.
+
+**마일스톤은 주제로 고른다.** 열린 마일스톤 중 맞는 것을 고르고, 없으면 `M<다음 번호>. <주제>`로 새로 만든다.
+주제가 끝나면 닫는다. 지금 열린 것: M13 결제 신뢰성 실측, M14 재고와 한정 판매, M15 검색 엔진 판단,
+M16 정산과 운영 경로, M17 CI와 테스트 기반, M18 저장소 구조와 오픈소스 정합, GenPage v2.
+
+**라벨은 영역 하나 이상 + 성격 하나.**
+
+| 종류 | 라벨 |
+| --- | --- |
+| 영역 | `payment` `catalog` `storefront` `personalization` `data` `ops` `ci` `architecture` `license` |
+| 성격 | `bug` `feature`·`enhancement` `experiment` `decision` `refactor` `chore` `documentation` `testing` |
+
 **머지한 브랜치는 지운다.** 남겨 두면 쌓여서 무엇이 아직 살아 있는지가 안 보인다 — 원격 브랜치가
 79개까지 늘었던 적이 있다(그중 71개가 머지된 PR의 브랜치였다). 지워도 되돌릴 수 있다: 머지된 PR에서
 "Restore branch"로 되살아난다. 남기는 예외는 **되돌릴 지점**(`backup/…`·`master-snapshot`),
@@ -57,7 +72,7 @@ gh pr merge <번호> --merge --delete-branch
 
 ```bash
 export JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home
-./gradlew -p commerce clean test --console=plain          # 기본 스위트(chaos/integration 태그 제외)
+./gradlew clean test --console=plain                      # commerce + media 기본 스위트(chaos/integration 태그 제외)
 ./gradlew -p commerce/consumer-app build               # 독립 프로젝트
 ```
 

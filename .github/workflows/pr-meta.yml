@@ -1,0 +1,28 @@
+name: PR 메타 검사
+
+# 마일스톤·라벨·이슈 연결은 규칙으로만 적어 두면 무너진다(#504: 이슈 127개가 마일스톤 없이 쌓였다).
+# 본문이나 메타가 바뀔 때마다 다시 본다. 코드를 체크아웃하지 않고 이벤트 내용만 읽는다.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled, milestoned, demilestoned]
+
+permissions: {}
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 마일스톤·라벨·Closes 확인
+        env:
+          MILESTONE: ${{ github.event.pull_request.milestone.title }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          fail=0
+          if [ -z "$MILESTONE" ]; then echo "::error::마일스톤이 없다"; fail=1; fi
+          if [ -z "$LABELS" ]; then echo "::error::라벨이 없다"; fail=1; fi
+          if ! printf '%s' "$BODY" | grep -qiE '(close[sd]?|fix(e[sd])?|resolve[sd]?) #[0-9]+'; then
+            echo "::error::본문에 'Closes #번호'가 없다"; fail=1
+          fi
+          echo "마일스톤: ${MILESTONE:-없음} / 라벨: ${LABELS:-없음}"
+          exit $fail

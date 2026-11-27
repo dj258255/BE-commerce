@@ -22,6 +22,19 @@ body:
     validations:
       required: true
   - type: textarea
+    id: criteria
+    attributes:
+      label: 측정 전 기준
+      description: |-
+        결과를 보기 전에 적는 판정 규칙. 어떤 수치가 나오면 어느 안을 고르는가.
+        결과를 본 뒤 기준을 바꾸면 원래 기준의 판정을 먼저 댓글로 남기고 바꾼 이유를 적는다.
+      placeholder: |-
+        예측: …
+        A를 고르는 조건: …
+        판정 불가로 보는 조건(측정이 제대로 돌지 않았다는 신호): …
+    validations:
+      required: true
+  - type: textarea
     id: scope
     attributes:
       label: 작업 범위와 완료 조건

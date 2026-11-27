@@ -1,1 +1,2 @@
-blank_issues_enabled: true
+# 빈 이슈를 끈다. 템플릿을 건너뛴 이슈가 마일스톤·라벨 없이 127개 쌓였던 적이 있다(#504).
+blank_issues_enabled: false
