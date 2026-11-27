@@ -51,10 +51,11 @@
 | `k6/` `tools/` `monitoring/` `cdc/` `ci/` `scripts/` | 실험·운영 자산 | 결제와 개인화가 **같이 씁니다**(예: `alert-rules.yml` 에 결제 규칙과 개인화 규칙이 함께 있습니다) |
 | `gradlew` `gradle/` `compose.yaml` | 공용 실행 기반 | |
 
-Gradle wrapper 는 루트에 하나입니다. 프로젝트 루트가 `commerce/` 이므로 실행은 이렇게 합니다.
+Gradle wrapper 와 Gradle 루트(`settings.gradle`)는 저장소 루트에 하나입니다. `commerce` 와 `media` 는 형제 하위 프로젝트이고, 플러그인 버전은 루트 `build.gradle` 이 한 번만 정합니다([ADR-049](docs/adr/ADR-049-repo-layout-by-area.md) 2026-11-27 절). 실행은 이렇게 합니다.
 
 ```bash
-./gradlew -p commerce test                  # 본체 테스트
+./gradlew test                              # commerce + media 테스트
+./gradlew -p commerce test                  # commerce 만
 ./gradlew -p commerce/consumer-app build    # 소비자 앱
 ```
 

@@ -64,7 +64,7 @@ jobs:
       # 전체 테스트 = 단위·슬라이스 + Spring Modulith 경계 검증(ModularityTests).
       # Testcontainers/실 DB 없이 결정적으로 도는 스위트라 러너에 Docker가 필요 없다.
       - name: Run tests
-        run: ./gradlew -p commerce clean test --console=plain
+        run: ./gradlew clean test --console=plain
 
       # "테스트가 초록"이 아니라 "검증하기로 한 테스트가 실제로 돌았는가"를 본다.
       # 환경변수·키·아티팩트가 없으면 테스트는 조용히 skip되고 빌드는 성공한다 —
@@ -73,9 +73,8 @@ jobs:
       - name: Check skipped tests (건너뛴 테스트는 통과가 아니다)
         run: python3 tools/check_skipped_tests.py commerce/build/test-results/test ci/allowed-skips.txt
 
-      # media(R32)는 commerce가 포함하는 별도 Gradle 모듈이라 결과가 다른 디렉터리에 남는다
-      # (media/build/test-results/test). "./gradlew -p commerce test"가 같은 호출로 함께
-      # 돌리지만(Gradle이 하위 프로젝트의 동명 태스크를 자동으로 묶는다), 검사는 모듈별로 나뉜다.
+      # media(R32)는 commerce와 형제인 Gradle 하위 프로젝트라 결과가 다른 디렉터리에 남는다
+      # (media/build/test-results/test). 루트에서 "./gradlew test"가 두 프로젝트를 함께 돌리고, 검사는 모듈별로 나뉜다.
       - name: Check skipped tests (media) (건너뛴 테스트는 통과가 아니다)
         run: python3 tools/check_skipped_tests.py media/build/test-results/test ci/allowed-skips.txt
 

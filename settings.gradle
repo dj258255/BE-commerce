@@ -1,0 +1,6 @@
+// 저장소 루트가 Gradle 루트다. commerce(앱)와 media(commerce jar에 들어가는 모듈)는 형제 하위 프로젝트다.
+// commerce/consumer-app/ 은 일부러 여기 넣지 않는다 — 자기 settings.gradle 을 가진 독립 빌드라 메인 빌드에 영향을 주지 않는다.
+rootProject.name = 'be-commerce'
+
+include 'commerce'
+include 'media'
