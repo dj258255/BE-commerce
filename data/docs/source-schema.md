@@ -21,9 +21,9 @@
 | 표 | 뺀 열 | 이유 |
 |---|---|---|
 | `sellers` | `representative_name`, `payout_account`, `representative_birth_date` | 개인정보. 데이터 실험에 쓰지 않음 |
-| `products` | `description`, `image_url`, `featured` 등 화면용 열 | 집계에 쓰지 않음 |
+| `products` | `description`, `image_url`, `featured`, `subcategory_code`(V56), `product_type` · `colour_code` · `colour_name`(V57) | 화면과 검색 필터용. 집계에 쓰지 않음 |
 | `payments` | `card_fingerprint`, `recovery_attempts`, `recovery_next_at` | 사기 탐지와 복구 배치의 내부 상태 |
-| `settlements` | `payout_hold_reason`, `payout_instruction_reference`, `payout_reconciliation_*`, `payout_report_*` | 지급 대사. 이 프로젝트 범위 밖 |
+| `settlements` | `payout_hold_reason`, `payout_instruction_reference`, `payout_reconciled_at`, `payout_reconciliation_*`, `payout_report_*`(V65) | 지급 대사. 이 프로젝트 범위 밖 |
 
 ## 가져오지 않은 표
 
