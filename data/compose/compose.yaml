@@ -1,4 +1,4 @@
-# be-commerce-data 실험 환경
+# data 영역 실험 환경
 #
 # 장마다 필요한 것만 띄운다. 프로필 없이 올리면 원본 MySQL만 뜬다.
 #   docker compose up -d                                  # 1장: 원본 DB

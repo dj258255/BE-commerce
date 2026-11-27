@@ -52,7 +52,7 @@
 - MySQL 8.4 `EXPLAIN`: https://dev.mysql.com/doc/refman/8.4/en/explain.html
 - MySQL 8.4 날짜·시간 함수: https://dev.mysql.com/doc/refman/8.4/en/date-and-time-functions.html
 - 책: The Data Warehouse Toolkit 3판 1~3장(차원 모델링 기초)
-- 이 저장소: `docs/source-schema.md` (표마다 행 하나의 뜻)
+- 이 영역: `docs/source-schema.md` (표마다 행 하나의 뜻)
 
 손으로 할 것: E1-1 → E1-2 → E1-3 → E1-4
 
@@ -233,7 +233,7 @@
 - 블로그 `블로그/foundations/de-08-latency-percentiles`
 - 블로그 `블로그/foundations/de-09-measurement-pitfalls`
 - 블로그 `블로그/foundations/de-14-schema-registry-compatibility`
-- 이 저장소: `docs/measurement-rules.md`
+- 이 영역: `docs/measurement-rules.md`
 - 사례: Uber 원장 이관 글(2024, 오프라인 전수 비교)
 
 손으로 할 것: E7-1 → E7-2 → E7-3 → E7-4 → E7-5 → E7-6 → E7-7

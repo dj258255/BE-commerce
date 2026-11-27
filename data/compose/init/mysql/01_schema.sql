@@ -1,5 +1,5 @@
--- 원본 스키마: BE-commerce(github.com/dj258255/BE-commerce) 커밋 ed3757d의
--- commerce/src/main/resources/db/migration V1~V72에서 데이터 쪽이 읽는 표 9개만 골라 최종 모양으로 합쳤다.
+-- 원본 스키마: 결제 쪽 commerce/src/main/resources/db/migration V1~V72에서 데이터 쪽이 읽는 표 9개만 골라 최종 모양으로 합쳤다.
+-- DataSchemaContractMySqlTest 가 PR마다 실제 마이그레이션과 열 단위로 대조한다. 열을 바꾸면 그 테스트와 docs/source-schema.md 를 함께 고친다.
 -- 열 이름, 타입, 상태 값(enum), 유일 제약, 외래 키, 인덱스는 원본과 같다.
 -- 뺀 열은 docs/source-schema.md에 적었다(개인정보, 지급 대사, 복구 배치 내부 상태 등).
 -- 시각 열은 전부 UTC로 쓴다. 영업일(trade_date)만 KST 날짜다. 원본 V21과 같은 규칙이다.

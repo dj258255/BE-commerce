@@ -1,6 +1,8 @@
 # 원본 스키마의 출처
 
-원본 MySQL 스키마(`compose/init/mysql/01_schema.sql`)는 [BE-commerce](https://github.com/dj258255/BE-commerce) 커밋 `ed3757d`의 `commerce/src/main/resources/db/migration` V1~V72를 따라가며, 데이터 쪽이 읽는 표 9개를 최종 모양으로 합친 것입니다. 열 이름, 타입, 상태 값, 유일 제약, 외래 키, 인덱스는 원본과 같습니다.
+원본 MySQL 스키마(`compose/init/mysql/01_schema.sql`)는 결제 쪽 `commerce/src/main/resources/db/migration` V1~V72를 따라가며, 데이터 쪽이 읽는 표 9개를 최종 모양으로 합친 것입니다. 열 이름, 타입, 상태 값, 유일 제약, 외래 키, 인덱스는 원본과 같습니다.
+
+처음 만들 때는 별도 저장소에서 커밋 `ed3757d`(2026-10-06)를 기준으로 삼았습니다. 그 커밋은 지금 main 이력에 없습니다. 그래서 고정 커밋 대신 `commerce/src/test/java/com/beomsu/becommerce/DataSchemaContractMySqlTest.java`가 PR마다 사본을 실제 마이그레이션 전체와 열 단위(이름 · 타입 · NULL 허용)로 대조합니다. 원본에만 있는 열은 아래 "뺀 열" 표와 테스트의 `OMITTED`에 함께 적혀 있어야 통과합니다. 2026-11-27 첫 대조에서 문서에 "등"으로만 적혀 있던 `products` 열 넷과 목록에서 빠진 `settlements.payout_reconciled_at`이 걸려 이름으로 적었습니다. V73 이후 마이그레이션은 이 표 9개를 바꾸지 않았습니다.
 
 ## 가져온 표
 
